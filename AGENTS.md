@@ -89,7 +89,6 @@ zebra-space project with the RFC requirement removed.
 | `scripts/` | `make-world.ts`, `smoke.ts` |
 | `test/` | vitest suites |
 | `design/adr/` | ADRs and index |
-| `transcripts/` | Historical notes from the NAMS exploration; no new entries are added |
 | `.specify/` | Spec Kit config, constitution, templates, extension hooks |
 
 ## Conventions

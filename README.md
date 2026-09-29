@@ -75,7 +75,6 @@ provides them.
 | `scripts/` | `make-world.ts` generates a re-skinned world; `smoke.ts` runs the server over stdio |
 | `test/` | vitest suites |
 | `design/adr/` | Architecture Decision Records and their index |
-| `transcripts/` | Notes from the initial NAMS exploration (historical) |
 | `.specify/` | Spec Kit configuration, constitution and templates |
 
 Common commands: `pnpm test`, `pnpm typecheck`, `pnpm build`, and
