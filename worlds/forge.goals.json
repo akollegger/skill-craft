@@ -1,0 +1,19 @@
+{
+  "goals": [
+    {
+      "item": "bar",
+      "qty": 1,
+      "note": "warm-up: one recipe"
+    },
+    {
+      "item": "rod",
+      "qty": 1,
+      "note": "two steps: wood to planks to rod"
+    },
+    {
+      "item": "lamp",
+      "qty": 1,
+      "note": "held-out: needs a frame (bars and a rod) and glass"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "name": "tiny-2x2",
+  "description": "A fixture world.",
+  "grid": {
+    "rows": 2,
+    "cols": 2
+  },
+  "hints": "exact",
+  "stock": {
+    "a": 2
+  },
+  "items": [
+    {
+      "id": "a",
+      "description": "An item."
+    },
+    {
+      "id": "b",
+      "description": "An item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r-b",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "a",
+          "qty": 2
+        }
+      ],
+      "output": {
+        "item": "b",
+        "qty": 1
+      }
+    }
+  ]
+}

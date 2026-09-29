@@ -1,0 +1,191 @@
+{
+  "name": "zhifupil-8",
+  "description": "An unfamiliar workshop. Find out what can be made.",
+  "grid": {
+    "rows": 3,
+    "cols": 3
+  },
+  "hints": "exact",
+  "stock": {
+    "zidrus": 3,
+    "lududu": 4,
+    "zhaefe": 4,
+    "riokraris": 4
+  },
+  "items": [
+    {
+      "id": "zidrus",
+      "description": "A raw material."
+    },
+    {
+      "id": "lududu",
+      "description": "A raw material."
+    },
+    {
+      "id": "zhaefe",
+      "description": "A raw material."
+    },
+    {
+      "id": "riokraris",
+      "description": "A raw material."
+    },
+    {
+      "id": "taplith",
+      "description": "A made item."
+    },
+    {
+      "id": "taeglaemi",
+      "description": "A made item."
+    },
+    {
+      "id": "zhupar",
+      "description": "A made item."
+    },
+    {
+      "id": "zheplavu",
+      "description": "A made item."
+    },
+    {
+      "id": "fazhio",
+      "description": "A made item."
+    },
+    {
+      "id": "zhukros",
+      "description": "A made item."
+    },
+    {
+      "id": "ridrath",
+      "description": "A made item."
+    },
+    {
+      "id": "louthiox",
+      "description": "A made item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r1-taplith",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "zidrus",
+          "qty": 2
+        }
+      ],
+      "output": {
+        "item": "taplith",
+        "qty": 2
+      }
+    },
+    {
+      "id": "r2-taeglaemi",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "taplith"
+        ],
+        [
+          "taplith"
+        ]
+      ],
+      "output": {
+        "item": "taeglaemi",
+        "qty": 2
+      }
+    },
+    {
+      "id": "r3-zhupar",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "lududu",
+          "qty": 2
+        }
+      ],
+      "output": {
+        "item": "zhupar",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r4-louthiox",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "lududu",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "louthiox",
+        "qty": 3
+      }
+    },
+    {
+      "id": "r5-zheplavu",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "zhaefe",
+          "qty": 2
+        },
+        {
+          "item": "riokraris",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "zheplavu",
+        "qty": 2
+      }
+    },
+    {
+      "id": "r6-fazhio",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "riokraris",
+          "qty": 3
+        }
+      ],
+      "output": {
+        "item": "fazhio",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r7-zhukros",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "zhupar",
+          "zhupar"
+        ],
+        [
+          "taeglaemi",
+          null
+        ]
+      ],
+      "output": {
+        "item": "zhukros",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r8-ridrath",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "fazhio"
+        ],
+        [
+          "zhukros"
+        ]
+      ],
+      "output": {
+        "item": "ridrath",
+        "qty": 1
+      }
+    }
+  ]
+}

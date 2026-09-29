@@ -1,0 +1,155 @@
+{
+  "name": "base",
+  "description": "A fixture world.",
+  "grid": {
+    "rows": 3,
+    "cols": 3
+  },
+  "hints": "exact",
+  "stock": {
+    "i01": 1
+  },
+  "items": [
+    {
+      "id": "i01",
+      "description": "An item."
+    },
+    {
+      "id": "i02",
+      "description": "An item."
+    },
+    {
+      "id": "i03",
+      "description": "An item."
+    },
+    {
+      "id": "i04",
+      "description": "An item."
+    },
+    {
+      "id": "i05",
+      "description": "An item."
+    },
+    {
+      "id": "i06",
+      "description": "An item."
+    },
+    {
+      "id": "i07",
+      "description": "An item."
+    },
+    {
+      "id": "i08",
+      "description": "An item."
+    },
+    {
+      "id": "i09",
+      "description": "An item."
+    },
+    {
+      "id": "i10",
+      "description": "An item."
+    },
+    {
+      "id": "i11",
+      "description": "An item."
+    },
+    {
+      "id": "i12",
+      "description": "An item."
+    },
+    {
+      "id": "i13",
+      "description": "An item."
+    },
+    {
+      "id": "i14",
+      "description": "An item."
+    },
+    {
+      "id": "i15",
+      "description": "An item."
+    },
+    {
+      "id": "i16",
+      "description": "An item."
+    },
+    {
+      "id": "i17",
+      "description": "An item."
+    },
+    {
+      "id": "i18",
+      "description": "An item."
+    },
+    {
+      "id": "i19",
+      "description": "An item."
+    },
+    {
+      "id": "i20",
+      "description": "An item."
+    },
+    {
+      "id": "i21",
+      "description": "An item."
+    },
+    {
+      "id": "i22",
+      "description": "An item."
+    },
+    {
+      "id": "i23",
+      "description": "An item."
+    },
+    {
+      "id": "i24",
+      "description": "An item."
+    },
+    {
+      "id": "i25",
+      "description": "An item."
+    },
+    {
+      "id": "i26",
+      "description": "An item."
+    },
+    {
+      "id": "i27",
+      "description": "An item."
+    },
+    {
+      "id": "i28",
+      "description": "An item."
+    },
+    {
+      "id": "i29",
+      "description": "An item."
+    },
+    {
+      "id": "i30",
+      "description": "An item."
+    },
+    {
+      "id": "i31",
+      "description": "An item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "i01",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "i02",
+        "qty": 1
+      }
+    }
+  ],
+  "$expect": "above the limit of 30"
+}

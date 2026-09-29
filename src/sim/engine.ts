@@ -1,219 +1,158 @@
-import type { Item, Recipe, Station, World } from "./schema.js";
+import { buildMatcher, couldBecomeMatch, type Grid, type Matcher } from "./matcher.js";
+import { RunLog } from "./runlog.js";
+import type { World } from "./schema.js";
 
 export type ErrorCode =
-  | "unknown_item"
-  | "unknown_station"
-  | "not_gatherable"
-  | "not_craftable"
-  | "wrong_tool_tier"
-  | "missing_ingredient"
-  | "no_station_nearby"
-  | "missing_fuel"
-  | "invalid_quantity";
+  | "out_of_bounds"
+  | "cell_occupied"
+  | "cell_empty"
+  | "not_in_inventory"
+  | "nothing_to_craft"
+  | "unknown_item";
 
-export interface Failure {
+/** A refused call. Messages state the violated constraint and never the remedy. */
+export interface Refusal {
   ok: false;
   error: ErrorCode;
   message: string;
-  hint?: string;
-  details?: Record<string, unknown>;
 }
 
-export type Outcome<T extends object = object> = ({ ok: true; tick: number } & T) | Failure;
-
-export interface LogEntry {
-  tick: number;
-  tool: string;
-  args: Record<string, unknown>;
-  ok: boolean;
-  error?: ErrorCode;
+/** What the agent sees of the table: its contents and what `craft` would make right now. */
+export interface Preview {
+  ok: true;
+  grid: Grid;
+  craftable: string | null;
+  /** Only in worlds with `hints: "partial"`: whether adding items could still reach a match. */
+  partial?: boolean;
 }
 
-const fail = (error: ErrorCode, message: string, hint?: string, details?: Record<string, unknown>): Failure => ({
-  ok: false,
-  error,
-  message,
-  ...(hint === undefined ? {} : { hint }),
-  ...(details === undefined ? {} : { details }),
-});
+export interface Crafted {
+  ok: true;
+  crafted: { item: string; qty: number };
+}
+
+const refuse = (error: ErrorCode, message: string): Refusal => ({ ok: false, error, message });
 
 /**
- * Deterministic crafting simulation over a World. No randomness, no clock: the same sequence of
- * calls always produces the same results, so runs are comparable.
+ * One run of the crafting table. Deterministic: no randomness and no clock, so the same world and
+ * the same sequence of calls always give the same results.
  */
 export class Game {
   readonly world: World;
-  readonly log: LogEntry[] = [];
-  private tick = 0;
-  private readonly stock = new Map<string, number>();
-  private readonly placed = new Set<string>();
-  private readonly items: Map<string, Item>;
-  private readonly stations: Map<string, Station>;
-  private readonly producers: Map<string, Recipe>;
+  /** Every tool call in this run, in order. */
+  readonly log: RunLog;
+  private readonly matcher: Matcher;
+  private readonly known: ReadonlySet<string>;
+  private readonly held = new Map<string, number>();
+  private grid: Grid;
 
-  constructor(world: World) {
+  constructor(world: World, options: { log?: RunLog } = {}) {
     this.world = world;
-    this.items = new Map(world.items.map((i) => [i.id, i]));
-    this.stations = new Map(world.stations.map((s) => [s.id, s]));
-    this.producers = new Map(world.recipes.map((r) => [r.output.item, r]));
+    this.log = options.log ?? new RunLog();
+    this.matcher = buildMatcher(world.recipes);
+    this.known = new Set(world.items.map((i) => i.id));
+    for (const [item, qty] of Object.entries(world.stock)) this.held.set(item, qty);
+    this.grid = Array.from({ length: world.grid.rows }, () => Array<string | null>(world.grid.cols).fill(null));
   }
 
-  get ticks(): number {
-    return this.tick;
-  }
-
+  /** Units of an item currently held (not counting items on the table). */
   count(item: string): number {
-    return this.stock.get(item) ?? 0;
+    return this.held.get(item) ?? 0;
   }
 
-  private bestTier(): number {
-    let best = 0;
-    for (const [id, n] of this.stock) {
-      if (n > 0) best = Math.max(best, this.items.get(id)?.toolTier ?? 0);
-    }
-    return best;
+  private inBounds(row: number, col: number): boolean {
+    return Number.isInteger(row) && Number.isInteger(col) && row >= 0 && col >= 0 && row < this.grid.length && col < (this.grid[0]?.length ?? 0);
   }
 
-  private record<T extends Outcome>(tool: string, args: Record<string, unknown>, result: T): T {
-    this.log.push({
-      tick: this.tick,
+  preview(): Preview {
+    return {
+      ok: true,
+      grid: this.grid.map((row) => [...row]),
+      craftable: this.matcher.match(this.grid)?.output.item ?? null,
+      ...(this.world.hints === "partial" ? { partial: couldBecomeMatch(this.grid, this.world.recipes) } : {}),
+    };
+  }
+
+  /** Append a call to the run log and return its outcome unchanged. */
+  record<T extends object>(tool: string, args: Record<string, unknown>, outcome: T): T {
+    const refused = "ok" in outcome && outcome.ok === false;
+    this.log.append({
       tool,
       args,
-      ok: result.ok,
-      ...(result.ok ? {} : { error: result.error }),
+      ok: !refused,
+      ...(refused && "error" in outcome ? { error: String(outcome.error) } : {}),
+      ...("crafted" in outcome ? { crafted: outcome.crafted as { item: string; qty: number } } : {}),
     });
-    return result;
+    return outcome;
   }
 
-  survey() {
-    const gatherable = this.world.items
-      .filter((i) => i.gather)
-      .map((i) => ({ item: i.id, description: i.description, tierNeeded: i.gather?.minTier ?? 0, perTick: i.gather?.yield ?? 1 }));
-    return this.record("survey", {}, {
-      ok: true as const,
-      tick: this.tick,
-      world: this.world.name,
-      description: this.world.description,
-      gatherable,
-      stations: this.world.stations.map((s) => s.id),
-      tasks: this.world.tasks.map((t) => ({ id: t.id, goal: t.goal, ...(t.note ? { note: t.note } : {}) })),
-    });
+  /** The table as it is now. Changes nothing. */
+  look(): Preview {
+    return this.record("look", {}, this.preview());
   }
 
-  recipeLookup(item: string) {
-    const known = this.items.get(item);
-    if (!known) return this.record("recipe_lookup", { item }, fail("unknown_item", `There is no item called '${item}'.`));
-    const recipe = this.producers.get(item);
-    if (!recipe) {
-      return this.record("recipe_lookup", { item }, {
-        ok: true as const,
-        tick: this.tick,
-        item,
-        description: known.description,
-        craftable: false,
-        gatherable: known.gather !== undefined,
-        ...(known.toolTier ? { toolTier: known.toolTier } : {}),
-      });
-    }
-    return this.record("recipe_lookup", { item }, {
-      ok: true as const,
-      tick: this.tick,
-      item,
-      description: known.description,
-      craftable: true,
-      output: recipe.output,
-      inputs: recipe.inputs,
-      ...(recipe.station ? { station: recipe.station } : {}),
-      ...(recipe.fuel ? { fuel: recipe.fuel } : {}),
-      ...(known.toolTier ? { toolTier: known.toolTier } : {}),
-    });
+  /** Items held and their quantities, keys sorted, zero quantities omitted. Nothing else. */
+  inventory(): { items: Record<string, number> } {
+    return this.record("inventory", {}, this.heldItems());
   }
 
-  recipesUsing(item: string) {
-    if (!this.items.has(item)) return this.record("recipes_using", { item }, fail("unknown_item", `There is no item called '${item}'.`));
-    const uses = this.world.recipes
-      .filter((r) => r.inputs.some((i) => i.item === item) || r.fuel?.item === item)
-      .map((r) => r.output.item);
-    const stationUses = this.world.stations.filter((s) => s.item === item).map((s) => s.id);
-    return this.record("recipes_using", { item }, {
-      ok: true as const,
-      tick: this.tick,
-      item,
-      makes: uses,
-      placesAsStation: stationUses,
-    });
+  private heldItems(): { items: Record<string, number> } {
+    const entries = [...this.held].filter(([, n]) => n > 0).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return { items: Object.fromEntries(entries) };
   }
 
-  inventory() {
-    const items = Object.fromEntries([...this.stock].filter(([, n]) => n > 0).sort(([a], [b]) => a.localeCompare(b)));
-    return this.record("inventory", {}, {
-      ok: true as const,
-      tick: this.tick,
-      items,
-      stations: [...this.placed].sort(),
-      toolTier: this.bestTier(),
-      tasks: this.world.tasks.map((t) => ({ id: t.id, done: this.count(t.goal.item) >= t.goal.qty })),
-    });
+  /** Move one unit of `item` from the inventory to a cell. */
+  place(item: string, row: number, col: number): Preview | Refusal {
+    return this.record("place", { item, row, col }, this.doPlace(item, row, col));
   }
 
-  gather(resource: string, qty: number) {
-    const args = { resource, qty };
-    const item = this.items.get(resource);
-    if (!Number.isInteger(qty) || qty <= 0) return this.record("gather", args, fail("invalid_quantity", "Quantity must be a positive whole number."));
-    if (!item) return this.record("gather", args, fail("unknown_item", `There is no item called '${resource}'.`));
-    if (!item.gather) {
-      return this.record("gather", args, fail("not_gatherable", `'${resource}' cannot be gathered from the environment.`, "Some things must be made instead."));
-    }
-    const have = this.bestTier();
-    if (have < item.gather.minTier) {
-      return this.record("gather", args, fail("wrong_tool_tier", `Your tools are not strong enough to gather '${resource}'.`, "A better tool is needed.", { toolTier: have, tierNeeded: item.gather.minTier }));
-    }
-    this.tick += Math.ceil(qty / item.gather.yield);
-    this.stock.set(resource, this.count(resource) + qty);
-    return this.record("gather", args, { ok: true as const, tick: this.tick, gathered: { item: resource, qty }, have: this.count(resource) });
+  private doPlace(item: string, row: number, col: number): Preview | Refusal {
+    if (!this.inBounds(row, col)) return refuse("out_of_bounds", `Row ${row}, column ${col} is outside the table.`);
+    if (!this.known.has(item)) return refuse("unknown_item", `There is no item called '${item}'.`);
+    if (this.grid[row]?.[col] !== null) return refuse("cell_occupied", "That cell already holds an item.");
+    if (this.count(item) < 1) return refuse("not_in_inventory", `You hold none of '${item}'.`);
+    this.held.set(item, this.count(item) - 1);
+    (this.grid[row] as (string | null)[])[col] = item;
+    return this.preview();
   }
 
-  placeStation(station: string) {
-    const args = { station };
-    const def = this.stations.get(station);
-    if (!def) return this.record("place_station", args, fail("unknown_station", `There is no station called '${station}'.`));
-    if (this.count(def.item) < 1) {
-      return this.record("place_station", args, fail("missing_ingredient", `You do not have what is needed to set up '${station}'.`, undefined, { needs: { item: def.item, qty: 1 } }));
-    }
-    this.tick += 1;
-    this.stock.set(def.item, this.count(def.item) - 1);
-    this.placed.add(station);
-    return this.record("place_station", args, { ok: true as const, tick: this.tick, placed: station });
+  /** Move the item in a cell back to the inventory. */
+  remove(row: number, col: number): Preview | Refusal {
+    return this.record("remove", { row, col }, this.doRemove(row, col));
   }
 
-  craft(item: string, qty: number) {
-    const args = { item, qty };
-    if (!Number.isInteger(qty) || qty <= 0) return this.record("craft", args, fail("invalid_quantity", "Quantity must be a positive whole number."));
-    if (!this.items.has(item)) return this.record("craft", args, fail("unknown_item", `There is no item called '${item}'.`));
-    const recipe = this.producers.get(item);
-    if (!recipe) {
-      return this.record("craft", args, fail("not_craftable", `'${item}' cannot be crafted.`, "Try gathering it, or look up what it is."));
+  private doRemove(row: number, col: number): Preview | Refusal {
+    if (!this.inBounds(row, col)) return refuse("out_of_bounds", `Row ${row}, column ${col} is outside the table.`);
+    const item = this.grid[row]?.[col];
+    if (item === null || item === undefined) return refuse("cell_empty", "That cell holds nothing.");
+    this.held.set(item, this.count(item) + 1);
+    (this.grid[row] as (string | null)[])[col] = null;
+    return this.preview();
+  }
+
+  /** Move every item on the table back to the inventory. Never refused. */
+  clear(): Preview {
+    this.putAllBack();
+    return this.record("clear", {}, this.preview());
+  }
+
+  private putAllBack(): void {
+    for (const item of this.grid.flat()) {
+      if (item !== null) this.held.set(item, this.count(item) + 1);
     }
-    if (recipe.station && !this.placed.has(recipe.station)) {
-      return this.record("craft", args, fail("no_station_nearby", "This recipe must be made at a station, and none is set up here.", "Look at the recipe to see what it requires."));
-    }
-    const runs = Math.ceil(qty / recipe.output.qty);
-    const short = recipe.inputs
-      .map((i) => ({ item: i.item, need: i.qty * runs, have: this.count(i.item) }))
-      .filter((i) => i.have < i.need);
-    if (short.length > 0) {
-      return this.record("craft", args, fail("missing_ingredient", "You are missing ingredients.", undefined, { short }));
-    }
-    if (recipe.fuel && this.count(recipe.fuel.item) < recipe.fuel.qty * runs) {
-      return this.record("craft", args, fail("missing_fuel", "This recipe burns fuel and you do not have enough.", undefined, {
-        fuel: { item: recipe.fuel.item, need: recipe.fuel.qty * runs, have: this.count(recipe.fuel.item) },
-      }));
-    }
-    for (const i of recipe.inputs) this.stock.set(i.item, this.count(i.item) - i.qty * runs);
-    if (recipe.fuel) this.stock.set(recipe.fuel.item, this.count(recipe.fuel.item) - recipe.fuel.qty * runs);
-    const made = runs * recipe.output.qty;
-    this.stock.set(item, this.count(item) + made);
-    this.tick += runs;
-    return this.record("craft", args, { ok: true as const, tick: this.tick, crafted: { item, qty: made }, have: this.count(item) });
+    this.grid = this.grid.map((row) => row.map(() => null));
+  }
+
+  /** Commit the recipe the table matches: consume the table, add the output to the inventory. */
+  craft(): Crafted | Refusal {
+    return this.record("craft", {}, this.doCraft());
+  }
+
+  private doCraft(): Crafted | Refusal {
+    const recipe = this.matcher.match(this.grid);
+    if (!recipe) return refuse("nothing_to_craft", "Nothing can be made from what is on the table.");
+    this.grid = this.grid.map((row) => row.map(() => null));
+    this.held.set(recipe.output.item, this.count(recipe.output.item) + recipe.output.qty);
+    return { ok: true, crafted: { item: recipe.output.item, qty: recipe.output.qty } };
   }
 }

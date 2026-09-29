@@ -1,0 +1,62 @@
+{
+  "name": "base",
+  "description": "A fixture world.",
+  "grid": {
+    "rows": 3,
+    "cols": 3
+  },
+  "hints": "exact",
+  "stock": {
+    "a": 4,
+    "b": 2
+  },
+  "items": [
+    {
+      "id": "a",
+      "description": "An item."
+    },
+    {
+      "id": "b",
+      "description": "An item."
+    },
+    {
+      "id": "c",
+      "description": "An item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r1",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "a",
+          "qty": 1
+        },
+        {
+          "item": "b",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "c",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r2",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "a",
+          "b"
+        ]
+      ],
+      "output": {
+        "item": "b",
+        "qty": 1
+      }
+    }
+  ],
+  "$expect": "can match the same table state"
+}
