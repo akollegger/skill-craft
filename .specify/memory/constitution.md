@@ -1,50 +1,112 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version change: (unratified template) → 1.0.1 (goals are not part of a world; Principle II
+  wording corrected)
+- Modified principles: none (initial ratification)
+- Added principles: I. Deterministic, Replayable Environments; II. Data-Driven Worlds;
+  III. Discovery Over Disclosure; IV. Test-First Rules; V. Simplicity; VI. Secrets Hygiene;
+  VII. Decisions Before Specs
+- Added sections: Technology & Constraints; Development Workflow
+- Removed sections: none
+- Templates reviewed (read at runtime, not modified here): plan-template.md, spec-template.md,
+  tasks-template.md, checklist-template.md
+- Deferred TODOs: none
+-->
+# skill-distill Constitution
+
+skill-distill demonstrates skill distillation from Neo4j Agent Memory (NAMS): an agent works in a
+simulated crafting-table environment, its runs are recorded, a skill is distilled from them, and
+later runs with and without that skill are compared. The environment exists to make that
+comparison honest and measurable.
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Deterministic, Replayable Environments
+The simulation MUST have no randomness and no wall-clock dependence. The same sequence of calls
+against the same world MUST always produce the same results. Randomness is allowed only in
+tooling that generates world files, and only from an explicit seed.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Rationale: runs are compared by tool calls and failures. That comparison is meaningless if the
+environment itself varies between runs.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Data-Driven Worlds
+The engine MUST hold no knowledge of any specific world. Items, recipes, grid, stock and hint
+level come from validated world files, and swapping a world MUST NOT require a code change.
+World files MUST be validated against a schema and for referential integrity before use.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Rationale: fresh vocabulary and perturbed recipes are the main experimental controls, so they
+must be inputs, not code.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Discovery Over Disclosure
+No tool may reveal a recipe, a solution, or the identity of an item beyond what the world file
+puts in play. Error results MUST state the constraint that was violated and MUST NOT state the
+fix. Worlds intended for experiments MUST use invented names and category-only descriptions so an
+agent cannot answer from prior knowledge.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Rationale: if the agent can answer from what it already knows, memory has nothing to add.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Test-First Rules (NON-NEGOTIABLE)
+Engine behaviour, recipe matching, world validation and the renamer MUST be specified by tests
+before they are implemented. Every world file committed to the repository MUST be proven solvable
+by an automated check, and the check MUST run in the test suite.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Rationale: an unsolvable or ambiguous world silently corrupts every run recorded against it.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Simplicity
+A mechanic earns its place only by what it adds to the with/without-memory comparison. Machinery
+that adds logistics without adding something to learn MUST be removed. Prefer the smallest
+design that keeps the comparison meaningful; new complexity requires a stated justification in the
+relevant ADR.
+
+Rationale: the first implementation buried the learnable procedure under gathering, tiers,
+stations and fuel.
+
+### VI. Secrets Hygiene
+API keys MUST live only in `.env`, which MUST stay gitignored, with `.env.example` documenting
+the names. Keys MUST NOT be printed, logged, written to committed files, or passed as command-line
+arguments. Every session in this repository is recorded to NAMS, including tool inputs and
+outputs, so command text MUST be treated as visible to everyone with access to that workspace.
+
+Rationale: the recording hooks capture what is typed, and a leaked key or credential is not
+recoverable.
+
+### VII. Decisions Before Specs
+Architecturally significant choices MUST be recorded as ADRs under `design/adr/` before
+implementation. Every speckit feature MUST reference the ADR it implements. ADRs are standalone;
+no parent RFC is required.
+
+Rationale: the design of the environment changed once already; recording the decision and its
+rejected alternatives keeps later changes deliberate.
+
+## Technology & Constraints
+
+- TypeScript in strict mode, ES modules, on Node 22 or newer.
+- pnpm for package management; vitest for tests; zod for schemas and validation.
+- The environment is exposed to agents as an MCP server built on the official MCP SDK.
+- World files are JSON. Generated worlds are committed only as named examples.
+- The NAMS skills API is a preview feature with no SDK. Calls that create, review or publish
+  skills are outward-facing writes and MUST be run deliberately, not from automated loops.
+
+## Development Workflow
+
+- Design work happens on a feature branch, not on `main`, and goes through pull-request review.
+- ADRs are authored with `/adr-create` and checked with `/adr-review` before moving from
+  `proposed` to `accepted`.
+- Features are specified with `/speckit-specify` referencing an accepted ADR, then planned and
+  tasked with the corresponding speckit commands.
+- `pnpm typecheck` and `pnpm test` MUST pass before a change is merged.
+- A change that alters the environment's rules, a world's structure, or the tool surface MUST
+  update or supersede the ADR that decided it.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes other practices in the repository. Amendments are made through a
+pull request that states the change and its rationale, or through an ADR that supersedes the
+affected principle. Reviewers verify that changes comply with the principles and that any added
+complexity is justified.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+The constitution is versioned semantically. MAJOR: a principle is removed or redefined
+incompatibly. MINOR: a principle or section is added or materially expanded. PATCH:
+clarifications and wording fixes.
+
+**Version**: 1.0.1 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-29
