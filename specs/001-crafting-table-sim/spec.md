@@ -153,6 +153,11 @@ run reaches the goal.
    requested, **Then** the answer says so and gives no run.
 3. **Given** the best run for a goal, **When** it is replayed step by step against a fresh world,
    **Then** the agent ends up holding the goal item.
+4. **Given** a completed run, **When** the runner reads the run log, **Then** it lists every tool
+   call in order with its arguments and outcome, and the counts of calls and failed crafts match
+   what happened.
+5. **Given** an agent in a running world, **When** it looks for the run log, **Then** none of its
+   tools provides it.
 
 ---
 
@@ -216,6 +221,7 @@ that the variant is still solvable.
 - Two runs started from the same world: independent, each starts from the initial stock.
 - A world too large for the best-run search to finish: rejected at load with a size limit message.
 - Repeating the identical sequence of calls: identical results every time.
+- A refused call: still appears in the run log, with its refusal reason.
 
 ## Requirements *(mandatory)*
 
@@ -274,6 +280,11 @@ that the variant is still solvable.
 - **FR-022**: The earlier gathering, tool-tier, station and fuel mechanics, their tools, and the
   earlier world definitions MUST be removed and replaced by this design, with generated example
   worlds regenerated.
+- **FR-023**: The simulation MUST keep an ordered log of every tool call in a run, including
+  refused calls, recording each call's arguments and outcome (success, or the refusal reason). The
+  experiment runner MUST be able to read the log after the run. The agent MUST NOT be able to read
+  it. The log is the ground truth for counting a run's calls and failed crafts, independent of
+  whatever software drives the agent.
 
 ### Key Entities
 
@@ -290,6 +301,8 @@ that the variant is still solvable.
   craft would make now (or nothing), and at the extra-signal level whether a match is still
   possible.
 - **Goal**: An item and quantity the agent is asked to hold. It lives outside the world.
+- **Run log**: The ordered record of every tool call in one run, with arguments and outcome,
+  readable by the experiment runner and not by the agent.
 - **Best run**: The reference answer for a world and goal: minimum crafts, minimum tool calls and
   slack.
 - **World variant**: A re-skinned and optionally perturbed copy of a world, produced from a seed.
@@ -317,12 +330,17 @@ that the variant is still solvable.
   repository.
 - **SC-009**: Viewing, holdings and orientation calls leave the world state unchanged in every
   tested state.
+- **SC-010**: For a scripted run with a known number of calls and a known number of failed
+  crafts, the run log's counts match a hand count exactly, and no agent-facing tool returns the
+  log.
 
 ## Assumptions
 
 - Goals, and the way they are given to the agent, belong to the experiment harness, which is a
   separate piece of work (see ADR-001 Section 2.6). This feature only provides the best-run
   calculation for a given goal.
+- How the runner reads the run log (a file, a report, an endpoint) is a planning decision. What
+  is fixed here is that it exists, is complete and ordered, and is out of the agent's reach.
 - Recording runs, distilling skills and comparing runs with and without a skill are out of scope
   here. They belong to a later experiment-protocol decision.
 - Shaped recipes match at any position on the table but never rotated or mirrored (ADR-001 Section

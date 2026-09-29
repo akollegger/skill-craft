@@ -32,6 +32,8 @@
 ## Notes
 
 - Validated in one pass; no iterations needed.
+- Revised after validation to add the run log (FR-023, Story 5 scenarios 4-5, SC-010). Re-checked:
+  still no implementation details, testable, and within the stated scope.
 - The agent-facing tool set and the refusal reasons are named by purpose in FR-009 and FR-012
   because they are the interface the feature delivers. Their transport and exact names are left to
   planning.
