@@ -1,7 +1,7 @@
 <!--
 Sync Impact Report
-- Version change: (unratified template) → 1.0.1 (goals are not part of a world; Principle II
-  wording corrected)
+- Version change: (unratified template) → 1.0.2 (goals are not part of a world; Principle II
+  wording corrected; project renamed from skill-distill to skill-craft)
 - Modified principles: none (initial ratification)
 - Added principles: I. Deterministic, Replayable Environments; II. Data-Driven Worlds;
   III. Discovery Over Disclosure; IV. Test-First Rules; V. Simplicity; VI. Secrets Hygiene;
@@ -12,9 +12,9 @@ Sync Impact Report
   tasks-template.md, checklist-template.md
 - Deferred TODOs: none
 -->
-# skill-distill Constitution
+# skill-craft Constitution
 
-skill-distill demonstrates skill distillation from Neo4j Agent Memory (NAMS): an agent works in a
+skill-craft demonstrates skill distillation from Neo4j Agent Memory (NAMS): an agent works in a
 simulated crafting-table environment, its runs are recorded, a skill is distilled from them, and
 later runs with and without that skill are compared. The environment exists to make that
 comparison honest and measurable.
@@ -109,4 +109,4 @@ The constitution is versioned semantically. MAJOR: a principle is removed or red
 incompatibly. MINOR: a principle or section is added or materially expanded. PATCH:
 clarifications and wording fixes.
 
-**Version**: 1.0.1 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-29
+**Version**: 1.0.2 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-29
