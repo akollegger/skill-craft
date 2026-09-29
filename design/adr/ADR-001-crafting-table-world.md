@@ -18,8 +18,9 @@ task environment has to look like.
 **The procedure has to live in tool calls.** The `nams-hooks` plugin records each tool call with
 its name, full input, output, status and duration. It records the agent's reasoning only as
 placeholders: every reasoning step reads `"Claude Code ran Bash with the provided tool input."`
-with an empty result. The distiller derives a skill's step graph from recorded tool calls, so the
-environment must make its procedure visible as distinctive, parameterized calls.
+with an empty result. NAMS's distillation step (the *distiller*, which turns recorded memory into a skill) derives a
+skill's step graph from recorded tool calls, so the environment must make its procedure visible as
+distinctive, parameterized calls.
 
 **Runs must be cheap, repeatable and countable.** A skill's value shows up as fewer tool calls and
 fewer failed attempts on a later run. That needs a deterministic environment, a known optimal
@@ -67,12 +68,13 @@ A recipe has an output (`item`, `qty`) and is one of two kinds:
 
 Matching is exact: extra items on the grid prevent a match. A world is valid only if no two
 recipes can match the same grid state, every shaped pattern fits inside the grid, and every
-recipe input is either in the stock or the output of another recipe. Because matching is exact
-and unambiguous, at most one recipe matches the grid at any moment.
+recipe input is obtainable: it is in the stock, or it is the output of a recipe whose own inputs
+are all obtainable. Because matching is exact and unambiguous, at most one recipe matches the
+grid at any moment.
 
 ### 2.3 Tool surface
 
-An MCP server named `craft` exposes these tools. Each has one purpose, and none lists recipes.
+A Model Context Protocol (MCP) server named `craft` exposes these tools. Each has one purpose, and none lists recipes.
 
 | Tool | Purpose |
 |---|---|
@@ -92,7 +94,10 @@ list of tasks and does not report whether a goal has been met; the agent tracks 
 checks `inventory`.
 
 Errors are structured codes with a short message that states the constraint and not the fix:
-`out_of_bounds`, `cell_occupied`, `not_in_inventory`, `nothing_to_craft`, `unknown_item`.
+`out_of_bounds`, `cell_occupied`, `cell_empty`, `not_in_inventory`, `nothing_to_craft`,
+`unknown_item`. A refusal also sets the tool result's error flag, so a recording of the call marks
+it as failed. `craft` returns the item made and its quantity, not a preview. Coordinates are
+zero-based, and `help` says so.
 
 ### 2.4 Hint level
 
@@ -100,16 +105,17 @@ Each world sets `hints`:
 
 - `exact`: a preview reports only `craftable`.
 - `partial`: a preview also reports `partial: true` when the current grid could still become a
-  match by adding items, without naming which.
+  match by adding items, without removing any and without naming which.
 
 `exact` is the hardest setting, since a mismatch gives no signal. `partial` gives the agent a
 gradient. The hint level and the grid size together set how large the search space feels.
 
 ### 2.5 World files and vocabulary
 
-Worlds are JSON files validated with a zod schema:
+Worlds are JSON files validated against a schema:
 `{ name, description, grid, stock, hints, items, recipes }`. The server loads the file
-named by the `SIM_WORLD` environment variable. A seeded renamer re-skins any world with invented
+named by the `SIM_WORLD` environment variable, and writes the run log to the file named by
+`SIM_RUN_LOG`. A seeded renamer re-skins any world with invented
 item names and, by default, replaces flavour text with category-only descriptions, so an agent
 cannot infer a recipe from a name. Its `--perturb` option changes quantities and patterns
 deterministically, which produces a world whose recorded results no longer match the original
@@ -117,19 +123,35 @@ deterministically, which produces a world whose recorded results no longer match
 
 ### 2.6 Validation, goals and scoring
 
-The loader checks that every recipe input is reachable from the starting stock through some
-sequence of crafts. A separate solver takes a world and a goal (an item and a quantity) and
+The loader checks that every recipe input is obtainable (Section 2.2), which is a single pass over
+the recipes and needs no search. A separate solver takes a world and a goal (an item and a quantity) and
 searches exhaustively over craft orders. It returns the minimum number of crafts and tool calls
-and the slack, meaning how many wasted crafts a run can absorb and still reach the goal. Goals live
-outside the world file, in the experiment harness, which also gives the goal to the agent (for
-example in its prompt). The solver is the yardstick for scoring a run. World size is capped so the
-search stays tractable.
+and the slack, meaning how many wasted crafts a run can absorb and still reach the goal. Minimum
+tool calls counts only the calls that change the world (`place` and `craft`); `help`, `inventory`
+and `look` are free to use and are excluded. Slack is the largest *w*, up to a fixed cap, such that any *w*
+recipe applications from the starting stock still leave the goal reachable. Goals live outside the
+world file, in the experiment harness, which also gives the goal to the agent (for example in its
+prompt). Committed worlds keep their intended goals in a sibling goals file that only tests, the
+solver and the world generator read; the engine never does. The solver is the yardstick for scoring
+a run. World size is capped by limits on items, recipes, table cells and stock, and by a budget on
+the solver's search, so the search stays tractable.
 
 ### 2.7 State and reset
 
 Game state lives in the server process. Each agent session spawns a fresh server, so every run
 starts from the initial stock. The agent has no reset tool; between-run reset is a harness
-concern.
+concern. Restarting the process is the reset, and the agent is not told, so a mid-run restart
+starts a new run without any signal to the agent.
+
+### 2.8 Run log
+
+The server keeps an ordered log of every tool call in the run, including refused ones, with each
+call's arguments and outcome. The experiment runner reads it after the run; no tool returns it.
+The log is the measurement of a run's calls and failed crafts, independent of whatever software
+drives the agent. It carries no timestamps, so replaying the same calls gives a byte-identical log.
+The server writes it to the file named by `SIM_RUN_LOG`, and it refuses to start if that
+file already holds data, so a restart cannot append to an earlier run's log and mix two runs. Each
+run needs its own file.
 
 ## 3. Alternatives Considered
 
@@ -146,6 +168,12 @@ concern.
   decision, so exploring would spend stock and there would be no wasted-craft cost to learn from.
 - **Stacks or quantities in a cell.** Rejected: one item per cell keeps the grid a plain 2-D
   layout and makes shaped patterns unambiguous.
+- **Expose the run log through a tool.** Rejected: the agent could read it, and the log is the
+  runner's independent measurement of the agent.
+- **Truncate or append to an existing log file.** Rejected: truncating destroys a finished run's
+  data, and appending after a silent restart restarts the call numbering and mixes two runs.
+- **Report refusals as ordinary successful results.** Rejected: a recording of the call would show
+  success, and the memory service tells anti-patterns from successes by recorded status.
 - **Rotation- and mirror-invariant patterns.** Rejected for now: they multiply the layouts that
   match a recipe, which enlarges the search space without adding a new kind of decision.
 
@@ -168,6 +196,10 @@ concern.
   can be.
 - The experiment protocol (goal definitions, how runs are recorded, distilled, published and
   compared) is a separate decision and gets its own ADR.
+- The run log protects the log from the simulation's own tools only. A player with shell access
+  could read the file, so the player configuration must exclude shell tools; this belongs to the
+  player and experiment-protocol decision. The first pilot also checks that a refused call is
+  recorded as failed.
 - With no goal in the world, an agent learns its goal only from its prompt. A recorded run
   therefore shows the goal in the conversation, not in the tool calls, and the distiller has to
   connect the two.
@@ -175,4 +207,37 @@ concern.
 ## 5. Related
 
 - Related ADRs: none yet.
-- Specs: _(populated automatically by the speckit ADR-link hook once `/speckit-specify` references this ADR)_
+- Specs: `specs/001-crafting-table-sim`
+
+## 6. Amendments
+
+Changes made to this ADR after acceptance, while planning `001-crafting-table-sim`. The text of
+Section 2 was updated to match.
+
+- **2026-09-29, empty-cell refusal.** Added `cell_empty`, returned when `remove` targets an empty
+  cell. The original list had five refusal codes. Silently accepting the call would hide an
+  agent's mistake.
+- **2026-09-29, refusals flagged as failures.** A refusal sets the tool result's error flag so a
+  recording of the call marks it failed. The memory service uses recorded call status to separate
+  successful patterns from anti-patterns. Whether the recording hook stores the flag is unverified
+  and is a pilot check.
+- **2026-09-29, run log.** Added the run log (Section 2.8). Section 2.6 named the solver as the
+  yardstick but gave no source for a run's actual call and failure counts.
+- **2026-09-29, one log per run.** The server refuses to start on a log file that already holds
+  data. A process restart silently resets the world, and appending to the old file would restart
+  the call numbering midway and mix two runs.
+- **2026-09-29, goals file beside the world.** Goals still stay out of the world file, but
+  committed worlds carry a sibling goals file for tests, the solver and the world generator. The
+  original text put goals only in the experiment harness, which left nothing for the
+  solvability tests to check.
+- **2026-09-29, scoring made concrete.** Minimum tool calls counts only `place` and `craft`. Slack
+  is defined as above. World size is capped by parameter limits and a search budget, whose values
+  are in `specs/001-crafting-table-sim/research.md`.
+- **2026-09-29, small interface details.** `craft` returns the item made rather than a preview.
+  Coordinates are zero-based. Arguments of the wrong type are rejected by the tool's input schema
+  and are not logged as game outcomes.
+- **2026-09-29, one validity rule.** Sections 2.2 and 2.6 stated two different rules for recipe
+  inputs (present in the stock or another recipe's output, versus reachable from the stock). Two
+  recipes that each needed the other's output passed the first and failed the second. Both
+  sections now say *obtainable*, the stricter rule, which the loader checks in one pass without a
+  search. The spec, data model and plan were updated to match.

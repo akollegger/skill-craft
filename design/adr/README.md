@@ -27,7 +27,8 @@ Created and updated via `/adr-create`. File: `design/adr/ADR-NNN-short-title.md`
 | `specs` | Speckit feature directories derived from this ADR; maintained by the `speckit-adr-link` hook, do not hand-edit |
 
 Required sections, numbered `##`: 1 Context, 2 Decision (numbered `###` subsections when it has
-distinct facets), 3 Alternatives Considered, 4 Consequences, 5 Related.
+distinct facets), 3 Alternatives Considered, 4 Consequences, 5 Related. An accepted ADR that is
+changed later gains a trailing `## 6. Amendments` section listing each dated change and why.
 
 Use `/adr-review` before moving a draft to `accepted`.
 

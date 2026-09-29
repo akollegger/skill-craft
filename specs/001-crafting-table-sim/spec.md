@@ -124,8 +124,10 @@ a set of deliberately broken ones and confirm each is rejected with a specific r
    loaded, **Then** it is rejected and the conflicting recipes are named.
 3. **Given** a definition with a shaped recipe larger than the table, **When** it is loaded,
    **Then** it is rejected.
-4. **Given** a definition where a recipe needs an item that is neither in the stock nor the output
-   of any recipe, **When** it is loaded, **Then** it is rejected.
+4. **Given** a definition where a recipe needs an item that cannot be obtained (it is not in the
+   stock and is not the output of a recipe whose own inputs can be obtained, for example two
+   recipes that each need the other's output), **When** it is loaded, **Then** it is rejected and
+   the unobtainable input is named.
 5. **Given** a definition that refers to an item it never defines, **When** it is loaded, **Then**
    it is rejected and the unknown item is named.
 
@@ -158,6 +160,9 @@ run reaches the goal.
    what happened.
 5. **Given** an agent in a running world, **When** it looks for the run log, **Then** none of its
    tools provides it.
+6. **Given** a run log destination that already holds a previous run's log, **When** a new run is
+   started against it, **Then** the new run refuses to start, names the destination, and leaves the
+   earlier log unchanged.
 
 ---
 
@@ -215,6 +220,7 @@ that the variant is still solvable.
 - A recipe whose output the agent keeps making until stock runs out: each craft consumes the
   table contents, so stock is finite by construction.
 - Placing an item the world has never heard of: refused as unknown.
+- Removing from an empty cell: refused as empty, not silently ignored.
 - Clearing an already empty table: succeeds and changes nothing.
 - The agent runs out of a needed item after wasted crafts: the goal may be unreachable, and the
   best-run answer for the original stock shows how much slack there was.
@@ -222,6 +228,9 @@ that the variant is still solvable.
 - A world too large for the best-run search to finish: rejected at load with a size limit message.
 - Repeating the identical sequence of calls: identical results every time.
 - A refused call: still appears in the run log, with its refusal reason.
+- The world restarts mid-run (a reconnect or a crash): it begins a new run from the initial stock. It
+  needs a fresh run log destination and is refused if it reuses one, so two runs are never mixed in
+  one log.
 
 ## Requirements *(mandatory)*
 
@@ -255,7 +264,7 @@ that the variant is still solvable.
 - **FR-011**: No tool MUST reveal a recipe, a solution, or which recipe a partial arrangement
   resembles. Refusals MUST state the violated constraint and MUST NOT state how to fix it.
 - **FR-012**: Refusals MUST use distinct, stable reasons for: position outside the table, cell
-  already occupied, item not held, nothing to make, and unknown item.
+  already occupied, removal from an empty cell, item not held, nothing to make, and unknown item.
 - **FR-013**: A world MUST set a hint level. At the strict level the table reports only what a
   craft would make. At the extra-signal level it also reports whether the current arrangement could
   still become a match by adding items, without naming which.
@@ -265,8 +274,9 @@ that the variant is still solvable.
   runs, and the agent MUST NOT be able to reset the world.
 - **FR-016**: Loading a world definition MUST validate it and reject it, reporting every problem
   found, if it is malformed, refers to an undefined item, has a shaped recipe that does not fit the
-  table, has two recipes that can match the same table state, or has a recipe input that is neither
-  in the stock nor produced by another recipe.
+  table, has two recipes that can match the same table state, or has a recipe input that cannot be
+  obtained. An input is obtainable when it is in the stock or is the output of a recipe whose own
+  inputs are all obtainable.
 - **FR-017**: Switching to a different world MUST NOT require changing the simulation's code.
 - **FR-018**: A best-run calculation MUST take a world and a goal (item and quantity) and return the
   minimum crafts, the minimum tool calls, and the slack, or state that the goal is unreachable.
@@ -285,6 +295,9 @@ that the variant is still solvable.
   experiment runner MUST be able to read the log after the run. The agent MUST NOT be able to read
   it. The log is the ground truth for counting a run's calls and failed crafts, independent of
   whatever software drives the agent.
+- **FR-024**: A run MUST refuse to start when its run log destination already holds data. It MUST
+  report the destination, leave the existing contents unchanged, and never append to, truncate or
+  overwrite an earlier run's log. Each run therefore needs a fresh destination.
 
 ### Key Entities
 
@@ -333,12 +346,17 @@ that the variant is still solvable.
 - **SC-010**: For a scripted run with a known number of calls and a known number of failed
   crafts, the run log's counts match a hand count exactly, and no agent-facing tool returns the
   log.
+- **SC-011**: Starting a run against a log destination that already holds data is refused in every
+  tested case (a one-entry log and a long log), and the existing log is byte-for-byte unchanged
+  afterward.
 
 ## Assumptions
 
 - Goals, and the way they are given to the agent, belong to the experiment harness, which is a
   separate piece of work (see ADR-001 Section 2.6). This feature only provides the best-run
   calculation for a given goal.
+- A restart of the simulation is a reset: the world returns to its initial stock and the agent is
+  not told. Only the run log destination guards against a restart being mistaken for the same run.
 - How the runner reads the run log (a file, a report, an endpoint) is a planning decision. What
   is fixed here is that it exists, is complete and ordered, and is out of the agent's reach.
 - Recording runs, distilling skills and comparing runs with and without a skill are out of scope
