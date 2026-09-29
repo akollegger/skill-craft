@@ -3,7 +3,8 @@ id: ADR-001
 title: Grid-based crafting table as the distillation demo world
 status: accepted
 created: 2026-09-29
-specs: []
+specs:
+  - specs/001-crafting-table-sim
 ---
 
 # ADR-001: Grid-based crafting table as the distillation demo world

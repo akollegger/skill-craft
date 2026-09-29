@@ -35,4 +35,4 @@ Use `/adr-review` before moving a draft to `accepted`.
 
 | ADR | Title | Status | Specs |
 |---|---|---|---|
-| [ADR-001](ADR-001-crafting-table-world.md) | Grid-based crafting table as the distillation demo world | accepted | |
+| [ADR-001](ADR-001-crafting-table-world.md) | Grid-based crafting table as the distillation demo world | accepted | specs/001-crafting-table-sim |
