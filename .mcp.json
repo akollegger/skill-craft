@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "craft": {
+      "command": "pnpm",
+      "args": ["exec", "tsx", "src/mcp/server.ts"],
+      "env": { "SIM_WORLD": "worlds/generated/ember-7.json" }
+    }
+  }
+}

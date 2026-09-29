@@ -1,0 +1,336 @@
+{
+  "name": "sebe-7",
+  "description": "An unfamiliar workshop. Find out what can be made.",
+  "items": [
+    {
+      "id": "doudrur",
+      "description": "A raw material.",
+      "gather": {
+        "minTier": 0,
+        "yield": 2
+      }
+    },
+    {
+      "id": "lugli",
+      "description": "A raw material.",
+      "gather": {
+        "minTier": 1,
+        "yield": 2
+      }
+    },
+    {
+      "id": "tepitil",
+      "description": "A raw material.",
+      "gather": {
+        "minTier": 1,
+        "yield": 2
+      }
+    },
+    {
+      "id": "thegen",
+      "description": "A raw material.",
+      "gather": {
+        "minTier": 2,
+        "yield": 1
+      }
+    },
+    {
+      "id": "glavruzael",
+      "description": "A raw material.",
+      "gather": {
+        "minTier": 2,
+        "yield": 2
+      }
+    },
+    {
+      "id": "vriobeno",
+      "description": "A made item."
+    },
+    {
+      "id": "glirol",
+      "description": "A made item."
+    },
+    {
+      "id": "drinefoun",
+      "description": "A made item."
+    },
+    {
+      "id": "zibael",
+      "description": "A made item."
+    },
+    {
+      "id": "plaevratael",
+      "description": "A tool.",
+      "toolTier": 1
+    },
+    {
+      "id": "pluzhouvio",
+      "description": "A tool.",
+      "toolTier": 2
+    },
+    {
+      "id": "naeviozhum",
+      "description": "A made item."
+    },
+    {
+      "id": "braevin",
+      "description": "A made item."
+    },
+    {
+      "id": "bouplae",
+      "description": "A made item."
+    },
+    {
+      "id": "zaezhizhaem",
+      "description": "A made item."
+    },
+    {
+      "id": "plezhuver",
+      "description": "A made item."
+    },
+    {
+      "id": "krioglael",
+      "description": "A made item."
+    }
+  ],
+  "stations": [
+    {
+      "id": "glouseviom",
+      "item": "drinefoun"
+    },
+    {
+      "id": "voten",
+      "item": "zibael"
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r-vriobeno",
+      "output": {
+        "item": "vriobeno",
+        "qty": 2
+      },
+      "inputs": [
+        {
+          "item": "doudrur",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "id": "r-glirol",
+      "output": {
+        "item": "glirol",
+        "qty": 2
+      },
+      "inputs": [
+        {
+          "item": "vriobeno",
+          "qty": 2
+        }
+      ]
+    },
+    {
+      "id": "r-drinefoun",
+      "output": {
+        "item": "drinefoun",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "vriobeno",
+          "qty": 4
+        }
+      ]
+    },
+    {
+      "id": "r-zibael",
+      "output": {
+        "item": "zibael",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "lugli",
+          "qty": 8
+        }
+      ]
+    },
+    {
+      "id": "r-plaevratael",
+      "output": {
+        "item": "plaevratael",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "glirol",
+          "qty": 2
+        },
+        {
+          "item": "vriobeno",
+          "qty": 1
+        }
+      ],
+      "station": "glouseviom"
+    },
+    {
+      "id": "r-pluzhouvio",
+      "output": {
+        "item": "pluzhouvio",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "glirol",
+          "qty": 2
+        },
+        {
+          "item": "lugli",
+          "qty": 3
+        }
+      ],
+      "station": "glouseviom"
+    },
+    {
+      "id": "r-naeviozhum",
+      "output": {
+        "item": "naeviozhum",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "thegen",
+          "qty": 1
+        }
+      ],
+      "station": "voten",
+      "fuel": {
+        "item": "tepitil",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-braevin",
+      "output": {
+        "item": "braevin",
+        "qty": 4
+      },
+      "inputs": [
+        {
+          "item": "naeviozhum",
+          "qty": 1
+        }
+      ],
+      "station": "glouseviom"
+    },
+    {
+      "id": "r-bouplae",
+      "output": {
+        "item": "bouplae",
+        "qty": 2
+      },
+      "inputs": [
+        {
+          "item": "glirol",
+          "qty": 1
+        },
+        {
+          "item": "tepitil",
+          "qty": 1
+        }
+      ],
+      "station": "glouseviom"
+    },
+    {
+      "id": "r-zaezhizhaem",
+      "output": {
+        "item": "zaezhizhaem",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "braevin",
+          "qty": 6
+        },
+        {
+          "item": "bouplae",
+          "qty": 1
+        }
+      ],
+      "station": "glouseviom"
+    },
+    {
+      "id": "r-plezhuver",
+      "output": {
+        "item": "plezhuver",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "glavruzael",
+          "qty": 4
+        },
+        {
+          "item": "naeviozhum",
+          "qty": 2
+        }
+      ],
+      "station": "glouseviom"
+    },
+    {
+      "id": "r-krioglael",
+      "output": {
+        "item": "krioglael",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "zaezhizhaem",
+          "qty": 1
+        },
+        {
+          "item": "plezhuver",
+          "qty": 1
+        },
+        {
+          "item": "glirol",
+          "qty": 2
+        }
+      ],
+      "station": "glouseviom"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "make-bouplae",
+      "goal": {
+        "item": "bouplae",
+        "qty": 2
+      },
+      "note": "warm-up"
+    },
+    {
+      "id": "make-zaezhizhaem",
+      "goal": {
+        "item": "zaezhizhaem",
+        "qty": 1
+      }
+    },
+    {
+      "id": "make-plezhuver",
+      "goal": {
+        "item": "plezhuver",
+        "qty": 1
+      }
+    },
+    {
+      "id": "make-krioglael",
+      "goal": {
+        "item": "krioglael",
+        "qty": 1
+      },
+      "note": "held-out: combines earlier results"
+    }
+  ]
+}

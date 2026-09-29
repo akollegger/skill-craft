@@ -1,0 +1,47 @@
+{
+  "name": "ember-forge",
+  "description": "A small frontier workshop. Nothing here is labelled; find out what can be made.",
+  "items": [
+    { "id": "timber", "description": "Fibrous raw material from tall growth.", "gather": { "minTier": 0, "yield": 2 } },
+    { "id": "rubble", "description": "Loose raw stone, needs a tool to break free.", "gather": { "minTier": 1, "yield": 2 } },
+    { "id": "cinder", "description": "Black raw material that burns hot.", "gather": { "minTier": 1, "yield": 2 } },
+    { "id": "veinrock", "description": "Dense raw rock with metal inside.", "gather": { "minTier": 2, "yield": 1 } },
+    { "id": "shimmer", "description": "Raw crystalline dust that glows faintly.", "gather": { "minTier": 2, "yield": 2 } },
+    { "id": "board", "description": "A flat worked piece." },
+    { "id": "rod", "description": "A thin straight worked piece." },
+    { "id": "workbench", "description": "A sturdy frame that can be set up as a work surface." },
+    { "id": "kilnstone", "description": "Heaped stone that can be set up as a hot chamber." },
+    { "id": "chipper", "description": "A hand tool for breaking loose stone.", "toolTier": 1 },
+    { "id": "hammer", "description": "A heavy tool for breaking dense rock.", "toolTier": 2 },
+    { "id": "ingot", "description": "Refined metal." },
+    { "id": "sliver", "description": "A small thin piece of metal." },
+    { "id": "brand", "description": "A stick that carries a small flame." },
+    { "id": "beacon", "description": "A metal cage around a flame; gives steady light." },
+    { "id": "glowlamp", "description": "A metal frame packed with glowing dust." },
+    { "id": "ward", "description": "A tall assembly of light sources." }
+  ],
+  "stations": [
+    { "id": "bench", "item": "workbench" },
+    { "id": "kiln", "item": "kilnstone" }
+  ],
+  "recipes": [
+    { "id": "r-board", "output": { "item": "board", "qty": 2 }, "inputs": [{ "item": "timber", "qty": 1 }] },
+    { "id": "r-rod", "output": { "item": "rod", "qty": 2 }, "inputs": [{ "item": "board", "qty": 2 }] },
+    { "id": "r-workbench", "output": { "item": "workbench", "qty": 1 }, "inputs": [{ "item": "board", "qty": 4 }] },
+    { "id": "r-kilnstone", "output": { "item": "kilnstone", "qty": 1 }, "inputs": [{ "item": "rubble", "qty": 8 }] },
+    { "id": "r-chipper", "output": { "item": "chipper", "qty": 1 }, "inputs": [{ "item": "rod", "qty": 2 }, { "item": "board", "qty": 1 }], "station": "bench" },
+    { "id": "r-hammer", "output": { "item": "hammer", "qty": 1 }, "inputs": [{ "item": "rod", "qty": 2 }, { "item": "rubble", "qty": 3 }], "station": "bench" },
+    { "id": "r-ingot", "output": { "item": "ingot", "qty": 1 }, "inputs": [{ "item": "veinrock", "qty": 1 }], "station": "kiln", "fuel": { "item": "cinder", "qty": 1 } },
+    { "id": "r-sliver", "output": { "item": "sliver", "qty": 4 }, "inputs": [{ "item": "ingot", "qty": 1 }], "station": "bench" },
+    { "id": "r-brand", "output": { "item": "brand", "qty": 2 }, "inputs": [{ "item": "rod", "qty": 1 }, { "item": "cinder", "qty": 1 }], "station": "bench" },
+    { "id": "r-beacon", "output": { "item": "beacon", "qty": 1 }, "inputs": [{ "item": "sliver", "qty": 6 }, { "item": "brand", "qty": 1 }], "station": "bench" },
+    { "id": "r-glowlamp", "output": { "item": "glowlamp", "qty": 1 }, "inputs": [{ "item": "shimmer", "qty": 4 }, { "item": "ingot", "qty": 2 }], "station": "bench" },
+    { "id": "r-ward", "output": { "item": "ward", "qty": 1 }, "inputs": [{ "item": "beacon", "qty": 1 }, { "item": "glowlamp", "qty": 1 }, { "item": "rod", "qty": 2 }], "station": "bench" }
+  ],
+  "tasks": [
+    { "id": "make-brand", "goal": { "item": "brand", "qty": 2 }, "note": "warm-up" },
+    { "id": "make-beacon", "goal": { "item": "beacon", "qty": 1 } },
+    { "id": "make-glowlamp", "goal": { "item": "glowlamp", "qty": 1 } },
+    { "id": "make-ward", "goal": { "item": "ward", "qty": 1 }, "note": "held-out: combines earlier results" }
+  ]
+}

@@ -1,0 +1,336 @@
+{
+  "name": "glasiox-8",
+  "description": "An unfamiliar workshop. Find out what can be made.",
+  "items": [
+    {
+      "id": "zidrus",
+      "description": "A raw material.",
+      "gather": {
+        "minTier": 0,
+        "yield": 2
+      }
+    },
+    {
+      "id": "lududu",
+      "description": "A raw material.",
+      "gather": {
+        "minTier": 1,
+        "yield": 2
+      }
+    },
+    {
+      "id": "zhaefe",
+      "description": "A raw material.",
+      "gather": {
+        "minTier": 1,
+        "yield": 2
+      }
+    },
+    {
+      "id": "riokraris",
+      "description": "A raw material.",
+      "gather": {
+        "minTier": 2,
+        "yield": 1
+      }
+    },
+    {
+      "id": "taplith",
+      "description": "A raw material.",
+      "gather": {
+        "minTier": 2,
+        "yield": 2
+      }
+    },
+    {
+      "id": "taeglaemi",
+      "description": "A made item."
+    },
+    {
+      "id": "zhupar",
+      "description": "A made item."
+    },
+    {
+      "id": "zheplavu",
+      "description": "A made item."
+    },
+    {
+      "id": "fazhio",
+      "description": "A made item."
+    },
+    {
+      "id": "zhukros",
+      "description": "A tool.",
+      "toolTier": 1
+    },
+    {
+      "id": "ridrath",
+      "description": "A tool.",
+      "toolTier": 2
+    },
+    {
+      "id": "louthiox",
+      "description": "A made item."
+    },
+    {
+      "id": "zhifupil",
+      "description": "A made item."
+    },
+    {
+      "id": "vidrur",
+      "description": "A made item."
+    },
+    {
+      "id": "taeplilou",
+      "description": "A made item."
+    },
+    {
+      "id": "drivrax",
+      "description": "A made item."
+    },
+    {
+      "id": "drakith",
+      "description": "A made item."
+    }
+  ],
+  "stations": [
+    {
+      "id": "furulis",
+      "item": "zheplavu"
+    },
+    {
+      "id": "foku",
+      "item": "fazhio"
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r-taeglaemi",
+      "output": {
+        "item": "taeglaemi",
+        "qty": 2
+      },
+      "inputs": [
+        {
+          "item": "zidrus",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "id": "r-zhupar",
+      "output": {
+        "item": "zhupar",
+        "qty": 2
+      },
+      "inputs": [
+        {
+          "item": "taeglaemi",
+          "qty": 2
+        }
+      ]
+    },
+    {
+      "id": "r-zheplavu",
+      "output": {
+        "item": "zheplavu",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "taeglaemi",
+          "qty": 3
+        }
+      ]
+    },
+    {
+      "id": "r-fazhio",
+      "output": {
+        "item": "fazhio",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "lududu",
+          "qty": 8
+        }
+      ]
+    },
+    {
+      "id": "r-zhukros",
+      "output": {
+        "item": "zhukros",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "zhupar",
+          "qty": 2
+        },
+        {
+          "item": "taeglaemi",
+          "qty": 1
+        }
+      ],
+      "station": "furulis"
+    },
+    {
+      "id": "r-ridrath",
+      "output": {
+        "item": "ridrath",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "zhupar",
+          "qty": 1
+        },
+        {
+          "item": "lududu",
+          "qty": 3
+        }
+      ],
+      "station": "furulis"
+    },
+    {
+      "id": "r-louthiox",
+      "output": {
+        "item": "louthiox",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "riokraris",
+          "qty": 1
+        }
+      ],
+      "station": "foku",
+      "fuel": {
+        "item": "zhaefe",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-zhifupil",
+      "output": {
+        "item": "zhifupil",
+        "qty": 4
+      },
+      "inputs": [
+        {
+          "item": "louthiox",
+          "qty": 1
+        }
+      ],
+      "station": "furulis"
+    },
+    {
+      "id": "r-vidrur",
+      "output": {
+        "item": "vidrur",
+        "qty": 2
+      },
+      "inputs": [
+        {
+          "item": "zhupar",
+          "qty": 1
+        },
+        {
+          "item": "zhaefe",
+          "qty": 1
+        }
+      ],
+      "station": "furulis"
+    },
+    {
+      "id": "r-taeplilou",
+      "output": {
+        "item": "taeplilou",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "zhifupil",
+          "qty": 6
+        },
+        {
+          "item": "vidrur",
+          "qty": 1
+        }
+      ],
+      "station": "furulis"
+    },
+    {
+      "id": "r-drivrax",
+      "output": {
+        "item": "drivrax",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "taplith",
+          "qty": 4
+        },
+        {
+          "item": "louthiox",
+          "qty": 1
+        }
+      ],
+      "station": "furulis"
+    },
+    {
+      "id": "r-drakith",
+      "output": {
+        "item": "drakith",
+        "qty": 1
+      },
+      "inputs": [
+        {
+          "item": "taeplilou",
+          "qty": 1
+        },
+        {
+          "item": "drivrax",
+          "qty": 2
+        },
+        {
+          "item": "zhupar",
+          "qty": 1
+        }
+      ],
+      "station": "furulis"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "make-vidrur",
+      "goal": {
+        "item": "vidrur",
+        "qty": 2
+      },
+      "note": "warm-up"
+    },
+    {
+      "id": "make-taeplilou",
+      "goal": {
+        "item": "taeplilou",
+        "qty": 1
+      }
+    },
+    {
+      "id": "make-drivrax",
+      "goal": {
+        "item": "drivrax",
+        "qty": 1
+      }
+    },
+    {
+      "id": "make-drakith",
+      "goal": {
+        "item": "drakith",
+        "qty": 1
+      },
+      "note": "held-out: combines earlier results"
+    }
+  ]
+}
