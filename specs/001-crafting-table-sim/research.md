@@ -18,6 +18,14 @@ past its state budget while proving the world's goals solvable:
 
 All values live in one file (`src/sim/limits.ts`) so they can be tuned.
 
+**Measured (2026-09-29, Node 24, one laptop core):** a synthetic world at the parameter limits (30
+items, 40 recipes, a 6 x 6 table, 120 stock units) with an unreachable goal hits the 250,000-state
+budget in 1.5 s. A world whose full search finishes at 349,000 states takes 3.2 s for search,
+shortest paths and slack together, so a world just under the budget costs about 2 to 3 s. The
+committed worlds take 0.1 to 3 ms. The 10-second target has a wide margin and the limits stand.
+The search explores every state reachable from the start, so a world whose full state space exceeds
+the budget is rejected even when its goal is easy to reach.
+
 **Rationale**: The solver's cost is the number of distinct inventories it visits, not any single
 parameter. A state budget is the honest bound. The parameter limits keep obviously oversized
 worlds out early with a clear message, and the budget catches the rest. The numbers are set so a

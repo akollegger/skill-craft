@@ -25,27 +25,29 @@ determinism, and the tool contract.
 pnpm dev scripts/solve.ts --world worlds/forge.json --goals-file worlds/forge.goals.json
 ```
 
-Expected: one JSON object per goal with `reachable: true`, `minCrafts`, `minCalls`, `slack` and a
-`calls` list. The whole command finishes in under 10 s (SC-008).
+Expected: a JSON array with one object per goal, each `reachable: true` with `minCrafts`, `minCalls`,
+`slack` and a `calls` list. For the base world: `bar` 1 craft, 3 calls; `rod` 2 crafts, 5 calls;
+`lamp` 7 crafts, 22 calls. The whole command finishes in under 10 s (SC-008).
 
 ## 3. Replay the best run over the real server
 
 ```bash
-pnpm dev scripts/smoke.ts worlds/forge.json <item>:<qty>
+pnpm dev scripts/smoke.ts worlds/forge.json lamp:1
 ```
 
-Expected: the reported number of world-changing calls equals `minCalls` from step 2, and the goal
-item is held (SC-002).
+Expected: `world-changing calls: 22 (best run: 22)` and `goal held: yes`; the count equals `minCalls`
+from step 2 (SC-002).
 
 ## 4. Read the run log
 
 ```bash
-SIM_RUN_LOG=/tmp/run.jsonl pnpm dev scripts/smoke.ts worlds/forge.json <item>:<qty>
+SIM_RUN_LOG=/tmp/run.jsonl pnpm dev scripts/smoke.ts worlds/forge.json lamp:1
 wc -l /tmp/run.jsonl
 ```
 
-Expected: one line per call, in order, each a complete JSON object; counts of `place` and `craft`
-lines match the smoke output (SC-010).
+Expected: 23 lines, one per call in order, each a complete JSON object: the 22 `place` and `craft`
+calls the smoke output counts, plus the final `inventory` check (SC-010). Use a path that does not
+exist yet; a reused path is refused (below).
 
 Then start a second server on the same log path and confirm it refuses:
 
@@ -75,7 +77,7 @@ Using any MCP client against the server, try each of these on a fresh world and 
 ## 6. Swap the world
 
 ```bash
-pnpm dev scripts/smoke.ts worlds/generated/forge-7.json <item>:<qty>
+pnpm dev scripts/smoke.ts worlds/generated/forge-7.json <goal-item>:1
 ```
 
 Expected: a different vocabulary, the same structure, and the goal reached with no code change
@@ -97,5 +99,5 @@ The invalid fixtures under `test/fixtures/invalid/` each name the problem they c
 each fails with that problem in the message (SC-005):
 
 ```bash
-pnpm test -- worlds
+pnpm test test/loader.test.ts
 ```

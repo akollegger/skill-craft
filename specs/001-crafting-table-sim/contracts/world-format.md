@@ -78,4 +78,5 @@ Each `item` must be defined in the paired world. `qty` is a positive integer. `n
 ## Generated worlds
 
 `scripts/make-world.ts` writes a re-skinned world and a goals file with the same base name, both
-mapped to the new item names.
+mapped to the new item names. The generated goals file has no `note` fields, because notes name
+base items.

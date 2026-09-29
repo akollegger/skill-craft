@@ -9,9 +9,10 @@ A demo of skill distillation from Neo4j Agent Memory (NAMS). A simulated craftin
 the task environment; runs are recorded to NAMS, a skill is distilled, and runs with and without
 it are compared. The environment's design is [ADR-001](design/adr/ADR-001-crafting-table-world.md).
 
-**The code in `src/` predates ADR-001.** It implements an earlier design (gathering, tool tiers,
-stations, fuel, a `survey` tool). Treat ADR-001 as the target and the code as scheduled for
-replacement. Do not extend the old mechanics.
+The simulation implements ADR-001 (feature spec `specs/001-crafting-table-sim`). The experiment
+harness and the record, distill and compare workflow are not built yet; they wait on the player
+and experiment-protocol decision (`design/notes/agent-player-options.md`). Do not add mechanics
+beyond ADR-001 (gathering, tool tiers, stations, fuel were deliberately removed).
 
 ## Commands
 
@@ -22,6 +23,10 @@ pnpm test          # vitest run
 pnpm build         # emit to dist/
 pnpm dev <file>    # run a TypeScript file with tsx
 ```
+
+Scripts (run with `pnpm dev`): `scripts/solve.ts` (best run for a goal), `scripts/make-world.ts`
+(re-skinned world plus goals), `scripts/smoke.ts` (replay a best run over stdio). The server runs as
+`SIM_WORLD=<world.json> [SIM_RUN_LOG=<fresh file>] pnpm exec tsx src/mcp/server.ts`.
 
 `pnpm typecheck` and `pnpm test` must pass before a change is considered done.
 
@@ -83,13 +88,29 @@ zebra-space project with the RFC requirement removed.
 
 | Path | Contents |
 |---|---|
-| `src/sim/` | World schema, engine, planner, loader, renamer |
-| `src/mcp/server.ts` | MCP server exposing a world to an agent (`SIM_WORLD` selects the file) |
-| `worlds/` | World JSON files; `worlds/generated/` holds re-skinned examples |
-| `scripts/` | `make-world.ts`, `smoke.ts` |
-| `test/` | vitest suites |
+| `src/sim/` | Schema, matcher, engine, run log, solver, loader, goals, re-skinner; no MCP dependency |
+| `src/mcp/server.ts` | MCP server exposing a world to an agent (`SIM_WORLD` selects the file, `SIM_RUN_LOG` the log) |
+| `worlds/` | World and goals JSON files; `worlds/generated/` holds re-skinned examples |
+| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts` |
+| `test/` | vitest suites; `fixtures/valid` and `fixtures/invalid` hold the world fixtures |
 | `design/adr/` | ADRs and index |
+| `design/notes/` | Exploratory notes that may become ADRs |
+| `specs/` | Spec Kit feature specs, plans and tasks |
 | `.specify/` | Spec Kit config, constitution, templates, extension hooks |
+
+## Simulation rules to keep in mind
+
+- Worlds hold no goals. Goals live in a sibling `<world>.goals.json` that only tests, the solver
+  and the generator read; the engine never does.
+- A world used for an experiment must be a generated one (invented names). `worlds/forge.json` keeps
+  neutral ids on purpose and is only a base for generation. Generated goals omit notes, because
+  notes name base items.
+- The run log has no timestamps and one process is one run. The server refuses to start on a
+  `SIM_RUN_LOG` file that already has data; give each run a new path.
+- Tests never use randomness. Use fixed or exhaustively enumerated sequences. `src/sim/prng.ts` is
+  for world generation only.
+- `look`, `help`, `inventory` and every refusal must reveal no recipe; `test/tools-orient.test.ts`
+  sweeps for leaks.
 
 ## Conventions
 

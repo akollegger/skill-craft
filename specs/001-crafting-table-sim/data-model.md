@@ -73,6 +73,8 @@ item.
 | `look`, `help`, `inventory` | none | none | none |
 
 Only `craft` changes the total quantity of items held plus on the table. A refusal changes nothing.
+`place` checks in the order out of bounds, unknown item, occupied cell, item not held, and reports
+the first that applies.
 
 ## Inventory
 

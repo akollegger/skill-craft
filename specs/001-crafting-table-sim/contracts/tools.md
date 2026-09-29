@@ -16,7 +16,7 @@ Inputs: none. Changes nothing.
   "coordinates": "zero-based; row 0 is the top, col 0 is the left",
   "tools": [
     { "name": "help", "purpose": "…" },
-    { "name": "inventory", "purpose": "…", "inputs": {} },
+    { "name": "inventory", "purpose": "…" },
     { "name": "look", "purpose": "…" },
     { "name": "place", "purpose": "…", "inputs": { "item": "string", "row": "integer", "col": "integer" } },
     { "name": "remove", "purpose": "…", "inputs": { "row": "integer", "col": "integer" } },
@@ -27,7 +27,9 @@ Inputs: none. Changes nothing.
 }
 ```
 
-When the world's hint level is `partial`, the `preview` text also mentions `partial`. It never
+A tool's entry has `inputs` only when it takes arguments. The list is built from the tools that are
+actually registered, in the order shown. When the world's hint level is `partial`, the `preview`
+text also mentions `partial`. It never
 names a recipe, and it never lists items the world has.
 
 ## `inventory`
@@ -55,7 +57,8 @@ Inputs: none. Changes nothing. Returns a **preview**.
 Inputs: `item` (string), `row` (integer), `col` (integer). Moves one unit of `item` from the
 inventory to the cell. Returns a preview.
 
-Refusals: `unknown_item`, `not_in_inventory`, `out_of_bounds`, `cell_occupied`.
+Refusals: `out_of_bounds`, `unknown_item`, `cell_occupied`, `not_in_inventory`. When more than one
+applies, the first in this order is reported.
 
 ## `remove`
 
@@ -99,7 +102,9 @@ Refusal: `nothing_to_craft` when no recipe matches. Nothing is consumed.
 Messages state the violated constraint. They never state how to fix it.
 
 Arguments of the wrong type (a non-integer row, a missing item) are rejected by the tool's input
-schema as a protocol error, before the engine runs. They are not refusals and are not logged.
+schema before the engine runs. The result has the error flag set and its text begins
+`MCP error -32602: Input validation error`, not a JSON refusal. It is not a refusal and is not
+logged.
 
 ## Guarantees
 
