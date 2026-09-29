@@ -225,7 +225,9 @@ that the variant is still solvable.
 - The agent runs out of a needed item after wasted crafts: the goal may be unreachable, and the
   best-run answer for the original stock shows how much slack there was.
 - Two runs started from the same world: independent, each starts from the initial stock.
-- A world too large for the best-run search to finish: rejected at load with a size limit message.
+- A world over a size limit (items, recipes, table cells or stock): rejected at load, naming the
+  limit. A world within the limits whose best-run search exceeds the search budget: rejected when
+  its goals are checked, naming the budget.
 - Repeating the identical sequence of calls: identical results every time.
 - A refused call: still appears in the run log, with its refusal reason.
 - The world restarts mid-run (a reconnect or a crash): it begins a new run from the initial stock. It
@@ -267,7 +269,7 @@ that the variant is still solvable.
   already occupied, removal from an empty cell, item not held, nothing to make, and unknown item.
 - **FR-013**: A world MUST set a hint level. At the strict level the table reports only what a
   craft would make. At the extra-signal level it also reports whether the current arrangement could
-  still become a match by adding items, without naming which.
+  still become a match by adding items, without removing any and without naming which.
 - **FR-014**: The simulation MUST be deterministic: the same world and the same sequence of calls
   MUST always give the same results, with no dependence on randomness or the clock.
 - **FR-015**: Each run MUST start from the world's initial stock; state MUST NOT carry between
@@ -280,8 +282,12 @@ that the variant is still solvable.
 - **FR-017**: Switching to a different world MUST NOT require changing the simulation's code.
 - **FR-018**: A best-run calculation MUST take a world and a goal (item and quantity) and return the
   minimum crafts, the minimum tool calls, and the slack, or state that the goal is unreachable.
+  Slack is the largest number *w*, up to a fixed cap, such that after any *w* recipe applications
+  from the starting stock the goal can still be reached. A value equal to the cap means "at least
+  the cap", including when no wasted craft is possible.
 - **FR-019**: Worlds MUST have a size limit that keeps the best-run calculation tractable, and a
-  world over the limit MUST be rejected at load.
+  world over the limit MUST be rejected at load. A world whose best-run search exceeds its budget
+  MUST be rejected when its goals are checked.
 - **FR-020**: A world variant generator MUST replace every item name with an invented name, replace
   flavour text with a bare category by default, and be reproducible from a seed. It MUST offer an
   option that changes some quantities and patterns while keeping the world valid and solvable.
@@ -359,6 +365,8 @@ that the variant is still solvable.
   not told. Only the run log destination guards against a restart being mistaken for the same run.
 - How the runner reads the run log (a file, a report, an endpoint) is a planning decision. What
   is fixed here is that it exists, is complete and ordered, and is out of the agent's reach.
+- The strict hint level is a world's `exact` setting and the extra-signal level is its `partial`
+  setting.
 - Recording runs, distilling skills and comparing runs with and without a skill are out of scope
   here. They belong to a later experiment-protocol decision.
 - Shaped recipes match at any position on the table but never rotated or mirrored (ADR-001 Section

@@ -23,9 +23,9 @@ Single project: `src/sim/` (core, no MCP dependency), `src/mcp/` (server), `scri
 
 **Purpose**: Remove the gathering, tier, station and fuel design (FR-022) while keeping the one reusable piece.
 
-- [ ] T001 Copy the `rng` function (mulberry32) from `src/sim/rename.ts` into a new `src/sim/prng.ts`, exported unchanged, with a one-line comment that it is the only source of randomness and is used by world-generation tooling and tests only
+- [ ] T001 Copy the `rng` function (mulberry32) from `src/sim/rename.ts` into a new `src/sim/prng.ts`, exported unchanged, with a one-line comment that it is the only source of randomness and is used by world-generation tooling only, never by the engine or by tests
 - [ ] T002 [P] Write `test/prng.test.ts`: the same seed gives the same first 20 values, different seeds differ, every value is in [0, 1)
-- [ ] T003 Delete the old implementation: `src/sim/engine.ts`, `src/sim/plan.ts`, `src/sim/schema.ts`, `src/sim/rename.ts`, `src/sim/world-loader.ts`, `src/sim/index.ts`, `src/mcp/server.ts`, `scripts/make-world.ts`, `scripts/smoke.ts`, `test/sim.test.ts`, `test/mcp.test.ts`, `worlds/ember-forge.json`, and the whole `worlds/generated/` directory (depends on T001)
+- [ ] T003 Delete the old implementation: `src/sim/engine.ts`, `src/sim/plan.ts`, `src/sim/schema.ts`, `src/sim/rename.ts`, `src/sim/world-loader.ts`, `src/sim/index.ts`, `src/mcp/server.ts`, `scripts/make-world.ts`, `scripts/smoke.ts`, `test/sim.test.ts`, `test/mcp.test.ts`, `worlds/ember-forge.json`, and the whole `worlds/generated/` directory; also empty the `mcpServers` object in `.mcp.json` so no session tries to start a server whose files are gone until T050 restores it (depends on T001)
 - [ ] T004 [P] Create `src/sim/limits.ts` exporting `MAX_ITEMS = 30`, `MAX_RECIPES = 40`, `MAX_TABLE_CELLS = 36`, `MAX_STOCK_UNITS = 120`, `SOLVER_STATE_BUDGET = 250_000`, `SLACK_CAP = 5`, each with a comment citing research Decision 1 or 2
 - [ ] T005 Run `pnpm typecheck && pnpm test`; both pass with only the prng test present (depends on T002, T003, T004)
 
@@ -56,7 +56,7 @@ Single project: `src/sim/` (core, no MCP dependency), `src/mcp/` (server), `scri
 
 ### Tests for User Story 1 (write first, confirm they fail)
 
-- [ ] T012 [P] [US1] Write `test/engine-craft.test.ts` covering the five Story 1 scenarios: placing the two inputs of a shapeless recipe reports its output as `craftable`; `craft` consumes the table and adds the output to the inventory leaving the table empty; a table that matches nothing makes `craft` refuse with `nothing_to_craft` and consume nothing; a made item placed later counts toward another recipe; a shaped recipe reports nothing in the wrong arrangement and its output when rearranged correctly
+- [ ] T012 [P] [US1] Write `test/engine-craft.test.ts` covering the five Story 1 scenarios: placing the two inputs of a shapeless recipe reports its output as `craftable`; `craft` consumes the table and adds the output to the inventory leaving the table empty; a table that matches nothing makes `craft` refuse with `nothing_to_craft` and consume nothing; a made item placed later counts toward another recipe; a shaped recipe reports nothing in the wrong arrangement and its output when rearranged correctly; and `loadWorld` on a valid world file returns the same `World` as `parseWorld` of that file's parsed contents
 - [ ] T013 [P] [US1] Write `test/tools-craft.test.ts` using the SDK's in-memory transport (as the old `test/mcp.test.ts` did): `place` and `craft` are listed; `place` returns `{ ok, grid, craftable }`; `craft` returns `{ ok, crafted }`; a refusal has `ok: false`, a stable `error` code and `isError: true`
 
 ### Implementation for User Story 1
@@ -77,7 +77,7 @@ Single project: `src/sim/` (core, no MCP dependency), `src/mcp/` (server), `scri
 
 ### Tests for User Story 2 (write first, confirm they fail)
 
-- [ ] T017 [P] [US2] Write `test/engine-stock.test.ts` covering the five Story 2 scenarios plus: `remove` on an empty cell gives `cell_empty`; `remove` out of bounds gives `out_of_bounds`; a property test (seeded with `src/sim/prng.ts`, test-only) that any sequence of `place`/`remove`/`clear` keeps inventory plus table quantities equal to the stock; and that every refusal leaves inventory, table and preview unchanged (compare snapshots before and after)
+- [ ] T017 [P] [US2] Write `test/engine-stock.test.ts` covering the five Story 2 scenarios plus: `remove` on an empty cell gives `cell_empty`; `remove` out of bounds gives `out_of_bounds`; a bounded exhaustive test: on a 2x2 table with two items, enumerate every sequence of up to 4 calls drawn from {`place` each item at each cell, `remove` each cell, `clear`} (13 choices per call, under 30,000 sequences) and assert after every step that inventory plus table quantities equal the stock; that every refusal leaves inventory, table and preview unchanged (compare snapshots before and after); and that two `Game` instances built from one world share no state (crafting in one leaves the other's inventory unchanged)
 - [ ] T018 [P] [US2] Write `test/tools-table.test.ts`: `remove` and `clear` are listed and return previews; each refusal code appears with the documented shape; a non-integer `row` is rejected by the input schema as a protocol error and is not a game refusal
 
 ### Implementation for User Story 2
@@ -97,7 +97,7 @@ Single project: `src/sim/` (core, no MCP dependency), `src/mcp/` (server), `scri
 
 ### Tests for User Story 3 (write first, confirm they fail)
 
-- [ ] T021 [P] [US3] Write `test/tools-orient.test.ts`: `help` returns the world name, description, table size, the zero-based note, all seven tools with purposes, and no recipes or item ids; `inventory` returns only `{ items }` with zero quantities omitted and keys sorted; `look` equals the preview of the last change and alters nothing; calling all three ten times in several states leaves inventory, table and preview unchanged (SC-009); a leak sweep over `help`, `inventory`, `look` and every refusal message confirms none contains a recipe id or an item id other than the one in the request, and none contains a remedy word (`try`, `should`, `instead`, `need to`) (SC-006)
+- [ ] T021 [P] [US3] Write `test/tools-orient.test.ts`: `help` returns the world name, description, table size, the zero-based note, all seven tools with purposes, and no recipes or item ids; the tool list is exactly `help, inventory, look, place, remove, clear, craft`, so there is no gather, reset or log tool; `inventory` returns only `{ items }` with zero quantities omitted and keys sorted; `look` equals the preview of the last change and alters nothing; calling all three ten times in several states leaves inventory, table and preview unchanged (SC-009); a leak sweep over `help`, `inventory`, `look` and every refusal message confirms none contains a recipe id or an item id other than the one in the request, and none contains a remedy word (`try`, `should`, `instead`, `need to`) (SC-006)
 
 ### Implementation for User Story 3
 
@@ -119,14 +119,14 @@ Single project: `src/sim/` (core, no MCP dependency), `src/mcp/` (server), `scri
 - [ ] T024 [P] [US4] Write `test/loader.test.ts`: every file in `test/fixtures/valid/` loads and validates; every file in `test/fixtures/invalid/` fails with a `WorldError` whose message contains the fixture's `$expect` string (strip the `$expect` key before loading); a world with several problems reports all of them together; a world over any size limit reports which limit
 - [ ] T025 [P] [US4] Write `test/goals.test.ts`: a goals file parses (`{ goals: [{ item, qty, note? }] }`); an unknown item, a non-positive quantity, or an unknown field is rejected; goals may not appear in a world file
 - [ ] T026 [P] [US4] Write `test/server-worlds.test.ts`: create servers for two different valid fixtures with different table sizes and stock; `help` reports each one's own size and `inventory` equals each one's stock (Story 4 scenario 1)
-- [ ] T027 [P] [US4] Create ten valid fixtures `test/fixtures/valid/*.json` (SC-004) differing in table size (2x2 to 6x6), stock, hint level, and the mix of shaped and shapeless recipes; include one with a recipe chain three deep and one with two recipes producing the same item
+- [ ] T027 [P] [US4] Create ten valid fixtures `test/fixtures/valid/*.json` (SC-004) differing in table size (2x2 to 6x6), stock, hint level, and the mix of shaped and shapeless recipes; include one with a recipe chain three deep and one with two recipes producing the same item; each fixture ships a sibling `<name>.goals.json` with at least one goal
 - [ ] T028 [P] [US4] Create invalid fixtures in `test/fixtures/invalid/*.json`, each carrying a top-level `"$expect"` substring: two shapeless recipes with the same multiset; two shaped recipes equal up to translation; a shaped and a shapeless recipe with the same multiset; a shaped pattern larger than the table; a shapeless recipe with more items than table cells; an unknown item in a recipe; an unknown item in `stock`; an unobtainable input (not in stock, no producer); an unobtainable-input cycle (two recipes each needing the other's output); an empty pattern; a stray `tasks` field; a table over the cell limit; more items than the limit; duplicate item ids; duplicate recipe ids; total stock over the limit
 
 ### Implementation for User Story 4
 
 - [ ] T029 [US4] Extend `src/sim/loader.ts` (depends on T024, T027, T028): add `validateWorld(world): string[]` implementing every check in `data-model.md` (World, Validation), using `buildMatcher(...).conflicts`, an obtainability fixpoint over the recipes, and `limits.ts`; make `loadWorld` throw one `WorldError` with all problems
 - [ ] T030 [US4] Create `src/sim/goals.ts` (depends on T025): a strict schema for the goals file, `loadGoals(path, world)` checking every goal's item exists in the world, and the `Goal` type
-- [ ] T031 [US4] Author the base world `worlds/forge.json` and `worlds/forge.goals.json` (depends on T029, T030): a 3x3 table, `hints: "exact"`, neutral item ids, about 12 items and 10 recipes mixing shapeless and shaped, dependency depth up to 4, tight stock; three goals: a one-recipe warm-up, a two-to-three-step goal, and a held-out goal that combines intermediates made for the earlier goals. Confirm it loads with `loadWorld`; solvability is proven in US5
+- [ ] T031 [US4] Author the base world `worlds/forge.json` and `worlds/forge.goals.json` (depends on T029, T030): a 3x3 table, `hints: "exact"`, neutral item ids, about 12 items and 10 recipes mixing shapeless and shaped, dependency depth up to 4, tight stock; three goals: a one-recipe warm-up, a two-to-three-step goal, and a held-out goal that combines intermediates made for the earlier goals. Targets: every goal solvable, the warm-up has slack of at least 1, and the held-out goal needs at least one intermediate made for an earlier goal and takes at least 4 crafts. `forge.json` is the base for generation; it keeps neutral ids and is not used for experiments. Confirm it loads with `loadWorld`; solvability is proven in US5
 
 **Checkpoint**: loader and server-world tests pass; the base world loads.
 
@@ -142,7 +142,7 @@ Single project: `src/sim/` (core, no MCP dependency), `src/mcp/` (server), `scri
 
 - [ ] T032 [P] [US5] Write `test/solver.test.ts` with hand-worked worlds. (a) Stock `a:2`, recipe `[a,a]->b`, goal `b:1`: `minCrafts 1`, `minCalls 3`, `slack` at the cap. (b) Stock `a:3`, recipes `[a,a]->b` and `[a]->x`, goal `b:1`: `slack 1` (one wasted `x` is survivable, two are not). (c) Stock `a:6,b:1`, recipes `[a×6]->g`, `[a,a]->x`, `[x,b]->g`, goal `g:1`: `minCrafts 1` but `minCalls 6`, showing the two minima come from different paths. (d) An unreachable goal returns `reachable: false`. (e) A search over `stateBudget: 5` throws an error naming the budget. (f) Replaying `calls` on a fresh `Game` reaches the goal in exactly `minCalls`
 - [ ] T033 [P] [US5] Write `test/runlog.test.ts`: entries carry `seq`, `tool`, `args` as received, `ok`, plus `error` or `crafted`; refusals are logged; two identical call sequences give byte-identical JSONL; `createRunLog(path)` writes one JSON line per call; it throws `RunLogInUseError` naming the path when the file exists and is non-empty and leaves that file byte-for-byte unchanged (a one-line file and a long file); an existing empty file is accepted; spawning the server (`tsx src/mcp/server.ts`) with a used `SIM_RUN_LOG` exits non-zero with the path on stderr (SC-011); the tool list contains no log-reading tool (SC-010)
-- [ ] T034 [P] [US5] Write `test/worlds.test.ts`: for every world under `worlds/` (including `worlds/generated/`), a sibling goals file exists, every listed goal is solvable, replaying each best run reaches the goal in exactly `minCalls`, and each solve finishes in under 10 seconds (FR-021, SC-002, SC-008)
+- [ ] T034 [P] [US5] Write `test/worlds.test.ts`: for every world under `worlds/` (including `worlds/generated/`) and every fixture under `test/fixtures/valid/`, a sibling goals file exists, every listed goal is solvable, replaying each best run through the in-memory MCP client, using only the tools, reaches the goal in exactly `minCalls`, and each solve finishes in under 10 seconds (FR-021, SC-002, SC-008)
 
 ### Implementation for User Story 5
 
@@ -150,9 +150,9 @@ Single project: `src/sim/` (core, no MCP dependency), `src/mcp/` (server), `scri
 - [ ] T036 [US5] Wire the log into every `Game` operation in `src/sim/engine.ts`, including `help`, `inventory`, `look` and refusals (depends on T035); expose `game.log`
 - [ ] T037 [US5] In `src/mcp/server.ts` read `SIM_RUN_LOG` and call `createRunLog`; on `RunLogInUseError` print the message to stderr and exit non-zero before connecting the transport (depends on T036)
 - [ ] T038 [US5] Implement `src/sim/solver.ts` (depends on T032): `solve(world, goal, options?)` searching inventory states per research Decision 2 (breadth-first for `minCrafts`, least-cost for `minCalls` with cost `k + 1` per recipe of `k` items, memoized reachability and worst-case walk for `slack` up to `SLACK_CAP`), producing the concrete `calls` list (shapeless items placed row-major from the first cell, shaped patterns anchored at the top-left) and throwing on `SOLVER_STATE_BUDGET`
-- [ ] T039 [US5] Create `scripts/solve.ts` (depends on T038): options and output per `contracts/solver-cli.md`, including `--goals-file` and the exit statuses
+- [ ] T039 [US5] Create `scripts/solve.ts` (depends on T038): options and output per `contracts/solver-cli.md`, including `--goals-file` and the exit statuses; covered by `test/scripts.test.ts`, written first, which spawns the script and asserts its JSON shape and exit status
 - [ ] T040 [US5] Create `scripts/smoke.ts` (depends on T037, T038): spawn the server with `StdioClientTransport` (`pnpm exec tsx src/mcp/server.ts`, `SIM_WORLD` set), replay the best run for `<item>:<qty>`, print the number of world-changing calls and whether the goal item is held, exit non-zero on a mismatch with `minCalls`
-- [ ] T041 [US5] Run `pnpm test`; confirm `test/worlds.test.ts` passes for `worlds/forge.json` and adjust its recipes or stock if a goal is unsolvable or the slack is zero on the warm-up goal (depends on T031, T034, T038)
+- [ ] T041 [US5] Run `pnpm test`; confirm `test/worlds.test.ts` passes for `worlds/forge.json` and adjust its recipes or stock until the targets in T031 are met (every goal solvable, warm-up slack of at least 1, held-out goal takes at least 4 crafts) (depends on T031, T034, T038)
 
 **Checkpoint**: solver, run-log and worlds tests pass; `scripts/solve.ts` and `scripts/smoke.ts` run on the base world.
 
@@ -190,7 +190,7 @@ Single project: `src/sim/` (core, no MCP dependency), `src/mcp/` (server), `scri
 ### Implementation for User Story 7
 
 - [ ] T046 [US7] Implement `src/sim/rename.ts` (depends on T045, T029, T030, T038): `renameWorld(base, goals, { seed, perturb?, opaque? })` using `src/sim/prng.ts`; invented pronounceable names; perturbation per research Decision 8 (shapeless quantity by one, shaped cells swapped or moved inside the bounding box), re-validating and re-solving after each draw with a bounded retry, and a clear error when a seed cannot produce a valid variant
-- [ ] T047 [US7] Create `scripts/make-world.ts` (depends on T046): options and outputs per `contracts/solver-cli.md`, writing the world and `<name>.goals.json`
+- [ ] T047 [US7] Create `scripts/make-world.ts` (depends on T046): options and outputs per `contracts/solver-cli.md`, writing the world and `<name>.goals.json`; covered by `test/scripts.test.ts` (same file as T039) with a case that spawns the script and asserts the files written, the exit status, and that the same seed gives byte-identical files
 - [ ] T048 [US7] Generate and commit the example variants `worlds/generated/forge-7.json` and `forge-8-perturbed.json` with their goals files using `scripts/make-world.ts` (depends on T047)
 
 **Checkpoint**: rename tests pass; `test/worlds.test.ts` also covers the generated worlds.
@@ -201,8 +201,8 @@ Single project: `src/sim/` (core, no MCP dependency), `src/mcp/` (server), `scri
 
 **Purpose**: Whole-feature checks, documentation, and cleanup.
 
-- [ ] T049 [P] Write `test/determinism.test.ts` (SC-001): for each committed world, generate a seeded pseudo-random sequence of 200 valid and invalid calls with `src/sim/prng.ts`, record the outcomes and the run log, replay against a fresh `Game` 100 times, and assert identical outcomes and byte-identical logs
-- [ ] T050 [P] Update `.mcp.json` so the `craft` server uses `SIM_WORLD=worlds/forge.json`; leave `SIM_RUN_LOG` unset because each run needs its own path
+- [ ] T049 [P] Write `test/determinism.test.ts` (SC-001): for each committed world, build a fixed 200-call sequence that cycles through every tool and every cell in a set order, including deliberately invalid arguments (no randomness), record the outcomes and the run log, replay against a fresh `Game` 100 times, and assert identical outcomes and byte-identical logs
+- [ ] T050 [P] Re-add the `craft` server to `.mcp.json` with `SIM_WORLD=worlds/generated/forge-7.json` (depends on T048); leave `SIM_RUN_LOG` unset because each run needs its own path
 - [ ] T051 [P] Update `README.md` and `AGENTS.md`: remove the "code predates ADR-001" notes, describe the new tools, world and goals files, run log and commands (`solve.ts`, `smoke.ts`, `make-world.ts`), and correct the layout tables
 - [ ] T052 Benchmark the solver on the largest valid fixture and the base world (depends on T041); if any solve exceeds 10 seconds, lower the limits in `src/sim/limits.ts` and record the measured figures in `research.md` Decision 1
 - [ ] T053 [P] Search `src/`, `test/`, `scripts/`, `README.md`, `AGENTS.md` and `.mcp.json` for leftovers of the old design (`gather`, `tier`, `station`, `fuel`, `survey`, `place_station`, `recipe_lookup`, `recipes_using`) and remove them

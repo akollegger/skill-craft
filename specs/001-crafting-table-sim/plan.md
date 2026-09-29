@@ -30,8 +30,8 @@ dependencies
 **Storage**: Files only: world definitions and goal files (JSON), and an append-only JSONL run log
 
 **Testing**: vitest. Unit tests per module, contract tests for the tool surface over the SDK's
-in-memory transport, and a stdio smoke script. Seeded pseudo-random call sequences in tests are
-allowed and are the basis of the determinism check.
+in-memory transport, and a stdio smoke script. Tests use fixed or exhaustively enumerated call sequences,
+never randomness.
 
 **Target Platform**: macOS and Linux developer machines running Node 22+; the server runs as a
 child process of an agent harness
@@ -90,15 +90,17 @@ specs/001-crafting-table-sim/
 ```text
 src/
 ├── sim/
-│   ├── schema.ts        # zod schema and types for worlds, recipes, goals   (rewrite)
+│   ├── schema.ts        # zod schema and types for worlds and recipes        (rewrite)
+│   ├── errors.ts        # WorldError carrying every validation problem       (new)
+│   ├── prng.ts          # seeded PRNG for world generation only              (kept from rename.ts)
+│   ├── goals.ts         # goals file schema and loader                       (new)
 │   ├── limits.ts        # size limits and solver budget, one place          (new)
 │   ├── loader.ts        # parse, normalize, validate a world                 (adapt world-loader.ts)
 │   ├── matcher.ts       # canonical keys, exact match, partial-match check   (new)
 │   ├── engine.ts        # Game: inventory, table, place/remove/clear/craft   (rewrite)
 │   ├── runlog.ts        # ordered call log, optional JSONL sink              (new)
 │   ├── solver.ts        # best run: min crafts, min calls, slack, call plan  (replaces plan.ts)
-│   ├── rename.ts        # seeded re-skin and perturbation                    (adapt)
-│   └── index.ts
+│   └── rename.ts        # seeded re-skin and perturbation                    (adapt)
 └── mcp/
     └── server.ts        # seven tools over stdio; reads SIM_WORLD, SIM_RUN_LOG (rewrite)
 
@@ -113,8 +115,11 @@ worlds/
 └── generated/           # regenerated examples
 
 test/
-├── matcher.test.ts  loader.test.ts  engine.test.ts  runlog.test.ts
-├── solver.test.ts   rename.test.ts  worlds.test.ts  mcp.test.ts
+├── prng.test.ts     schema.test.ts   matcher.test.ts  loader.test.ts  goals.test.ts
+├── engine-craft.test.ts  engine-stock.test.ts  hints.test.ts  runlog.test.ts
+├── tools-craft.test.ts   tools-table.test.ts   tools-orient.test.ts  server-worlds.test.ts
+├── solver.test.ts   rename.test.ts  worlds.test.ts  scripts.test.ts  determinism.test.ts
+├── helpers/         # makeWorld, gridOf
 └── fixtures/
     ├── valid/       # ten distinct valid worlds (SC-004)
     └── invalid/     # broken worlds, each with its expected problem (SC-005); includes an
