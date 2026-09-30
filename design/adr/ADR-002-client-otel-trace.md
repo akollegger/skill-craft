@@ -1,7 +1,7 @@
 ---
 id: ADR-002
 title: Measure run time and tokens on the client with OpenTelemetry
-status: proposed
+status: accepted
 created: 2026-09-30
 specs: []
 ---
