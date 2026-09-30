@@ -180,6 +180,10 @@ contents an independent replay of the run gives, plus the trace and the result.
   is still classified as out of budget, not as an error.
 - Two runs happen at once: each run's measurements stay in that run's folder.
 - A run is rerun into a folder that already has a trace: it is refused, as a used run log is.
+- A run fails after it has cost money, for example its log does not replay or a file cannot be
+  written: the run is recorded as an error with the reason, and the experiment continues.
+- The operator cancels the harness (Ctrl-C): the current run is ended and recorded, the summary is
+  written, and the harness exits without starting another run.
 - A run uses more than one model (for example after a fallback): all are listed, and the run is
   flagged as having used several.
 - A message with a missing or malformed field is skipped and counted; the trace is then a mismatch
@@ -246,6 +250,11 @@ contents an independent replay of the run gives, plus the trace and the result.
 - **FR-022**: A label's summary MUST list the models its runs used and flag a label whose runs used
   different models, and MUST NOT present figures from different models as one comparable set without
   that flag.
+- **FR-023**: A failure in one run MUST NOT stop the experiment. The run is recorded as an error with a
+  reason, the remaining runs proceed, and the label's summary is always written.
+- **FR-024**: Every run MUST have a time limit. A run that exceeds it, or is cancelled, is ended,
+  recorded as an error with its reason, and keeps the trace lines already written. The harness MUST
+  check that every run folder is unused before the first run starts.
 
 ### Key Entities
 
@@ -261,6 +270,8 @@ contents an independent replay of the run gives, plus the trace and the result.
 - **Allowlist**: The fixed set of fields that may be stored from the player's messages.
 - **Model**: The requested model (or none) and the models that ran, recorded on each run's result, each
   model request, the label summary and the bundle.
+- **Run error**: A coded failure (a code, a message, an optional cause) that ends a run or refuses an
+  experiment; its reason is recorded on the run and contains no personal data.
 - **Exercised**: An item id is exercised when the run placed it, held it, crafted it, or saw it named
   in a preview. A recipe is never stored, so no recipe's inputs or shape appear in a bundle.
 
@@ -307,4 +318,6 @@ contents an independent replay of the run gives, plus the trace and the result.
   and no independent pricing.
 - The player emits events for the main agent loop only, so requests outside it (such as auxiliary
   calls) never enter the trace or the totals.
+- The default time limit per run is 30 minutes, the same as the previous harness used; it can be set per
+  experiment.
 - The trace is trusted as the harness observed it from the player's events; unlike the run log it cannot be checked by replay.

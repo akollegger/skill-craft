@@ -65,9 +65,24 @@ Single project: `src/sim/` (no MCP or SDK dependency), `src/trace/` (measurement
 - [ ] T015 [US1] Create `src/trace/measure.ts` (depends on T010, T003, T006): `measureRun(entries, traceLines, result, score)` returning `Measured`; this task covers the matched path only, with `total` and `toGoal` computed per [contracts/score-json.md](contracts/score-json.md) (the mismatch and absent paths are added in US4)
 - [ ] T016 [US1] Create `src/harness/sdk-options.ts` (pure: `sdkOptionsFor` and `classifyResult`, with type-only SDK imports) and `src/harness/sdk-driver.ts` (`sdkDriver`, the only runtime importer of the SDK) (depends on T011, T005); the driver iterates `query()`, forwards every message and the three hooks (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`) to the sink, catches the post-result throw, and returns a `PlayerResult`
 - [ ] T017 [US1] Edit `src/harness/run.ts` (depends on T012, T014, T015, T016): delete `claudeArgs`, `parseClaudeResult`, `ClaudeResult` and the `spawnSync` code; keep `buildPrompt`, `aggregate`, `planExperiment` and `mcpConfigFor` (now producing the SDK's `mcpServers` entry, and still writing `mcp.json` so exports can find the world); make `runOnce` and `runExperiment` async and accept a driver, loading the default with a dynamic import inside `runOnce` so importing `run.ts` and `planExperiment` never loads the SDK; `RunReport` extends `PlayerResult` in place of `ClaudeResult` and carries `measured` and `model`, `summary.json` carries both plus the label's models and a `mixedModels` flag, and `aggregate()` reports them rather than averaging across models silently; create a recorder per run writing `trace.jsonl`; on finish call `measureRun` and write `score.json` with `measured` added; stop writing `claude.json` and `stderr.txt`
-- [ ] T018 [US1] Edit `scripts/run-agent.ts`: await the async harness, drop the `--claude` option and `CLAUDE_BIN`, print the model, duration and token totals in each run line, and cost and a mixed-models warning in the summary (depends on T017)
+## Phase 3a: Harness hardening (User Story 1)
+
+**Purpose**: One failing run cannot end an experiment, every run has a time limit and can be cancelled, and errors are matched by type ([FR-023, FR-024](spec.md)). These tasks follow T017, which rewrites `run.ts`, and finish before T018.
+
+- [ ] T017a [P] [US1] Write `test/errors.test.ts` (must fail first): `HarnessError` subclasses `RunFolderExists`, `UnknownGoalItem`, `ReplayFailed`, `DriverFailed` and `RunTimedOut` each carry a stable `code`, a message without personal data, and an optional `cause`; `isUserError(e)` is true for `RunFolderExists`, `UnknownGoalItem`, `WorldError` and `RunLogInUseError`, and false for `DriverFailed` and unknown errors
+- [ ] T017b [P] [US1] Extend `test/harness.test.ts` (must fail first), using the scripted player: a driver that writes a log that does not replay makes that run `ended: "error"` with `reason: "ReplayFailed: ..."` and the experiment carries on to the next run; a malformed `run.jsonl` line is handled the same way; a missing or empty log scores as zero calls, not an error; a driver that rejects with a non-`Error` value is recorded as `DriverFailed`; `summary.json` is written even when every run fails; with run folder 002 already present the experiment refuses before run 001 starts and spends nothing; a run whose driver delivered a result and then rejects keeps its result (only the `budget` case is special-cased)
+- [ ] T017c [P] [US1] Add cancellation tests to `test/harness.test.ts`: a driver that never resolves, with a short `timeoutMs`, ends the run as `error` with reason `RunTimedOut` and the driver's `signal` is aborted; the trace lines written before the timeout stay on disk and the trace is a `mismatch` (`run ended without a result`); aborting the experiment's own `signal` mid-run ends that run, writes its score and the summary, and starts no further run
+- [ ] T017d [US1] Create `src/harness/errors.ts` (depends on T017a): the `HarnessError` base and the five subclasses, with `isUserError`; existing `WorldError`, `ReplayError` and `RunLogInUseError` stay where they are and `isUserError` recognises them by class
+- [ ] T017e [US1] Edit `src/harness/run.ts` and `src/harness/driver.ts` (depends on T017b, T017c, T017d, T017): `DriverOptions` gains `signal: AbortSignal`, and `sdk-driver.ts` passes an `abortController` tied to it into `query()` and calls `interrupt()` on abort; `AgentRunOptions` gains `timeoutMs` (default 30 minutes) and an optional `signal`; `runExperiment` checks all run folders first and throws `RunFolderExists` before any spend; each run goes through a guard that turns any throw into `ended: "error"` with a `reason` and never ends the loop; `summary.json` is always written; a cancelled experiment stops after the current run is recorded; `reason` is carried in `score.json` and the summary
+- [ ] T017f [US1] Edit `scripts/run-agent.ts` (depends on T017e): add `--timeout-minutes`; replace the message regex with `isUserError(e)`; install a `SIGINT` handler that aborts the experiment's signal, waits for the run to be recorded, and exits 130; keep user-facing messages unchanged and update the matching cases in `test/scripts.test.ts`
+
+---
+
+## Phase 3b: User Story 1, wiring and checkpoint
+
+- [ ] T018 [US1] Edit `scripts/run-agent.ts`: await the async harness, drop the `--claude` option and `CLAUDE_BIN`, print the model, duration and token totals in each run line, and cost and a mixed-models warning in the summary (depends on T017f)
 - [ ] T019 [US1] Update `test/scripts.test.ts`: keep the dry-run and argument-error cases for `run-agent.ts` (dry run now shows SDK options); remove the case that runs the script against a fake CLI (`--claude`), since that path no longer exists and end-to-end behaviour is covered in `test/harness.test.ts` (depends on T018)
-- [ ] T020 [US1] Run `pnpm typecheck && pnpm test`; all pass, including the rewritten harness suite and the existing `determinism` and `runlog` suites, which are the check that the run log gained no field (FR-012, SC-005) (depends on T017, T019)
+- [ ] T020 [US1] Run `pnpm typecheck && pnpm test`; all pass, including the rewritten harness suite and the existing `determinism` and `runlog` suites, which are the check that the run log gained no field (FR-012, SC-005) (depends on T017f, T019)
 
 **Checkpoint**: a scripted run yields a `matched` trace and figures in `score.json`. MVP.
 
@@ -80,7 +95,7 @@ Single project: `src/sim/` (no MCP or SDK dependency), `src/trace/` (measurement
 **Independent Test**: Run the scripted driver with invented personal values and agent text in its messages; search every file in the run folder and the process output for them. None appear.
 
 - [ ] T021 [P] [US2] Write `test/privacy.test.ts` (must fail first if any leak exists): with the scripted driver carrying an invented email, user id, two account ids, an organization id, an invented session id, agent text and thinking text in its messages, run an experiment and read every file under the run folder and the label folder plus captured stdout and stderr; assert none of the values appear; assert every key in every `trace.jsonl` line is in the allowlist of [data-model.md](data-model.md); assert no file holds unfiltered messages (only `mcp.json`, `prompt.txt`, `run.jsonl`, `trace.jsonl`, `score.json` and the label's `summary.json` exist)
-- [ ] T022 [US2] Make T021 pass (depends on T021, T017): confirm `summary.json` and `score.json` carry only `ended`, `turns`, `costUsd`, `text`, `score` and `measured`; `text` is the agent's final message, kept in `score.json` as before and never in `trace.jsonl` or a bundle. Fix any leak the test finds; if none, record in the task that the allowlist held by construction
+- [ ] T022 [US2] Make T021 pass (depends on T021, T017): confirm `summary.json` and `score.json` carry only `ended`, `turns`, `costUsd`, `text`, `score` and `measured`; `text` is the agent's final message, kept in `score.json` as before and never in `trace.jsonl` or a bundle. the `reason` strings of error runs are searched for the injected values too. Fix any leak the test finds; if none, record in the task that the allowlist held by construction
 
 **Checkpoint**: the privacy property is an enforced test, not a promise.
 
@@ -148,6 +163,7 @@ Single project: `src/sim/` (no MCP or SDK dependency), `src/trace/` (measurement
 ## Dependencies and order
 
 - Phase 1, then Phase 2 (T003 to T007 in parallel where marked, then T008), then the stories.
+- Phase 3a (T017a to T017f) follows T017, which rewrites `run.ts`, and must finish before T018; T017a to T017c are tests and can be written in parallel.
 - US1 and US2 are both P1. US2's tests need US1's harness (T017), so run US1 first; US2 then adds little code.
 - US3 and US4 depend on US1's recorder and `measure.ts`. US4 edits the same file as T015, so it follows US1.
 - US5 needs `reachedSeq` (T006) only through the score in the bundle, and the recorder's output for a real trace; `deriveFrames` (T031) is independent of the rest and can start once Phase 2 is done.
@@ -162,4 +178,4 @@ Single project: `src/sim/` (no MCP or SDK dependency), `src/trace/` (measurement
 
 ## MVP scope
 
-Phases 1 to 3 (T001 to T020) give a measured run: the figures in `score.json`. US2 to US5 add the privacy test, the resumable record, the mismatch guard and the exported bundle.
+Phases 1 to 3b (T001 to T020, including T017a to T017f) give a measured run: the figures in `score.json`. US2 to US5 add the privacy test, the resumable record, the mismatch guard and the exported bundle.

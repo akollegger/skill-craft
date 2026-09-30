@@ -6,6 +6,7 @@ one field inside `score`. Existing keys keep their meaning.
 | Where | Field | Meaning |
 |---|---|---|
 | top level | `measured` | a `Measured` object (see [data-model.md](../data-model.md)) |
+| top level | `reason` | for `ended: "error"`: a code and message (`ReplayFailed`, `DriverFailed`, `RunTimedOut`), never personal data; absent otherwise |
 | top level | `model` | a `ModelInfo`: `requested` (or `null`) and `resolved` (sorted list); present whatever the trace status |
 | `score` | `reachedSeq` | run-log `seq` after which the goal was first held; `0`, or `null` |
 

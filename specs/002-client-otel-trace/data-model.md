@@ -110,6 +110,7 @@ first held; `0` if held before any call; `null` if never. Existing fields are un
 ```ts
 interface PlayerResult {
   ended: "stopped" | "budget" | "error";
+  reason?: string;          // for "error": a code and message, e.g. "RunTimedOut: no result after 30 min"
   turns: number | null;
   costUsd: number | null;
   durationMs: number | null;

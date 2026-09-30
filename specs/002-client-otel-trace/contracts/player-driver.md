@@ -9,7 +9,8 @@ type AgentDriver = (opts: DriverOptions, sink: DriverSink) => Promise<PlayerResu
 ```
 
 - `DriverOptions`: the prompt, the world path and run-log path (for the `craft` MCP server), `maxTurns`,
-  optional `model`, `record` (load user settings so NAMS hooks apply), and the run folder.
+  optional `model`, `record` (load user settings so NAMS hooks apply), a `signal` the driver must honour
+  (aborting it ends the run), and the run folder.
 - `DriverSink`: the recorder's entry points: `onMessage(message)` for every streamed message, and
   `onToolStart(call)` / `onToolEnd(call)` for hook calls.
 - `PlayerResult`: see [data-model.md](../data-model.md).
@@ -32,6 +33,7 @@ type AgentDriver = (opts: DriverOptions, sink: DriverSink) => Promise<PlayerResu
 | `includePartialMessages` | `true` |
 | `hooks` | `PreToolUse`, `PostToolUse` and `PostToolUseFailure`, each forwarding to the sink and returning `{}`; either post hook ends a call, and a call is recorded once |
 | `cwd` | the run folder |
+| `abortController` | one tied to `signal`; on abort the driver also calls the query's `interrupt()` |
 
 The environment is inherited unchanged; no telemetry variables are set.
 

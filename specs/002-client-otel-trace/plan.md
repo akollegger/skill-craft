@@ -98,6 +98,7 @@ src/
     ├── sdk-options.ts   # NEW  pure: SDK options builder and result classification (type-only SDK imports)
     ├── sdk-driver.ts    # NEW  the only runtime importer of the SDK: the query() loop and hooks
     ├── run.ts           # EDIT drop CLI args/parsing; async runOnce via a driver, default loaded lazily
+    ├── errors.ts        # NEW  HarnessError and its codes: RunFolderExists, UnknownGoalItem, ReplayFailed, DriverFailed, RunTimedOut
     ├── bundle.ts        # NEW  read a bundle; framesAfter(n)
     └── export.ts        # NEW  exportBundle(runDir, dest)
 scripts/
