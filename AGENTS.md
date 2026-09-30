@@ -25,7 +25,9 @@ pnpm dev <file>    # run a TypeScript file with tsx
 ```
 
 Scripts (run with `pnpm dev`): `scripts/solve.ts` (best run for a goal), `scripts/make-world.ts`
-(re-skinned world plus goals), `scripts/smoke.ts` (replay a best run over stdio). The server runs as
+(re-skinned world plus goals), `scripts/smoke.ts` (replay a best run over stdio),
+`scripts/run-agent.ts` (headless Claude Code runs, scored; `--dry-run` spends nothing) and
+`scripts/score.ts` (score run logs against the best run). The server runs as
 `SIM_WORLD=<world.json> [SIM_RUN_LOG=<fresh file>] pnpm exec tsx src/mcp/server.ts`.
 
 `pnpm typecheck` and `pnpm test` must pass before a change is considered done.
@@ -91,7 +93,8 @@ zebra-space project with the RFC requirement removed.
 | `src/sim/` | Schema, matcher, engine, run log, solver, loader, goals, re-skinner; no MCP dependency |
 | `src/mcp/server.ts` | MCP server exposing a world to an agent (`SIM_WORLD` selects the file, `SIM_RUN_LOG` the log) |
 | `worlds/` | World and goals JSON files; `worlds/generated/` holds re-skinned examples |
-| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts` |
+| `src/harness/` | Interim run harness (prompt, CLI arguments, result parsing, aggregation) |
+| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `score.ts` |
 | `test/` | vitest suites; `fixtures/valid` and `fixtures/invalid` hold the world fixtures |
 | `design/adr/` | ADRs and index |
 | `design/notes/` | Exploratory notes that may become ADRs |
@@ -109,6 +112,10 @@ zebra-space project with the RFC requirement removed.
   `SIM_RUN_LOG` file that already has data; give each run a new path.
 - Tests never use randomness. Use fixed or exhaustively enumerated sequences. `src/sim/prng.ts` is
   for world generation only.
+- `run-agent.ts` costs real Claude usage. Use `--dry-run` first, keep `--runs` small, and never
+  point it at `worlds/forge.json` (neutral names). Built-in tools stay removed so the agent cannot
+  read world files. `--record` sends the session to NAMS; only pass it when asked.
+- Scoring replays a run log on a fresh game. A log that does not replay is an error, not a score.
 - `look`, `help`, `inventory` and every refusal must reveal no recipe; `test/tools-orient.test.ts`
   sweeps for leaks.
 

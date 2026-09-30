@@ -73,6 +73,35 @@ SIM_WORLD=worlds/forge.json SIM_RUN_LOG=runs/run-001.jsonl pnpm exec tsx src/mcp
 - **Run log.** With `SIM_RUN_LOG` set, every call is appended as one JSON line, refusals included,
   with no timestamps. `summarize` in `src/sim/runlog.ts` derives call and failure counts.
 
+### Running an agent against it
+
+`scripts/run-agent.ts` runs headless Claude Code against the `craft` server, gives each run its own
+run log, scores it, and summarises. The goal reaches the agent only through the prompt, which tells it
+that nobody can answer questions and gives it a turn budget.
+
+```bash
+# See the exact commands first; this spends nothing and creates nothing
+pnpm dev scripts/run-agent.ts --goal glirol --runs 3 --dry-run
+
+# Run it: three attempts at the warm-up goal on a generated world, 40 turns each
+pnpm dev scripts/run-agent.ts --goal glirol --runs 3 --max-turns 40 --label baseline
+```
+
+Each run gets a folder under `runs/<label>/` (gitignored) with `prompt.txt`, `mcp.json`, `run.jsonl`
+(the server's log), `claude.json` (the CLI result), `score.json`, and a `summary.json` for the label.
+Built-in tools are removed, so the agent cannot read the world file. Sessions stay out of NAMS unless
+you pass `--record`.
+
+A run ends `stopped` (the agent gave up or asked for help), `budget` (it used every turn) or `error`.
+The score counts **action calls**: `place`, `remove`, `clear` and `craft`. `help`, `inventory` and
+`look` are free. `callsToGoal` is the action calls up to the moment the goal was first held, and
+`extraCalls` is that minus the best run's minimum.
+
+To score logs you already have: `pnpm dev scripts/score.ts --world worlds/generated/forge-7.json --goal glirol --log runs/x/001/run.jsonl`.
+
+This harness follows the leaning in the player design note; the experiment-protocol decision (ADR)
+is still to be written.
+
 ### Recording sessions to NAMS
 
 Sessions are recorded with the [nams-hooks](https://github.com/neo4j-labs/nams-plugins) plugin:
@@ -100,7 +129,8 @@ provides them.
 | `src/sim/` | Simulation core: schema, matcher, engine, run log, solver, loader, goals, re-skinner (no MCP dependency) |
 | `src/mcp/` | The `craft` MCP server that exposes a world to an agent |
 | `worlds/` | World definitions and goals (JSON); `worlds/generated/` holds re-skinned examples |
-| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts` |
+| `src/harness/` | Interim run harness: prompt, `claude` arguments, result parsing, aggregation |
+| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `score.ts` |
 | `test/` | vitest suites, plus `fixtures/valid` (ten worlds) and `fixtures/invalid` (sixteen broken worlds) |
 | `design/adr/` | Architecture Decision Records and their index |
 | `design/notes/` | Exploratory design notes that may become ADRs |

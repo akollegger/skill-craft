@@ -1,12 +1,16 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { Game } from "../src/sim/engine.js";
+import { loadWorld } from "../src/sim/loader.js";
+import { createRunLog } from "../src/sim/runlog.js";
+import { solve } from "../src/sim/solver.js";
 
 /** Run a script the way a user would: `node --import tsx <script> ...args` from the repo root. */
-function run(script: string, args: string[]) {
-  const res = spawnSync(process.execPath, ["--import", "tsx", script, ...args], { encoding: "utf8", timeout: 60_000 });
+function run(script: string, args: string[], env: Record<string, string> = {}) {
+  const res = spawnSync(process.execPath, ["--import", "tsx", script, ...args], { encoding: "utf8", timeout: 60_000, env: { ...process.env, ...env } });
   return { status: res.status, stdout: res.stdout, stderr: res.stderr };
 }
 
@@ -115,5 +119,81 @@ describe("scripts/make-world.ts", () => {
     const res = run("scripts/make-world.ts", ["--base", "worlds/none.json", "--seed", "1"]);
     expect(res.status).toBe(1);
     expect(res.stderr).toContain("cannot read");
+  });
+});
+
+const WORLD = "worlds/generated/forge-7.json";
+const GOAL = "glirol";
+
+/** Write a run log by playing the given calls on a fresh game; returns its path. */
+function logFor(play: (g: Game) => void): string {
+  const path = join(mkdtempSync(join(tmpdir(), "skill-craft-")), "run.jsonl");
+  const game = new Game(loadWorld(WORLD), { log: createRunLog(path) });
+  play(game);
+  return path;
+}
+
+const bestCalls = (g: Game) => {
+  const best = solve(loadWorld(WORLD), { item: GOAL, qty: 1 });
+  if (!best.reachable) throw new Error("unreachable");
+  for (const c of best.calls) c.tool === "craft" ? g.craft() : g.place(String(c.args["item"]), Number(c.args["row"]), Number(c.args["col"]));
+};
+
+describe("scripts/score.ts", () => {
+  it("scores each log against the best run", () => {
+    const perfect = logFor(bestCalls);
+    const lost = logFor((g) => {
+      g.look();
+      g.place("doudrur", 0, 0);
+      g.place("tepitil", 0, 1);
+      g.craft();
+    });
+    const res = run("scripts/score.ts", ["--world", WORLD, "--goal", GOAL, "--log", perfect, "--log", lost]);
+    expect(res.status, res.stderr).toBe(0);
+    const out = JSON.parse(res.stdout) as Record<string, any>[];
+    expect(out.map((o) => o["log"])).toEqual([perfect, lost]);
+    expect(out[0]).toMatchObject({ reached: true, callsToGoal: 3, extraCalls: 0, best: { minCalls: 3 } });
+    expect(out[1]).toMatchObject({ reached: false, failedCrafts: 1, extraCalls: null });
+  });
+
+  it("exits 1 for a log that does not replay, a missing log, or missing options", () => {
+    const bad = logFor(bestCalls);
+    writeFileSync(bad, readFileSync(bad, "utf8").replace('"ok":true', '"ok":false'));
+    expect(run("scripts/score.ts", ["--world", WORLD, "--goal", GOAL, "--log", bad]).stderr).toContain("does not replay");
+    expect(run("scripts/score.ts", ["--world", WORLD, "--goal", GOAL, "--log", bad]).status).toBe(1);
+    expect(run("scripts/score.ts", ["--world", WORLD, "--goal", GOAL, "--log", "runs/none.jsonl"]).status).toBe(1);
+    expect(run("scripts/score.ts", ["--world", WORLD, "--goal", GOAL]).status).toBe(1);
+  });
+});
+
+describe("scripts/run-agent.ts", () => {
+  it("prints the exact commands for a dry run and creates nothing", () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-runs-"));
+    const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--runs", "2", "--out", out, "--label", "dry", "--dry-run"]);
+    expect(res.status, res.stderr).toBe(0);
+    const plan = JSON.parse(res.stdout) as { command: string[]; dir: string }[];
+    expect(plan).toHaveLength(2);
+    expect(plan[0]?.command).toEqual(expect.arrayContaining(["--strict-mcp-config", "--setting-sources", "project"]));
+    expect(existsSync(join(out, "dry"))).toBe(false);
+  });
+
+  it("exits 1 for an unknown goal item or world, and for a bad number of runs", () => {
+    expect(run("scripts/run-agent.ts", ["--goal", "ghost", "--dry-run"]).stderr).toContain("unknown item 'ghost'");
+    expect(run("scripts/run-agent.ts", ["--goal", GOAL, "--world", "worlds/none.json", "--dry-run"]).status).toBe(1);
+    expect(run("scripts/run-agent.ts", ["--goal", GOAL, "--runs", "0", "--dry-run"]).status).toBe(1);
+    expect(run("scripts/run-agent.ts", []).status).toBe(1);
+  });
+
+  it("runs, scores and summarises with a stand-in claude", () => {
+    const bin = join(mkdtempSync(join(tmpdir(), "skill-craft-fake-")), "claude");
+    writeFileSync(bin, `#!/bin/sh\nexec node --import tsx ${resolve("test/helpers/fake-claude.ts")} "$@"\n`);
+    chmodSync(bin, 0o755);
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-runs-"));
+    const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--runs", "2", "--out", out, "--label", "t", "--claude", bin], { FAKE_CLAUDE_MODE: "solve", FAKE_CLAUDE_GOAL: `${GOAL}:1` });
+    expect(res.status, res.stderr).toBe(0);
+    expect(res.stdout).toContain("run 001");
+    expect(res.stdout).toContain("2 runs: 2 reached (100%)");
+    const summary = JSON.parse(readFileSync(join(out, "t", "summary.json"), "utf8")) as { aggregate: { reached: number } };
+    expect(summary.aggregate.reached).toBe(2);
   });
 });
