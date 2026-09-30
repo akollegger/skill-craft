@@ -1,7 +1,7 @@
 # Design note: who plays the game?
 
-Status: exploratory. Intended to feed a later ADR (working title: ADR-002, experiment protocol
-and player). Nothing here is decided.
+Status: exploratory. Intended to feed a later ADR (working title: the experiment-protocol ADR, covering the
+player and the protocol). Nothing here is decided.
 Date: 2026-09-29
 
 ## Question
@@ -86,5 +86,5 @@ and reports `stopped` and `budget` endings separately.
 
 ## Next step
 
-When the pilot has run, write ADR-002 covering the player, the arms, the metrics and the isolation
+When the pilot has run, write the experiment-protocol ADR covering the player, the arms, the metrics and the isolation
 rules.
