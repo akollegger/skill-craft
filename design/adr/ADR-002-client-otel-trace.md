@@ -3,7 +3,7 @@ id: ADR-002
 title: Measure run time and tokens on the client with OpenTelemetry
 status: accepted
 created: 2026-09-30
-specs: []
+specs: [specs/002-client-otel-trace]
 ---
 
 # ADR-002: Measure run time and tokens on the client with OpenTelemetry
@@ -106,7 +106,7 @@ file (a world lists every recipe) and no raw OTLP. Frames still show every recip
 since crafted outputs appear in them. A static viewer, the same page the observer serves, loads a bundle
 and plays it back; the visitor can pause, scrub, and open other bundles. No ingest endpoint,
 authentication or live mirror exists. Where a bundle is hosted is outside this decision. The observer's
-own live mode stays local. Frame derivation remains the observer's job; the wire contract between frame
+own live mode stays local. Frame derivation is a function of the simulation library, called by export and by the observer; the wire contract between frame
 source and viewer is the `seq`-numbered frame list, so a live mirror could be added later without
 changing the viewer.
 
@@ -163,3 +163,14 @@ built until needed.
 - ADRs: [ADR-001](ADR-001-crafting-table-world.md) (the run log this decision leaves untouched). The
   player choice (Claude Code, `claude -p`) is assumed here and belongs to the pending experiment-protocol ADR.
 - Specs: _(populated automatically by the speckit ADR-link hook once `/speckit-specify` references this ADR)_
+
+## 6. Amendments
+
+- **2026-09-30**: §2.6 said "Frame derivation remains the observer's job". That misplaced ownership.
+  The observer is a separate process so the agent cannot reach it and the server stays clean; that says
+  nothing about who defines the frame shape. A frame is the published contract of a replay bundle, and
+  the viewer has no world to derive it from, so the producer side defines it. Frame derivation is a
+  pure replay function in the simulation library, beside `scoreRun`, with no server or HTTP
+  dependency. Bundle export and the observer's live mode both call it. Spec
+  `002-client-otel-trace` builds it with bundle export. The bundle's contents and the `seq`-numbered
+  frame contract are unchanged.
