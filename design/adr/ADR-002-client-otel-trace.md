@@ -174,3 +174,14 @@ built until needed.
   dependency. Bundle export and the observer's live mode both call it. Spec
   `002-client-otel-trace` builds it with bundle export. The bundle's contents and the `seq`-numbered
   frame contract are unchanged.
+- **2026-09-30** (found while planning spec `002-client-otel-trace`):
+  - §2.2 sets all three exporters to `otlp`. The harness sets `OTEL_METRICS_EXPORTER=none`, since
+    nothing reads metrics and they carry the same personal attributes; the receiver also discards
+    `/v1/metrics` unread.
+  - §2.4 offsets are measured from the `user_prompt` log event, so start-up before the agent loop is
+    excluded. Total duration is the `claude_code.interaction` span's duration when known.
+  - §2.5 "requests the CLI makes outside the agent loop are excluded" is implemented by pairing: a
+    request line needs both its `llm_request` span and its `api_request` event, and the excluded
+    auxiliary request has no event.
+  - The harness becomes asynchronous (`spawn` in place of `spawnSync`) so the receiver can answer while
+    the child runs.
