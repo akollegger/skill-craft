@@ -19,31 +19,36 @@ must not leak personal details or the world's recipes. Today
 a run is scored by counting calls, which is a loose stand-in for time and tokens: context grows on
 every turn, so a run with a few extra calls can cost far more than its call count suggests.
 
+The **player** is the agent software the harness runs (Claude Code); the **agent** is the model working
+inside it. The harness measures a run by observing the events the player emits. The agent reports
+nothing about itself, and nothing in this feature depends on it doing so.
+
 ### User Story 1 - See what a run cost (Priority: P1)
 
 The experiment runner starts a run through the harness. When it ends, the run's result reports how long
-the run took, how many tokens of each kind it used, and what it cost in dollars, next to the existing
-call counts. The same figures are also given up to the moment the goal was first reached, so a run that
-kept going after succeeding is not charged for the extra work.
+the run took, how many tokens of each kind it used, and what the whole run cost in dollars, next to the
+existing call counts. Duration and tokens are also given up to the moment the goal was first reached, so
+a run that kept going after succeeding is not charged for the extra work. Cost is reported for the whole
+run only.
 
 **Why this priority**: This is the point of the feature. Without real time and token figures the
 with-and-without-memory comparison rests on call counts alone.
 
-**Independent Test**: Run a scripted agent through the harness with a stand-in for the agent's
-measurements. The result reports totals equal to the measurements' sum, and "to goal" figures equal to
-the sum up to the goal-reaching call.
+**Independent Test**: Run the harness with a scripted player that reports known figures. The result
+reports totals equal to the figures' sum, and "to goal" figures equal to the sum up to the goal-reaching
+call.
 
 **Acceptance Scenarios**:
 
 1. **Given** a finished run with recorded measurements, **When** its result is produced, **Then** it
    reports total duration, the four token counts (input, output, cache read, cache creation) and cost.
 2. **Given** a run that reached the goal and then made more calls, **When** its result is produced,
-   **Then** the "to goal" figures include every model request that ended at or before the
-   goal-reaching call, including the request that issued it, and nothing later.
+   **Then** the "to goal" duration and token figures include every model request that ended at or
+   before the goal-reaching call, including the request that issued it, and nothing later.
 3. **Given** a run that never reached the goal, **When** its result is produced, **Then** the totals
    are reported and the "to goal" figures are absent.
-4. **Given** the agent's measurements sum to the totals the agent's own tool reports, **When** the run
-   is scored, **Then** the figures match those totals exactly.
+4. **Given** the recorded figures sum to the totals stated in the player's final result, **When** the run is
+   scored, **Then** the figures match those totals exactly.
 
 ---
 
@@ -53,21 +58,24 @@ The sharer copies a run folder to send to a colleague or publish. The folder hol
 times and token counts, and nothing that identifies the person who ran it: no email address, user id,
 account id or organization id, and no unfiltered copy of what the agent's tooling reported.
 
-**Why this priority**: The raw measurements carry the runner's identity on every record. A run folder
-is meant to be shared, so a leak here is one copied folder away.
+**Why this priority**: The player's messages carry the agent's own text and reasoning, and its
+telemetry, if used, carries the runner's identity on every record. A run folder is meant to be shared,
+so a leak here is one copied folder away.
 
-**Independent Test**: Feed the receiver measurements that carry personal attributes, then search
-everything the harness wrote for those values. None appear.
+**Independent Test**: Run the harness with a scripted player whose messages carry personal attributes
+and agent text, then search everything the harness wrote for those values. None appear.
 
 **Acceptance Scenarios**:
 
-1. **Given** measurements carrying an email, user id, account ids and organization id, **When** a run
+1. **Given** messages carrying an email, user id, account ids and organization id, **When** a run
    completes, **Then** none of those values appear in any file in the run folder or in any log the
    harness writes.
 2. **Given** an attribute the harness does not recognise, **When** it arrives, **Then** it is dropped,
    not stored.
 3. **Given** a run in progress, **When** the harness is inspected, **Then** no unfiltered copy of the
-   incoming measurements exists on disk.
+   player's messages exists on disk.
+4. **Given** a player that writes text and reasoning, **When** a run completes, **Then** neither appears
+   in the trace or in any file the harness wrote for the trace.
 
 ---
 
@@ -160,15 +168,16 @@ contents an independent replay of the run gives, plus the trace and the result.
 
 ### Edge Cases
 
-- The agent process exits before flushing its last measurements: the run is scored with what arrived
+- The player ends abnormally (an error, or its turn budget): the run is scored with what was recorded,
   and any shortfall is visible as a mismatch, not silently accepted.
-- Model requests the agent's tooling makes outside the run's loop (auxiliary requests) are excluded
-  from totals, as they are excluded from the tool's own totals.
+- The player reports that its turn budget ran out by raising an error after its final result: the run
+  is still classified as out of budget, not as an error.
+- Model requests outside the agent's own loop never enter the trace or the totals; the player emits
+  events for the main loop only.
 - Two runs happen at once: each run's measurements stay in that run's folder.
 - A run is rerun into a folder that already has a trace: it is refused, as a used run log is.
 - A measurement arrives with a missing or malformed field: that item is skipped and the run is
   flagged, and the harness does not crash.
-- The receiver cannot bind a port: the run does not start, and the cause is reported.
 - A run is exported while still running: export is refused; only finished runs are exported.
 - A bundle is exported to a folder that already has one: it is refused rather than overwritten.
 - A run's frames show the recipes the run exercised (crafted outputs appear in them); the bundle
@@ -178,31 +187,34 @@ contents an independent replay of the run gives, plus the trace and the result.
 
 ### Functional Requirements
 
-- **FR-001**: The harness MUST collect time and token measurements for each run from the agent's
-  own reporting, while the run's call log continues to hold no timestamps.
-- **FR-002**: Each run MUST have its own collection point, so one run's measurements never mix with
+- **FR-001**: The harness MUST measure time and tokens for each run by observing the events the player
+  emits, while the run's call log continues to hold no timestamps.
+- **FR-002**: Each run MUST be recorded on its own, so one run's measurements never mix with
   another's, and a run's folder is self-contained.
 - **FR-003**: The harness MUST write a per-run trace of model requests and tool calls, each with a
-  running number, a kind, and times as offsets from the run's first event.
+  running number, a kind, and times as offsets from the moment the session was
+  ready, so start-up is excluded.
 - **FR-004**: A model request line MUST record its id, turn, start and end offsets, time to first
-  token, the four token counts, and cost. A tool line MUST record its id, tool name, arguments, start
-  and end offsets, and whether it succeeded.
-- **FR-005**: The harness MUST keep only an allowlist of fields and MUST drop everything else on
-  arrival, including email, user id, account ids and organization id.
-- **FR-006**: The harness MUST NOT persist unfiltered incoming measurements anywhere, including
-  debug output.
+  token and the four token counts. A tool line MUST record its id, tool name, arguments, and start and
+  end offsets.
+- **FR-005**: The harness MUST keep only an allowlist of fields from the player's messages and MUST
+  drop everything else, including the agent's text and reasoning and any email, user id, account id or
+  organization id.
+- **FR-006**: The harness MUST NOT persist unfiltered player messages anywhere, including debug
+  output.
 - **FR-007**: Each tool line MUST be joined to the run log by order, checked against tool name (without
   the server prefix) and arguments.
-- **FR-008**: A run's result MUST report total duration, the four token totals and cost, and the same
-  figures up to and including the model request that issued the goal-reaching call.
+- **FR-008**: A run's result MUST report total duration, the four token totals and cost for the whole
+  run, and duration and the four token totals up to and including the model request that issued the
+  goal-reaching call.
 - **FR-009**: When the trace does not join to the log, the result MUST record a mismatch, omit
   measured figures, and leave every call-based figure unchanged.
 - **FR-010**: Requests made outside the agent's own loop MUST be excluded from totals.
 - **FR-011**: The harness MUST work when no measurements arrive, scoring on calls alone.
 - **FR-012**: The simulation server, the engine and the run log MUST NOT gain a clock or any
   measurement.
-- **FR-013**: The harness MUST set the agent's reporting so measurements arrive within about a second
-  of when they happen, so a viewer can follow a run as it progresses.
+- **FR-013**: The harness MUST record each step as it happens, not only at the end of the run, so a
+  viewer can follow a run within about a second of each step.
 - **FR-014**: The harness MUST derive one frame per run log entry by replaying the log on the run's
   world. A frame holds the table's contents, the items held, and the preview of what could be made
   after that call. Frame derivation MUST be a function of the simulation library, with no server or network
@@ -217,7 +229,7 @@ contents an independent replay of the run gives, plus the trace and the result.
   exactly the later ones.
 - **FR-019**: Export MUST fail, leaving no partial bundle, when the run is unfinished or its log does
   not replay, and MUST refuse to overwrite an existing bundle.
-- **FR-020**: Tests for the collection, the field filtering, the join, the score figures, frame derivation and
+- **FR-020**: Tests for the recording, the field filtering, the join, the score figures, frame derivation and
   bundle export MUST be
   written before the code they cover, using stand-in measurements and no real agent.
 
@@ -225,22 +237,22 @@ contents an independent replay of the run gives, plus the trace and the result.
 
 - **Trace**: The per-run, ordered record of model requests and tool calls with times and token
   figures. Distinct from the run log, which records only what the world did.
-- **Model request**: One call to the model, with its id, turn, time span, time to first token, four
-  token counts and cost.
+- **Model request**: One call to the model, with its id, turn, time span, time to first token and four
+  token counts.
 - **Tool call (trace side)**: One tool round trip as the agent saw it, joined to a run log entry.
-- **Run result**: The per-run scored summary; gains duration, token totals, cost, their "to goal"
-  counterparts, and a trace status (matched, mismatch, or absent).
+- **Run result**: The per-run scored summary; gains duration, token totals and cost for the whole
+  run, their "to goal" counterparts (without cost), and a trace status (matched, mismatch, or absent).
 - **Frame**: The state of a run after one call: the table, the held items and the preview.
 - **Replay bundle**: A self-contained export of one run: numbered frames, the trace and the result.
-- **Allowlist**: The fixed set of fields that may be stored from incoming measurements.
+- **Allowlist**: The fixed set of fields that may be stored from the player's messages.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: For a real run, the reported token totals and cost equal the agent tool's own totals
+- **SC-001**: For a real run, the reported token totals and cost equal the totals stated in the player's final result
   exactly.
-- **SC-002**: After a run with personal identifiers present in the incoming measurements, a search of
+- **SC-002**: After a run with personal identifiers present in the player's messages, a search of
   everything the harness wrote finds none of them.
 - **SC-003**: A viewer following a run sees each new step's time within about one second of it
   happening.
@@ -254,21 +266,23 @@ contents an independent replay of the run gives, plus the trace and the result.
 - **SC-007**: A search of a bundle finds no personal identifier, no world file, and no recipe the run
   did not exercise.
 - **SC-008**: The experiment runner can tell, from one run's result alone, how long it took, what it
-  cost, and how much of that was spent reaching the goal.
+  cost, and how much time and how many tokens were spent reaching the goal.
 
 ## Assumptions
 
-- The agent player is Claude Code run headlessly (as in the interim harness). Its own reporting is
-  the source; other players need their own source and are out of scope.
+- The agent player is Claude Code, run through the Claude Agent SDK in the harness's own process. The
+  harness measures it by observing the events it emits; other players need their own source and are
+  out of scope.
 - Interactive sessions and the desktop app cannot be measured this way and are out of scope.
 - Deriving frames and exporting bundles belong to this feature, because ingest is not complete until a
   run can leave the machine. Frame derivation is a producer-side function, next to run scoring, since the frame is the bundle's
   published contract. The observer calls it and does not own it.
 - The page that plays a bundle, and where bundles are hosted, belong to the observer feature and are
   out of scope here. This feature ends at a bundle that any such page can read.
-- The fallback of deriving the same trace from the agent's streamed output is not built until needed.
-- A relaying collector is deferred (ADR-002); the harness's own collection point is the only path.
+- An OpenTelemetry route was measured and is a documented alternative (ADR-002). It is used only if
+  per-request cost is needed or a player that is not run through the SDK must be measured.
 - What single figure the leaderboard sorts by is an open observer question, not decided here; this
   feature reports the figures.
-- Cost is the figure the agent's tooling reports in dollars; no independent pricing is added.
-- The trace is trusted as the agent reported it; unlike the run log it cannot be checked by replay.
+- Cost is the run total stated in the player's final result, in dollars; there is no per-request cost and no independent
+  pricing.
+- The trace is trusted as the harness observed it from the player's events; unlike the run log it cannot be checked by replay.

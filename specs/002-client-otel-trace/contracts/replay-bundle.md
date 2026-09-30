@@ -10,7 +10,7 @@
 └── score.json       # { ended, turns, score, measured }
 ```
 
-- No world file, no `run.jsonl`, no `mcp.json`, no prompt, no agent text.
+- No world file, no `run.jsonl`, no `mcp.json`, no prompt, no agent text or reasoning.
 - Nothing lists recipes or item descriptions. Item ids appear only inside frames as placed, held,
   crafted or previewed by the run.
 - Playable alone: a reader needs only these files.

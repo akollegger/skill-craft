@@ -31,7 +31,10 @@
 
 ## Notes
 
-- The protocol and file details (OTLP, environment variables, field names, `seq` numbering) stay in
-  ADR-002 and belong to the plan. The spec refers to them as "the agent's own reporting" and "the trace".
+- The source and file details (the SDK, hooks, field names, `seq` numbering) stay in ADR-002 and belong
+  to the plan. The spec refers to them as "the events the player emits" and "the trace".
+- Revised 2026-09-30 for the ADR-002 amendment (SDK source): per-request cost and the tool success flag
+  are gone, "to goal" figures have no cost, and the collection point and receiver edge cases are replaced
+  by the player-ending-abnormally cases. All items still pass.
 - Frame derivation and bundle export are in scope (User Story 5); the page that plays bundles and where
   they are hosted stay with the observer feature (see Assumptions).

@@ -11,16 +11,15 @@ type TraceLine = RequestLine | ToolLine;
 interface RequestLine {
   seq: number;              // 0,1,2,... in completion order
   kind: "request";
-  requestId: string;
-  turn: number;             // 1-based count of request lines emitted so far, kept by the builder
-  startMs: number;          // offset from the run's t0 (user_prompt event); integer ms
+  requestId: string;        // the model message id
+  turn: number;             // 1-based count of request lines recorded so far
+  startMs: number;          // offset from t0 (the SDK's init message); integer ms
   endMs: number;
   ttftMs: number | null;
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
-  costUsd: number;
 }
 
 interface ToolLine {
@@ -31,59 +30,82 @@ interface ToolLine {
   args: Record<string, unknown>;
   startMs: number;
   endMs: number;
-  ok: boolean;
 }
 ```
 
 Rules
-- A line is written only when both halves have arrived (research D1). Halves never written alone.
+- A request line is written at `message_stop`, a tool line at `PostToolUse`; nothing is written half-done.
 - Only tools whose full name starts with `mcp__craft__` become tool lines.
-- `startMs` and `endMs` are offsets, never wall-clock. If a span starts before `t0`, the offset is
-  clamped to 0.
-- Nothing outside these fields is stored (FR-005).
+- `startMs` and `endMs` are offsets on the harness clock, never wall-clock. A request that would start
+  before `t0` is clamped to 0.
+- Nothing outside these fields is stored (FR-005). Assistant text, thinking and the session id are never
+  read into a line.
+- No cost field: the player's final result states cost as a run total only. No success flag: `run.jsonl` records each
+  call's outcome.
 
-## Ingest items (in memory only, never persisted)
+## Recorder inputs (in memory only, never persisted)
 
-Output of `otlp.ts`; input of the builder. Each holds only allowlisted fields.
+What the recorder reads from the player; everything else is ignored.
 
-| Item | Source | Fields kept |
-|---|---|---|
-| `promptEvent` | log `user_prompt` | `timeMs` |
-| `apiRequest` | log `api_request` | `requestId`, tokens (4), `costUsd`, `querySource` |
-| `llmSpan` | span `claude_code.llm_request` | `requestId`, start and end (ms), `ttftMs`, tokens (4) |
-| `toolResult` | log `tool_result` | `toolUseId`, `input` (parsed JSON), `success` |
-| `toolSpan` | span `claude_code.tool` | `toolUseId`, `toolName`, start and end (ms) |
-| `interaction` | span `claude_code.interaction` | start and end (ms) |
-
-All times are converted from Unix nanoseconds to integer milliseconds. Every other record and every
-other attribute, including all resource attributes, is dropped by construction.
+| Input | Fields read |
+|---|---|
+| `init` system message | arrival time (sets `t0`) |
+| stream `message_start` | arrival time, `ttft_ms`, message id |
+| stream `message_delta` | final usage: the four token counts |
+| stream `message_stop` | arrival time |
+| `PreToolUse` hook | `tool_name`, `tool_use_id`, `tool_input`, arrival time |
+| `PostToolUse` hook | `tool_use_id`, arrival time |
+| `result` message | `subtype`, `duration_ms`, `total_cost_usd`, `num_turns`, `usage` (four token counts) |
 
 ## Measured figures (added to a run's `score.json`)
 
 ```ts
-interface Figures {
+interface TotalFigures {
+  durationMs: number;       // the result's duration_ms
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  costUsd: number;          // the result's total_cost_usd
+}
+
+interface GoalFigures {     // up to and including the goal-reaching call; no cost
   durationMs: number;
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
-  costUsd: number;
 }
 
 interface Measured {
   trace: "matched" | "mismatch" | "absent";
-  reason?: string;          // present for "mismatch": the first disagreement, no personal data
-  total?: Figures;          // present when matched
-  toGoal?: Figures;         // present when matched and the goal was reached
+  reason?: string;          // for "mismatch": the first disagreement; contains no personal data
+  total?: TotalFigures;     // present when matched
+  toGoal?: GoalFigures;     // present when matched and the goal was reached
 }
 ```
 
-State: `absent` (no trace lines at all) -> `matched` or `mismatch`, decided once at the end of the run.
+State: `absent` (no trace lines and no result figures) -> `matched` or `mismatch`, decided once when the
+run ends. `mismatch` reasons include a count or argument difference against the run log, and a token
+sum that differs from the result's own `usage`.
 
 ## Run score addition
 
 `RunScore` gains `reachedSeq: number | null`: the run-log `seq` of the entry after which the goal was
 first held; `0` if held before any call; `null` if never. Existing fields are unchanged.
+
+## Player result (what a driver returns)
+
+```ts
+interface PlayerResult {
+  ended: "stopped" | "budget" | "error";
+  turns: number | null;
+  costUsd: number | null;
+  durationMs: number | null;
+  usage: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheCreationTokens: number } | null;
+  text: string;             // the agent's final message; kept in score.json, never in a bundle
+}
+```
 
 ## Frame (`frames.jsonl`)
 
@@ -121,11 +143,11 @@ interface BundleManifest {
   frames: number;           // count, including the start frame
   trace: "matched" | "mismatch" | "absent";
 }
-// bundle score.json: { ended, turns, score, measured }   (no agent text, no cost from the CLI JSON)
+// bundle score.json: { ended, turns, score, measured }   (no agent text)
 ```
 
 ## Relationships
 
-`run.jsonl` (server) <-> `trace.jsonl` (harness) by order; `score.json` summarises both;
+`run.jsonl` (server) <-> `trace.jsonl` (harness recorder) by order; `score.json` summarises both;
 `frames.jsonl` derives from `run.jsonl` and the world; a bundle packages `frames.jsonl`, `trace.jsonl`
 and a reduced `score.json`.

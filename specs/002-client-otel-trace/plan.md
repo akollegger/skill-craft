@@ -3,49 +3,51 @@
 **Branch**: `002-client-otel-trace` | **Date**: 2026-09-30 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `/specs/002-client-otel-trace/spec.md`; decision in
-[ADR-002](../../design/adr/ADR-002-client-otel-trace.md).
+[ADR-002](../../design/adr/ADR-002-client-otel-trace.md) (amended 2026-09-30: the trace source is the
+Claude Agent SDK, chosen after a spike, see [research.md](research.md) D1).
 
 ## Summary
 
-Give each harness run a measured cost. The harness starts a per-run OTLP/HTTP receiver, points the
-headless `claude` child at it, and turns Claude Code's OpenTelemetry posts into a scrubbed,
-numbered `trace.jsonl`. Trace and run log are joined by order, and `score.json` gains duration, token
-and cost totals, plus the same figures up to the goal. A pure frame function in the simulation
-library replays a run log into numbered frames, and a bundle exporter packages frames, trace and
-result into a folder with no world and no personal data. Tokens and cost were verified exact against
-the CLI's own totals (see [research.md](research.md)).
+Give each harness run a measured cost. The harness stops spawning `claude -p` and runs the player through
+the Claude Agent SDK in its own process. A recorder turns the SDK's streamed messages and tool hooks
+into a scrubbed, numbered `trace.jsonl`. Trace and run log are joined by order, and `score.json` gains
+duration, token and cost totals, plus duration and tokens up to the goal. A pure frame function in the
+simulation library replays a run log into numbered frames, and a bundle exporter packages frames, trace
+and result into a folder with no world and no personal data.
 
-The design leans on three verified facts. Request tokens and timing come from the `llm_request` span
-and cost from the `api_request` event, joined by `request_id`. A tool line is the `claude_code.tool`
-span (name and times) joined to the `tool_result` event (arguments) by `tool_use_id`. The one
-auxiliary request the CLI excludes from its totals has no `api_request` event, so "requests with both
-halves" reproduces the CLI totals with no special case.
+The spike ran one real 20-request run through the SDK with OTel export on, as ground truth: tokens,
+time to first token, tool arguments and duration matched, the SDK stream carried none of the five
+personal identifiers the OTel posts carry on every record, and only per-request cost is unavailable.
+That removes the receiver, the OTLP parsing, the request and tool pairing, and the asynchronous
+subprocess rewrite from the earlier plan.
 
 ## Technical Context
 
 **Language/Version**: TypeScript (strict, ES modules), Node 22+
 
-**Primary Dependencies**: none new. Node's `http` for the receiver; hand-written OTLP JSON extraction
-(no OpenTelemetry SDK); existing zod for the persisted shapes
+**Primary Dependencies**: one new: `@anthropic-ai/claude-agent-sdk`, pinned to an exact version
+(0.3.285 in the spike; pre-1.0). `zod` and `@modelcontextprotocol/sdk`, which the SDK also uses, are
+already present
 
 **Storage**: files in the run folder: `trace.jsonl` (appended as lines complete), `score.json`
 (extended); bundle folders written elsewhere
 
-**Testing**: vitest, test first; stand-in OTLP posts derived from a real capture with invented values;
-the fake `claude` child extended to post them
+**Testing**: vitest, test first. A driver seam lets tests supply a scripted player that emits
+SDK-shaped messages and hook calls with invented personal attributes; one env-gated live check and the
+quickstart cover the real SDK
 
-**Target Platform**: macOS/Linux, local; the receiver listens on `127.0.0.1` only
+**Target Platform**: macOS/Linux, local
 
 **Project Type**: library plus CLI scripts (existing layout)
 
-**Performance Goals**: a trace line reaches disk within 50 ms of the post that completes it; with the
-child's 250 ms export interval a step shows up within about a second of happening (SC-003)
+**Performance Goals**: a trace line is on disk within 50 ms of the message that completes it, so a step
+shows within about a second (SC-003)
 
-**Constraints**: no raw post is ever written; no new field in `run.jsonl`; engine and server untouched;
-the receiver must keep serving while the child runs (forces an async harness)
+**Constraints**: no raw message, agent text or reasoning is ever written; no new field in `run.jsonl`;
+engine and server untouched; the SDK is imported in exactly one file
 
-**Scale/Scope**: runs of tens of calls and single-digit model requests to a few hundred; posts of a few
-KB; a run folder stays under a megabyte
+**Scale/Scope**: runs of tens of calls and single-digit to a few dozen model requests; a run folder stays
+under a megabyte
 
 ## Constitution Check
 
@@ -53,13 +55,13 @@ KB; a run folder stays under a megabyte
 
 | Principle | Status |
 |---|---|
-| I. Deterministic, replayable | Pass. The engine, server and `run.jsonl` gain nothing. Clock values exist only in harness-side `trace.jsonl`. Frame derivation is a deterministic replay function. |
-| II. Data-driven worlds | Pass. Frame derivation takes any world; nothing world-specific. |
-| III. Discovery over disclosure | Pass. A bundle carries frames (what the agent saw) and no world, recipe list or item descriptions; a test searches for them. |
-| IV. Test first | Applies. Receiver, allowlist filter, assembler, join, score figures, frames and export each get tests before code (tasks will order them so). |
-| V. Simplicity | Pass. No collector, no SDK, no live mirror, no viewer. Hand-rolled JSON extraction of about ten attributes. |
-| VI. Secrets hygiene | Pass. Personal attributes are dropped on ingest; raw posts never persisted; the child receives only the endpoint and OTel switches. No key is involved. |
-| VII. Decisions before specs | Pass. ADR-002 accepted; deviations found while planning are recorded in its amendments. |
+| I. Deterministic, replayable | Pass. The engine, server and `run.jsonl` gain nothing. Time exists only in harness-side `trace.jsonl`, read from an injected clock so tests are deterministic. Frame derivation is a deterministic replay. |
+| II. Data-driven worlds | Pass. Frame derivation takes any world. |
+| III. Discovery over disclosure | Pass. A bundle carries frames (what the agent saw) and no world, recipe list, item descriptions or agent text; a test searches for them. |
+| IV. Test first | Applies. Recorder, allowlist, join, score figures, frames and export each get tests before code; tasks order them so. |
+| V. Simplicity | Pass, and improved by the amendment: no receiver, no parser, no pairing. One new dependency, behind a seam. |
+| VI. Secrets hygiene | Pass. Only allowlisted fields are kept; the SDK inherits the login and no key is handled or logged. |
+| VII. Decisions before specs | Pass. ADR-002 accepted and amended; the amendment records the source change. |
 
 ## Project Structure
 
@@ -74,7 +76,7 @@ specs/002-client-otel-trace/
 ├── contracts/
 │   ├── trace-jsonl.md      # per-run trace file
 │   ├── score-json.md       # additions to score.json
-│   ├── child-telemetry.md  # what the harness sets on the claude child, what the receiver accepts
+│   ├── player-driver.md    # the driver seam, SDK options, what the recorder reads
 │   └── replay-bundle.md    # bundle folder, manifest, frames, export command
 ├── checklists/requirements.md
 └── tasks.md                # created by /speckit-tasks
@@ -87,36 +89,36 @@ src/
 ├── sim/
 │   ├── frames.ts        # NEW  deriveFrames(world, goal, entries): Frame[]  (pure replay, beside score.ts)
 │   └── score.ts         # EDIT RunScore gains reachedSeq (additive); no behaviour change
-├── trace/               # NEW  harness-side measurement; no dependency on src/mcp
-│   ├── otlp.ts          #      parse OTLP/HTTP JSON bodies -> allowlisted items (drops everything else)
-│   ├── assemble.ts      #      TraceBuilder: pair halves, offset times, assign seq, flag leftovers
-│   ├── receiver.ts      #      per-run 127.0.0.1 server; feeds the builder; appends trace.jsonl
-│   └── measure.ts       #      join to run log; totals and to-goal figures; trace status
+├── trace/               # NEW  harness-side measurement; no dependency on src/mcp or the SDK
+│   ├── lines.ts         #      TraceLine types and the reader for trace.jsonl
+│   ├── recorder.ts      #      TraceRecorder: SDK-shaped messages and tool hooks -> numbered lines
+│   └── measure.ts       #      join to run log; totals and to-goal figures; cross-check; trace status
 └── harness/
-    ├── run.ts           # EDIT async spawn; start receiver; child env; measured figures in score.json
+    ├── driver.ts        # NEW  AgentDriver seam (types only) and PlayerResult
+    ├── sdk-driver.ts    # NEW  the only importer of the SDK: query() with the options of ADR-002 §2.2
+    ├── run.ts           # EDIT drop CLI args/parsing; sdk options builder; async runOnce via a driver
     ├── bundle.ts        # NEW  read a bundle; framesAfter(n)
     └── export.ts        # NEW  exportBundle(runDir, dest)
 scripts/
-├── run-agent.ts         # EDIT await the async harness; print time and tokens
+├── run-agent.ts         # EDIT await async harness; print time and tokens; drop --claude
 └── export-run.ts        # NEW  pnpm dev scripts/export-run.ts <run-dir> <dest>
 test/
-├── otlp.test.ts  assemble.test.ts  receiver.test.ts  measure.test.ts  frames.test.ts
-├── export.test.ts  privacy.test.ts
-├── harness.test.ts      # EDIT async, plus trace cases
-└── helpers/fake-claude.ts  # EDIT can post stand-in OTLP (with invented personal attributes)
-    helpers/otlp.ts         # NEW builders for stand-in posts
+├── recorder.test.ts  measure.test.ts  frames.test.ts  export.test.ts  privacy.test.ts
+├── harness.test.ts      # EDIT drive through the seam; budget error after result; trace cases
+└── helpers/fake-player.ts  # NEW scripted driver; replaces helpers/fake-claude.ts (CLI stand-in)
 ```
 
-**Structure Decision**: extend the existing single project. Measurement lives in a new `src/trace/`
-directory that only the harness imports, so the simulation library and server stay free of
-networking and clocks. Frame derivation is in `src/sim/` because it is a pure replay of the engine,
-next to `score.ts` (ADR-002 amendment); the observer and the exporter will both import it.
+**Structure Decision**: extend the existing single project. Measurement lives in `src/trace/`, which
+only the harness imports, so the simulation library and server stay free of clocks and networking.
+The SDK is confined to `sdk-driver.ts` behind the `AgentDriver` seam, so the recorder, join and export
+are tested without it and a different player could be added by writing another driver. Frame
+derivation is in `src/sim/` beside `score.ts` (ADR-002 amendment); the observer and the exporter will
+both import it.
 
 ## Complexity Tracking
 
-No constitution violations. Two deliberate costs, both forced by facts rather than choice:
+No constitution violations. One deliberate cost:
 
 | Cost | Why needed | Simpler alternative rejected because |
 |---|---|---|
-| `runOnce` and `runExperiment` become async | `spawnSync` blocks the event loop, so an in-process receiver could not answer the child's posts | A separate receiver process would add process management and IPC for the same result |
-| Hand-written OTLP JSON extraction | About ten attributes are needed; the JSON shape was captured from a real run | The OpenTelemetry SDK is a large dependency for reading a few fields, and would decode personal attributes we want never to touch |
+| A pre-1.0 dependency that bundles the Claude Code binary (about 5 MB) | The SDK gives exact tokens, time to first token, tool timing and no personal identifiers, in-process | The OTel route needs a receiver, an OTLP parser, an async subprocess rewrite and a scrubber for identifiers on every record, for the one extra figure (per-request cost) |
