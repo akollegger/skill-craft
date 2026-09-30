@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>skill-craft observer (mock)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Jersey+10&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --midnight: #171233;
+  --dusk: #2a2150;
+  --panel: #231b46;
+  --line: #4a3d85;
+  --text: #efe6ff;
+  --muted: #a396d6;
+  --lamp: #ffb45e;
+  --sakura: #ff8fb1;
+  --mint: #7ee8c7;
+  --coral: #ff6b7a;
+  --display: "Pixelify Sans", ui-monospace, monospace;
+  --score: "Jersey 10", "Pixelify Sans", ui-monospace, monospace;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { background: var(--midnight); }
+body {
+  margin: 0; min-height: 100vh; color: var(--text); font-family: var(--mono); font-size: 14px; line-height: 1.4;
+  background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255, 180, 94, .08), transparent 70%), linear-gradient(var(--midnight), #1d1640 60%, #231a4a);
+}
+.app { max-width: 1240px; margin: 0 auto; padding: 20px 20px 28px; }
+button { font-family: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
+
+/* top bar: the display face is kept for large text only */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 26px; }
+.brand { display: flex; align-items: center; gap: 10px; font: 600 24px var(--display); letter-spacing: .02em; }
+.brand canvas, .goal canvas { image-rendering: pixelated; width: 30px; height: 30px; }
+.goal { display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 10px; background: var(--panel); box-shadow: 0 0 0 3px var(--midnight), 0 0 0 5px var(--line); font: 400 20px var(--display); }
+.goal strong { color: var(--lamp); font-weight: 600; }
+.pbtn { border: 0; padding: 8px 14px; background: var(--dusk); cursor: pointer; font: 600 13px var(--mono); box-shadow: inset -3px -3px 0 rgba(0, 0, 0, .35), inset 3px 3px 0 rgba(255, 255, 255, .14); }
+.pbtn:active { box-shadow: inset 3px 3px 0 rgba(0, 0, 0, .35); transform: translate(1px, 1px); }
+
+/* stage */
+.stage { display: grid; grid-template-columns: minmax(0, 820px); justify-content: center; gap: 22px; align-items: start; }
+.stage.two { grid-template-columns: 1fr 10px 1fr; justify-content: stretch; }
+.net { align-self: stretch; background: repeating-linear-gradient(to bottom, rgba(239, 230, 255, .55) 0 14px, transparent 14px 28px); }
+.slot { min-width: 0; }
+
+/* a pixel window */
+.win { background: var(--panel); box-shadow: 0 0 0 4px var(--midnight), 0 0 0 8px var(--line), 10px 10px 0 8px #0d0a20; }
+.titlebar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--dusk); }
+.titlebar .ttl { flex: 1; margin-left: 4px; font: 600 20px var(--display); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dot { width: 14px; height: 14px; border: 0; padding: 0; background: var(--line); display: inline-block; }
+.dot.close { background: var(--coral); cursor: pointer; }
+.dot.close:hover { background: #ff94a0; }
+.dot.close[disabled] { background: var(--line); cursor: default; }
+.chip { font: 600 12px var(--mono); padding: 2px 8px; background: var(--midnight); color: var(--mint); white-space: nowrap; }
+.chip.replay, .chip.paused { color: var(--lamp); }
+.chip.finished { color: var(--muted); }
+.chip .pip { display: inline-block; width: 8px; height: 8px; margin-right: 6px; background: currentColor; }
+.chip.live .pip { animation: pulse 1.2s steps(2) infinite; }
+@keyframes pulse { 50% { opacity: .25; } }
+
+/* the table view */
+.body { padding: 14px 16px 16px; }
+.score { display: flex; align-items: flex-end; gap: 16px; min-height: 96px; margin-bottom: 10px; }
+.calls { font-family: var(--score); font-size: clamp(84px, 9vw, 128px); line-height: .8; color: var(--text); text-shadow: 4px 4px 0 var(--midnight); min-width: 2ch; }
+.win-state .calls { color: var(--mint); }
+.lost-state .calls { color: var(--coral); }
+.stopped-state .calls { color: var(--lamp); }
+.score-side { padding-bottom: 6px; color: var(--muted); }
+.timebox { margin-left: auto; padding-bottom: 6px; text-align: right; color: var(--muted); }
+.timebox .t { display: block; margin-top: 6px; font: 400 clamp(44px, 5vw, 64px)/.8 var(--score); color: var(--text); text-shadow: 3px 3px 0 var(--midnight); }
+.win-state .timebox .t { color: var(--mint); }
+.lost-state .timebox .t { color: var(--coral); }
+.stopped-state .timebox .t { color: var(--lamp); }
+.pips { display: flex; flex-wrap: wrap; gap: 3px; max-width: 240px; margin-top: 6px; }
+.pips span { width: 8px; height: 8px; background: var(--mint); }
+.pips span.over { background: var(--coral); }
+.pips span.todo { background: transparent; box-shadow: inset 0 0 0 2px var(--line); }
+.room { background: var(--dusk); line-height: 0; box-shadow: 0 0 0 4px var(--midnight); }
+.room canvas { display: block; image-rendering: pixelated; width: 100%; height: auto; aspect-ratio: 168 / 128; }
+.transport { display: flex; align-items: center; gap: 8px; margin: 16px 0 12px; }
+.transport button { width: 36px; height: 32px; padding: 0; border: 0; background: var(--dusk); cursor: pointer; box-shadow: inset -3px -3px 0 rgba(0, 0, 0, .35), inset 3px 3px 0 rgba(255, 255, 255, .14); }
+.transport button:active { box-shadow: inset 3px 3px 0 rgba(0, 0, 0, .35); transform: translate(1px, 1px); }
+.transport svg { width: 22px; height: 22px; fill: currentColor; display: block; margin: auto; }
+.transport input[type=range] { flex: 1; min-width: 60px; accent-color: var(--lamp); }
+.transport .golive { width: auto; padding: 0 10px; font: 600 12px var(--mono); color: var(--mint); }
+.transport [hidden] { display: none; }
+.status { margin: 0 0 10px; min-height: 22px; font-size: 15px; }
+.win-state .status { color: var(--mint); }
+.lost-state .status { color: var(--coral); }
+.stopped-state .status { color: var(--lamp); }
+.tape { list-style: none; margin: 0; padding: 10px 12px; background: var(--midnight); box-shadow: 0 0 0 3px var(--line); min-height: 214px; font-size: 14px; }
+.tape li { display: flex; gap: 12px; padding: 2px 0; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.tape li .n { width: 3ch; text-align: right; color: #6b5fb0; flex: none; }
+.tape li .tm { width: 7ch; text-align: right; color: #7f73c4; flex: none; }
+.tape li.now { color: var(--text); background: rgba(255, 180, 94, .16); box-shadow: -8px 0 0 rgba(255, 180, 94, .16), 8px 0 0 rgba(255, 180, 94, .16); }
+.tape li.bad { color: var(--coral); }
+.tape li.made { color: var(--mint); }
+.tape li.read { opacity: .65; }
+.tape li b { font-weight: 600; }
+
+/* the run picker */
+.pmain { min-width: 0; display: flex; flex-direction: column; }
+.toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; padding: 12px 16px 0; color: var(--muted); font-size: 12px; }
+.toolbar .grp { display: inline-flex; align-items: center; gap: 8px; }
+.seg { display: inline-flex; box-shadow: 0 0 0 2px var(--line); }
+.seg button { border: 0; padding: 4px 10px; background: transparent; cursor: pointer; font: 600 12px var(--mono); color: var(--muted); }
+.seg button[aria-pressed=true] { background: var(--lamp); color: var(--midnight); }
+.list { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+.lhead, .lrow { display: grid; grid-template-columns: 34px minmax(0, 1.3fr) 96px 58px 70px minmax(60px, 1fr); align-items: center; gap: 12px; padding: 6px 10px; }
+.lhead { color: var(--muted); font: 600 12px var(--mono); }
+.lhead button { border: 0; padding: 0; background: none; color: inherit; font: inherit; text-align: right; cursor: pointer; }
+.lhead button[aria-pressed=true] { color: var(--lamp); }
+.lhead button[aria-pressed=true]::before { content: ""; display: inline-block; margin-right: 6px; border: 4px solid transparent; border-bottom: 6px solid var(--lamp); border-top: 0; }
+.lrow { border: 0; background: var(--dusk); text-align: left; cursor: pointer; font: 400 13px var(--mono); box-shadow: inset -3px -3px 0 rgba(0, 0, 0, .3), inset 3px 3px 0 rgba(255, 255, 255, .08); }
+.lrow:hover { background: #33285f; }
+.lrow .rank { font: 400 28px/1 var(--score); color: var(--muted); text-align: center; }
+.lrow.first .rank { color: var(--lamp); }
+.lrow .rn { min-width: 0; display: flex; flex-direction: column; }
+.lrow .rn b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lrow .rn i { font-style: normal; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lrow .out { font-weight: 600; color: var(--muted); }
+.lrow .cn, .lrow .tmv { text-align: right; font-weight: 600; }
+.lrow.reached .out, .lrow.reached .cn { color: var(--mint); }
+.lrow.budget .out, .lrow.budget .cn { color: var(--coral); }
+.lrow.stopped .out, .lrow.stopped .cn { color: var(--lamp); }
+.lrow.live .out { color: var(--mint); }
+.pbody { display: grid; grid-template-columns: 170px 1fr; min-height: 470px; }
+.side { padding: 14px 10px; background: rgba(0, 0, 0, .18); display: flex; flex-direction: column; gap: 2px; }
+.side h3 { margin: 12px 8px 4px; font: 600 12px var(--mono); color: var(--muted); }
+.side h3:first-child { margin-top: 0; }
+.side button { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 6px 8px; border: 0; background: transparent; color: var(--text); text-align: left; cursor: pointer; font: 400 13px var(--mono); }
+.side button[aria-current=true] { background: rgba(255, 180, 94, .18); box-shadow: inset 3px 0 0 var(--lamp); }
+.side button:hover { background: rgba(255, 255, 255, .06); }
+.side .count { color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; padding: 16px; align-content: start; }
+.tile { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 10px; border: 0; background: var(--dusk); cursor: pointer; text-align: left; box-shadow: inset -3px -3px 0 rgba(0, 0, 0, .3), inset 3px 3px 0 rgba(255, 255, 255, .08); }
+.tile:hover { background: #33285f; }
+.tile .thumb { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.tile canvas { image-rendering: pixelated; width: 78px; height: 78px; background: var(--midnight); }
+.tile .num { font: 400 54px/0.8 var(--score); color: var(--text); text-shadow: 3px 3px 0 var(--midnight); }
+.tile .name { font: 600 13px var(--mono); }
+.tile .tag { color: var(--muted); font-size: 11px; }
+.tile .clock { color: var(--muted); font-size: 12px; }
+.strip { display: flex; flex-wrap: wrap; gap: 2px; min-height: 8px; }
+.strip i { width: 6px; height: 6px; background: var(--lamp); }
+.strip i.c { background: var(--mint); }
+.strip i.x { background: var(--coral); }
+.strip i.r { background: #8a7bd0; }
+.tile .out { font: 600 12px var(--mono); color: var(--muted); }
+.tile.reached .num, .tile.reached .out { color: var(--mint); }
+.tile.budget .num, .tile.budget .out { color: var(--coral); }
+.tile.stopped .num, .tile.stopped .out { color: var(--lamp); }
+.tile.live .out { color: var(--mint); }
+.tile.live .out::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; background: var(--mint); animation: pulse 1.2s steps(2) infinite; }
+.empty { grid-column: 1 / -1; color: var(--muted); padding: 24px 4px; }
+.hint { margin: 0; padding: 10px 16px; color: var(--muted); font-size: 12px; background: rgba(0, 0, 0, .18); }
+
+.foot { margin: 22px auto 0; color: var(--muted); font-size: 13px; max-width: 92ch; text-align: center; }
+.foot kbd { font: inherit; padding: 0 6px; background: var(--dusk); box-shadow: inset 0 0 0 2px var(--line); }
+.speed { display: inline-flex; align-items: center; gap: 8px; margin-left: 12px; }
+.speed select { font: inherit; background: var(--dusk); color: var(--text); border: 0; padding: 4px 6px; box-shadow: inset 0 0 0 2px var(--line); }
+
+@media (max-width: 860px) {
+  .stage.two { grid-template-columns: 1fr; }
+  .stage.two .net { height: 10px; width: 100%; background: repeating-linear-gradient(to right, rgba(239, 230, 255, .55) 0 14px, transparent 14px 28px); }
+  .pbody { grid-template-columns: 1fr; }
+  .side { flex-direction: row; flex-wrap: wrap; }
+  .top { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { .chip.live .pip, .tile.live .out::before { animation: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><canvas id="logo" width="10" height="10" aria-hidden="true"></canvas><span>skill-craft</span></div>
+    <div class="goal"><canvas id="goalSprite" width="10" height="10" aria-hidden="true"></canvas><span id="goalText"></span></div>
+    <button class="pbtn" id="compare" aria-pressed="false">Compare two runs</button>
+  </header>
+
+  <main class="stage" id="stage" aria-label="Runs at the crafting table"></main>
+
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+/*FRAMES*/
+window.OBSERVER_DATA = {"world":{"name":"braevin-7","rows":3,"cols":3},"goal":{"item":"glirol","qty":1},"best":{"minCalls":3,"minCrafts":1},"experiment":"pilot-1","runs":[{"id":"w1","title":"Without a skill 1","tag":"recorded: headless Claude Code, 10 turns","ended":"budget","live":true,"frames":[{"seq":0,"tool":"start","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":0},{"seq":1,"tool":"help","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":1377},{"seq":2,"tool":"inventory","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":1880},{"seq":3,"tool":"look","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":2371},{"seq":4,"tool":"place","args":{"item":"doudrur","row":0,"col":0},"ok":true,"grid":[["doudrur",null,null],[null,null,null],[null,null,null]],"craftable":"glavruzael","held":{"doudrur":2,"lugli":4,"tepitil":4,"thegen":4},"actions":1,"refusals":0,"reached":false,"t":2688},{"seq":5,"tool":"place","args":{"item":"lugli","row":0,"col":1},"ok":true,"grid":[["doudrur","lugli",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":2,"lugli":3,"tepitil":4,"thegen":4},"actions":2,"refusals":0,"reached":false,"t":3498},{"seq":6,"tool":"clear","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":3,"refusals":0,"reached":false,"t":5085},{"seq":7,"tool":"place","args":{"item":"lugli","row":0,"col":0},"ok":true,"grid":[["lugli",null,null],[null,null,null],[null,null,null]],"craftable":"naeviozhum","held":{"doudrur":3,"lugli":3,"tepitil":4,"thegen":4},"actions":4,"refusals":0,"reached":false,"t":7161},{"seq":8,"tool":"clear","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":5,"refusals":0,"reached":false,"t":7445},{"seq":9,"tool":"place","args":{"item":"tepitil","row":0,"col":0},"ok":true,"grid":[["tepitil",null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":3,"thegen":4},"actions":6,"refusals":0,"reached":false,"t":8037},{"seq":10,"tool":"clear","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":7,"refusals":0,"reached":false,"t":9191},{"seq":11,"tool":"place","args":{"item":"thegen","row":0,"col":0},"ok":true,"grid":[["thegen",null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":3},"actions":8,"refusals":0,"reached":false,"t":10615},{"seq":12,"tool":"place","args":{"item":"tepitil","row":0,"col":1},"ok":true,"grid":[["thegen","tepitil",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":3,"thegen":3},"actions":9,"refusals":0,"reached":false,"t":11044},{"seq":13,"tool":"remove","args":{"row":0,"col":1},"ok":true,"grid":[["thegen",null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":3},"actions":10,"refusals":0,"reached":false,"t":13011},{"seq":14,"tool":"place","args":{"item":"doudrur","row":0,"col":1},"ok":true,"grid":[["thegen","doudrur",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":2,"lugli":4,"tepitil":4,"thegen":3},"actions":11,"refusals":0,"reached":false,"t":13658},{"seq":15,"tool":"clear","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":12,"refusals":0,"reached":false,"t":14359},{"seq":16,"tool":"place","args":{"item":"doudrur","row":0,"col":0},"ok":true,"grid":[["doudrur",null,null],[null,null,null],[null,null,null]],"craftable":"glavruzael","held":{"doudrur":2,"lugli":4,"tepitil":4,"thegen":4},"actions":13,"refusals":0,"reached":false,"t":14665},{"seq":17,"tool":"craft","args":{},"ok":true,"crafted":{"item":"glavruzael","qty":2},"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":2,"glavruzael":2,"lugli":4,"tepitil":4,"thegen":4},"actions":14,"refusals":0,"reached":false,"t":16406},{"seq":18,"tool":"place","args":{"item":"glavruzael","row":0,"col":0},"ok":true,"grid":[["glavruzael",null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":2,"glavruzael":1,"lugli":4,"tepitil":4,"thegen":4},"actions":15,"refusals":0,"reached":false,"t":17704},{"seq":19,"tool":"place","args":{"item":"glavruzael","row":0,"col":1},"ok":true,"grid":[["glavruzael","glavruzael",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":2,"lugli":4,"tepitil":4,"thegen":4},"actions":16,"refusals":0,"reached":false,"t":18984}]},{"id":"w2","title":"Without a skill 2","tag":"stand-in","ended":"stopped","live":false,"frames":[{"seq":0,"tool":"start","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":0},{"seq":1,"tool":"help","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":1149},{"seq":2,"tool":"inventory","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":2311},{"seq":3,"tool":"look","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":3485},{"seq":4,"tool":"place","args":{"item":"doudrur","row":0,"col":0},"ok":true,"grid":[["doudrur",null,null],[null,null,null],[null,null,null]],"craftable":"glavruzael","held":{"doudrur":2,"lugli":4,"tepitil":4,"thegen":4},"actions":1,"refusals":0,"reached":false,"t":3747},{"seq":5,"tool":"place","args":{"item":"lugli","row":0,"col":1},"ok":true,"grid":[["doudrur","lugli",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":2,"lugli":3,"tepitil":4,"thegen":4},"actions":2,"refusals":0,"reached":false,"t":5534},{"seq":6,"tool":"clear","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":3,"refusals":0,"reached":false,"t":6462},{"seq":7,"tool":"place","args":{"item":"tepitil","row":0,"col":0},"ok":true,"grid":[["tepitil",null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":3,"thegen":4},"actions":4,"refusals":0,"reached":false,"t":7336},{"seq":8,"tool":"place","args":{"item":"thegen","row":0,"col":1},"ok":true,"grid":[["tepitil","thegen",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":3,"thegen":3},"actions":5,"refusals":0,"reached":false,"t":7766},{"seq":9,"tool":"clear","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":6,"refusals":0,"reached":false,"t":9700}]},{"id":"w3","title":"Without a skill 3","tag":"stand-in","ended":"budget","live":false,"frames":[{"seq":0,"tool":"start","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":0},{"seq":1,"tool":"help","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":607},{"seq":2,"tool":"place","args":{"item":"lugli","row":0,"col":0},"ok":true,"grid":[["lugli",null,null],[null,null,null],[null,null,null]],"craftable":"naeviozhum","held":{"doudrur":3,"lugli":3,"tepitil":4,"thegen":4},"actions":1,"refusals":0,"reached":false,"t":2005},{"seq":3,"tool":"place","args":{"item":"doudrur","row":0,"col":1},"ok":true,"grid":[["lugli","doudrur",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":2,"lugli":3,"tepitil":4,"thegen":4},"actions":2,"refusals":0,"reached":false,"t":3044},{"seq":4,"tool":"craft","args":{},"ok":false,"error":"nothing_to_craft","grid":[["lugli","doudrur",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":2,"lugli":3,"tepitil":4,"thegen":4},"actions":3,"refusals":1,"reached":false,"t":3677},{"seq":5,"tool":"clear","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":4,"refusals":1,"reached":false,"t":4408},{"seq":6,"tool":"place","args":{"item":"tepitil","row":0,"col":0},"ok":true,"grid":[["tepitil",null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":3,"thegen":4},"actions":5,"refusals":1,"reached":false,"t":6626},{"seq":7,"tool":"place","args":{"item":"lugli","row":0,"col":1},"ok":true,"grid":[["tepitil","lugli",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":3,"tepitil":3,"thegen":4},"actions":6,"refusals":1,"reached":false,"t":7186},{"seq":8,"tool":"craft","args":{},"ok":false,"error":"nothing_to_craft","grid":[["tepitil","lugli",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":3,"tepitil":3,"thegen":4},"actions":7,"refusals":2,"reached":false,"t":7775},{"seq":9,"tool":"clear","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":8,"refusals":2,"reached":false,"t":9122},{"seq":10,"tool":"place","args":{"item":"thegen","row":0,"col":0},"ok":true,"grid":[["thegen",null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":3},"actions":9,"refusals":2,"reached":false,"t":9973},{"seq":11,"tool":"place","args":{"item":"thegen","row":0,"col":1},"ok":true,"grid":[["thegen","thegen",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":2},"actions":10,"refusals":2,"reached":false,"t":11080},{"seq":12,"tool":"craft","args":{},"ok":false,"error":"nothing_to_craft","grid":[["thegen","thegen",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":2},"actions":11,"refusals":3,"reached":false,"t":11580},{"seq":13,"tool":"remove","args":{"row":0,"col":1},"ok":true,"grid":[["thegen",null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":3},"actions":12,"refusals":3,"reached":false,"t":12722},{"seq":14,"tool":"place","args":{"item":"doudrur","row":1,"col":1},"ok":true,"grid":[["thegen",null,null],[null,"doudrur",null],[null,null,null]],"craftable":null,"held":{"doudrur":2,"lugli":4,"tepitil":4,"thegen":3},"actions":13,"refusals":3,"reached":false,"t":13367},{"seq":15,"tool":"craft","args":{},"ok":false,"error":"nothing_to_craft","grid":[["thegen",null,null],[null,"doudrur",null],[null,null,null]],"craftable":null,"held":{"doudrur":2,"lugli":4,"tepitil":4,"thegen":3},"actions":14,"refusals":4,"reached":false,"t":15300}]},{"id":"s1","title":"With a skill 1","tag":"stand-in","ended":"reached","live":false,"frames":[{"seq":0,"tool":"start","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":0},{"seq":1,"tool":"help","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":397},{"seq":2,"tool":"inventory","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":1057},{"seq":3,"tool":"place","args":{"item":"lugli","row":0,"col":0},"ok":true,"grid":[["lugli",null,null],[null,null,null],[null,null,null]],"craftable":"naeviozhum","held":{"doudrur":3,"lugli":3,"tepitil":4,"thegen":4},"actions":1,"refusals":0,"reached":false,"t":2945},{"seq":4,"tool":"place","args":{"item":"lugli","row":0,"col":1},"ok":true,"grid":[["lugli","lugli",null],[null,null,null],[null,null,null]],"craftable":"glirol","held":{"doudrur":3,"lugli":2,"tepitil":4,"thegen":4},"actions":2,"refusals":0,"reached":false,"t":3206},{"seq":5,"tool":"craft","args":{},"ok":true,"crafted":{"item":"glirol","qty":1},"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"glirol":1,"lugli":2,"tepitil":4,"thegen":4},"actions":3,"refusals":0,"reached":true,"t":4200}]},{"id":"s2","title":"With a skill 2","tag":"stand-in","ended":"reached","live":false,"frames":[{"seq":0,"tool":"start","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":0},{"seq":1,"tool":"help","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":470},{"seq":2,"tool":"inventory","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":1323},{"seq":3,"tool":"place","args":{"item":"lugli","row":0,"col":0},"ok":true,"grid":[["lugli",null,null],[null,null,null],[null,null,null]],"craftable":"naeviozhum","held":{"doudrur":3,"lugli":3,"tepitil":4,"thegen":4},"actions":1,"refusals":0,"reached":false,"t":2478},{"seq":4,"tool":"place","args":{"item":"tepitil","row":0,"col":1},"ok":true,"grid":[["lugli","tepitil",null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":3,"tepitil":3,"thegen":4},"actions":2,"refusals":0,"reached":false,"t":2670},{"seq":5,"tool":"remove","args":{"row":0,"col":1},"ok":true,"grid":[["lugli",null,null],[null,null,null],[null,null,null]],"craftable":"naeviozhum","held":{"doudrur":3,"lugli":3,"tepitil":4,"thegen":4},"actions":3,"refusals":0,"reached":false,"t":3392},{"seq":6,"tool":"place","args":{"item":"lugli","row":0,"col":1},"ok":true,"grid":[["lugli","lugli",null],[null,null,null],[null,null,null]],"craftable":"glirol","held":{"doudrur":3,"lugli":2,"tepitil":4,"thegen":4},"actions":4,"refusals":0,"reached":false,"t":4713},{"seq":7,"tool":"craft","args":{},"ok":true,"crafted":{"item":"glirol","qty":1},"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"glirol":1,"lugli":2,"tepitil":4,"thegen":4},"actions":5,"refusals":0,"reached":true,"t":6900}]},{"id":"s3","title":"With a skill 3","tag":"stand-in","ended":"reached","live":false,"frames":[{"seq":0,"tool":"start","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":0},{"seq":1,"tool":"help","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":1149},{"seq":2,"tool":"look","args":{},"ok":true,"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"lugli":4,"tepitil":4,"thegen":4},"actions":0,"refusals":0,"reached":false,"t":1961},{"seq":3,"tool":"place","args":{"item":"lugli","row":0,"col":0},"ok":true,"grid":[["lugli",null,null],[null,null,null],[null,null,null]],"craftable":"naeviozhum","held":{"doudrur":3,"lugli":3,"tepitil":4,"thegen":4},"actions":1,"refusals":0,"reached":false,"t":2640},{"seq":4,"tool":"place","args":{"item":"lugli","row":0,"col":1},"ok":true,"grid":[["lugli","lugli",null],[null,null,null],[null,null,null]],"craftable":"glirol","held":{"doudrur":3,"lugli":2,"tepitil":4,"thegen":4},"actions":2,"refusals":0,"reached":false,"t":2824},{"seq":5,"tool":"craft","args":{},"ok":true,"crafted":{"item":"glirol","qty":1},"grid":[[null,null,null],[null,null,null],[null,null,null]],"craftable":null,"held":{"doudrur":3,"glirol":1,"lugli":2,"tepitil":4,"thegen":4},"actions":3,"refusals":0,"reached":true,"t":4600}]}]};
+/*END*/
+</script>
+<script>
+(() => {
+const D = window.OBSERVER_DATA;
+if (!D) { document.body.insertAdjacentHTML("afterbegin", "<p style='padding:20px'>No data. Run make-frames.ts.</p>"); return; }
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const NW = 168, NH = 128;
+const C = { midnight: "#171233", dusk: "#2a2150", dusk2: "#33285f", line: "#4a3d85", lamp: "#ffb45e", mint: "#7ee8c7", coral: "#ff6b7a", sakura: "#ff8fb1", w1: "#b98a5e", w2: "#8c5a3a", w3: "#4d2e1c", w4: "#6b4429", text: "#efe6ff" };
+let speed = 1;
+
+/* ---------- sprites: one per item name, generated from a hash ---------- */
+const PALS = [
+  ["#b8ffe6", "#5ee0c1", "#2a9d8f"], ["#ffd0e0", "#ff8fb1", "#c2527a"], ["#ffe6b0", "#ffb45e", "#c47a2c"], ["#cfe6ff", "#7fb2ff", "#4a6fc4"],
+  ["#e6d4ff", "#b58cff", "#7a55c4"], ["#eaffb8", "#b6e35c", "#6f9a2c"], ["#ffd5cc", "#ff8a75", "#c0533f"], ["#fff1d0", "#e6c98c", "#a88a52"],
+];
+const fnv = (s) => { let h = 2166136261; for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const rng = (seed) => { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+const spriteCache = new Map();
+function spriteFor(name) {
+  if (spriteCache.has(name)) return spriteCache.get(name);
+  const h = fnv(name), r = rng(h), pal = PALS[h % PALS.length];
+  let cells;
+  for (;;) {
+    cells = Array.from({ length: 8 }, () => Array(8).fill(0));
+    let n = 0;
+    for (let y = 1; y < 7; y++) for (let x = 0; x < 4; x++) { const v = r() < (y === 1 || y === 6 ? 0.42 : 0.64) ? 1 : 0; cells[y][x] = v; cells[y][7 - x] = v; n += v * 2; }
+    const core = [1, 2, 3, 4, 5, 6].filter((y) => cells[y][3]).length;
+    if (n >= 20 && n <= 40 && core >= 3) break;
+  }
+  const cv = document.createElement("canvas"); cv.width = 10; cv.height = 10;
+  const g = cv.getContext("2d");
+  const at = (x, y) => (x >= 0 && y >= 0 && x < 8 && y < 8 ? cells[y][x] : 0);
+  for (let y = -1; y <= 8; y++) for (let x = -1; x <= 8; x++) {
+    if (at(x, y)) { g.fillStyle = !at(x, y - 1) ? pal[0] : !at(x, y + 1) ? pal[2] : pal[1]; g.fillRect(x + 1, y + 1, 1, 1); }
+    else if (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1)) { g.fillStyle = C.midnight; g.fillRect(x + 1, y + 1, 1, 1); }
+  }
+  if (cells[3][2] && cells[3][5]) { g.fillStyle = C.midnight; g.fillRect(3, 4, 1, 1); g.fillRect(6, 4, 1, 1); }
+  const s = { cv, main: pal[1] };
+  spriteCache.set(name, s);
+  return s;
+}
+const DIG = { 0: [7,5,5,5,7], 1: [2,6,2,2,7], 2: [7,1,7,4,7], 3: [7,1,7,1,7], 4: [5,5,7,1,1], 5: [7,4,7,1,7], 6: [7,4,7,5,7], 7: [7,1,1,1,1], 8: [7,5,7,5,7], 9: [7,5,7,1,7] };
+function digits(g, str, x, y, color) {
+  let cx = x;
+  for (const ch of String(str)) { DIG[ch].forEach((bits, ry) => { for (let b = 0; b < 3; b++) if (bits & (4 >> b)) { g.fillStyle = color; g.fillRect(cx + b, y + ry, 1, 1); } }); cx += 4; }
+}
+
+/* ---------- copy ---------- */
+const WHY = { out_of_bounds: "off the table", cell_occupied: "cell already used", cell_empty: "cell is empty", not_in_inventory: "none left", nothing_to_craft: "nothing to make", unknown_item: "unknown item" };
+const chip = (name) => `<b style="color:${spriteFor(name).main}">${name}</b>`;
+function tapeLine(f) {
+  const a = f.args || {};
+  if (!f.ok) return { cls: "bad", html: `${f.tool} refused: ${WHY[f.error] || f.error}` };
+  switch (f.tool) {
+    case "place": return { cls: "", html: `place ${chip(a.item)} at ${a.row},${a.col}` };
+    case "remove": return { cls: "", html: `take back from ${a.row},${a.col}` };
+    case "clear": return { cls: "", html: "clear the table" };
+    case "craft": return { cls: "made", html: `craft made ${chip(f.crafted.item)} x${f.crafted.qty}` };
+    case "look": return { cls: "read", html: "look at the table" };
+    case "inventory": return { cls: "read", html: "check the hotbar" };
+    default: return { cls: "read", html: "read the help" };
+  }
+}
+/** 4.2s under a minute, 1:05 above. */
+const fmt = (ms) => (ms < 60000 ? (ms / 1000).toFixed(1) + "s" : Math.floor(ms / 60000) + ":" + String(Math.floor(ms / 1000) % 60).padStart(2, "0"));
+const OUTCOME = { reached: "got it", budget: "out of turns", stopped: "gave up", live: "live" };
+const ease = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
+const ICON = { play: '<path d="M2 1h1v6H2zM3 2h1v4H3zM4 3h1v2H4z"/>', pause: '<path d="M2 1h1v6H2zM5 1h1v6H5z"/>', step: '<path d="M1 1h1v6H1zM3 1h1v6H3zM4 2h1v4H4zM5 3h1v2H5z"/>', restart: '<path d="M2 1h4v1H2zM1 2h1v4H1zM2 6h4v1H2zM6 2h1v2H6zM5 3h2v1H5z"/>' };
+const svg = (k) => `<svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${ICON[k]}</svg>`;
+
+/* ---------- a run, and its calls arriving over time ---------- */
+class RunState {
+  constructor(run) { this.run = run; this.frames = run.frames; this.total = run.frames.length; this.avail = run.live ? 1 : this.total; this.arrivedAt = 0; this.listeners = new Set(); }
+  get status() { return this.avail < this.total ? "live" : this.run.ended; }
+  get last() { return this.frames[this.avail - 1]; }
+  /** The run's own clock in ms: it keeps ticking between calls while the run is live. */
+  clockNow(now) { return this.avail < this.total && this.arrivedAt ? this.last.t + (now - this.arrivedAt) * speed : this.last.t; }
+  tick(now) {
+    if (this.avail >= this.total) return;
+    if (!this.arrivedAt) { this.arrivedAt = now; return; }
+    const gap = (this.frames[this.avail].t - this.frames[this.avail - 1].t) / speed; // calls arrive when they did
+    if (now - this.arrivedAt >= gap) { this.avail++; this.arrivedAt = now; this.listeners.forEach((f) => f()); }
+  }
+}
+const states = D.runs.map((r) => new RunState(r));
+
+/* ---------- the table view ---------- */
+class Table {
+  constructor(root, state, onClose) {
+    this.root = root; this.state = state; this.frames = state.frames; this.onClose = onClose; this.fx = {}; this.playAt = 0;
+    const live = state.status === "live";
+    this.i = live ? state.avail - 1 : 0; this.mode = live ? "live" : "paused"; this.prev = this.frames[this.i]; this.lastTime = "";
+    root.innerHTML = `
+      <div class="win">
+        <div class="titlebar"><button class="dot close" aria-label="Close this table and pick another run" title="Close (Esc)"></button>
+          <span class="ttl">${state.run.title}</span><span class="chip"><i class="pip"></i><span class="cm"></span></span></div>
+        <div class="body">
+          <div class="score"><div class="calls" aria-live="polite">0</div><div class="score-side"><div>calls</div><div class="pips" aria-hidden="true"></div></div><div class="timebox"><span>time</span><span class="t">0.0s</span></div></div>
+          <div class="room"><canvas width="${NW}" height="${NH}" role="img" aria-label="The crafting table"></canvas></div>
+          <div class="transport">
+            <button class="play" aria-label="Play or pause" title="Play or pause (space)"></button>
+            <button class="step" aria-label="Next call" title="Next call (right arrow)">${svg("step")}</button>
+            <button class="restart" aria-label="Start over" title="Start over (r)">${svg("restart")}</button>
+            <input class="scrub" type="range" min="0" max="0" value="0" aria-label="Position in the run">
+            <button class="golive" hidden>go live</button>
+          </div>
+          <p class="status"></p>
+          <ol class="tape" aria-label="Calls so far"></ol>
+        </div>
+      </div>`;
+    const $ = (s) => root.querySelector(s);
+    this.$win = $(".win"); this.$chip = $(".chip"); this.$cm = $(".cm"); this.$calls = $(".calls"); this.$pips = $(".pips"); this.$status = $(".status"); this.$tape = $(".tape");
+    this.$time = $(".timebox .t"); this.$play = $(".play"); this.$scrub = $(".scrub"); this.$golive = $(".golive"); this.cv = $("canvas"); this.g = this.cv.getContext("2d");
+    $(".close").onclick = () => this.onClose();
+    this.$play.onclick = () => this.togglePlay();
+    $(".step").onclick = () => { this.mode = "paused"; this.setFrame(this.i + 1, true); };
+    $(".restart").onclick = () => this.restart();
+    this.$scrub.oninput = () => { this.mode = "paused"; this.setFrame(Number(this.$scrub.value), false); };
+    this.$golive.onclick = () => { this.mode = "live"; this.setFrame(this.state.avail - 1, false, true); };
+    this.arrive = () => { if (this.mode === "live") { this.setFrame(this.state.avail - 1, true); if (this.state.status !== "live") this.mode = "paused"; this.dom(); } else this.dom(); };
+    state.listeners.add(this.arrive);
+    this.setFrame(this.i, false, true);
+  }
+  destroy() { this.state.listeners.delete(this.arrive); }
+  get atLiveEdge() { return this.i >= this.state.avail - 1; }
+  togglePlay() {
+    if (this.mode === "live" || this.mode === "playing") this.mode = "paused";
+    else if (this.state.status === "live" && this.atLiveEdge) this.mode = "live";
+    else { if (this.atLiveEdge) this.setFrame(0, false); this.mode = "playing"; this.playAt = performance.now() + 400 / speed; }
+    this.dom();
+  }
+  restart() { this.setFrame(0, false); this.mode = "playing"; this.playAt = performance.now() + 500 / speed; this.dom(); }
+  setFrame(i, animate, force) {
+    i = Math.max(0, Math.min(this.state.avail - 1, i));
+    if (i === this.i && !force) { this.dom(); return; } // nothing changed, so nothing replays
+    const now = performance.now(), prev = this.frames[this.i], f = this.frames[i];
+    this.prev = prev; this.i = i; this.fx = {};
+    if (animate) {
+      if (!f.ok) this.fx.refuse = now;
+      if (f.tool === "place" && f.ok) this.fx.drop = { r: f.args.row, c: f.args.col, t0: now };
+      if ((f.tool === "remove" || f.tool === "clear") && f.ok) this.fx.lift = { t0: now };
+      if (f.tool === "craft" && f.ok) this.fx.craft = { t0: now, item: f.crafted.item };
+      if (f.reached && !prev.reached && !reduced) this.fx.win = now;
+      const pulse = {};
+      for (const k of new Set([...Object.keys(f.held), ...Object.keys(prev.held)])) if ((f.held[k] || 0) !== (prev.held[k] || 0)) pulse[k] = now;
+      this.fx.pulse = pulse;
+    }
+    this.dom();
+  }
+  dom() {
+    const f = this.frames[this.i], best = D.best.minCalls, st = this.state.status, done = st !== "live", atEnd = done && this.i === this.state.total - 1;
+    this.$calls.textContent = f.actions;
+    const n = Math.min(40, Math.max(f.actions, best));
+    this.$pips.innerHTML = Array.from({ length: n }, (_, k) => `<span class="${k < f.actions ? (k >= best ? "over" : "") : "todo"}"></span>`).join("");
+    this.$win.classList.toggle("win-state", f.reached);
+    this.$win.classList.toggle("lost-state", !f.reached && atEnd && st === "budget");
+    this.$win.classList.toggle("stopped-state", !f.reached && atEnd && st === "stopped");
+    this.$status.textContent = f.reached ? `Got it in ${f.actions} calls. The best possible is ${best}.`
+      : atEnd && st === "budget" ? `Out of turns after ${f.actions} calls, without the item.`
+      : atEnd && st === "stopped" ? `Gave up after ${f.actions} calls, without the item.`
+      : this.i === 0 ? "Waiting for the first move."
+      : this.mode === "live" ? "Working it out." : `Call ${this.i} of ${this.state.avail - 1}.`;
+    const shown = this.mode === "live" && !done ? "live" : this.mode === "playing" ? "replay" : atEnd ? "finished" : "paused";
+    this.$chip.className = "chip " + shown; this.$cm.textContent = shown;
+    this.$play.innerHTML = svg((this.mode === "live" && !done) || this.mode === "playing" ? "pause" : "play");
+    this.$scrub.max = this.state.avail - 1; this.$scrub.value = this.i;
+    this.$golive.hidden = !(st === "live" && this.mode !== "live");
+    const rows = this.frames.slice(1, this.i + 1).slice(-9).reverse();
+    this.$tape.innerHTML = rows.map((r, k) => { const t = tapeLine(r); return `<li class="${t.cls}${k === 0 ? " now" : ""}"><span class="n">${r.seq}</span><span class="tm">${fmt(r.t)}</span><span>${t.html}</span></li>`; }).join("") || "<li class='read'>nothing yet</li>";
+  }
+  frame(t) {
+    const clk = this.mode === "live" && this.state.status === "live" ? this.state.clockNow(t) : this.frames[this.i].t, txt = fmt(clk);
+    if (txt !== this.lastTime) { this.$time.textContent = txt; this.lastTime = txt; }
+    if (this.mode === "playing" && t >= this.playAt) {
+      if (this.i < this.state.avail - 1) {
+        this.setFrame(this.i + 1, true);
+        const next = this.frames[this.i + 1]; // replay at the pace the run had, with long pauses capped at 2s
+        this.playAt = t + (next ? Math.min(2000, Math.max(250, next.t - this.frames[this.i].t)) : 600) / speed;
+      }
+      else { this.mode = this.state.status === "live" ? "live" : "paused"; this.dom(); }
+    }
+    this.draw(t);
+  }
+  draw(t) {
+    const g = this.g, f = this.frames[this.i], rows = D.world.rows, cols = D.world.cols, fx = this.fx;
+    g.imageSmoothingEnabled = false; g.globalAlpha = 1; g.clearRect(0, 0, NW, NH);
+    const R = (x, y, w, h, c, a = 1) => { g.globalAlpha = a; g.fillStyle = c; g.fillRect(x | 0, y | 0, w | 0, h | 0); g.globalAlpha = 1; };
+
+    // a flat dusk backdrop with a faint dot grid
+    R(0, 0, NW, NH, C.dusk);
+    for (let y = 4; y < NH; y += 8) for (let x = 4; x < NW; x += 8) R(x, y, 1, 1, C.dusk2);
+
+    // the board, as large as the canvas allows
+    const gap = 2, cell = Math.max(12, Math.min(26, Math.floor((88 - (rows - 1) * gap) / rows)));
+    const bw = cols * cell + (cols - 1) * gap + 6, bh = rows * cell + (rows - 1) * gap + 6;
+    let sx = 0;
+    if (fx.refuse && !reduced) { const dt = t - fx.refuse; if (dt < 260) sx = Math.floor(dt / 40) % 2 ? 1 : -1; }
+    const bx = 8 + sx, by = 6 + Math.floor((94 - bh) / 2);
+    R(bx - 1, by - 1, bw + 2, bh + 2, C.midnight); R(bx, by, bw, bh, C.w3);
+    if (fx.refuse && t - fx.refuse < 300) { R(bx, by, bw, 1, C.coral); R(bx, by + bh - 1, bw, 1, C.coral); R(bx, by, 1, bh, C.coral); R(bx + bw - 1, by, 1, bh, C.coral); }
+    const cx = (c) => bx + 3 + c * (cell + gap), cy = (r) => by + 3 + r * (cell + gap);
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { R(cx(c), cy(r), cell, cell, C.w1); R(cx(c), cy(r), cell, 1, "#d2a479"); R(cx(c), cy(r) + cell - 1, cell, 1, C.w2); }
+    const scale = cell >= 22 ? 2 : 1, sz = 10 * scale, off = Math.floor((cell - sz) / 2);
+    const sprite = (name, x, y, a = 1) => { g.globalAlpha = a; g.drawImage(spriteFor(name).cv, x | 0, y | 0, sz, sz); g.globalAlpha = 1; };
+    if (fx.lift && !reduced) { const dt = t - fx.lift.t0; if (dt < 240) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const p = this.prev.grid[r][c]; if (p && !f.grid[r][c]) sprite(p, cx(c) + off, cy(r) + off - dt / 30, 1 - dt / 240); } }
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const it = f.grid[r][c]; if (!it) continue;
+      let dy = 0; if (fx.drop && fx.drop.r === r && fx.drop.c === c && !reduced) dy = -Math.round((1 - ease((t - fx.drop.t0) / 240)) * 9);
+      R(cx(c) + off + 2, cy(r) + off + sz - 2, sz - 4, 2, "#000", 0.22);
+      sprite(it, cx(c) + off, cy(r) + off + dy);
+      if (fx.drop && fx.drop.r === r && fx.drop.c === c && t - fx.drop.t0 < 700) { const a = 0.9 * (1 - (t - fx.drop.t0) / 700); R(cx(c), cy(r), cell, 1, C.lamp, a); R(cx(c), cy(r) + cell - 1, cell, 1, C.lamp, a); R(cx(c), cy(r), 1, cell, C.lamp, a); R(cx(c) + cell - 1, cy(r), 1, cell, C.lamp, a); }
+    }
+
+    // the output slot and arrow
+    const sxo = bx + bw + 8, slot = 32, syo = by + Math.floor((bh - slot) / 2), on = !!f.craftable;
+    const ac = on ? C.lamp : "#5a4a8a", cyy = syo + slot / 2, ax = sxo - 4;
+    R(ax, cyy - 1, 7, 2, ac); R(ax + 7, cyy - 3, 1, 6, ac); R(ax + 8, cyy - 2, 1, 4, ac); R(ax + 9, cyy - 1, 1, 2, ac);
+    const ox = sxo + 8; R(ox - 1, syo - 1, slot + 2, slot + 2, C.midnight); R(ox, syo, slot, slot, "#2b1f4a"); R(ox + 2, syo + 2, slot - 4, slot - 4, "#382a63");
+    if (on) { g.globalAlpha = reduced ? 0.6 : 0.45 + 0.2 * Math.sin(t / 260); g.drawImage(spriteFor(f.craftable).cv, ox + (slot - 20) / 2, syo + (slot - 20) / 2, 20, 20); g.globalAlpha = 1; }
+    else for (const [dx, dy] of [[4, 4], [slot - 6, 4], [4, slot - 6], [slot - 6, slot - 6]]) R(ox + dx, syo + dy, 2, 2, "#5a4a8a");
+    if (fx.craft && !reduced) {
+      const dt = t - fx.craft.t0;
+      if (dt < 200) R(bx, by, bw, bh, "#fff", 0.6 * (1 - dt / 200));
+      if (dt < 700) for (let k = 0; k < 8; k++) { const ang = k * 0.785 + dt / 300, rad = 8 + dt / 40; R(ox + slot / 2 + Math.cos(ang) * rad, syo + slot / 2 + Math.sin(ang) * rad, 2, 2, k % 2 ? C.lamp : C.mint, 1 - dt / 700); }
+    }
+
+    // thinking bubble while a live run waits for the next call
+    if (this.mode === "live" && this.state.status === "live" && !reduced) {
+      const bx2 = Math.min(ox + slot + 4, NW - 26), by2 = syo - 20;
+      R(bx2, by2, 24, 12, C.text); R(bx2 + 2, by2 + 12, 3, 2, C.text); R(bx2 + 1, by2 + 14, 2, 1, C.text);
+      for (let k = 0; k < 3; k++) R(bx2 + 4 + k * 6, by2 + 5, 3, 3, Math.floor(t / 320) % 4 === k ? C.midnight : "#b8a9e6");
+    }
+
+    // the hotbar: what the agent holds
+    R(0, 104, NW, 24, "#1d1640"); R(0, 104, NW, 1, C.line);
+    const held = Object.entries(f.held), pulse = fx.pulse || {};
+    held.forEach(([name, n], k) => {
+      const x = 4 + k * 20, y = 107, hot = pulse[name] && t - pulse[name] < 400;
+      R(x, y, 18, 18, C.midnight); R(x + 1, y + 1, 16, 16, hot ? "#5b3f22" : "#2b2150");
+      g.drawImage(spriteFor(name).cv, x + 3, y + 2, 10, 10);
+      digits(g, n, x + 12 - (String(n).length - 1) * 4, y + 10, C.text);
+    });
+    if (fx.craft && !reduced && t - fx.craft.t0 < 600) {
+      const name = fx.craft.item, k = Math.max(0, Object.keys(f.held).indexOf(name)), p = ease((t - fx.craft.t0) / 600);
+      const tx = 4 + k * 20 + 3, ty = 109; g.drawImage(spriteFor(name).cv, ox + 11 + (tx - ox - 11) * p, syo + 11 + (ty - syo - 11) * p, 10, 10);
+    }
+    if (fx.win && t - fx.win < 2200) { const dt = t - fx.win; for (let k = 0; k < 36; k++) { const r2 = rng(k * 977 + 5); const x = 20 + r2() * 128, vy = 0.03 + r2() * 0.05; R(x + Math.sin(dt / 200 + k) * 3, -4 + dt * vy * 1.4 + r2() * 20, 2, 2, [C.lamp, C.mint, C.sakura, "#b58cff"][k % 4], 1 - dt / 2200); } }
+  }
+}
+
+/* ---------- the run picker: a small Finder ---------- */
+const FILTERS = [
+  { id: "all", label: "All runs", test: () => true },
+  { sep: "Experiments" },
+  { id: "exp", label: D.experiment, test: () => true },
+  { sep: "Smart groups" },
+  { id: "live", label: "Live now", test: (s) => s.status === "live" },
+  { id: "got", label: "Got it", test: (s) => s.last.reached },
+  { id: "missed", label: "Didn't get it", test: (s) => s.status !== "live" && !s.last.reached },
+];
+/** One square per action call: place, craft, refused, or take-back. Flailing and direct runs look different. */
+const ACTION = new Set(["place", "remove", "clear", "craft"]);
+const strip = (s) => s.frames.slice(1, s.avail).filter((f) => ACTION.has(f.tool)).slice(0, 40).map((f) => `<i class="${!f.ok ? "x" : f.tool === "craft" ? "c" : f.tool === "place" ? "" : "r"}"></i>`).join("");
+const prefs = { view: "grid", sort: "order", filter: "all" };
+/** Runs that got it rank first, then finished runs that did not, then runs still going. */
+const group = (s) => (s.status === "live" ? 2 : s.last.reached ? 0 : 1);
+const KEY = { calls: (s) => s.last.actions, time: (s) => s.last.t };
+function ordered(list) {
+  if (prefs.sort === "order") return list;
+  const k = KEY[prefs.sort], other = prefs.sort === "calls" ? KEY.time : KEY.calls;
+  return [...list].sort((a, b) => group(a) - group(b) || k(a) - k(b) || other(a) - other(b));
+}
+const seg = (name, opts, cur) => `<span class="seg" role="group" aria-label="${name}">${opts.map(([v, l]) => `<button data-${name}="${v}" aria-pressed="${v === cur}">${l}</button>`).join("")}</span>`;
+class Picker {
+  constructor(root, onOpen, onClose) {
+    this.root = root; this.onOpen = onOpen; this.onClose = onClose; this.sig = "";
+    root.innerHTML = `
+      <div class="win">
+        <div class="titlebar">${onClose ? '<button class="dot close" aria-label="Remove this pane" title="Remove"></button>' : ""}<span class="ttl">Runs</span></div>
+        <div class="pbody"><nav class="side" aria-label="Groups"></nav>
+          <div class="pmain"><div class="toolbar"></div><div class="content" role="list"></div></div></div>
+        <p class="hint">Click a run to open its table. Arrow keys move, Enter opens.</p>
+      </div>`;
+    this.$side = root.querySelector(".side"); this.$bar = root.querySelector(".toolbar"); this.$content = root.querySelector(".content");
+    const close = root.querySelector(".close"); if (close) close.onclick = () => this.onClose();
+    this.$content.addEventListener("keydown", (e) => this.nav(e));
+    this.render();
+  }
+  destroy() {}
+  signature() { return states.map((s) => s.avail + s.status).join("|") + prefs.view + prefs.sort + prefs.filter; }
+  render() {
+    this.sig = this.signature();
+    this.$side.innerHTML = FILTERS.map((f) => f.sep ? `<h3>${f.sep}</h3>` : `<button data-f="${f.id}" aria-current="${f.id === prefs.filter}"><span>${f.label}</span><span class="count">${states.filter(f.test).length}</span></button>`).join("");
+    this.$side.querySelectorAll("button").forEach((b) => (b.onclick = () => { prefs.filter = b.dataset.f; this.render(); }));
+    this.$bar.innerHTML = `<span class="grp"><span>view</span>${seg("view", [["grid", "Grid"], ["list", "List"]], prefs.view)}</span><span class="grp"><span>sort</span>${seg("sort", [["order", "Run order"], ["calls", "Calls"], ["time", "Time"]], prefs.sort)}</span>`;
+    this.$bar.querySelectorAll("[data-view]").forEach((b) => (b.onclick = () => { prefs.view = b.dataset.view; this.render(); }));
+    this.$bar.querySelectorAll("[data-sort]").forEach((b) => (b.onclick = () => { prefs.sort = b.dataset.sort; this.render(); }));
+    const cur = FILTERS.find((f) => f.id === prefs.filter), list = ordered(states.filter(cur.test));
+    this.$content.className = "content " + (prefs.view === "grid" ? "grid" : "list");
+    if (!list.length) this.$content.innerHTML = "<p class='empty'>No runs match.</p>";
+    else if (prefs.view === "grid") {
+      this.$content.innerHTML = list.map((s) => `
+        <button class="tile ${s.status}" data-id="${s.run.id}" role="listitem" aria-label="${s.run.title}, ${OUTCOME[s.status]}, ${s.last.actions} calls">
+          <span class="thumb"><canvas width="52" height="52" aria-hidden="true"></canvas><span class="num">${s.last.actions}</span></span>
+          <span class="name">${s.run.title}</span>
+          <span class="strip" aria-hidden="true">${strip(s)}</span>
+          <span class="out">${OUTCOME[s.status]}</span>
+          <span class="clock time">${fmt(s.last.t)}</span>
+          <span class="tag">${s.run.tag}</span>
+        </button>`).join("");
+    } else {
+      const rank = (s) => (prefs.sort !== "order" && group(s) === 0 ? list.filter((x) => group(x) === 0).indexOf(s) + 1 : "");
+      const head = (k, l) => `<button data-sort="${k}" aria-pressed="${prefs.sort === k}">${l}</button>`;
+      this.$content.innerHTML = `<div class="lhead"><span>#</span><span>Run</span><span>Outcome</span>${head("calls", "Calls")}${head("time", "Time")}<span>Calls made</span></div>` + list.map((s) => `
+        <button class="lrow ${s.status} ${rank(s) === 1 ? "first" : ""}" data-id="${s.run.id}" role="listitem" aria-label="${s.run.title}, ${OUTCOME[s.status]}, ${s.last.actions} calls">
+          <span class="rank">${rank(s)}</span><span class="rn"><b>${s.run.title}</b><i>${s.run.tag}</i></span><span class="out">${OUTCOME[s.status]}</span>
+          <span class="cn">${s.last.actions}</span><span class="tmv time">${fmt(s.last.t)}</span><span class="strip" aria-hidden="true">${strip(s)}</span>
+        </button>`).join("");
+      this.$content.querySelectorAll(".lhead [data-sort]").forEach((b) => (b.onclick = () => { prefs.sort = b.dataset.sort; this.render(); }));
+    }
+    this.$content.querySelectorAll("[data-id]").forEach((b) => (b.onclick = () => this.onOpen(states.find((s) => s.run.id === b.dataset.id))));
+    this.thumbs();
+  }
+  thumbs() {
+    this.$content.querySelectorAll(".tile").forEach((b) => {
+      const s = states.find((x) => x.run.id === b.dataset.id), g = b.querySelector("canvas").getContext("2d");
+      g.imageSmoothingEnabled = false; g.clearRect(0, 0, 52, 52);
+      g.fillStyle = C.midnight; g.fillRect(0, 0, 52, 52);
+      if (s.last.reached) { // got it: show what it made
+        g.fillStyle = "#1d3f4a"; g.fillRect(2, 2, 48, 48);
+        g.drawImage(spriteFor(D.goal.item).cv, 6, 6, 40, 40);
+        return;
+      }
+      let f = s.last; // otherwise show where the table was left
+      for (let k = s.avail - 1; k >= 0; k--) if (s.frames[k].grid.flat().some(Boolean)) { f = s.frames[k]; break; }
+      g.fillStyle = C.w3; g.fillRect(2, 2, 48, 48);
+      for (let r = 0; r < D.world.rows; r++) for (let c = 0; c < D.world.cols; c++) {
+        const x = 4 + c * 15, y = 4 + r * 15; g.fillStyle = C.w1; g.fillRect(x, y, 14, 14);
+        const it = f.grid[r][c]; if (it) g.drawImage(spriteFor(it).cv, x + 2, y + 2, 10, 10);
+      }
+    });
+  }
+  nav(e) {
+    const items = [...this.$content.querySelectorAll("[data-id]")], i = items.indexOf(document.activeElement);
+    if (i < 0) return;
+    const per = prefs.view === "list" ? 1 : Math.max(1, items.filter((t) => t.offsetTop === items[0].offsetTop).length);
+    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, ArrowDown: i + per, ArrowUp: i - per }[e.key];
+    if (next !== undefined && items[next]) { e.preventDefault(); items[next].focus(); }
+  }
+  frame(now) {
+    if (this.signature() !== this.sig) { this.render(); return; }
+    this.thumbs();
+    this.$content.querySelectorAll("[data-id]").forEach((b) => { const s = states.find((x) => x.run.id === b.dataset.id); if (s.status === "live") { const el = b.querySelector(".time"); const txt = fmt(s.clockNow(now)); if (el.textContent !== txt) el.textContent = txt; } });
+  }
+}
+
+/* ---------- slots: each is a picker or a table ---------- */
+const stage = document.getElementById("stage");
+const slots = [];
+let focused = null;
+function mount(slot, view) { slot.view && slot.view.destroy(); slot.view = view; }
+function showPicker(slot) { mount(slot, new Picker(slot.el, (s) => showTable(slot, s), slots.indexOf(slot) > 0 ? () => removeSlot(slot) : null)); focused = slot; }
+function showTable(slot, state) { mount(slot, new Table(slot.el, state, () => showPicker(slot))); focused = slot; }
+function layout() {
+  stage.classList.toggle("two", slots.length === 2);
+  stage.innerHTML = "";
+  slots.forEach((s, k) => { if (k === 1) { const net = document.createElement("div"); net.className = "net"; net.setAttribute("aria-hidden", "true"); stage.appendChild(net); } stage.appendChild(s.el); });
+  const b = document.getElementById("compare"); b.textContent = slots.length === 2 ? "Close comparison" : "Compare two runs"; b.setAttribute("aria-pressed", String(slots.length === 2));
+}
+function addSlot() { const el = document.createElement("section"); el.className = "slot"; const slot = { el, view: null }; el.addEventListener("pointerdown", () => (focused = slot)); slots.push(slot); return slot; }
+function removeSlot(slot) { slot.view && slot.view.destroy(); slots.splice(slots.indexOf(slot), 1); layout(); focused = slots[0]; }
+document.getElementById("compare").onclick = () => { if (slots.length === 2) removeSlot(slots[1]); else { const s = addSlot(); layout(); showPicker(s); } };
+
+// the observer opens on the run picker; a live run shows up there as it starts
+const first = addSlot(); layout(); showPicker(first);
+
+/* ---------- keys and copy ---------- */
+addEventListener("keydown", (e) => {
+  if (e.target.closest && e.target.closest("button, input, select, .grid")) { if (e.key !== "Escape") return; }
+  const v = focused && focused.view;
+  if (e.key === "c") document.getElementById("compare").click();
+  if (!(v instanceof Table)) return;
+  if (e.code === "Space") { e.preventDefault(); v.togglePlay(); }
+  else if (e.key === "ArrowRight") { v.mode = "paused"; v.setFrame(v.i + 1, true); }
+  else if (e.key === "ArrowLeft") { v.mode = "paused"; v.setFrame(v.i - 1, false); }
+  else if (e.key === "r") v.restart();
+  else if (e.key === "Escape") v.onClose();
+  else if (e.key === "x") slots.forEach((s) => s.view instanceof Table && (s.view.fx.refuse = performance.now()));
+});
+document.getElementById("goalText").innerHTML = `Make ${D.goal.qty === 1 ? "one" : D.goal.qty} <strong>${D.goal.item}</strong>`;
+document.getElementById("logo").getContext("2d").drawImage(spriteFor("skill-craft").cv, 0, 0);
+document.getElementById("goalSprite").getContext("2d").drawImage(spriteFor(D.goal.item).cv, 0, 0);
+document.getElementById("foot").innerHTML = `Mock, world ${D.world.name}. Run 1 is a real recording; the others are scripted stand-ins. Space plays or pauses, the arrows step, <kbd>r</kbd> restarts, <kbd>Esc</kbd> closes a table, <kbd>c</kbd> compares, <kbd>x</kbd> previews a refused call. Only run 1's total time is real; the other clock times are illustrative.
+  <span class="speed"><label for="speed">speed</label> <select id="speed"><option value="0.5">half</option><option value="1" selected>normal</option><option value="2">2x</option><option value="4">4x</option></select></span>`;
+document.getElementById("speed").onchange = (e) => (speed = Number(e.target.value));
+
+(function loop(t) { states.forEach((s) => s.tick(t)); slots.forEach((s) => s.view && s.view.frame(t)); requestAnimationFrame(loop); })(performance.now());
+})();
+</script>
+</body>
+</html>
