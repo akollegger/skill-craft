@@ -21,12 +21,11 @@ The design is recorded in [ADR-001](design/adr/ADR-001-crafting-table-world.md).
 
 ## Status
 
-Early. The design is decided and the code is being reworked to match it.
+The simulation is built and tested: the crafting-table engine, the `craft` MCP server, world
+validation, an exact solver that scores runs, a run log, and a world re-skinner.
 
-- `src/` currently holds a first iteration (gathering, tool tiers, stations) that ADR-001
-  replaces. It still builds and its tests pass, but it is not the target design.
-- Not built yet: the crafting-table engine, the experiment harness, and the record, distill and
-  compare workflow.
+Not built yet: the experiment harness, and the record, distill and compare workflow. Those wait on
+a decision about which agent plays (see [design/notes/agent-player-options.md](design/notes/agent-player-options.md)).
 
 ## Requirements
 
@@ -44,6 +43,64 @@ pnpm test
 
 `.env` holds `NAMS_API_KEY` and `NAMS_SKILLS_KEY`. Keys stay in `.env`; do not paste them into
 commands or chat.
+
+## The simulation
+
+The `craft` MCP server exposes one world to an agent through seven single-purpose tools: `help`,
+`inventory`, `look`, `place`, `remove`, `clear` and `craft`. Coordinates are zero-based. `place`,
+`remove`, `clear` and `look` return a preview: the table's contents and what `craft` would make
+right now. Only `craft` spends stock. The contract is in
+[specs/001-crafting-table-sim/contracts/tools.md](specs/001-crafting-table-sim/contracts/tools.md).
+
+```bash
+# Run the server for a world (an MCP client such as Claude Code starts it this way via .mcp.json)
+SIM_WORLD=worlds/generated/forge-7.json pnpm exec tsx src/mcp/server.ts
+
+# Record every call to a fresh file (the server refuses to start on a file that already has data)
+SIM_WORLD=worlds/forge.json SIM_RUN_LOG=runs/run-001.jsonl pnpm exec tsx src/mcp/server.ts
+```
+
+- **Worlds** are JSON files (`worlds/forge.json` is the base). A world sets the table size, the
+  starting stock, the items, the recipes (shapeless or shaped) and a hint level. It holds no goals;
+  each committed world has a sibling `<name>.goals.json` for tests and the solver.
+- **Best run.** `pnpm dev scripts/solve.ts --world worlds/forge.json --goals-file worlds/forge.goals.json`
+  prints the fewest crafts, the fewest tool calls, the slack and a replayable call list for each goal.
+- **Re-skin.** `pnpm dev scripts/make-world.ts --seed 7 --out worlds/generated/forge-7.json`
+  writes a variant with invented item names and its goals. `--perturb` also changes some
+  quantities and patterns. Use a generated world for anything an agent will play.
+- **Replay.** `pnpm dev scripts/smoke.ts worlds/forge.json lamp:1` spawns the server and replays the
+  best run over stdio.
+- **Run log.** With `SIM_RUN_LOG` set, every call is appended as one JSON line, refusals included,
+  with no timestamps. `summarize` in `src/sim/runlog.ts` derives call and failure counts.
+
+### Running an agent against it
+
+`scripts/run-agent.ts` runs headless Claude Code against the `craft` server, gives each run its own
+run log, scores it, and summarises. The goal reaches the agent only through the prompt, which tells it
+that nobody can answer questions and gives it a turn budget.
+
+```bash
+# See the exact commands first; this spends nothing and creates nothing
+pnpm dev scripts/run-agent.ts --goal glirol --runs 3 --dry-run
+
+# Run it: three attempts at the warm-up goal on a generated world, 40 turns each
+pnpm dev scripts/run-agent.ts --goal glirol --runs 3 --max-turns 40 --label baseline
+```
+
+Each run gets a folder under `runs/<label>/` (gitignored) with `prompt.txt`, `mcp.json`, `run.jsonl`
+(the server's log), `claude.json` (the CLI result), `score.json`, and a `summary.json` for the label.
+Built-in tools are removed, so the agent cannot read the world file. Sessions stay out of NAMS unless
+you pass `--record`.
+
+A run ends `stopped` (the agent gave up or asked for help), `budget` (it used every turn) or `error`.
+The score counts **action calls**: `place`, `remove`, `clear` and `craft`. `help`, `inventory` and
+`look` are free. `callsToGoal` is the action calls up to the moment the goal was first held, and
+`extraCalls` is that minus the best run's minimum.
+
+To score logs you already have: `pnpm dev scripts/score.ts --world worlds/generated/forge-7.json --goal glirol --log runs/x/001/run.jsonl`.
+
+This harness follows the leaning in the player design note; the experiment-protocol decision (ADR)
+is still to be written.
 
 ### Recording sessions to NAMS
 
@@ -69,16 +126,18 @@ provides them.
 
 | Path | Contents |
 |---|---|
-| `src/sim/` | Simulation core: world schema, engine, planner, world loader, renamer |
-| `src/mcp/` | MCP server (`craft`) that exposes a world to an agent |
-| `worlds/` | World definitions (JSON); `worlds/generated/` holds re-skinned examples |
-| `scripts/` | `make-world.ts` generates a re-skinned world; `smoke.ts` runs the server over stdio |
-| `test/` | vitest suites |
+| `src/sim/` | Simulation core: schema, matcher, engine, run log, solver, loader, goals, re-skinner (no MCP dependency) |
+| `src/mcp/` | The `craft` MCP server that exposes a world to an agent |
+| `worlds/` | World definitions and goals (JSON); `worlds/generated/` holds re-skinned examples |
+| `src/harness/` | Interim run harness: prompt, `claude` arguments, result parsing, aggregation |
+| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `score.ts` |
+| `test/` | vitest suites, plus `fixtures/valid` (ten worlds) and `fixtures/invalid` (sixteen broken worlds) |
 | `design/adr/` | Architecture Decision Records and their index |
+| `design/notes/` | Exploratory design notes that may become ADRs |
+| `specs/` | Spec Kit feature specs, plans and tasks |
 | `.specify/` | Spec Kit configuration, constitution and templates |
 
-Common commands: `pnpm test`, `pnpm typecheck`, `pnpm build`, and
-`pnpm dev scripts/make-world.ts --seed 7 --out worlds/generated/example.json`.
+Common commands: `pnpm test`, `pnpm typecheck`, `pnpm build`.
 
 ## How work is organized
 

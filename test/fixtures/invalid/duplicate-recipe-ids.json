@@ -1,0 +1,58 @@
+{
+  "name": "base",
+  "description": "A fixture world.",
+  "grid": {
+    "rows": 3,
+    "cols": 3
+  },
+  "hints": "exact",
+  "stock": {
+    "a": 4,
+    "b": 2
+  },
+  "items": [
+    {
+      "id": "a",
+      "description": "An item."
+    },
+    {
+      "id": "b",
+      "description": "An item."
+    },
+    {
+      "id": "c",
+      "description": "An item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "a",
+          "qty": 2
+        }
+      ],
+      "output": {
+        "item": "c",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "b",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "b",
+        "qty": 1
+      }
+    }
+  ],
+  "$expect": "duplicate recipe id 'r'"
+}

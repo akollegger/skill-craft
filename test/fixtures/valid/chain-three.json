@@ -1,0 +1,74 @@
+{
+  "name": "chain-three",
+  "description": "A fixture world.",
+  "grid": {
+    "rows": 3,
+    "cols": 3
+  },
+  "hints": "exact",
+  "stock": {
+    "a": 8
+  },
+  "items": [
+    {
+      "id": "a",
+      "description": "An item."
+    },
+    {
+      "id": "b",
+      "description": "An item."
+    },
+    {
+      "id": "c",
+      "description": "An item."
+    },
+    {
+      "id": "d",
+      "description": "An item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r-b",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "a",
+          "qty": 2
+        }
+      ],
+      "output": {
+        "item": "b",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-c",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "b",
+          "qty": 2
+        }
+      ],
+      "output": {
+        "item": "c",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-d",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "c",
+          "qty": 2
+        }
+      ],
+      "output": {
+        "item": "d",
+        "qty": 1
+      }
+    }
+  ]
+}

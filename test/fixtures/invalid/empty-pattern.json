@@ -1,0 +1,44 @@
+{
+  "name": "base",
+  "description": "A fixture world.",
+  "grid": {
+    "rows": 3,
+    "cols": 3
+  },
+  "hints": "exact",
+  "stock": {
+    "a": 4,
+    "b": 2
+  },
+  "items": [
+    {
+      "id": "a",
+      "description": "An item."
+    },
+    {
+      "id": "b",
+      "description": "An item."
+    },
+    {
+      "id": "c",
+      "description": "An item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r",
+      "kind": "shaped",
+      "pattern": [
+        [
+          null,
+          null
+        ]
+      ],
+      "output": {
+        "item": "c",
+        "qty": 1
+      }
+    }
+  ],
+  "$expect": "at least one item"
+}

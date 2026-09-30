@@ -1,0 +1,38 @@
+{
+  "name": "large-6x6",
+  "description": "A fixture world.",
+  "grid": {
+    "rows": 6,
+    "cols": 6
+  },
+  "hints": "exact",
+  "stock": {
+    "a": 6
+  },
+  "items": [
+    {
+      "id": "a",
+      "description": "An item."
+    },
+    {
+      "id": "b",
+      "description": "An item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r-b",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "a",
+          "qty": 6
+        }
+      ],
+      "output": {
+        "item": "b",
+        "qty": 1
+      }
+    }
+  ]
+}

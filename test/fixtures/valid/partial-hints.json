@@ -1,0 +1,69 @@
+{
+  "name": "partial-hints",
+  "description": "A fixture world.",
+  "grid": {
+    "rows": 4,
+    "cols": 4
+  },
+  "hints": "partial",
+  "stock": {
+    "a": 3,
+    "b": 3
+  },
+  "items": [
+    {
+      "id": "a",
+      "description": "An item."
+    },
+    {
+      "id": "b",
+      "description": "An item."
+    },
+    {
+      "id": "c",
+      "description": "An item."
+    },
+    {
+      "id": "d",
+      "description": "An item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r-c",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "a",
+          "qty": 2
+        },
+        {
+          "item": "b",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "c",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-d",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "b",
+          "b"
+        ],
+        [
+          "a",
+          null
+        ]
+      ],
+      "output": {
+        "item": "d",
+        "qty": 1
+      }
+    }
+  ]
+}

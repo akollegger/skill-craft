@@ -1,0 +1,191 @@
+{
+  "name": "forge",
+  "description": "A single crafting table in a small workshop. Find out what can be made.",
+  "grid": {
+    "rows": 3,
+    "cols": 3
+  },
+  "hints": "exact",
+  "stock": {
+    "wood": 3,
+    "ore": 4,
+    "clay": 4,
+    "dust": 4
+  },
+  "items": [
+    {
+      "id": "wood",
+      "description": "A raw material."
+    },
+    {
+      "id": "ore",
+      "description": "A raw material."
+    },
+    {
+      "id": "clay",
+      "description": "A raw material."
+    },
+    {
+      "id": "dust",
+      "description": "A raw material."
+    },
+    {
+      "id": "plank",
+      "description": "A made item."
+    },
+    {
+      "id": "rod",
+      "description": "A made item."
+    },
+    {
+      "id": "bar",
+      "description": "A made item."
+    },
+    {
+      "id": "brick",
+      "description": "A made item."
+    },
+    {
+      "id": "glass",
+      "description": "A made item."
+    },
+    {
+      "id": "frame",
+      "description": "A made item."
+    },
+    {
+      "id": "lamp",
+      "description": "A made item."
+    },
+    {
+      "id": "nail",
+      "description": "A made item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r-plank",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "wood",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "plank",
+        "qty": 2
+      }
+    },
+    {
+      "id": "r-rod",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "plank"
+        ],
+        [
+          "plank"
+        ]
+      ],
+      "output": {
+        "item": "rod",
+        "qty": 2
+      }
+    },
+    {
+      "id": "r-bar",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "ore",
+          "qty": 2
+        }
+      ],
+      "output": {
+        "item": "bar",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-nail",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "ore",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "nail",
+        "qty": 3
+      }
+    },
+    {
+      "id": "r-brick",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "clay",
+          "qty": 2
+        },
+        {
+          "item": "dust",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "brick",
+        "qty": 2
+      }
+    },
+    {
+      "id": "r-glass",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "dust",
+          "qty": 3
+        }
+      ],
+      "output": {
+        "item": "glass",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-frame",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "bar",
+          "bar"
+        ],
+        [
+          "rod",
+          null
+        ]
+      ],
+      "output": {
+        "item": "frame",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-lamp",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "glass"
+        ],
+        [
+          "frame"
+        ]
+      ],
+      "output": {
+        "item": "lamp",
+        "qty": 1
+      }
+    }
+  ]
+}

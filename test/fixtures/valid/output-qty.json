@@ -1,0 +1,38 @@
+{
+  "name": "output-qty",
+  "description": "A fixture world.",
+  "grid": {
+    "rows": 3,
+    "cols": 3
+  },
+  "hints": "exact",
+  "stock": {
+    "a": 2
+  },
+  "items": [
+    {
+      "id": "a",
+      "description": "An item."
+    },
+    {
+      "id": "b",
+      "description": "An item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r-b",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "a",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "b",
+        "qty": 3
+      }
+    }
+  ]
+}
