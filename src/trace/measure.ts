@@ -92,16 +92,19 @@ export function measureRun(
   const joined = joinProblem(entries, tools);
   if (joined) return { trace: "mismatch", reason: joined };
 
-  // The player's own totals are a second opinion: any difference means lost or duplicated lines.
+  // The player's own totals are a second opinion: any difference means lost or duplicated lines, and with no
+  // totals to check against the trace cannot be called a match.
+  if (result.usage === null) return { trace: "mismatch", reason: "tokens: the player stated no totals to check against" };
   const summed = sum(requests);
-  if (result.usage) {
-    for (const [label, key] of FIELDS) {
-      if (summed[key] !== result.usage[key]) return { trace: "mismatch", reason: `${label}: trace ${summed[key]}, result ${result.usage[key]}` };
-    }
+  for (const [label, key] of FIELDS) {
+    if (summed[key] !== result.usage[key]) return { trace: "mismatch", reason: `${label}: trace ${summed[key]}, result ${result.usage[key]}` };
   }
+  // The same for models: lines that name a model must agree with what the result says was used, and a result
+  // that says nothing cannot confirm them. Lines that name none leave nothing to compare.
   const traceModels = [...new Set(requests.flatMap((r) => (r.model === null ? [] : [r.model])))].sort();
-  if (traceModels.length > 0 && result.modelsUsed.length > 0 && traceModels.join("+") !== [...result.modelsUsed].sort().join("+")) {
-    return { trace: "mismatch", reason: `models: trace ${traceModels.join("+")}, result ${[...result.modelsUsed].sort().join("+")}` };
+  const stated = [...result.modelsUsed].sort();
+  if (traceModels.length > 0 && traceModels.join("+") !== stated.join("+")) {
+    return { trace: "mismatch", reason: `models: trace ${traceModels.join("+")}, result ${stated.join("+") || "none"}` };
   }
 
   const lastEnd = lines.reduce((m, l) => Math.max(m, l.endMs), 0);

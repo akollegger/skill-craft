@@ -152,10 +152,21 @@ describe("measureRun, mismatch", () => {
     expect(m.reason).toBe("models: trace m, result n");
   });
 
-  it("does not compare models when a line names none or the result lists none", () => {
+  it("does not compare models when no line names one", () => {
     const unnamed = lines.map((l) => (l.kind === "request" ? { ...l, model: null } : l));
     expect(measureRun(entries, unnamed, result({ modelsUsed: ["n"] }), frozen).trace).toBe("matched");
-    expect(measureRun(entries, lines, result({ modelsUsed: [] }), frozen).trace).toBe("matched");
+  });
+
+  it("is a mismatch when the lines name a model but the result lists none, since the check cannot be made", () => {
+    const m = measureRun(entries, lines, result({ modelsUsed: [] }), frozen);
+    noFigures(m);
+    expect(m.reason).toBe("models: trace m, result none");
+  });
+
+  it("is a mismatch when trace lines exist but the result states no token totals, since the check cannot be made", () => {
+    const m = measureRun(entries, lines, result({ usage: null }), frozen);
+    noFigures(m);
+    expect(m.reason).toBe("tokens: the player stated no totals to check against");
   });
 
   it("never changes the score it was given", () => {

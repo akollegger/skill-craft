@@ -94,8 +94,9 @@ interface Measured {
 State: `absent` (no trace lines and no result figures) -> `matched` or `mismatch`, decided once when the
 run ends. `mismatch` reasons include a count or argument difference against the run log, a token sum
 that differs from the result's own `usage`, lines with no result (`run ended without a result`), and
-skipped malformed items (`2 malformed items skipped`), and request-line models that differ from the
-result's `modelUsage` keys (`models: trace a, result b`).
+skipped malformed items (`2 malformed items skipped`), request-line models that differ from the
+result's `modelUsage` keys (`models: trace a, result b`), and a result that states no token totals or lists no
+models when the lines do (the check cannot be made, so the trace cannot be called a match).
 
 `ModelInfo` is computed by the harness from `PlayerResult` (`modelsUsed`, else `initModel`) and is
 present whatever the trace status.

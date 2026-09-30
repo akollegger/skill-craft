@@ -27,7 +27,6 @@ interface OpenCall {
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 
 /**
  * Turns the events a player emits into numbered trace lines. It reads only the fields in the data model's
@@ -113,16 +112,14 @@ export class TraceRecorder implements DriverSink {
     const p = this.pending;
     if (!p) return;
     const usage = event["usage"];
-    if (!isObject(usage)) {
-      this.markBad(p);
+    const counts = isObject(usage) ? ["input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"].map((k) => usage[k]) : [];
+    // All four counts must be real numbers. Defaulting a missing one to zero would let a malformed request
+    // agree with a result that omits the same field, and be called a match.
+    if (counts.length !== 4 || !counts.every((v): v is number => typeof v === "number" && Number.isFinite(v))) {
+      if (p.tokens === null) this.markBad(p); // a later incomplete update does not undo a complete one
       return;
     }
-    p.tokens = {
-      input: num(usage["input_tokens"]),
-      output: num(usage["output_tokens"]),
-      cacheRead: num(usage["cache_read_input_tokens"]),
-      cacheCreation: num(usage["cache_creation_input_tokens"]),
-    };
+    p.tokens = { input: counts[0] as number, output: counts[1] as number, cacheRead: counts[2] as number, cacheCreation: counts[3] as number };
   }
 
   private stopRequest(at: number): void {

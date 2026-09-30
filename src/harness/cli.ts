@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { loadWorld } from "../sim/loader.js";
 import type { AgentDriver } from "./driver.js";
 import { HarnessError, isUserError, UnknownGoalItem } from "./errors.js";
-import { DEFAULT_TIMEOUT_MS, planExperiment, runExperiment, type AgentRunOptions, type RunReport } from "./run.js";
+import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, planExperiment, runExperiment, type AgentRunOptions, type RunReport } from "./run.js";
 
 export interface CliDeps {
   /** The player. Default: the Claude Agent SDK. */
@@ -67,7 +67,9 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
     const world = loadWorld(values.world as string);
     if (!world.items.some((i) => i.id === item)) throw new UnknownGoalItem(item);
     const minutes = Number(values["timeout-minutes"]);
-    if (!(minutes > 0)) throw new UsageError("--timeout-minutes must be a number greater than 0");
+    if (!Number.isFinite(minutes) || minutes <= 0 || minutes * 60_000 > MAX_TIMEOUT_MS) {
+      throw new UsageError(`--timeout-minutes must be a number greater than 0 and at most ${Math.floor(MAX_TIMEOUT_MS / 60_000)}`);
+    }
 
     const options: AgentRunOptions = {
       world: values.world as string,

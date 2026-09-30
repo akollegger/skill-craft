@@ -9,10 +9,14 @@ export function replayFailure(e: ReplayError): ReplayFailed {
   return new ReplayFailed(m ? `entry ${m[1]} (${m[2]}): ${m[3]}` : e.message, e);
 }
 
-/** Read a run log. A missing file is an empty run; a line that is not JSON is a failed replay. */
+/**
+ * Read a run log. A missing file is an empty run; a line that is not JSON is a failed replay, and so is a
+ * sequence that does not run 1, 2, 3 and so on: the server writes it that way, and frames and the goal-reaching
+ * tool line are found by position.
+ */
 export function readLog(path: string): RunLogEntry[] {
   if (!existsSync(path)) return [];
-  return readFileSync(path, "utf8")
+  const entries = readFileSync(path, "utf8")
     .split("\n")
     .flatMap((line, i) => {
       if (line === "") return [];
@@ -22,4 +26,8 @@ export function readLog(path: string): RunLogEntry[] {
         throw new ReplayFailed(`line ${i + 1} is not valid JSON`);
       }
     });
+  entries.forEach((e, i) => {
+    if (e.seq !== i + 1) throw new ReplayFailed(`sequence breaks at entry ${i + 1} (found seq ${String(e.seq)})`);
+  });
+  return entries;
 }

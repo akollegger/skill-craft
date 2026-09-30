@@ -38,6 +38,15 @@ describe("runAgentCli", () => {
     expect(summary.runs[0]?.reason).toMatch(/^RunTimedOut/);
   });
 
+  it("rejects a timeout that is not finite, is not positive, or is beyond what a timer can hold", async () => {
+    const h = harness();
+    for (const bad of ["Infinity", "-1", "0", "abc", "1e9"]) {
+      expect(await h.run(["--goal", "c", "--runs", "1", "--label", "t", "--timeout-minutes", bad, "--dry-run"]), bad).toBe(1);
+    }
+    expect(h.err.join("\n")).toMatch(/--timeout-minutes must be/);
+    expect(await h.run(["--goal", "c", "--runs", "1", "--label", "ok", "--timeout-minutes", "35000", "--dry-run"])).toBe(0);
+  });
+
   it("prints the dry-run plan and creates nothing", async () => {
     const h = harness();
     expect(await h.run(["--goal", "c", "--runs", "2", "--label", "d", "--dry-run"])).toBe(0);

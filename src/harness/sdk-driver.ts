@@ -12,8 +12,15 @@ export const sdkDriver: AgentDriver = async (opts, sink) => {
   let threw = false;
   let thrown: unknown;
 
+  // The signal reaches the query two ways: through the option's abort controller (see `sdkOptionsFor`), and by
+  // interrupting the query itself, so a cancelled or timed-out run stops the session and not just the stream.
+  const q = query({ prompt: opts.prompt, options: sdkOptionsFor(opts, sink) });
+  const interrupt = () => void Promise.resolve(q.interrupt()).catch(() => {});
+  if (opts.signal.aborted) interrupt();
+  else opts.signal.addEventListener("abort", interrupt, { once: true });
+
   try {
-    for await (const message of query({ prompt: opts.prompt, options: sdkOptionsFor(opts, sink) })) {
+    for await (const message of q) {
       sink.onMessage(message as unknown as PlayerMessage);
       const m = message as unknown as Record<string, unknown>;
       if (m["type"] === "system" && m["subtype"] === "init" && typeof m["model"] === "string") initModel = m["model"];
@@ -23,6 +30,8 @@ export const sdkDriver: AgentDriver = async (opts, sink) => {
     // The SDK throws after delivering an error_max_turns result; that result still stands.
     threw = true;
     thrown = e;
+  } finally {
+    opts.signal.removeEventListener("abort", interrupt);
   }
 
   if (result === null) throw threw ? thrown : new Error("the player ended without a result");

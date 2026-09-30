@@ -158,6 +158,20 @@ describe("malformed items", () => {
     expect(recorder.skipped).toBe(1);
   });
 
+  it.each(["input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"])("skips and counts a message_delta whose %s is missing or not a number", (field) => {
+    for (const bad of [undefined, "12", null]) {
+      const { path, at, recorder } = setup();
+      at(0).onMessage(init);
+      const usage: Record<string, unknown> = { ...USAGE, [field]: bad };
+      if (bad === undefined) delete usage[field];
+      at(100).onMessage(start("msg_1"));
+      at(150).onMessage({ type: "stream_event", event: { type: "message_delta", usage } });
+      at(200).onMessage(stop);
+      expect(readTrace(path), `${field}=${String(bad)}`).toEqual([]);
+      expect(recorder.skipped, `${field}=${String(bad)}`).toBe(1);
+    }
+  });
+
   it("skips and counts a tool start with no tool_use_id", () => {
     const { path, at, recorder } = setup();
     at(0).onMessage(init);

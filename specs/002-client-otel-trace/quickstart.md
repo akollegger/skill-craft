@@ -73,7 +73,7 @@ Repeat the command: it refuses because the destination exists. Point it at a run
 ## 7. A bad trace
 
 `test/measure.test.ts` covers a missing call, altered arguments, and a token sum that disagrees with the
-the player's final result. Nothing to do by hand.
+player's final result. Nothing to do by hand.
 
 ## 8. Cancel a run (optional)
 

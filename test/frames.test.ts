@@ -92,6 +92,24 @@ describe("deriveFrames", () => {
     expect(afterPair?.craftable).toBe("d");
   });
 
+  it("keeps reached true once the goal has been held, even if the agent later puts it on the table", () => {
+    const after = play((g) => {
+      varied(g);
+      g.place("e", 2, 2); // the goal item leaves the inventory
+    });
+    const fs = deriveFrames(world, goal, after);
+    const last = fs[fs.length - 1];
+    expect(last?.held["e"]).toBeUndefined(); // no longer held
+    expect(last?.reached).toBe(true); // but it was reached, as scoring says
+  });
+
+  it("takes what a craft made from the replay, not from the log", () => {
+    const tampered = entries.map((e) => (e.tool === "craft" && e.crafted?.item === "d" ? { ...e, crafted: { item: "d", qty: 9 } } : e));
+    expect(() => deriveFrames(world, goal, tampered)).toThrow(ReplayError);
+    const f = frames.find((x) => x.crafted?.item === "d");
+    expect(f?.crafted).toEqual({ item: "d", qty: 1 });
+  });
+
   it("is deterministic across two calls", () => {
     expect(deriveFrames(world, goal, entries)).toEqual(frames);
   });

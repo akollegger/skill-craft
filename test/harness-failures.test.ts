@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -41,6 +41,19 @@ describe("one failing run does not end the experiment", () => {
     const out = await runExperiment(options(player({ mode: "badlog", malformedLog: true }), { runs: 1 }));
     expect(out.reports[0]).toMatchObject({ ended: "error" });
     expect(out.reports[0]?.reason).toMatch(/^ReplayFailed: /);
+  });
+
+  it("treats a log whose sequence does not start at 1 or is not contiguous as a failed replay", async () => {
+    const writing = (lines: object[]): AgentDriver => async (o) => {
+      writeFileSync(o.runLog, lines.map((l) => `${JSON.stringify(l)}\n`).join(""));
+      return empty;
+    };
+    const help = (seq: number) => ({ seq, tool: "help", args: {}, ok: true });
+    for (const lines of [[help(2)], [help(1), help(1)], [help(1), help(3)]]) {
+      const out = await runExperiment(options(writing(lines), { runs: 1 }));
+      expect(out.reports[0], JSON.stringify(lines)).toMatchObject({ ended: "error" });
+      expect(out.reports[0]?.reason).toMatch(/^ReplayFailed: .*sequence/);
+    }
   });
 
   it("scores a missing run log as zero calls, not an error", async () => {

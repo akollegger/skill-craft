@@ -98,9 +98,10 @@ A `tool` line joins to a `run.jsonl` line by order, checked against tool name (w
 prefix removed) and arguments. Order decides identical consecutive calls; the check catches a trace and
 log that disagree. `score.json` gains, next to the call counts: `durationMs` (the CLI's own
 `duration_ms` for the run), the four token totals and `costUsd` (the run total from the SDK's result);
-and "to goal" figures, without cost: duration and the four token totals summed over every `request`
-line whose `endMs` is at or before the `endMs` of the tool call that first reached the goal (the call
-`scoreRun` reports as `callsToGoal`), including the request that issued that call. A trace that fails to
+and "to goal" figures, without cost: duration (the `endMs` of the tool call that first reached the goal, the
+call `scoreRun` reports as `callsToGoal`) and the four token totals summed over every `request` line written
+before that call's `tool` line, which includes the request that issued the call. The order is the trace's
+`seq`, not the clock: lines can share a millisecond, and the closing request must not be charged to the goal. A trace that fails to
 join (different count or arguments than the log) is recorded as `trace: "mismatch"` and its figures are
 left out of the score; the log's figures stand. The SDK reports the main agent loop only, so requests
 made outside it never appear in the trace or the totals.
@@ -185,3 +186,9 @@ mirror could be added later without changing the viewer.
   cost (run total only) and the `ok` flag on tool lines. §§1, 2.2 to 2.5, 3 and 4 were rewritten to
   match; OTel remains a documented alternative (§3). The title dropped "with OpenTelemetry"; the file
   name was kept so links stay valid.
+- **2026-09-30** (implementation and review): the "to goal" token boundary is completion order (`seq`), as above,
+  not `endMs`; a scripted player put every event in one millisecond and exposed the difference. Four checks were
+  made stricter: a run log whose `seq` is not 1, 2, 3 and so on is a failed replay; replay compares what a craft
+  made and the refusal code, not only whether the call succeeded; a trace is a mismatch when the player states no
+  token totals, or names no models while the lines do, since the check cannot be made; and a model request whose
+  usage lacks any of the four counts is skipped and counted, not read as zero.

@@ -37,6 +37,8 @@ export function deriveFrames(world: World, goal: SolverGoal, entries: readonly R
   let actions = 0;
   let refusals = 0;
   const frames: Frame[] = [];
+  // Reaching the goal is history, as it is for scoring: it stays true if the agent later uses the item up.
+  let reached = game.count(goal.item) >= goal.qty;
 
   const snapshot = (call: Pick<Frame, "seq" | "tool" | "args" | "ok"> & Partial<Pick<Frame, "error" | "crafted">>): void => {
     const p = game.preview();
@@ -54,22 +56,23 @@ export function deriveFrames(world: World, goal: SolverGoal, entries: readonly R
       held,
       actions,
       refusals,
-      reached: game.count(goal.item) >= goal.qty,
+      reached,
     });
   };
 
   snapshot({ seq: 0, tool: "start", args: {}, ok: true });
   for (const entry of entries) {
-    const { ok, error } = replayEntry(game, entry);
+    const { ok, error, crafted } = replayEntry(game, entry);
     if (isAction(entry.tool)) actions++;
     if (!ok) refusals++;
+    reached = reached || game.count(goal.item) >= goal.qty;
     snapshot({
       seq: entry.seq,
       tool: entry.tool,
       args: entry.args,
       ok,
       ...(error === undefined ? {} : { error }),
-      ...(entry.crafted === undefined ? {} : { crafted: entry.crafted }),
+      ...(crafted === undefined ? {} : { crafted }),
     });
   }
   return frames;

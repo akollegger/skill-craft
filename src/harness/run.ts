@@ -15,6 +15,9 @@ import { craftServer, sdkOptionsFor } from "./sdk-options.js";
 
 export const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 
+/** The longest delay a timer can hold; a longer one would fire at once. */
+export const MAX_TIMEOUT_MS = 2_147_483_647;
+
 export interface AgentRunOptions {
   /** Path to the world file the agent will play. Use a generated world for real experiments. */
   world: string;
@@ -164,7 +167,7 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, driver: 
   writeFileSync(join(dir, "prompt.txt"), `${prompt}\n`);
 
   // One controller per run: the experiment's own signal and the time limit both abort it.
-  const limit = o.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const limit = Math.min(o.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
   const control = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {

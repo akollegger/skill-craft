@@ -46,7 +46,7 @@ export class ReplayError extends Error {
  * Apply one logged call to a game and check it behaves as the log says. Throws `ReplayError` when it does
  * not, so a log that does not match its world is an error, never a score. Shared by scoring and frames.
  */
-export function replayEntry(game: Game, entry: RunLogEntry): { ok: boolean; error?: string } {
+export function replayEntry(game: Game, entry: RunLogEntry): { ok: boolean; error?: string; crafted?: { item: string; qty: number } } {
   const { args } = entry;
   const outcome = (() => {
     switch (entry.tool) {
@@ -62,7 +62,15 @@ export function replayEntry(game: Game, entry: RunLogEntry): { ok: boolean; erro
   })();
   const ok = !("ok" in outcome && outcome.ok === false);
   if (ok !== entry.ok) throw new ReplayError(entry.seq, entry.tool, `logged ok=${entry.ok}, replay gave ok=${ok}`);
-  return ok ? { ok } : { ok, ...("error" in outcome ? { error: String(outcome.error) } : {}) };
+  // The same call can still succeed and do something else if the world changed, so what it made and why it was
+  // refused must match too. The replayed values are the ones returned, never the logged ones.
+  const error = !ok && "error" in outcome ? String(outcome.error) : undefined;
+  const crafted = ok && "crafted" in outcome ? (outcome.crafted as { item: string; qty: number }) : undefined;
+  if (entry.error !== error) throw new ReplayError(entry.seq, entry.tool, `logged error=${String(entry.error)}, replay gave error=${String(error)}`);
+  if (JSON.stringify(entry.crafted) !== JSON.stringify(crafted)) {
+    throw new ReplayError(entry.seq, entry.tool, `logged crafted=${JSON.stringify(entry.crafted)}, replay gave crafted=${JSON.stringify(crafted)}`);
+  }
+  return { ok, ...(error === undefined ? {} : { error }), ...(crafted === undefined ? {} : { crafted }) };
 }
 
 /**

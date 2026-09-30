@@ -14,8 +14,9 @@ one field inside `score`. Existing keys keep their meaning.
   `toGoal` are omitted, and everything else in the file is as it was before this feature.
 - `mismatch` carries `reason` naming the first disagreement (for example `tool count: log 19, trace
   18`, `call 7: log place, trace remove`, `output tokens: trace 3160, result 3165`, `run ended without
-  a result` for trace lines with no final result, `models: trace a, result b` when the request lines'
-  models differ from the result's, or `2 malformed items skipped`) and omits `total` and
+  a result` for trace lines with no final result, `models: trace a, result b` (or `result none`) when the request lines'
+  models differ from the result's or the result lists none, `tokens: the player stated no totals to check
+  against` when the result has no token totals, or `2 malformed items skipped`) and omits `total` and
   `toGoal`.
 - `matched` carries `total`, and `toGoal` when `score.reached` is true. If `reachedSeq` is 0,
   `toGoal` is all zeros.

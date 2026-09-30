@@ -42,6 +42,20 @@ describe("a run that never finishes", () => {
   });
 });
 
+describe("a time limit beyond what a timer can hold", () => {
+  it("is clamped, so it never fires at once", async () => {
+    let abortedWhenDone: boolean | undefined;
+    const driver: AgentDriver = async (o, s) => {
+      await new Promise((r) => setTimeout(r, 40));
+      abortedWhenDone = o.signal.aborted;
+      return fakePlayer({ mode: "solve", goal: GOAL })(o, s);
+    };
+    const out = await runExperiment(options(driver, { runs: 1, timeoutMs: Number.POSITIVE_INFINITY }));
+    expect(abortedWhenDone).toBe(false);
+    expect(out.reports[0]).toMatchObject({ ended: "stopped" });
+  });
+});
+
 describe("cancelling the experiment", () => {
   it("ends the current run, writes its score and the summary, and starts no further run", async () => {
     const stop = new AbortController();

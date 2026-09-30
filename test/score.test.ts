@@ -123,6 +123,34 @@ describe("scoreRun", () => {
   });
 });
 
+describe("a log must match what the world does, not only whether a call succeeded", () => {
+  const worldTwo = makeWorld({
+    recipes: [
+      { id: "r-d", kind: "shapeless", inputs: [{ item: "a", qty: 2 }], output: { item: "d", qty: 2 } }, // now makes two
+      { id: "r-e", kind: "shapeless", inputs: [{ item: "d", qty: 1 }, { item: "b", qty: 1 }], output: { item: "e", qty: 1 } },
+      { id: "r-s", kind: "shaped", pattern: [["a", "b"], [null, "c"]], output: { item: "s", qty: 1 } },
+    ],
+  });
+
+  it("refuses a log whose craft made something different in this world", () => {
+    const entries = play(bestRun);
+    expect(() => scoreRun(worldTwo, goal, entries)).toThrow(/crafted/);
+  });
+
+  it("refuses a log whose refusal had a different code", () => {
+    const entries = play((g) => {
+      g.place("a", 0, 0);
+      g.place("a", 0, 0); // cell_occupied
+    });
+    const tampered = entries.map((e) => (e.ok ? e : { ...e, error: "out_of_bounds" }));
+    expect(() => scoreRun(world, goal, tampered)).toThrow(/error/);
+  });
+
+  it("still accepts an honest log", () => {
+    expect(() => scoreRun(world, goal, play(bestRun))).not.toThrow();
+  });
+});
+
 describe("scoreRun reachedSeq", () => {
   it("is the log seq of the entry after which the goal is first held", () => {
     const entries = play(bestRun); // the goal is held after the 6th call
