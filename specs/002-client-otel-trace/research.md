@@ -135,3 +135,18 @@ never quoted.
   `ReplayError` on a log that does not replay.
 - **Rationale**: the observer mock's `framesFor` already has this shape and was checked on a real
   recording; moving it into `src/sim/` under tests makes the frame the tested contract.
+
+## D12. Failure handling: typed errors in plain TypeScript, Effect later
+
+- **Decision**: harness failures are a small set of error classes with stable codes (`RunFolderExists`,
+  `UnknownGoalItem`, `ReplayFailed`, `DriverFailed`, `RunTimedOut`), each run is guarded so one failure
+  cannot end an experiment, every run has a time limit and an abort signal, and the command-line layer
+  matches errors by class. A `reason` on a failed run is `code: fixed message`, never the wrapped
+  error's text.
+- **Rationale**: the harness before this feature had one `try/catch`, an unguarded `scoreRun` after a
+  paid run, and exit codes chosen by matching message text. These are fixed in plain TypeScript.
+- **Deferred**: Effect would add typed error channels, scoped cleanup, interruption, retries and bounded
+  parallelism. The constitution names zod and plain TypeScript, so adopting it needs an ADR. It pays
+  off when the NAMS skills client arrives (generate, poll, review, publish, with rate limits, retries and
+  partial failures), so revisit it then. The seams here (the driver as a service, an injected clock,
+  pure `measureRun` and recorder) map onto Effect services and layers without rework.

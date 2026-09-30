@@ -74,3 +74,14 @@ Repeat the command: it refuses because the destination exists. Point it at a run
 
 `test/measure.test.ts` covers a missing call, altered arguments, and a token sum that disagrees with the
 the player's final result. Nothing to do by hand.
+
+## 8. Cancel a run (optional)
+
+Start a short real run and press Ctrl-C while it is going:
+
+```bash
+pnpm dev scripts/run-agent.ts --goal glirol --runs 2 --max-turns 20 --label sdk-cancel
+```
+
+Expected: the current run is recorded (its `score.json` ends as an error whose reason names the
+cancellation), `summary.json` is written, the second run never starts, and the exit code is 130.
