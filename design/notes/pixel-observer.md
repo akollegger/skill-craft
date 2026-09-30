@@ -128,27 +128,75 @@ Run discovery
 Time and tokens are measured on the client
 - Observability of an agent normally instruments the **client**: each model call with its token usage
   and latency, and each tool round trip as the client sees it. The `craft` server sees none of that,
-  and the memory side already works this way (`nams-hooks` records tool calls from client-side
-  hooks, and NAMS tool-call records carry `durationMs`).
+  and the memory side already works this way (`nams-hooks` records tool calls from client-side hooks).
 - So there are two records with different jobs. **`run.jsonl`** is what the world did: calls and
   outcomes, written by the server, with no clock, so a replay is byte-identical and `scoreRun` can
   treat it as independent ground truth. **The client trace** is what the run cost: turns, time and
-  tokens, written by the harness. The server log is never given a timestamp.
-- The harness writes the trace from the CLI's stream (`--output-format stream-json --verbose
-  --include-partial-messages`). Checked on real runs: every event carries a millisecond timestamp,
-  and the final per-message usage arrives in a `message_delta` event, so per-turn input, cache
-  creation, cache read and output tokens sum exactly to the run's totals. Parallel tool calls in one
-  turn share a message id and one usage record, so tokens are counted once per message.
-- A trace line per turn holds the message id, the time, the four token counts and the calls in that
-  turn. Trace calls are matched to `run.jsonl` entries by tool name and arguments, in order. Tokens
-  therefore attach to turns, and a turn with several calls shares them.
-- For **live** viewing the harness must read the stream as it arrives and append to the trace, not
-  wait for the process to exit (it currently waits). The observer then tails the log for state and
-  the trace for time and tokens.
-- A client trace exists only for runs made through an instrumented client. Another agent (the SDK, a
-  different harness) needs an equivalent. Claude Code may also export OpenTelemetry metrics and
-  events, which would be the standard route; that is unchecked here and worth testing before
-  committing to parsing the stream.
+  tokens. The server log is never given a timestamp.
+
+The trace source is Claude Code's OpenTelemetry export (verified)
+- Tested on real runs, exporting OTLP over HTTP/JSON to a local receiver. The harness sets these on
+  each `claude -p` child: `CLAUDE_CODE_ENABLE_TELEMETRY=1`, `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1`
+  (for spans), `OTEL_LOGS_EXPORTER`, `OTEL_TRACES_EXPORTER` and `OTEL_METRICS_EXPORTER` set to
+  `otlp`, `OTEL_EXPORTER_OTLP_PROTOCOL=http/json`, `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:<port>`,
+  `OTEL_LOG_TOOL_DETAILS=1` (to get tool arguments), and short export intervals
+  (`OTEL_LOGS_EXPORT_INTERVAL` and `OTEL_TRACES_EXPORT_INTERVAL` of 250 ms).
+- **Tokens and cost are exact.** Each `claude_code.api_request` event carries `input_tokens`,
+  `output_tokens`, `cache_read_tokens`, `cache_creation_tokens`, `cost_usd`, `duration_ms` and a
+  `request_id`. Summed over a run they equal the CLI's own totals exactly, for tokens and for cost.
+- **Durations.** The `claude_code.llm_request` span adds `ttft_ms`. `claude_code.tool.execution`
+  gives each tool call's duration (4 to 17 ms here). The `claude_code.interaction` span is the whole
+  run. So a turn splits cleanly into the model's thinking time and the tool's time.
+- **Joining.** `tool_use_id` is identical in the spans, the log events and the CLI stream. Spans
+  give the full tool name (`mcp__craft__place`); the `tool_result` log event gives the arguments in
+  `tool_input`. Both join to `run.jsonl` by order, tool and arguments.
+- **Near-live.** With a 250 ms interval, events reached the receiver 30 to 360 ms after they
+  happened (median about 240 ms). The default is 5 s, so the interval must be set. In `-p` mode
+  everything is also flushed on exit.
+- **The harness hosts the receiver** ([ADR-002](../adr/ADR-002-client-otel-trace.md)). It listens on
+  `127.0.0.1`, writes a scrubbed `trace.jsonl` beside each run's log, and totals the run into
+  `score.json`. The observer reads those files, so live time and tokens need no polling of the CLI.
+- **Do not keep the raw posts.** Every log record carries the user's email, user id, account ids and
+  organization id (seen in the capture; the docs say email and organization id are always included,
+  and the account ids can be turned off with `OTEL_METRICS_INCLUDE_ACCOUNT_UUID`). `runs/` is
+  gitignored, but run folders get shared when a demo is shared. The harness's receiver derives the trace
+  (turn, times, the four token counts, cost, `tool_use_id`, tool name and arguments) and drop the
+  personal attributes on ingest.
+- The CLI's stream-json output (with `--include-partial-messages`) gives the same tokens with no
+  infrastructure, and remains the fallback.
+
+The CLI and the desktop app
+- Runs the **harness** starts are child processes, so it sets the variables directly and the desktop
+  app is irrelevant. This is the demo path.
+- An **interactive Code-tab session** is different. The desktop app does not read the shell
+  environment, and project `.claude/settings.json` deliberately ignores the exporter endpoint
+  variables. The `env` block in `~/.claude/settings.json` (or managed settings) is the only way, and it
+  would apply to every session the user runs. The user's settings have no `env` block today, so this is
+  an explicit opt-in and is not needed for the demo.
+- MCP servers and hooks do not receive the `OTEL_*` variables, so the `craft` server is unaffected.
+
+Things to know about the numbers
+- **One request is off the books.** The spans show a fifth, auxiliary request after the turn ends
+  (about 127 input and 63 output tokens, apparently the post-turn summary). It is not in the CLI's
+  totals, the `api_request` events or the metrics. It is small, but real cost.
+- **`mcp_tool.name` on `api_request` labels the previous tool's result**, not the call that turn made.
+  Attribute tokens to calls through `tool_use_id` and the spans instead.
+- **Log events call every MCP tool `mcp_tool`.** The full name is in the spans.
+- **Three plugins load in every harness run, and none of them touches the numbers.** They load even
+  with `--setting-sources project`, and `plugin_loaded` events record where each came from:
+  `clover` (a security plugin, from the `clover-security` marketplace) is pushed by the user's
+  organization through remote managed settings (`enabled_via: org-policy`), which is why it loads
+  and why it likely cannot be turned off. `cc-plugin-agents-md` and `cc-plugin-telemetry` are built
+  into Claude Code's default bundle and register nothing. `nams-hooks` did not load in that mode.
+- Clover registers hooks on `SessionStart` (two), `UserPromptSubmit`, and `PreToolUse` for
+  `ExitPlanMode` and for `Edit|Write|MultiEdit`. The session-start hooks took about 0.2 to 0.3 s
+  before the first model call (232 ms by event timestamps in one run), and the prompt hook 3 ms.
+  All of them produced no output (`stdout_chars` and `additional_context_chars` were 0), so **no
+  tokens are injected**, and the delay never falls inside a per-turn timing. The `PreToolUse`
+  matchers cannot match `craft` calls, and the harness removes the built-in tools anyway.
+  Clover's purpose (reviewing plans and file edits) is inferred from those hook points and its name,
+  not from reading the plugin.
+- So no isolation is needed. Report about 0.2 to 0.3 s of start-up time per run and move on.
 - Scoring gains time, tokens and cost **to the goal**, up to the turn that made the goal-reaching
   call. In the mock only run 1's total (19.0 s) is real; its per-call times are spread across it,
   and the other runs' times are illustrative.
@@ -242,8 +290,15 @@ and sprites drop to their 10 pixel size when tiles are small.
 - A finished run opens at its start state, paused.
 - Compare is a second slot, with independent tables. A per-state comparison is deferred.
 - Clock time on every step and the total in the score row.
-- Time and tokens are measured on the client, in a trace the harness writes. `run.jsonl` stays
-  clock-free and remains the ground truth of what the world did.
+- Time and tokens are measured on the client. `run.jsonl` stays clock-free and remains the ground
+  truth of what the world did.
+- The client trace comes from Claude Code's OpenTelemetry export, which was tested: exact tokens and
+  cost, per-request and per-tool durations, near-live delivery, and the harness hosts the receiver (ADR-002).
+- Raw OTLP posts are not stored, because they carry the user's identity; a scrubbed trace is.
+- No baseline isolation is needed. The organization's plugin adds about 0.2 to 0.3 s of start-up per
+  run and no tokens; that is reported, not removed.
+- Hosting means replay: a run is exported as a bundle (frames, scrubbed trace, score; no world file)
+  and a static viewer plays it, so visitors can explore. Live stays local (ADR-002).
 - The close dot is the only window control.
 - The picker has a grid and a list, and the list works as a leaderboard sorted by calls or time.
 
@@ -254,39 +309,36 @@ and sprites drop to their 10 pixel size when tiles are small.
    and tool schemas) also narrows it. The skill arm adds its text and the memory arm adds recalled
    context on every prompt. Do we show raw counts, the CLI's cost in dollars, or a derived figure? The
    leaderboard needs one number to sort by.
-2. **The trace source.** Parse the CLI stream, as verified, or use OpenTelemetry export, which is
-   unchecked? Two `SessionStart` hooks also still fire under `--setting-sources project`, and any
-   context they inject counts as tokens. They should be identified before trusting a baseline.
-3. **Ranking.** Only runs that got the goal are ranked, by calls then time, or by time then calls.
+2. **Ranking.** Only runs that got the goal are ranked, by calls then time, or by time then calls.
    Should a run that got it with more calls but faster ever outrank a slower, leaner one? Is "best" a
    single number the leaderboard should show, or is a choice of sort enough?
-4. **Comparing by state.** Line two runs up when their tables match, and show where they diverge.
+3. **Comparing by state.** Line two runs up when their tables match, and show where they diverge.
    This is the meaningful comparison, and it is deferred. It may change what the second slot is.
-5. **Sound.** A soft tick per placement, a chime on craft, a low note on refusal, muted by default.
+4. **Sound.** A soft tick per placement, a chime on craft, a low note on refusal, muted by default.
    Worth it for talks and video, awkward for a shared office.
-6. **The win.** Confetti and a mint numeral, or quieter? A talk wants a bigger payoff than a desk
+5. **The win.** Confetti and a mint numeral, or quieter? A talk wants a bigger payoff than a desk
    monitor.
-7. **Best possible.** Pips show the target. A faint "ghost" of the best run replaying alongside would
+6. **Best possible.** Pips show the target. A faint "ghost" of the best run replaying alongside would
    show it as motion. Which is clearer?
-8. **The agent as a character.** A small pixel figure that thinks, reaches and shrugs on a refusal,
+7. **The agent as a character.** A small pixel figure that thinks, reaches and shrugs on a refusal,
    in place of the abstract bubble. More charm, more art to draw.
-9. **Speech.** Streaming the CLI's output would let the bubble show what the agent says ("trying
+8. **Speech.** Streaming the CLI's output would let the bubble show what the agent says ("trying
    pairs"). That is compelling, but it shows reasoning and couples the observer to the harness.
-10. **Sprite legibility.** Eight palettes and symmetric shapes may collide for similar names. Hover
+9. **Sprite legibility.** Eight palettes and symmetric shapes may collide for similar names. Hover
    names, a legend, or a bigger palette?
-11. **Many runs.** A grid or list works for a dozen runs. With hundreds, does it need search and
+10. **Many runs.** A grid or list works for a dozen runs. With hundreds, does it need search and
     collapsing folders?
-12. **Naming and arms.** Runs are numbered under their label (`baseline / 001`). The player note
+11. **Naming and arms.** Runs are numbered under their label (`baseline / 001`). The player note
     proposes baseline, memory and skill arms. Does the harness need an `--arm` flag, and a human name,
     so the picker can group and label runs?
-13. **Presentation.** A full-screen mode with larger type for talks, and exporting a run as a GIF or
+12. **Presentation.** A full-screen mode with larger type for talks, and exporting a run as a GIF or
     video for the write-up?
-14. **Where it starts.** A `--watch` flag on `run-agent`, a standalone `pnpm observe`, or both?
+13. **Where it starts.** A `--watch` flag on `run-agent`, a standalone `pnpm observe`, or both?
 
 ## Path to implementation
 
 1. Iterate this note and the mock until the look and the questions above settle.
-2. Write the ADR: a separate read-only process, frames derived by replay, runs discovered from the
+2. Write the observer ADR: a separate read-only process, frames derived by replay, runs discovered from the
    harness's folders, live by tailing the log.
 3. `/speckit-specify` referencing that ADR, then plan, tasks and implementation.
 4. Build order: the frame function, run discovery, the static page from the mock, the
