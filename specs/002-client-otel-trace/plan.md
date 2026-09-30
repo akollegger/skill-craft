@@ -95,22 +95,24 @@ src/
 │   └── measure.ts       #      join to run log; totals and to-goal figures; cross-check; trace status
 └── harness/
     ├── driver.ts        # NEW  AgentDriver seam (types only) and PlayerResult
-    ├── sdk-driver.ts    # NEW  the only importer of the SDK: query() with the options of ADR-002 §2.2
-    ├── run.ts           # EDIT drop CLI args/parsing; sdk options builder; async runOnce via a driver
+    ├── sdk-options.ts   # NEW  pure: SDK options builder and result classification (type-only SDK imports)
+    ├── sdk-driver.ts    # NEW  the only runtime importer of the SDK: the query() loop and hooks
+    ├── run.ts           # EDIT drop CLI args/parsing; async runOnce via a driver, default loaded lazily
     ├── bundle.ts        # NEW  read a bundle; framesAfter(n)
     └── export.ts        # NEW  exportBundle(runDir, dest)
 scripts/
 ├── run-agent.ts         # EDIT await async harness; print time and tokens; drop --claude
 └── export-run.ts        # NEW  pnpm dev scripts/export-run.ts <run-dir> <dest>
 test/
-├── recorder.test.ts  measure.test.ts  frames.test.ts  export.test.ts  privacy.test.ts
+├── trace-lines.test.ts  recorder.test.ts  measure.test.ts  sdk-options.test.ts  frames.test.ts
+├── export.test.ts  privacy.test.ts  live-sdk.test.ts   # live-sdk runs only with LIVE_SDK=1
 ├── harness.test.ts      # EDIT drive through the seam; budget error after result; trace cases
 └── helpers/fake-player.ts  # NEW scripted driver; replaces helpers/fake-claude.ts (CLI stand-in)
 ```
 
 **Structure Decision**: extend the existing single project. Measurement lives in `src/trace/`, which
 only the harness imports, so the simulation library and server stay free of clocks and networking.
-The SDK is confined to `sdk-driver.ts` behind the `AgentDriver` seam, so the recorder, join and export
+The SDK is confined to `sdk-driver.ts` behind the `AgentDriver` seam (`sdk-options.ts` is pure and imports only types), so the recorder, join and export
 are tested without it and a different player could be added by writing another driver. Frame
 derivation is in `src/sim/` beside `score.ts` (ADR-002 amendment); the observer and the exporter will
 both import it.

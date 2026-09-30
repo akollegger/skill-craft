@@ -15,9 +15,9 @@
 The people who use this feature are the **experiment runner**, who runs an agent on a goal and wants
 to know what the run cost; the **demo viewer**, who compares runs on a screen or in a shared folder;
 and the **sharer**, who hands a run to someone else, in a folder or as a bundle for hosted viewing, and
-must not leak personal details or the world's recipes. Today
-a run is scored by counting calls, which is a loose stand-in for time and tokens: context grows on
-every turn, so a run with a few extra calls can cost far more than its call count suggests.
+must not leak personal details or the world's recipes. Today a run is scored by counting calls, which
+is a loose stand-in for time and tokens: context grows on every turn, so a run with a few extra calls
+can cost far more than its call count suggests.
 
 The **player** is the agent software the harness runs (Claude Code); the **agent** is the model working
 inside it. The harness measures a run by observing the events the player emits. The agent reports
@@ -41,7 +41,8 @@ call.
 **Acceptance Scenarios**:
 
 1. **Given** a finished run with recorded measurements, **When** its result is produced, **Then** it
-   reports total duration, the four token counts (input, output, cache read, cache creation) and cost.
+   reports total duration, the four token counts (input, output, cache read, cache creation) and cost,
+   and the model or models the run used.
 2. **Given** a run that reached the goal and then made more calls, **When** its result is produced,
    **Then** the "to goal" duration and token figures include every model request that ended at or
    before the goal-reaching call, including the request that issued it, and nothing later.
@@ -49,6 +50,8 @@ call.
    are reported and the "to goal" figures are absent.
 4. **Given** the recorded figures sum to the totals stated in the player's final result, **When** the run is
    scored, **Then** the figures match those totals exactly.
+5. **Given** a run started without choosing a model, **When** its result is produced, **Then** it
+   records that none was requested and names the model that actually ran.
 
 ---
 
@@ -56,11 +59,10 @@ call.
 
 The sharer copies a run folder to send to a colleague or publish. The folder holds calls, outcomes,
 times and token counts, and nothing that identifies the person who ran it: no email address, user id,
-account id or organization id, and no unfiltered copy of what the agent's tooling reported.
+account id or organization id, and no unfiltered copy of the player's messages.
 
-**Why this priority**: The player's messages carry the agent's own text and reasoning, and its
-telemetry, if used, carries the runner's identity on every record. A run folder is meant to be shared,
-so a leak here is one copied folder away.
+**Why this priority**: The player's messages carry the agent's own text and reasoning, and can carry
+identifying details. A run folder is meant to be shared, so a leak here is one copied folder away.
 
 **Independent Test**: Run the harness with a scripted player whose messages carry personal attributes
 and agent text, then search everything the harness wrote for those values. None appear.
@@ -94,11 +96,11 @@ and that the times are offsets from the start of the run.
 **Acceptance Scenarios**:
 
 1. **Given** a completed run, **When** its trace is read, **Then** every model request and every tool
-   call appears once, in the order received, each with a running number starting at zero.
+   call appears once, in the order recorded, each with a running number starting at zero.
 2. **Given** a consumer that has read items up to number n, **When** it asks for items after n,
    **Then** it gets exactly the later ones.
-3. **Given** a trace, **When** its times are examined, **Then** they are offsets from the run's first
-   event and contain no wall-clock time or date.
+3. **Given** a trace, **When** its times are examined, **Then** they are offsets from the moment the
+   session was ready and contain no wall-clock time or date.
 
 ---
 
@@ -125,6 +127,9 @@ arguments changed. Both yield a call-based score, a "mismatch" marker, and no me
    and the run is not treated as a mismatch.
 4. **Given** a run with no measurements at all, **When** it is scored, **Then** the result carries the
    call-based score and no measured figures, and no error.
+5. **Given** a trace whose token sums differ from the totals stated in the player's final result,
+   **When** the run is scored, **Then** the result marks the trace as a mismatch, names the
+   disagreeing field, and omits measured figures.
 
 ---
 
@@ -151,9 +156,9 @@ contents an independent replay of the run gives, plus the trace and the result.
    call in the run log, in order, each showing the table, the held items and what could be made.
 2. **Given** a bundle, **When** its frames are compared with replaying the run log on its world,
    **Then** they are identical.
-3. **Given** a bundle, **When** its files are searched for the world's recipes, item descriptions
-   beyond those the run met, or the world file, **Then** none are present.
-4. **Given** a bundle, **When** it is searched for personal identifiers or unfiltered measurements,
+3. **Given** a bundle, **When** its files are searched for any recipe, any item description, any item
+   id the run did not exercise, or the world file, **Then** none are present.
+4. **Given** a bundle, **When** it is searched for personal identifiers or unfiltered player messages,
    **Then** none appear.
 5. **Given** a run whose trace did not match, **When** it is exported, **Then** the bundle holds the
    frames and the result with its mismatch marker, and no measured figures.
@@ -168,20 +173,21 @@ contents an independent replay of the run gives, plus the trace and the result.
 
 ### Edge Cases
 
-- The player ends abnormally (an error, or its turn budget): the run is scored with what was recorded,
-  and any shortfall is visible as a mismatch, not silently accepted.
+- The player ends abnormally (an error, or its turn budget) with no final result: the run is scored on
+  calls, and the trace is a mismatch whose reason is "run ended without a result", not silently
+  accepted.
 - The player reports that its turn budget ran out by raising an error after its final result: the run
   is still classified as out of budget, not as an error.
-- Model requests outside the agent's own loop never enter the trace or the totals; the player emits
-  events for the main loop only.
 - Two runs happen at once: each run's measurements stay in that run's folder.
 - A run is rerun into a folder that already has a trace: it is refused, as a used run log is.
-- A measurement arrives with a missing or malformed field: that item is skipped and the run is
-  flagged, and the harness does not crash.
+- A run uses more than one model (for example after a fallback): all are listed, and the run is
+  flagged as having used several.
+- A message with a missing or malformed field is skipped and counted; the trace is then a mismatch
+  whose reason names the count, and the harness does not crash.
 - A run is exported while still running: export is refused; only finished runs are exported.
 - A bundle is exported to a folder that already has one: it is refused rather than overwritten.
-- A run's frames show the recipes the run exercised (crafted outputs appear in them); the bundle
-  omits everything the run did not touch.
+- A run's frames show the item ids the run exercised, including crafted outputs; the bundle omits
+  every item id the run did not touch.
 
 ## Requirements *(mandatory)*
 
@@ -207,9 +213,11 @@ contents an independent replay of the run gives, plus the trace and the result.
 - **FR-008**: A run's result MUST report total duration, the four token totals and cost for the whole
   run, and duration and the four token totals up to and including the model request that issued the
   goal-reaching call.
-- **FR-009**: When the trace does not join to the log, the result MUST record a mismatch, omit
-  measured figures, and leave every call-based figure unchanged.
-- **FR-010**: Requests made outside the agent's own loop MUST be excluded from totals.
+- **FR-009**: When the trace does not join to the log, or its token sums differ from the totals stated
+  in the player's final result, the result MUST record a mismatch with its reason, omit measured
+  figures, and leave every call-based figure unchanged.
+- **FR-010**: _Withdrawn._ It holds by construction (see Assumptions); the number is kept so other
+  documents' references stay valid.
 - **FR-011**: The harness MUST work when no measurements arrive, scoring on calls alone.
 - **FR-012**: The simulation server, the engine and the run log MUST NOT gain a clock or any
   measurement.
@@ -217,41 +225,51 @@ contents an independent replay of the run gives, plus the trace and the result.
   viewer can follow a run within about a second of each step.
 - **FR-014**: The harness MUST derive one frame per run log entry by replaying the log on the run's
   world. A frame holds the table's contents, the items held, and the preview of what could be made
-  after that call. Frame derivation MUST be a function of the simulation library, with no server or network
-  dependency, so export and the observer's live view call the same code.
+  after that call. Frame derivation MUST be a function of the simulation library, with no server or
+  network dependency, so export and the observer's live view call the same code.
 - **FR-015**: The harness MUST export a finished run as a replay bundle holding the frames, each with a
   number starting at zero, the trace, and the run's result.
-- **FR-016**: A bundle MUST NOT contain the world file, any recipe the run did not exercise, or any
-  personal identifier, and MUST NOT contain unfiltered measurements.
+- **FR-016**: A bundle MUST NOT contain the world file, any recipe, any item description, any item id
+  the run did not exercise, or any personal identifier, and MUST NOT contain unfiltered player messages.
 - **FR-017**: A bundle MUST be playable on its own. Reading it MUST NOT need the world, the run log or
   the simulation.
 - **FR-018**: A consumer MUST be able to ask a bundle for its frames after a given number and receive
   exactly the later ones.
 - **FR-019**: Export MUST fail, leaving no partial bundle, when the run is unfinished or its log does
   not replay, and MUST refuse to overwrite an existing bundle.
-- **FR-020**: Tests for the recording, the field filtering, the join, the score figures, frame derivation and
-  bundle export MUST be
-  written before the code they cover, using stand-in measurements and no real agent.
+- **FR-020**: Tests for the recording, the field filtering, the join, the score figures, frame
+  derivation and bundle export MUST be written before the code they cover, using stand-in measurements
+  and no real agent.
+- **FR-021**: The harness MUST record, for each run, the model requested (or that none was requested)
+  and the model or models that actually ran, read from what the player reports, and MUST keep this
+  when the trace is absent or a mismatch.
+- **FR-022**: A label's summary MUST list the models its runs used and flag a label whose runs used
+  different models, and MUST NOT present figures from different models as one comparable set without
+  that flag.
 
 ### Key Entities
 
 - **Trace**: The per-run, ordered record of model requests and tool calls with times and token
   figures. Distinct from the run log, which records only what the world did.
-- **Model request**: One call to the model, with its id, turn, time span, time to first token and four
-  token counts.
+- **Model request**: One call to the model, with its id, the model that served it, turn, time span, time
+  to first token and four token counts.
 - **Tool call (trace side)**: One tool round trip as the agent saw it, joined to a run log entry.
 - **Run result**: The per-run scored summary; gains duration, token totals and cost for the whole
   run, their "to goal" counterparts (without cost), and a trace status (matched, mismatch, or absent).
 - **Frame**: The state of a run after one call: the table, the held items and the preview.
 - **Replay bundle**: A self-contained export of one run: numbered frames, the trace and the result.
 - **Allowlist**: The fixed set of fields that may be stored from the player's messages.
+- **Model**: The requested model (or none) and the models that ran, recorded on each run's result, each
+  model request, the label summary and the bundle.
+- **Exercised**: An item id is exercised when the run placed it, held it, crafted it, or saw it named
+  in a preview. A recipe is never stored, so no recipe's inputs or shape appear in a bundle.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: For a real run, the reported token totals and cost equal the totals stated in the player's final result
-  exactly.
+- **SC-001**: For a real run, the reported token totals equal the totals stated in the player's final
+  result exactly, and the reported cost is the total it states.
 - **SC-002**: After a run with personal identifiers present in the player's messages, a search of
   everything the harness wrote finds none of them.
 - **SC-003**: A viewer following a run sees each new step's time within about one second of it
@@ -263,10 +281,12 @@ contents an independent replay of the run gives, plus the trace and the result.
   simulation's behaviour, and the run log gains no new field.
 - **SC-006**: A bundle exported from a run reproduces every step of it with the original run folder and
   world file deleted, and its frames are identical to an independent replay of the log.
-- **SC-007**: A search of a bundle finds no personal identifier, no world file, and no recipe the run
-  did not exercise.
+- **SC-007**: A search of a bundle finds no personal identifier, no world file, no item description,
+  and no item id the run did not exercise.
 - **SC-008**: The experiment runner can tell, from one run's result alone, how long it took, what it
   cost, and how much time and how many tokens were spent reaching the goal.
+- **SC-009**: Every run's result names the model that ran, including runs started without choosing one,
+  and a label mixing models is flagged every time.
 
 ## Assumptions
 
@@ -275,14 +295,16 @@ contents an independent replay of the run gives, plus the trace and the result.
   out of scope.
 - Interactive sessions and the desktop app cannot be measured this way and are out of scope.
 - Deriving frames and exporting bundles belong to this feature, because ingest is not complete until a
-  run can leave the machine. Frame derivation is a producer-side function, next to run scoring, since the frame is the bundle's
-  published contract. The observer calls it and does not own it.
+  run can leave the machine. Frame derivation is a producer-side function, next to run scoring, since
+  the frame is the bundle's published contract. The observer calls it and does not own it.
 - The page that plays a bundle, and where bundles are hosted, belong to the observer feature and are
   out of scope here. This feature ends at a bundle that any such page can read.
 - An OpenTelemetry route was measured and is a documented alternative (ADR-002). It is used only if
   per-request cost is needed or a player that is not run through the SDK must be measured.
 - What single figure the leaderboard sorts by is an open observer question, not decided here; this
   feature reports the figures.
-- Cost is the run total stated in the player's final result, in dollars; there is no per-request cost and no independent
-  pricing.
+- Cost is the run total stated in the player's final result, in dollars; there is no per-request cost
+  and no independent pricing.
+- The player emits events for the main agent loop only, so requests outside it (such as auxiliary
+  calls) never enter the trace or the totals.
 - The trace is trusted as the harness observed it from the player's events; unlike the run log it cannot be checked by replay.

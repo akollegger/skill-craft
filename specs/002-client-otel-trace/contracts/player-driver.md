@@ -30,7 +30,7 @@ type AgentDriver = (opts: DriverOptions, sink: DriverSink) => Promise<PlayerResu
 | `persistSession` | `false` |
 | `settingSources` | `[]`, or the user and project sources when `record` is set |
 | `includePartialMessages` | `true` |
-| `hooks` | `PreToolUse` and `PostToolUse`, each forwarding to the sink and returning `{}` |
+| `hooks` | `PreToolUse`, `PostToolUse` and `PostToolUseFailure`, each forwarding to the sink and returning `{}`; either post hook ends a call, and a call is recorded once |
 | `cwd` | the run folder |
 
 The environment is inherited unchanged; no telemetry variables are set.
@@ -42,7 +42,8 @@ The environment is inherited unchanged; no telemetry variables are set.
 - The SDK throws after delivering an `error_max_turns` result. When a result was already delivered, the
   driver returns it and swallows that throw.
 - `durationMs`, `turns`, `costUsd` and `usage` come from the result message; `text` from its `result`
-  field when present.
+  field when present; `modelsUsed` from the keys of its `modelUsage`; `initModel` from the `init`
+  message's `model`; `requestedModel` from the option the harness passed.
 
 ## What the recorder reads
 

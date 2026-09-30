@@ -18,6 +18,6 @@ One file per run, in the run folder beside `run.jsonl`, written by the harness's
 ## Example
 
 ```json
-{"seq":0,"kind":"request","requestId":"msg_01","turn":1,"startMs":42,"endMs":1770,"ttftMs":1266,"inputTokens":2,"outputTokens":61,"cacheReadTokens":0,"cacheCreationTokens":1943}
+{"seq":0,"kind":"request","requestId":"msg_01","model":"claude-sonnet-5-5","turn":1,"startMs":42,"endMs":1770,"ttftMs":1266,"inputTokens":2,"outputTokens":61,"cacheReadTokens":0,"cacheCreationTokens":1943}
 {"seq":1,"kind":"tool","toolUseId":"toolu_01","tool":"help","args":{},"startMs":1790,"endMs":1801}
 ```

@@ -54,6 +54,13 @@ from a distilled skill. That suggests three arms, not two:
 
 This compares agent memory with skill distillation, not only with versus without.
 
+**Model is a second dimension.** The aim of distillation is to let a strong model work a task out,
+then hand the result to a smaller model that follows instructions. So the comparison that matters is
+often across models: a frontier model with no help (the teacher), a smaller model with no help, and the
+smaller model with the distilled skill. Tokens, cost and time are only comparable within one model, so
+each run records the model requested and the model that ran (spec 002), and a label that mixes models is
+flagged, not averaged. The arms above each get run per model of interest.
+
 ## Risks to check in a pilot
 
 - **Noise calls.** Earlier traces held many `ToolSearch` and `Bash` calls. Claude Code may defer
@@ -61,7 +68,9 @@ This compares agent memory with skill distillation, not only with versus without
   list so the recorded procedure is only the game's tools.
 - **Arm separation in NAMS.** One workspace is usable so far, so recalled memory can leak between
   arms. Runs need scoping or tagging.
-- **Model variance.** Pin the model and run several trials per arm; report a distribution.
+- **Model variance.** Pin the model for each arm (the run records which one ran) and run several trials
+  per arm; report a distribution. Runs started without choosing a model use the default, which can change
+  between sessions, so pin explicitly for experiments.
 - **Hooks under headless and SDK modes.** Confirm the hooks fire and record.
 - **Reasoning capture.** Placeholder reasoning limits what a distilled skill can say about
   judgment. Option 4 fixes this at the cost of more build.

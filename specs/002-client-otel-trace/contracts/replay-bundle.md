@@ -4,7 +4,7 @@
 
 ```
 <dest>/
-├── bundle.json      # manifest (BundleManifest)
+├── bundle.json      # manifest (BundleManifest), including the run's ModelInfo
 ├── frames.jsonl     # one Frame per line, seq 0..N contiguous
 ├── trace.jsonl      # the run's trace, unchanged (may be absent when trace is "absent")
 └── score.json       # { ended, turns, score, measured }

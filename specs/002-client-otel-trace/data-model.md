@@ -12,6 +12,7 @@ interface RequestLine {
   seq: number;              // 0,1,2,... in completion order
   kind: "request";
   requestId: string;        // the model message id
+  model: string | null;     // the model that served it, from message_start; null if absent
   turn: number;             // 1-based count of request lines recorded so far
   startMs: number;          // offset from t0 (the SDK's init message); integer ms
   endMs: number;
@@ -34,7 +35,8 @@ interface ToolLine {
 ```
 
 Rules
-- A request line is written at `message_stop`, a tool line at `PostToolUse`; nothing is written half-done.
+- A request line is written at `message_stop`, a tool line when either post hook fires; nothing is
+  written half-done. A message with a missing or malformed field is skipped and counted.
 - Only tools whose full name starts with `mcp__craft__` become tool lines.
 - `startMs` and `endMs` are offsets on the harness clock, never wall-clock. A request that would start
   before `t0` is clamped to 0.
@@ -45,17 +47,16 @@ Rules
 
 ## Recorder inputs (in memory only, never persisted)
 
-What the recorder reads from the player; everything else is ignored.
+What the recorder reads from the player; everything else is ignored, including the `result` message, whose figures reach the harness only through the driver's `PlayerResult`.
 
 | Input | Fields read |
 |---|---|
 | `init` system message | arrival time (sets `t0`) |
-| stream `message_start` | arrival time, `ttft_ms`, message id |
+| stream `message_start` | arrival time, `ttft_ms`, message id, model |
 | stream `message_delta` | final usage: the four token counts |
 | stream `message_stop` | arrival time |
 | `PreToolUse` hook | `tool_name`, `tool_use_id`, `tool_input`, arrival time |
-| `PostToolUse` hook | `tool_use_id`, arrival time |
-| `result` message | `subtype`, `duration_ms`, `total_cost_usd`, `num_turns`, `usage` (four token counts) |
+| `PostToolUse` or `PostToolUseFailure` hook | `tool_use_id`, arrival time (either one ends the call) |
 
 ## Measured figures (added to a run's `score.json`)
 
@@ -77,6 +78,11 @@ interface GoalFigures {     // up to and including the goal-reaching call; no co
   cacheCreationTokens: number;
 }
 
+interface ModelInfo {
+  requested: string | null; // the --model value, or null when none was given
+  resolved: string[];       // the model(s) that ran: the result's modelUsage keys, else the init model; sorted
+}
+
 interface Measured {
   trace: "matched" | "mismatch" | "absent";
   reason?: string;          // for "mismatch": the first disagreement; contains no personal data
@@ -86,8 +92,13 @@ interface Measured {
 ```
 
 State: `absent` (no trace lines and no result figures) -> `matched` or `mismatch`, decided once when the
-run ends. `mismatch` reasons include a count or argument difference against the run log, and a token
-sum that differs from the result's own `usage`.
+run ends. `mismatch` reasons include a count or argument difference against the run log, a token sum
+that differs from the result's own `usage`, lines with no result (`run ended without a result`), and
+skipped malformed items (`2 malformed items skipped`), and request-line models that differ from the
+result's `modelUsage` keys (`models: trace a, result b`).
+
+`ModelInfo` is computed by the harness from `PlayerResult` (`modelsUsed`, else `initModel`) and is
+present whatever the trace status.
 
 ## Run score addition
 
@@ -103,6 +114,9 @@ interface PlayerResult {
   costUsd: number | null;
   durationMs: number | null;
   usage: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheCreationTokens: number } | null;
+  requestedModel: string | null;  // what the harness asked for
+  initModel: string | null;       // the model in the session's init message
+  modelsUsed: string[];           // the keys of the result's modelUsage
   text: string;             // the agent's final message; kept in score.json, never in a bundle
 }
 ```
@@ -142,6 +156,7 @@ interface BundleManifest {
   best: { minCrafts: number; minCalls: number; slack: number } | null;
   frames: number;           // count, including the start frame
   trace: "matched" | "mismatch" | "absent";
+  model: ModelInfo;
 }
 // bundle score.json: { ended, turns, score, measured }   (no agent text)
 ```

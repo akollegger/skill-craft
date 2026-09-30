@@ -57,13 +57,13 @@ The picker
 - A sidebar with **All runs**, the experiment folders (one per harness `--label`), and smart groups:
   Live now, Got it, Didn't get it. Each shows a count.
 - A **grid** of tiles or a **list**, chosen with a toggle, and a sort of run order, calls, or time.
-  A tile has the score in large numerals, a thumbnail, the run's name, a **call strip**, its
-  outcome in words, and its time. The thumbnail shows the item the run made if it got it, and
+  A tile has the score in large numerals, a thumbnail, the run's name, the **model** that ran, a
+  **call strip**, its outcome in words, and its time. The thumbnail shows the item the run made if it got it, and
   where the table was left if not. The call strip is one small square per action call: amber for a
   placement, mint for a craft, coral for a refusal, lilac for a take-back. A direct run shows a
   short strip and a flailing run shows a long, mixed one, so runs can be told apart without
   opening them.
-- The **list** view acts as a leaderboard. Columns are rank, run, outcome, calls, time and the call
+- The **list** view acts as a leaderboard. Columns are rank, run, model, outcome, calls, time and the call
   strip. Clicking the Calls or Time header sorts by it. Runs that got the goal rank first, ordered by
   the chosen key (calls, then time as the tiebreak, or the reverse); finished runs that did not get it
   follow, ordered the same way but unranked; runs still going come last. Only runs that got the goal

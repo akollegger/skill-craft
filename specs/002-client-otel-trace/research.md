@@ -37,7 +37,8 @@ never quoted.
 - **Decision**: a request is recorded from three stream events sharing one message: `message_start`
   (arrival time, `ttft_ms`, message id), `message_delta` (final usage: the four token counts),
   `message_stop` (end). A tool call is recorded from `PreToolUse` (tool name, `tool_use_id`, input,
-  start) and `PostToolUse` (end). Only tools named `mcp__craft__*` become tool lines. Everything else in
+  start) and `PostToolUse` or `PostToolUseFailure` (end). The spike run had no refused calls, so which
+  hook a refusal fires is unverified; the recorder accepts both. Only tools named `mcp__craft__*` become tool lines. Everything else in
   the stream, including assistant text, thinking, system messages and the session id, is ignored.
 - **Rationale**: these are exactly the fields the spike validated. A line is written when it is
   complete (request at `message_stop`, tool at `PostToolUse`), so `seq` is completion order and a
