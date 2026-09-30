@@ -122,3 +122,35 @@ describe("scoreRun", () => {
     expect(() => scoreRun(makeWorld({ stock: { a: 1, b: 1 } }), goal, play(bestRun))).toThrow(/does not replay/);
   });
 });
+
+describe("scoreRun reachedSeq", () => {
+  it("is the log seq of the entry after which the goal is first held", () => {
+    const entries = play(bestRun); // the goal is held after the 6th call
+    expect(scoreRun(world, goal, entries).reachedSeq).toBe(6);
+  });
+
+  it("counts free calls in the seq, not only action calls", () => {
+    const entries = play((g) => {
+      g.look();
+      bestRun(g);
+    });
+    expect(scoreRun(world, goal, entries).reachedSeq).toBe(7);
+  });
+
+  it("is 0 when the goal is held before any call", () => {
+    expect(scoreRun(world, { item: "a", qty: 1 }, play((g) => g.look())).reachedSeq).toBe(0);
+  });
+
+  it("is null when the goal is never held", () => {
+    expect(scoreRun(world, goal, play((g) => g.place("a", 0, 0))).reachedSeq).toBeNull();
+  });
+
+  it("does not move when the run carries on after reaching the goal", () => {
+    const entries = play((g) => {
+      bestRun(g);
+      g.look();
+      g.look();
+    });
+    expect(scoreRun(world, goal, entries).reachedSeq).toBe(6);
+  });
+});

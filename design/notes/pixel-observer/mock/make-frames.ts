@@ -10,6 +10,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Game } from "../../../../src/sim/engine.js";
+import { deriveFrames } from "../../../../src/sim/frames.js";
 import { loadWorld } from "../../../../src/sim/loader.js";
 import type { RunLogEntry } from "../../../../src/sim/runlog.js";
 import { solve } from "../../../../src/sim/solver.js";
@@ -41,34 +42,7 @@ function clock(frames: Record<string, unknown>[], totalMs: number, seed: number)
 }
 
 /** Replay log entries on a fresh game, capturing what an observer would draw after each call. */
-function framesFor(entries: RunLogEntry[]) {
-  const game = new Game(world);
-  const frames: Record<string, unknown>[] = [];
-  let actions = 0;
-  let refusals = 0;
-  let reached = game.count(goal.item) >= goal.qty;
-  const snap = (extra: Record<string, unknown>) => {
-    const p = game.preview();
-    frames.push({ ...extra, grid: p.grid, craftable: p.craftable, held: game.inventory().items, actions, refusals, reached });
-  };
-  snap({ seq: 0, tool: "start", args: {}, ok: true });
-  for (const e of entries) {
-    const a = e.args;
-    const out: { ok?: boolean } =
-      e.tool === "place" ? game.place(String(a["item"]), Number(a["row"]), Number(a["col"]))
-      : e.tool === "remove" ? game.remove(Number(a["row"]), Number(a["col"]))
-      : e.tool === "clear" ? game.clear()
-      : e.tool === "craft" ? game.craft()
-      : e.tool === "look" ? game.look()
-      : e.tool === "inventory" ? game.inventory()
-      : { ok: true };
-    if (ACTIONS.has(e.tool)) actions++;
-    if (out.ok === false) refusals++;
-    reached = reached || game.count(goal.item) >= goal.qty;
-    snap({ seq: e.seq, tool: e.tool, args: e.args, ok: e.ok, ...(e.error ? { error: e.error } : {}), ...(e.crafted ? { crafted: e.crafted } : {}) });
-  }
-  return frames;
-}
+const framesFor = (entries: RunLogEntry[]) => deriveFrames(world, goal, entries) as unknown as Record<string, unknown>[];
 
 type Step = ["help"] | ["inventory"] | ["look"] | ["place", string, number, number] | ["remove", number, number] | ["clear"] | ["craft"];
 

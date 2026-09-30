@@ -22,6 +22,8 @@ one field inside `score`. Existing keys keep their meaning.
 - `total.durationMs` is the result's `duration_ms`; `total.costUsd` is its `total_cost_usd`; the token
   fields are the sums of the request lines (checked equal to the result's `usage`).
 - `toGoal` has duration and the four token totals only. Its duration is the goal-reaching tool line's
-  `endMs`; its tokens sum request lines with `endMs` at or before that. There is no `toGoal` cost.
+  `endMs`; its tokens sum the request lines written before that tool line (by `seq`, so lines that share
+  a millisecond are ordered exactly; the request that issued the call is included). There is no `toGoal`
+  cost.
 - The top-level `costUsd` (existing) and `measured.total.costUsd` come from the same result and are
   equal for a matched run.

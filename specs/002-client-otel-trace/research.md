@@ -73,8 +73,9 @@ never quoted.
 
 - **Decision**: `scoreRun` records the run-log `seq` of the entry after which the goal is first held
   (`reachedSeq`: 0 if held at the start, null if never). "To goal" figures are the tool line paired with
-  that entry, then: duration is its `endMs`; tokens are summed over request lines with `endMs` at or
-  before it. No cost: the SDK gives a run total only. `reachedSeq` 0 gives zeros.
+  that entry, then: duration is its `endMs`; tokens are summed over the request lines written before it (by `seq`,
+  not by time: a request is always written before the tool calls it issued, and lines can share a
+  millisecond). No cost: the SDK gives a run total only. `reachedSeq` 0 gives zeros.
 - **Rationale**: one definition of "reached", already computed by `scoreRun`. The request that issued the
   call ends before the tool starts, so the rule includes it.
 
@@ -150,3 +151,47 @@ never quoted.
   off when the NAMS skills client arrives (generate, poll, review, publish, with rate limits, retries and
   partial failures), so revisit it then. The seams here (the driver as a service, an injected clock,
   pure `measureRun` and recorder) map onto Effect services and layers without rework.
+
+## Implementation notes (2026-09-30)
+
+### Real-run check (T039)
+
+One short real run (`--goal glirol --runs 1 --max-turns 20`, no `--model`) and the two live SDK tests:
+
+- The run ended `budget` (20 turns, goal not reached, 34 calls, no refusals) and was classified `budget`, not
+  `error`. The resolved model was recorded as `claude-sonnet-5-5` with `requested: null`.
+- The trace was `matched`: 20 request lines and 34 tool lines, the 34 tool lines equal the 34 log entries, the
+  summed output tokens (3,046) equal the printed total, and the first request started 36 ms after `init`.
+- A search of every file in the run folder for the operator's email found nothing; the `PATH` is in none of them.
+- The live tests passed: per-request token sums equalled the result's `usage` exactly for all four counts, every
+  request named its model, and a forced refusal (`place` of an unknown item) was recorded, with the trace's tool
+  count equal to the log's. So a refused call is recorded whichever post hook it fires; the recorder cannot tell
+  the two apart, which is the point of treating them as one end.
+- Export of the run gave 35 frames (34 calls plus the start) and a bundle with no world file name, no `/Users/`
+  path, no recipe text, and only `ended`, `turns`, `score` and `measured` in its result. A second export to the
+  same place, and one of a run without a `score.json`, were refused with a one-line cause, leaving nothing behind.
+- `--record` (quickstart step 5) was not run; it is only for when a recorded run is wanted.
+
+### What the implementation found
+
+- **`PATH` leak, fixed.** The first version put the operator's whole `PATH` in the craft server's environment, and
+  so in `mcp.json` and in the dry-run output. The old harness never wrote it. `craftServer` now has only
+  `SIM_WORLD` and `SIM_RUN_LOG`; the live call adds `PATH` in memory. Tests cover `mcp.json`, the plan and the
+  whole run folder.
+- **Not fixed: absolute paths.** `mcp.json` holds absolute paths for the world and run log, which include the
+  operator's OS user name. The old harness did the same. They are not in a bundle. Making them relative to the
+  repository would need export to resolve them; left as a follow-up.
+- **"To goal" is by completion order, not by time.** A scripted player puts every event in one millisecond, so
+  comparing end times charged the closing request to the goal. `toGoal` sums the request lines written before the
+  goal-reaching tool line, which is exact at any clock resolution.
+- **Post-versus-failure hooks** are distinguished only where the SDK hooks are registered (`buildHooks`, tested in
+  `sdk-options.test.ts`); the sink has one `onToolEnd`, so the scripted player has no `endVia` option.
+- **Errors beyond the five planned:** `RunCancelled` (Ctrl-C has its own reason), `RunFailed` (a failure outside
+  the driver, such as a file that cannot be written) and `ExportRefused`.
+- **A driver that delivers a result and then rejects** is handled inside `sdk-driver.ts`, where the SDK's
+  post-result throw is swallowed (`classifyResult`, `playerResultFrom`); at the harness level a rejecting driver is
+  a `DriverFailed`, so the harness tests cover that, not a separate "result then rejection" case.
+- **Mismatched and absent traces** ship no trace lines in a bundle: a trace that disagrees with the log is not
+  trusted to show times.
+- `design/notes/pixel-observer/mock/make-frames.ts` now uses `deriveFrames`; the regenerated `index.html` is
+  byte-identical.

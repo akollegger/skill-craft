@@ -87,7 +87,8 @@ tighter player (option 3), richer recording (option 4), or a change to the tool 
 ## Interim tooling
 
 Until the decision is made, `scripts/run-agent.ts` (with `src/harness/`) runs the leaning option:
-headless Claude Code, built-in tools removed, one run log per run, scored by replaying the log. It
+Claude Code run through the Claude Agent SDK, built-in tools removed, one run log per run, scored by
+replaying the log and measured for time, tokens and cost (ADR-002). It
 keeps sessions out of NAMS by default, so it does not yet exercise the memory and skill arms; that
 waits on the ADR. A first real run showed the baseline can fail by giving up or asking for a hint
 rather than by getting the answer wrong, so the harness prompt forbids questions, sets a turn budget,
