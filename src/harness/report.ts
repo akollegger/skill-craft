@@ -28,6 +28,8 @@ const summarySchema = z.object({
   trials: z.object({ calibration: z.number(), teacherPerLearnGoal: z.number(), armHeldOut: z.number(), armPerLearnGoal: z.number() }),
   manualSteps: z.array(z.string()),
   labels: z.record(z.string(), z.union([z.object({ stage: z.literal("calibration") }), z.object({ arm: z.string() })])),
+  /** The invented counterpart's goal names, each mapped to the faithful goal it stands for. */
+  counterpartGoals: z.record(z.string(), z.string()).optional(),
 });
 type Summary = z.infer<typeof summarySchema>;
 
@@ -113,8 +115,10 @@ export function buildReport(input: ReportInput): string {
     const arm = "arm" in tag ? summary.arms.find((a) => a.label === tag.arm) : undefined;
     if ("arm" in tag && arm === undefined) throw new ReportRefused(`run folder ${name} names an arm the summary does not define`);
     const batch = readJson(join(dir, "summary.json"), `batch summary of ${name}`) as { goal?: { item?: string } };
-    const goal = batch.goal?.item;
-    if (goal === undefined) throw new ReportRefused(`batch summary of ${name} names no goal`);
+    const batchGoal = batch.goal?.item;
+    if (batchGoal === undefined) throw new ReportRefused(`batch summary of ${name} names no goal`);
+    // A renamed world's goals are shown, and compared, under the faithful goal they stand for.
+    const goal = summary.counterpartGoals?.[batchGoal] ?? batchGoal;
     const stage = "arm" in tag ? tag.arm : "calibration";
     const role = goal === summary.goals.heldOut ? "held-out" : summary.goals.learn.includes(goal) ? "learn" : "other";
     const planned =

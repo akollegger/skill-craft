@@ -172,6 +172,18 @@ describe("buildReport", () => {
   });
 });
 
+describe("the invented counterpart's goal names", () => {
+  it("are compared under the faithful goal they stand for", () => {
+    const f = fixture({ counterpartGoals: { plaevratael: "iron", zibael: "wooden" } });
+    f.addLabel("cal-f", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(5, 5));
+    f.addLabel("cal-i", { stage: "calibration" }, "plaevratael", STUDENT, "invented", wins(0, 5));
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(md).toContain("| calibration | student-model | invented | held-out iron | 0/5 |");
+    expect(md).toMatch(/faithful against invented, student-model, held-out iron: faithful 5\/5, invented 0\/5: supported/);
+    expect(md).not.toContain("plaevratael");
+  });
+});
+
 describe("what the report refuses", () => {
   const refused = (fn: () => unknown, pattern: RegExp) => {
     try {

@@ -18,6 +18,7 @@ without it. JSON.
     { "label": "S2", "model": "student", "recorded": false, "skill": true,
       "promptNote": "A skill for this kind of task is available; load it before exploring." }
   ],
+  "counterpartGoals": { "drinefoun": "wooden_pickaxe", "zibael": "stone_pickaxe", "plaevratael": "iron_pickaxe" },
   "labels": {
     "faithful-1-cal-faithful-haiku-iron": { "stage": "calibration" },
     "faithful-1-t0-wooden": { "arm": "T0" },
@@ -35,6 +36,8 @@ without it. JSON.
 ```
 
 Rules:
+- `counterpartGoals` maps each goal of the invented counterpart to the faithful goal it stands for (the renamer
+  keeps goal order). The report shows and compares counterpart rows under the faithful goal.
 - `labels` maps every run label folder the report may read to its stage (`calibration`) or its arm. The
   report refuses a folder that is not listed, so a stray folder cannot change a result. The world a row ran on
   comes from the prior fit stamped in each run, not from the label.
