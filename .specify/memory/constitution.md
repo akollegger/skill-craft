@@ -1,8 +1,10 @@
 <!--
 Sync Impact Report
-- Version change: (unratified template) → 1.0.2 (goals are not part of a world; Principle II
+- Version change: 1.0.2 → 1.1.0 (Principle III: experimental worlds declare a prior fit instead of
+  always using invented names)
+- Modified principles: III. Discovery Over Disclosure
+- Earlier: (unratified template) → 1.0.2 (goals are not part of a world; Principle II
   wording corrected; project renamed from skill-distill to skill-craft)
-- Modified principles: none (initial ratification)
 - Added principles: I. Deterministic, Replayable Environments; II. Data-Driven Worlds;
   III. Discovery Over Disclosure; IV. Test-First Rules; V. Simplicity; VI. Secrets Hygiene;
   VII. Decisions Before Specs
@@ -40,10 +42,23 @@ must be inputs, not code.
 ### III. Discovery Over Disclosure
 No tool may reveal a recipe, a solution, or the identity of an item beyond what the world file
 puts in play. Error results MUST state the constraint that was violated and MUST NOT state the
-fix. Worlds intended for experiments MUST use invented names and category-only descriptions so an
-agent cannot answer from prior knowledge.
+fix. Descriptions MUST be category-only, since a description is a hint channel.
 
-Rationale: if the agent can answer from what it already knows, memory has nothing to add.
+Every world used in an experiment MUST declare its prior fit, which says how far an agent's
+existing knowledge predicts the world's actual recipes:
+
+- **invented**: names and descriptions carry no meaning, so no prior applies beyond the game
+  mechanic;
+- **faithful**: the vocabulary and recipes of a well-known source, with the source and its version
+  named;
+- **perturbed**: a faithful vocabulary with a stated list of deviations from its source.
+
+Results MUST name the prior fit of the world they come from. A faithful world is a control: it
+marks where memory has nothing to add.
+
+Rationale: prior knowledge decides how much memory can add. Real processes sit between no prior
+and an exact one: a familiar vocabulary whose specifics differ in ratios, order or technique. The
+prior fit is therefore a variable to declare and compare, not a defect to remove.
 
 ### IV. Test-First Rules (NON-NEGOTIABLE)
 Engine behaviour, recipe matching, world validation and the renamer MUST be specified by tests
@@ -109,4 +124,4 @@ The constitution is versioned semantically. MAJOR: a principle is removed or red
 incompatibly. MINOR: a principle or section is added or materially expanded. PATCH:
 clarifications and wording fixes.
 
-**Version**: 1.0.2 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-29
+**Version**: 1.1.0 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-10-01

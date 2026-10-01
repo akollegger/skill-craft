@@ -13,7 +13,8 @@ The crafting table is a grid. The agent places items on it, and the table report
 current arrangement makes something. Some recipes only need the right items (shapeless). Others
 need the right items in the right arrangement (shaped). Raw items are limited, and crafting
 consumes them, so wrong guesses cost something. The agent has to discover what can be built. It
-cannot look recipes up, and worlds use invented item names so prior knowledge does not help.
+cannot look recipes up. Each experimental world declares how far prior knowledge applies: invented
+names (none), a familiar vocabulary with deviations, or a faithful copy used as a control.
 
 If a distilled skill helps, it shows up as fewer tool calls and fewer wasted crafts on a later run.
 
