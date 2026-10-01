@@ -19,7 +19,7 @@ const worldFiles = dirs.flatMap((dir) =>
 
 describe("every committed world (FR-021)", () => {
   it("finds worlds to check", () => {
-    expect(worldFiles.length).toBeGreaterThanOrEqual(11);
+    expect(worldFiles.length).toBeGreaterThanOrEqual(12);
   });
 
   for (const path of worldFiles) {

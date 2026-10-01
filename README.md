@@ -64,7 +64,7 @@ SIM_WORLD=worlds/generated/forge-7.json pnpm exec tsx src/mcp/server.ts
 SIM_WORLD=worlds/forge.json SIM_RUN_LOG=runs/run-001.jsonl pnpm exec tsx src/mcp/server.ts
 ```
 
-- **Worlds** are JSON files (`worlds/forge.json` is the base). A world sets the table size, the
+- **Worlds** are JSON files (`worlds/forge.json` is the base; see [worlds/README.md](worlds/README.md) for the sibling files and the faithful world's credit). A world sets the table size, the
   starting stock, the items, the recipes (shapeless or shaped) and a hint level. It holds no goals;
   each committed world has a sibling `<name>.goals.json` for tests and the solver.
 - **Best run.** `pnpm dev scripts/solve.ts --world worlds/forge.json --goals-file worlds/forge.goals.json`

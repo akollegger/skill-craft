@@ -1,0 +1,19 @@
+{
+  "goals": [
+    {
+      "item": "wooden_pickaxe",
+      "qty": 1,
+      "note": "learn"
+    },
+    {
+      "item": "stone_pickaxe",
+      "qty": 1,
+      "note": "learn"
+    },
+    {
+      "item": "iron_pickaxe",
+      "qty": 1,
+      "note": "held-out"
+    }
+  ]
+}
