@@ -58,18 +58,20 @@ describe("the faithful world (spec 003, US1)", () => {
 });
 
 describe("the goals", () => {
-  it("are two learn goals and one held-out goal from the pickaxe family", () => {
+  it("are the three pickaxe tiers, with only iron set aside as held-out and no other role written", () => {
     expect(goals.map((g) => [g.item, g.note])).toEqual([
-      ["wooden_pickaxe", "learn"],
-      ["stone_pickaxe", "learn"],
+      ["wooden_pickaxe", undefined],
+      ["stone_pickaxe", undefined],
       ["iron_pickaxe", "held-out"],
     ]);
   });
 
-  it("are all reachable, and the held-out goal leaves room for at least two wasted crafts", () => {
-    for (const goal of goals) expect(solve(world, goal).reachable, goal.item).toBe(true);
-    const held = solve(world, { item: "iron_pickaxe", qty: 1 }) as BestRun;
-    expect(held.slack).toBeGreaterThanOrEqual(2);
+  it("are all reachable, and every goal leaves room for at least two wasted crafts", () => {
+    for (const goal of goals) {
+      const run = solve(world, goal);
+      expect(run.reachable, goal.item).toBe(true);
+      expect((run as BestRun).slack, goal.item).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it("make the held-out goal need intermediates made earlier in the same run", () => {

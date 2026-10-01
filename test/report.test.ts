@@ -30,14 +30,17 @@ function fixture(summaryOver: Record<string, unknown> = {}) {
     world: "worlds/w.json",
     counterpart: "worlds/generated/w-7.json",
     models: { teacher: TEACHER, student: STUDENT },
-    goals: { learn: ["wooden"], heldOut: "iron" },
+    route: "escalating",
+    primary: "repair",
+    goals: { set: ["wooden", "iron"], heldOut: ["iron"] },
+    roles: { wooden: "solved", iron: "solved" } as Record<string, string> | undefined,
     arms: [
       { label: "T0", model: "teacher", recorded: true },
       { label: "S0", model: "student", recorded: false },
       { label: "S1", model: "student", recorded: false, skill: true },
       { label: "S2", model: "student", recorded: false, skill: true, promptNote: NOTE },
     ],
-    trials: { calibration: 5, teacherPerLearnGoal: 3, armHeldOut: 10, armPerLearnGoal: 3 },
+    trials: { calibration: 5, teacherPerRecordedGoal: 3, armGap: 10, armSolved: 3, armHeldOut: 3 },
     turnBudget: 80,
     spendLimitUsd: 60,
     manualSteps: ["generate skill", "review skill"],
@@ -73,7 +76,7 @@ function fixture(summaryOver: Record<string, unknown> = {}) {
     labels.push(dir);
   };
   const write = () => {
-    writeFileSync(join(exp, "summary.json"), JSON.stringify(summary));
+    writeFileSync(join(exp, "summary.json"), JSON.stringify(summary)); // an undefined `roles` is left out
     return exp;
   };
   const review = (over: Record<string, unknown> = {}) =>
@@ -134,20 +137,20 @@ describe("buildReport", () => {
   });
 
   it("shows a combination with fewer trials than planned as short, with its actual count", () => {
-    const f = fixture();
-    f.addLabel("s0", { arm: "S0" }, "iron", STUDENT, "faithful", wins(2, 7)); // 10 planned on the held-out goal
-    f.addLabel("s0w", { arm: "S0" }, "wooden", STUDENT, "faithful", wins(3, 3)); // 3 planned: complete
+    const f = fixture({ goals: { set: ["wooden", "stone", "iron"], heldOut: ["iron"] }, roles: { wooden: "solved", stone: "gap", iron: "solved" } });
+    f.addLabel("s0", { arm: "S0" }, "stone", STUDENT, "faithful", wins(2, 7)); // 10 planned on a gap goal
+    f.addLabel("s0w", { arm: "S0" }, "wooden", STUDENT, "faithful", wins(3, 3)); // 3 planned on a solved goal: complete
     const md = buildReport({ experiment: f.write(), labels: f.labels });
-    expect(md.split("\n").find((l) => l.includes("held-out iron"))).toMatch(/2\/7.*short/);
-    expect(md.split("\n").find((l) => l.includes("learn wooden"))).not.toContain("short");
+    expect(md.split("\n").find((l) => l.includes("gap stone"))).toMatch(/2\/7.*short/);
+    expect(md.split("\n").find((l) => l.includes("solved wooden"))).not.toContain("short");
   });
 
   it("shows, for skill arms, the share that loaded the skill and the median call count at load", () => {
-    const f = fixture();
-    f.addLabel("s1", { arm: "S1" }, "iron", STUDENT, "faithful", [
+    const f = fixture({ goals: { set: ["stone", "iron"], heldOut: ["iron"] }, roles: { stone: "gap", iron: "solved" } });
+    f.addLabel("s1", { arm: "S1" }, "stone", STUDENT, "faithful", [
       { reached: true, loadedAfter: 2 }, { reached: true, loadedAfter: 6 }, { reached: false, loadedAfter: null }, { reached: true, loadedAfter: 10 },
     ]);
-    f.addLabel("s0", { arm: "S0" }, "iron", STUDENT, "faithful", wins(1, 4));
+    f.addLabel("s0", { arm: "S0" }, "stone", STUDENT, "faithful", wins(1, 4));
     f.review();
     const md = buildReport({ experiment: f.write(), labels: f.labels });
     expect(md.split("\n").find((l) => l.startsWith("| S1"))).toContain("3/4 loaded, median 6");
@@ -169,6 +172,90 @@ describe("buildReport", () => {
     const a = buildReport(input);
     expect(buildReport({ experiment: input.experiment, labels: [...f.labels].reverse() })).toBe(a);
     expect(a).not.toContain(SECRET);
+  });
+});
+
+describe("the staged protocol in the report", () => {
+  const staged = () => fixture({ goals: { set: ["wooden", "stone", "iron"], heldOut: ["iron"] }, roles: { wooden: "solved", stone: "gap", iron: "solved" } });
+  const section = (md: string, heading: string): string => {
+    const start = md.indexOf(heading);
+    expect(start, heading).toBeGreaterThanOrEqual(0);
+    const rest = md.slice(start + heading.length);
+    const next = rest.search(/\n(Repair|No harm|Transfer|Steps done by hand)/);
+    return next < 0 ? rest : rest.slice(0, next);
+  };
+
+  it("names the route and the primary measure, and says they were declared after calibration", () => {
+    const f = staged();
+    f.addLabel("s0", { arm: "S0" }, "stone", STUDENT, "faithful", wins(0, 10));
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(md).toMatch(/Route: escalating; primary measure: repair\./);
+    expect(md).toMatch(/declared after calibration/);
+  });
+
+  it("keeps repair, no harm and transfer apart, each on its own kind of goal", () => {
+    const f = staged();
+    f.addLabel("s0-stone", { arm: "S0" }, "stone", STUDENT, "faithful", wins(0, 10));
+    f.addLabel("s1-stone", { arm: "S1" }, "stone", STUDENT, "faithful", Array.from({ length: 10 }, (_, i) => ({ reached: i < 9, loadedAfter: 3 })));
+    f.addLabel("s0-wooden", { arm: "S0" }, "wooden", STUDENT, "faithful", wins(3, 3));
+    f.addLabel("s1-wooden", { arm: "S1" }, "wooden", STUDENT, "faithful", wins(3, 3, { loadedAfter: 2 }));
+    f.addLabel("s0-iron", { arm: "S0" }, "iron", STUDENT, "faithful", wins(0, 3));
+    f.addLabel("s1-iron", { arm: "S1" }, "iron", STUDENT, "faithful", wins(3, 3, { loadedAfter: 2 }));
+    f.review();
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(section(md, "Repair (gap goals)")).toMatch(/S1 against S0, student-model, faithful, gap stone: S1 9\/10, S0 0\/10: supported/);
+    expect(section(md, "Repair (gap goals)")).not.toContain("wooden");
+    expect(section(md, "No harm (solved goals)")).toMatch(/S1 against S0, student-model, faithful, solved wooden: S1 3\/3, S0 3\/3: within noise/);
+    expect(section(md, "Transfer (held-out goals)")).toMatch(/held-out iron: S1 3\/3, S0 0\/3/);
+  });
+
+  it("labels repair as not yet distinguished from memory", () => {
+    const f = staged();
+    f.addLabel("s0", { arm: "S0" }, "stone", STUDENT, "faithful", wins(0, 10));
+    expect(section(buildReport({ experiment: f.write(), labels: f.labels }), "Repair (gap goals)")).toMatch(/not yet distinguished from a memory of the solution/);
+  });
+
+  it("calls transfer unmeasurable when the held-out goal is solved without help", () => {
+    const f = staged();
+    f.addLabel("s0-iron", { arm: "S0" }, "iron", STUDENT, "faithful", wins(3, 3));
+    f.addLabel("s1-iron", { arm: "S1" }, "iron", STUDENT, "faithful", wins(3, 3, { loadedAfter: 1 }));
+    f.review();
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(section(md, "Transfer (held-out goals)")).toMatch(/unmeasurable: the held-out goal is solved without help/);
+    expect(section(md, "Transfer (held-out goals)")).not.toContain("S1 against S0");
+  });
+
+  it("labels each row with its goal's role", () => {
+    const f = staged();
+    f.addLabel("a", { arm: "S0" }, "stone", STUDENT, "faithful", wins(0, 10));
+    f.addLabel("b", { arm: "S0" }, "wooden", STUDENT, "faithful", wins(3, 3));
+    f.addLabel("c", { arm: "S0" }, "iron", STUDENT, "faithful", wins(3, 3));
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    for (const cell of ["gap stone", "solved wooden", "held-out iron"]) expect(md, cell).toContain(`| ${cell} |`);
+  });
+});
+
+describe("role proposals before the roles are written", () => {
+  it("print the role the rule gives each goal from the student's calibration rows, and nothing else", () => {
+    const f = fixture({ goals: { set: ["stone", "wooden", "iron", "slate"], heldOut: ["iron"] }, roles: undefined });
+    f.addLabel("c-stone", { stage: "calibration" }, "stone", STUDENT, "faithful", wins(0, 5));
+    f.addLabel("c-wooden", { stage: "calibration" }, "wooden", STUDENT, "faithful", wins(4, 5));
+    f.addLabel("c-iron", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(5, 5));
+    f.addLabel("c-slate", { stage: "calibration" }, "slate", STUDENT, "faithful", wins(2, 5));
+    f.addLabel("t-stone", { stage: "calibration" }, "stone", TEACHER, "faithful", wins(5, 5)); // the teacher's rows do not decide roles
+    f.addLabel("i-stone", { stage: "calibration" }, "stone", STUDENT, "invented", wins(0, 5)); // nor do other worlds'
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(md).toContain("- stone: gap (0/5)");
+    expect(md).toContain("- wooden: solved (4/5)");
+    expect(md).toContain("- iron: solved (5/5)");
+    expect(md).toContain("- slate: ambiguous (2/5)");
+    expect(md).not.toContain("| Arm |");
+  });
+
+  it("say so when a goal has no student trials", () => {
+    const f = fixture({ roles: undefined });
+    f.addLabel("c-iron", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(5, 5));
+    expect(buildReport({ experiment: f.write(), labels: f.labels })).toContain("- wooden: no student trials");
   });
 });
 

@@ -23,9 +23,15 @@ export function wilson(successes: number, n: number): [number, number] {
 const summarySchema = z.object({
   experiment: z.string(),
   priorFit: z.string(),
-  goals: z.object({ learn: z.array(z.string()), heldOut: z.string() }),
+  route: z.enum(["escalating", "preemptive"]),
+  primary: z.enum(["repair", "transfer"]),
+  models: z.object({ teacher: z.string(), student: z.string() }),
+  /** The goal set, and the goals set aside before any trial. */
+  goals: z.object({ set: z.array(z.string()), heldOut: z.array(z.string()) }),
+  /** Each goal's role from calibration; absent until calibration has been read. */
+  roles: z.record(z.string(), z.enum(["gap", "solved", "ambiguous"])).optional(),
   arms: z.array(z.object({ label: z.string(), model: z.string(), skill: z.boolean().optional(), promptNote: z.string().optional() })),
-  trials: z.object({ calibration: z.number(), teacherPerLearnGoal: z.number(), armHeldOut: z.number(), armPerLearnGoal: z.number() }),
+  trials: z.object({ calibration: z.number(), teacherPerRecordedGoal: z.number(), armGap: z.number(), armSolved: z.number(), armHeldOut: z.number() }),
   manualSteps: z.array(z.string()),
   labels: z.record(z.string(), z.union([z.object({ stage: z.literal("calibration") }), z.object({ arm: z.string() })])),
   /** The invented counterpart's goal names, each mapped to the faithful goal it stands for. */
@@ -60,7 +66,7 @@ interface Row {
   model: string;
   fit: string;
   goal: string;
-  role: "held-out" | "learn" | "other";
+  role: "held-out" | "gap" | "solved" | "ambiguous" | "unassigned";
   trials: number;
   planned: number | null;
   reached: number;
@@ -120,9 +126,19 @@ export function buildReport(input: ReportInput): string {
     // A renamed world's goals are shown, and compared, under the faithful goal they stand for.
     const goal = summary.counterpartGoals?.[batchGoal] ?? batchGoal;
     const stage = "arm" in tag ? tag.arm : "calibration";
-    const role = goal === summary.goals.heldOut ? "held-out" : summary.goals.learn.includes(goal) ? "learn" : "other";
+    const role: Row["role"] = summary.goals.heldOut.includes(goal) ? "held-out" : (summary.roles?.[goal] ?? "unassigned");
     const planned =
-      stage === "calibration" ? summary.trials.calibration : stage === "T0" ? (role === "learn" ? summary.trials.teacherPerLearnGoal : null) : role === "held-out" ? summary.trials.armHeldOut : summary.trials.armPerLearnGoal;
+      stage === "calibration"
+        ? summary.trials.calibration
+        : stage === "T0"
+          ? summary.trials.teacherPerRecordedGoal
+          : role === "held-out"
+            ? summary.trials.armHeldOut
+            : role === "gap"
+              ? summary.trials.armGap
+              : role === "solved"
+                ? summary.trials.armSolved
+                : null;
 
     const runDirs = readdirSync(dir).filter((f) => /^\d{3}$/.test(f)).sort();
     for (const rd of runDirs) {
@@ -169,10 +185,26 @@ export function buildReport(input: ReportInput): string {
     (a, b) => a.order - b.order || (a.model < b.model ? -1 : a.model > b.model ? 1 : 0) || (a.fit < b.fit ? -1 : a.fit > b.fit ? 1 : 0) || (a.role === b.role ? 0 : a.role === "held-out" ? -1 : b.role === "held-out" ? 1 : 0) || (a.goal < b.goal ? -1 : a.goal > b.goal ? 1 : 0),
   );
   const goalCell = (r: Row) => `${r.role} ${r.goal}`;
+
+  // Before the roles are in the summary, print what the rule gives each goal and stop.
+  if (summary.roles === undefined) {
+    const proposal = [`# Role proposals: ${summary.experiment}`, "", "From the student's unaided calibration trials in this world (at most 20% is a gap, at least 80% is solved, otherwise ambiguous):", ""];
+    for (const goal of summary.goals.set) {
+      const r = sorted.find((x) => x.stage === "calibration" && x.model === summary.models.student && x.fit === summary.priorFit && x.goal === goal);
+      if (r === undefined) proposal.push(`- ${goal}: no student trials`);
+      else {
+        const rate = r.reached / r.trials;
+        proposal.push(`- ${goal}: ${rate <= 0.2 ? "gap" : rate >= 0.8 ? "solved" : "ambiguous"} (${r.reached}/${r.trials})`);
+      }
+    }
+    return `${proposal.join("\n")}\n`;
+  }
+
   const lines: string[] = [
     `# Results: ${summary.experiment}`,
     "",
     `World prior fit: ${summary.priorFit}. Rows are stamped with the prior fit recorded in each run.`,
+    `Route: ${summary.route}; primary measure: ${summary.primary}.${summary.route === "escalating" ? " Both were declared after calibration, which this route needs: the gaps are found first." : ""}`,
     "",
     "| Arm | Model | Prior fit | Goal | Reached | 95% interval | Extra calls (min / median / max) | Cost | Tokens | Skill loaded | Flags |",
     "|---|---|---|---|---|---|---|---|---|---|---|",
@@ -196,16 +228,33 @@ export function buildReport(input: ReportInput): string {
     return "within noise";
   };
   const find = (stage: string, model: string, fit: string, goal: string) => sorted.find((r) => r.stage === stage && r.model === model && r.fit === fit && r.goal === goal);
-  const comparisons: string[] = [];
+  const skillAgainstBaseline = (role: Row["role"]): string[] => {
+    const out: string[] = [];
+    for (const a of sorted.filter((r) => (r.stage === "S1" || r.stage === "S2") && r.role === role)) {
+      const b = find("S0", a.model, a.fit, a.goal);
+      if (b) out.push(`- ${a.stage} against S0, ${a.model}, ${a.fit}, ${goalCell(a)}: ${a.stage} ${a.reached}/${a.trials}, S0 ${b.reached}/${b.trials}: ${verdict(b, a)}`);
+    }
+    return out.length > 0 ? out : ["- none planned have data"];
+  };
+
+  const bound: string[] = [];
   for (const a of sorted.filter((r) => r.stage === "calibration" && r.fit === "faithful")) {
     const b = find("calibration", a.model, "invented", a.goal);
-    if (b) comparisons.push(`- faithful against invented, ${a.model}, ${goalCell(a)}: faithful ${a.reached}/${a.trials}, invented ${b.reached}/${b.trials}: ${verdict(a, b)}`);
+    if (b) bound.push(`- faithful against invented, ${a.model}, ${goalCell(a)}: faithful ${a.reached}/${a.trials}, invented ${b.reached}/${b.trials}: ${verdict(a, b)}`);
   }
-  for (const a of sorted.filter((r) => r.stage === "S1" || r.stage === "S2")) {
-    const b = find("S0", a.model, a.fit, a.goal);
-    if (b) comparisons.push(`- ${a.stage} against S0, ${a.model}, ${a.fit}, ${goalCell(a)}: ${a.stage} ${a.reached}/${a.trials}, S0 ${b.reached}/${b.trials}: ${verdict(b, a)}`);
+  lines.push("", "Bound (unaided; a difference is supported only when the two 95% intervals do not overlap)", "", ...(bound.length > 0 ? bound : ["- none planned have data"]));
+
+  lines.push("", "Repair (gap goals)", "", "- Repair is not yet distinguished from a memory of the solution: there is no memory arm.", ...skillAgainstBaseline("gap"));
+  lines.push("", "No harm (solved goals)", "", ...skillAgainstBaseline("solved"));
+  const transfer: string[] = [];
+  const heldOutRows = sorted.filter((r) => r.role === "held-out" && (r.stage === "S1" || r.stage === "S2"));
+  for (const goal of summary.goals.heldOut) {
+    for (const base of sorted.filter((r) => r.stage === "S0" && r.goal === goal)) {
+      if (base.reached / base.trials >= CEILING) transfer.push(`- ${goal}: unmeasurable: the held-out goal is solved without help (S0 ${base.reached}/${base.trials})`);
+      else for (const a of heldOutRows.filter((r) => r.goal === goal && r.model === base.model && r.fit === base.fit)) transfer.push(`- ${a.stage} against S0, ${a.model}, ${a.fit}, ${goalCell(a)}: ${a.stage} ${a.reached}/${a.trials}, S0 ${base.reached}/${base.trials}: ${verdict(base, a)}`);
+    }
   }
-  lines.push("", "Comparisons (a difference is supported only when the two 95% intervals do not overlap)", "", ...(comparisons.length > 0 ? comparisons : ["- none planned have data"]));
+  lines.push("", "Transfer (held-out goals)", "", ...(transfer.length > 0 ? transfer : ["- none planned have data"]));
   lines.push("", "Steps done by hand", ...(summary.manualSteps.length > 0 ? summary.manualSteps.map((s) => `- ${s}`) : ["- none"]));
   return `${lines.join("\n")}\n`;
 }
