@@ -110,9 +110,9 @@ Calibration showed the held-out goal was already solved and the student's gap wa
 
 ---
 
-## Phase 5: User Story 3 - Faithful against invented, unaided (Priority: P3)
+## Phase 5: User Story 3 - Bound the prior's effect with an invented counterpart (Priority: P3)
 
-**Goal**: The invented counterpart, derived with the existing renamer, and the unaided comparison between the two worlds.
+**Goal**: The invented counterpart, derived with the existing renamer, and the unaided comparison between the two worlds as a bound. The counterpart is not a world for skill experiments.
 
 **Independent Test**: The counterpart is valid, solvable with the same best-run call counts and has no Minecraft names; regenerating it is byte-identical; the report compares the two worlds' unaided results.
 
@@ -126,7 +126,7 @@ Calibration showed the held-out goal was already solved and the student's gap wa
 - [X] T030 [US3] Edit `scripts/make-world.ts` (depends on T029): write the notes file beside the world and goals file; keep output deterministic. Make T029 pass
 - [X] T031 [US3] Run `pnpm dev scripts/make-world.ts --base worlds/minecraft-inspired.json --seed 7 --out worlds/generated/minecraft-inspired-7.json`; commit the three generated files; make T028 pass; confirm `pnpm test` finds and solves the new world through `test/worlds.test.ts`
 - [X] T032 [US3] **(spends usage)** Counterpart calibration: 5 unaided trials for each of Sonnet and Haiku on each of the counterpart's three goals (30 runs), labels `faithful-1-cal-invented-<model>-<goal>`; goal names come from `worlds/generated/minecraft-inspired-7.goals.json`
-- [ ] T033 [US3] Run the report over the calibration labels of both worlds; add the faithful-against-invented table and the `supported` or `within noise` line for each model to `design/notes/faithful-control-results.md`, answering the first question of the spec's SC-010 (whether the faithful world is easier for the models than the invented one) in one sentence supported by the counts
+- [ ] T033 [US3] Run the report over the calibration labels of both worlds; add the faithful-against-invented table and the `supported` or `within noise` line for each model to `design/notes/faithful-control-results.md`, answering the first question of the spec's SC-010 (whether the faithful world is easier for the models than the invented one) in one sentence supported by the counts State in the note that the comparison is a bound (the counterpart is at the floor: 0 of 30 unaided trials) and that it cannot yield teacher recordings, so an invented experiment needs the follow-up world of ADR-003
 
 **Checkpoint**: All three stories are complete.
 

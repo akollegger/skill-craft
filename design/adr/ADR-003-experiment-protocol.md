@@ -176,6 +176,7 @@ A distilled skill is reviewed before any student sees it. The review stands in f
   - an experiment runner that runs calibration, assigns goal roles by the rule, runs the arms and trials, writes the pre-run summary (including the declared route and primary measure) and aggregates the results;
   - observer support for arm, model, skill and prior fit;
   - world design and generation: the Minecraft-inspired base subset, keeping names, applying the deviation rules, goal families and stock slack (the generator today only renames and nudges single recipes);
+  - a tractable invented world: recipes of one pattern with different parameters (such as `2×A → X` and `3×B → Y`), a smaller table or the `partial` hint level to make discovery a hill-climb, and a calibration that shows the teacher reaching the goals while the student mostly fails (the renamed Minecraft-inspired world is at the floor and cannot do this);
   - the critic's output schema, and updating `AGENTS.md`, which still describes `NAMS_WORKSPACE_ID` as one dedicated workspace.
 
 **Not decided here:**
@@ -218,3 +219,9 @@ A distilled skill is reviewed before any student sees it. The review stands in f
   keeps held-out goals set aside before any teacher run, declares a route (escalating or preemptive) and a
   primary measure (transfer or repair) per experiment, reports repair, no-harm and transfer separately, and
   requires fresh baseline trials. The arms, isolation and review are unchanged.
+- **2026-10-01, the renamed faithful world cannot host the invented experiment.** Unaided calibration of the
+  invented counterpart in spec 003 gave 0 of 30 trials for both models, against 24 of 30 in the faithful
+  world, because brute-force discovery of five-cell shaped recipes is out of reach. The teacher cannot
+  reach its goals there, so no recordings exist to distil from. Section 2.3's expectation that the invented
+  world follows the faithful one now depends on a simpler invented world (see the follow-up specs in
+  section 4); the counterpart serves as a bound for the prior fit and nothing more.

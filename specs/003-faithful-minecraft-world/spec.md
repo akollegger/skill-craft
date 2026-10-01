@@ -108,16 +108,19 @@ table is stamped faithful.
 
 ---
 
-### User Story 3 - Faithful against invented, unaided (Priority: P3)
+### User Story 3 - Bound the prior's effect with an invented counterpart (Priority: P3)
 
-The experiment runner derives an invented counterpart of the faithful world with the existing renamer,
-and finds it has the same recipe structure under invented names, is valid, and is solvable for the same
-goals. Both models then play both worlds with no help and no memory. The result answers the assumption
-that real vocabulary and recipes are easier for a model than invented ones, and shows how much room a
-skill would have in each.
+The experiment runner derives an invented counterpart of the faithful world with the existing renamer, and
+finds it has the same recipe structure under invented names, is valid, and is solvable for the same goals.
+Both models then play both worlds with no help and no memory. The result is a bound, not an experiment:
+it shows how much of a model's success comes from knowing the vocabulary and recipes, and how far apart
+the two ends of the prior-fit scale sit. The counterpart keeps the faithful world's recipe depth, which the
+models cannot discover by brute force, so it is expected to sit at the floor and is not a world for skill
+experiments. An invented world that can host one is separate work.
 
-**Why this priority**: It tests the assumption directly with the cheapest possible runs, but the arms in
-story 2 are the larger deliverable.
+**Why this priority**: It tests the assumption that real vocabulary and recipes are easier with the
+cheapest possible runs and fixes the property that later derivation relies on, but the arms in story 2 are
+the larger deliverable.
 
 **Independent Test**: Derive the counterpart, compare its recipe graph with the faithful world's, run the
 unaided trials on both, and produce the table.
@@ -132,6 +135,9 @@ unaided trials on both, and produce the table.
    world's prior fit.
 3. **Given** a trial in which the agent never reaches the goal, **When** the table is produced, **Then**
    it counts as a failure and the run's measured cost is still included.
+4. **Given** the counterpart is at the floor for both models, **When** the report is read, **Then** it
+   states that the comparison is a bound with one end at the floor and the other near the ceiling, makes no
+   claim about intermediate effects, and says the counterpart cannot yield teacher recordings.
 
 ---
 
@@ -190,7 +196,8 @@ unaided trials on both, and produce the table.
   that the project is not affiliated with or endorsed by its owner. That text MUST NOT appear in
   anything the agent sees.
 - **FR-010**: An invented counterpart MUST be derived from the faithful world and its goals by the
-  existing renamer, with the same recipe structure, valid and solvable for the same goals.
+  existing renamer, with the same recipe structure, valid and solvable for the same goals. It serves the
+  unaided comparison only; this feature does not run skill arms on it.
 - **FR-011**: The experiment MUST follow ADR-003's staged protocol on the faithful world: calibration of
   both models on every goal (5 trials each) that assigns roles by the ADR's rule; the escalating route,
   recording the teacher only on gap goals; one skill distilled from the reached trials; a reviewed skill;
@@ -256,8 +263,8 @@ unaided trials on both, and produce the table.
   (about $17), the escalating teacher recordings, review and the arms together are expected to come to
   about $30 to $40.
 - **SC-010**: The report answers two questions in a sentence each, supported by its counts: whether the
-  faithful world is easier for the models than the invented one, and whether the skill repairs the
-  student's gap in the faithful world.
+  faithful world is easier for the models than the invented one (a bound between the floor and the
+  ceiling), and whether the skill repairs the student's gap in the faithful world.
 - **SC-011**: Regenerating the world and its counterpart yields byte-identical files.
 - **SC-012**: The roles are in the experiment summary before the first teacher or arm trial, and the
   report shows repair, no harm and transfer as separate rows or sections.
@@ -272,8 +279,10 @@ unaided trials on both, and produce the table.
   the stone pickaxe (0 of 5), and left the iron pickaxe held-out goal solved (5 of 5), so transfer is
   expected to be unmeasurable here.
 - The invented counterpart, as built, is at the floor for both models in calibration (0 of 30 unaided
-  trials), so it cannot yet yield teacher recordings. It supports the unaided comparison only, and an
-  invented experiment needs simpler recipes first (separate work).
+  trials), so it cannot yield teacher recordings. It supports the unaided comparison only. An invented world
+  that can host a skill experiment is a follow-up (ADR-003): simpler recipes of one pattern with different
+  parameters, perhaps a smaller table or the `partial` hint level, calibrated so the teacher reaches the
+  goals and the student mostly fails.
 - The perturbed world is out of scope. It needs the generator to keep names and apply rules, which is
   separate work.
 - The recording of a finished run, the workspace lifecycle and the critic loop are separate features,
