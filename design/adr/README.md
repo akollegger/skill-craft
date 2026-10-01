@@ -58,10 +58,12 @@ looking one up. The last column names where the term is decided.
 | **arm** | One experimental condition: a model with a given kind of help (none, a skill, memory) | ADR-003 |
 | **trial** | One run of one arm | ADR-003 |
 | **teacher / student** | The stronger model that is recorded and whose runs a skill is distilled from, and the smaller model the skill is meant to help | ADR-003 |
-| **learn goal** | A goal the teacher is recorded on and a skill is distilled from | ADR-003 |
-| **held-out goal** | A goal the teacher is never recorded on and no skill is distilled from. Success on it measures whether a skill transfers | ADR-003 |
+| **gap goal / solved goal** | A goal the student mostly fails (at most 1 of 5 unaided trials), and one it mostly solves (at least 4 of 5). Roles come from measurement, not from the author | ADR-003 |
+| **held-out goal** | A goal set aside before any teacher run: the teacher is never recorded on it and no skill is distilled from it. Success on it measures whether a skill transfers | ADR-003 |
+| **repair / no harm** | After a skill is installed, the student's success on gap goals, and whether it still succeeds on solved goals | ADR-003 |
+| **route** | How the teacher's recordings are chosen: escalating (only the goals the student fails) or preemptive (a wider set chosen in advance) | ADR-003 |
 | **transfer** | Succeeding on a goal that the skill was not distilled from. Near transfer: the same recipe shape with different parameters | ADR-003 |
-| **calibration** | Unaided trials of each model on the held-out goal, to check that the student has something left to gain | ADR-003 |
+| **calibration** | Unaided trials of each model on every goal, 5 each, to assign goal roles and check that the student has something left to gain | ADR-003 |
 | **prior fit** | How far a model's existing knowledge predicts a world's recipes: *invented* (none), *faithful* (a well-known source's vocabulary and recipes, a control), or *perturbed* (faithful with stated deviations) | constitution III, ADR-003 |
 | **systematic / idiosyncratic deviation** | In a perturbed world, a rule applied across recipes (a skill can abstract it) versus a change to one recipe (memory can recall it) | ADR-001, ADR-003 |
 | **critic** | A separate model that reviews a distilled skill against a rubric before any student sees it | ADR-003 |
