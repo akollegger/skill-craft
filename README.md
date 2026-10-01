@@ -43,8 +43,9 @@ pnpm typecheck
 pnpm test
 ```
 
-`.env` holds `NAMS_API_KEY` and `NAMS_SKILLS_KEY`. Keys stay in `.env`; do not paste them into
-commands or chat.
+`.env` holds `NAMS_API_KEY` (one key, with the memory, entities, reasoning and skills scopes) and
+`NAMS_WORKSPACE_ID` (the dedicated experiment workspace, kept apart from the one development sessions
+record to). Keys stay in `.env`; do not paste them into commands or chat.
 
 ## The simulation
 
