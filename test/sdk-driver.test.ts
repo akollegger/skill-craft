@@ -106,6 +106,34 @@ describe("sdkDriver", () => {
     expect(control.interrupt).toHaveBeenCalledTimes(1);
   });
 
+  describe("with a skill installed", () => {
+    const toolUse = (name: string) => ({ type: "assistant", message: { content: [{ type: "tool_use", name, input: {} }] } });
+    const withSkill = (signal: AbortSignal): DriverOptions => ({ ...opts(signal), skill: { pluginDir: "/r/skill-plugin", qualifiedName: "run-skill:demo" } });
+
+    it("records how many craft calls the agent had made when it first loaded the skill", async () => {
+      control.messages = [init, toolUse("mcp__craft__help"), toolUse("mcp__craft__place"), toolUse("Skill"), toolUse("mcp__craft__place"), toolUse("Skill"), result("success")];
+      const r = await sdkDriver(withSkill(new AbortController().signal), sink());
+      expect(r).toMatchObject({ skillInvoked: true, skillLoadedAfterCalls: 2 });
+    });
+
+    it("records 0 when the agent loads the skill before any craft call", async () => {
+      control.messages = [init, toolUse("Skill"), toolUse("mcp__craft__help"), result("success")];
+      expect((await sdkDriver(withSkill(new AbortController().signal), sink())).skillLoadedAfterCalls).toBe(0);
+    });
+
+    it("records that the skill was never loaded", async () => {
+      control.messages = [init, toolUse("mcp__craft__help"), result("success")];
+      expect(await sdkDriver(withSkill(new AbortController().signal), sink())).toMatchObject({ skillInvoked: false, skillLoadedAfterCalls: null });
+    });
+
+    it("says nothing about skills when none was installed", async () => {
+      control.messages = [init, toolUse("Skill"), result("success")];
+      const r = await sdkDriver(opts(new AbortController().signal), sink());
+      expect(r).not.toHaveProperty("skillInvoked");
+      expect(r).not.toHaveProperty("skillLoadedAfterCalls");
+    });
+  });
+
   it("does not interrupt a run that finished normally", async () => {
     control.messages = [init, result("success")];
     const outer = new AbortController();

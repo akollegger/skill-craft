@@ -52,8 +52,9 @@ export function sdkOptionsFor(opts: DriverOptions, sink: DriverSink): Options {
     // The server needs a PATH to find `node`; it is added here, for the live call only.
     mcpServers: { craft: withPath(craftServer(opts.world, opts.runLog)) },
     strictMcpConfig: true,
-    // No built-in tools, so the agent cannot read the world file.
-    tools: [],
+    // No built-in tools, so the agent cannot read the world file. With a skill the agent gets the Skill tool and
+    // nothing else (no Read, no Bash), so it can load the skill but still cannot reach the world.
+    tools: opts.skill ? ["Skill"] : [],
     allowedTools: ["mcp__craft"],
     maxTurns: opts.maxTurns,
     persistSession: false,
@@ -63,6 +64,7 @@ export function sdkOptionsFor(opts: DriverOptions, sink: DriverSink): Options {
     hooks: buildHooks(sink),
     abortController,
     ...(opts.model ? { model: opts.model } : {}),
+    ...(opts.skill ? { plugins: [{ type: "local" as const, path: opts.skill.pluginDir }], skills: [opts.skill.qualifiedName] } : {}),
   };
 }
 
@@ -84,7 +86,7 @@ const code = (v: unknown): string | undefined => (typeof v === "string" && /^[a-
 /** Build the harness's view of a finished run from the SDK's result message. */
 export function playerResultFrom(
   result: Record<string, unknown>,
-  ctx: { requestedModel: string | null; initModel: string | null; threw: boolean; assistantError?: string | undefined },
+  ctx: { requestedModel: string | null; initModel: string | null; threw: boolean; assistantError?: string | undefined; skillLoadedAfterCalls?: number | null | undefined },
 ): PlayerResult {
   const ended = classifyResult({ subtype: str(result["subtype"]) ?? "", is_error: result["is_error"] === true }, ctx.threw);
   const assistantError = code(ctx.assistantError);
@@ -116,5 +118,6 @@ export function playerResultFrom(
     modelsUsed: isObject(modelUsage) ? Object.keys(modelUsage).sort() : [],
     // For an error result the "result" is the player's error message, not something the agent said.
     text: ended === "error" ? "" : (str(result["result"]) ?? ""),
+    ...(ctx.skillLoadedAfterCalls === undefined ? {} : { skillInvoked: ctx.skillLoadedAfterCalls !== null, skillLoadedAfterCalls: ctx.skillLoadedAfterCalls }),
   };
 }

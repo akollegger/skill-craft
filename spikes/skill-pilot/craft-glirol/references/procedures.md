@@ -1,0 +1,96 @@
+1. **Read Craft help** _(tool: mcp__craft__help)_
+   Call mcp__craft__help before attempting crafting operations.
+   - why: The task explicitly requires starting with help when the workshop and tools are unfamiliar.
+   - expect: success
+   - done when: The mcp__craft__help call returns success.
+   _evidence: a4481c38-c5c9-4562-8c95-c4f6b62514cb, f9ed1eb1-a23c-4fdc-93f4-1b44a3bcc64c, 2eb4fe49-8581-488a-87db-6b1c6db8bf4f, 406b0577-6605-441e-8589-7392e2d5b89c_
+
+2. **Inspect inventory** _(tool: mcp__craft__inventory)_
+   Call mcp__craft__inventory to identify available ingredients and quantities.
+   - why: Inventory inspection reveals whether the materials needed for the target recipe are available before committing them.
+   - after: step-001
+   - expect: success
+   - done when: The mcp__craft__inventory call returns success and the available ingredients are recorded.
+   _evidence: 584ea151-a004-42dc-8359-52f05af7aca2, f40256be-8be8-470c-801f-77fa343a0226, 55ecba06-2a12-4adb-a029-30e07f87b13f, 2eb4fe49-8581-488a-87db-6b1c6db8bf4f, 735d607e-3ee6-4d08-b421-f422d949c57f_
+
+3. **Place candidate materials** _(tool: mcp__craft__place)_
+   Use mcp__craft__place to test a candidate ingredient and layout on the crafting table.
+   - why: Placement supports exploration of an unknown recipe while postponing the irreversible craft action.
+   - after: step-002
+   - inputs: col, item, row
+   - expect: success
+   - done when: The mcp__craft__place call returns success and the intended material is on the table.
+   _evidence: 56af7b2f-d616-463e-bd0a-9036163f568c, 3f298e7b-47ef-4980-82f4-c9932ba067f4, dfdaa21a-4658-4384-9974-266c92380817, e9a5475b-b501-4113-9cb9-dae42d3890d3, 82105d5e-3a4a-4926-a14a-e7695fd6acc0, c6730bd6-38cc-4d63-a02d-f8dd0b40026d, 35f26fa5-9731-4926-a9a7-2f2ff2b06084, 0f009217-c3eb-4a98-93f9-7fb351ba75fb, a6735b69-6f3e-462e-a199-a0a182b2054d, 4fabe3a1-7e7b-4d62-892f-f5a8cd47bb7f, fe9038db-f174-4504-b505-7f221751a5a1, 036eb4f2-7601-4083-8ce5-d5b52a2599c7, a53a7dda-85af-4f83-a1ff-e1b7c38df30c, 268217e5-50de-4aec-8749-5fa1d1d1a2ca, 473f10e2-d7c2-4fd3-a5d4-a4d67c4c07e7, 71b1b396-f110-441b-88f4-ede39505fa9b, c1e65120-ee9c-4d2b-837b-973ed1f10032, b337a6a7-8e06-43ee-b851-2353ba185d52, 98f619e1-c626-420a-bf25-3c7f98028ce5, 35e7e91a-0f09-420b-9acc-4bb85ba3168b, 6b6edca0-1931-4621-84b6-af7d76dc8a76, 10c5e1a5-d838-45db-ab97-99fdd1329cce, d5c5cc68-462f-44f6-a1f2-e88034415dad, 52a5fb0c-5f43-4960-ab82-8c2b9b4f5848, e5b4be11-bbcc-472e-828f-79b3ea9b8d90, ea263795-23f1-4145-a10e-87b440c4370f, da56147e-c863-4ada-a1a7-74c609b144b9, c7eba907-17d2-4112-8cfc-7d58c2c7064e, e4861957-fa47-400d-a5ac-51c52a376c43, e1369e89-a897-418b-8176-d5d07bcf1b48, 27c99bdc-f6b7-465d-a734-e6e433ea8ad0, 065c2525-0161-42e4-b476-6fde81cab4b2, 60576178-c7f0-4bbd-9356-fb1c8d2f026d, 53f92199-945d-4026-bd31-214c170be16d, 4292fa15-f8b2-456b-a270-fbd0d8a8211a, 1b359569-758b-469d-ac48-8cc732d793ef, a8097ee8-7c53-46ac-b5f7-8682edded6ec, df96e7fe-0639-4410-bf30-6c68e7010843, 83da5a5d-9799-4c89-b3c3-bb12db0b99d3, 9dd243de-421a-4508-8e72-0c20f9a3e5be, 5f2aaee2-c14b-421b-93f5-1473a192d6f6, 7a0e269d-b64a-40df-adbe-7e0377edf5b7, 11d08064-1d31-4eb5-aa79-1fb9adc36c57, f5999ff1-9392-4823-a666-5f77063a7159, 2fc4ded1-1c4c-4dd9-afc1-4b86ee71d686, 84a1be8c-96c1-40a6-8aab-af414dd8c702, cbdaa0de-b199-489c-9fb6-89230eb17648, e2bfb2db-a1de-424e-8951-f3e3ee262e75, a457cc19-f01c-46e3-a614-f216f1cfb3bd, f1e66ed9-2d9c-4901-ada5-8cbb6085b74d, 89687217-6273-4191-a2dd-8907484d7154, f848e3c1-e18f-4b49-aa6e-a421f6129faf, a3995e20-d89d-4809-b41d-40112d3d010b, 027a5b69-89f2-426b-893f-9ae533135849, f07fbe06-0cfa-47d5-9613-f2fd12042b54, e7325efa-bac3-4122-801d-8a09aff94841, a863ffdf-f68a-4b67-9dfe-35306f7083f7, b4eec4d8-3814-445f-9cc9-afda6350a2b2, e1da1cb5-deb5-4e78-8356-53053d21f0e4, a40db8ba-0e34-427e-9a7c-2cfe41ef332a, 3195eca4-e010-4795-9885-77c858f01a9f, f59c61cf-b95f-4d2d-b42a-caade3c49c6a, 217ab8c1-7e11-4814-ab2b-cd1e7c02c72d, 2eb4fe49-8581-488a-87db-6b1c6db8bf4f, 406b0577-6605-441e-8589-7392e2d5b89c, e170e10d-766b-4b84-8d50-d0ad2d0af335_
+
+4. **Clear the table** _(tool: mcp__craft__clear)_
+   Use mcp__craft__clear to reset an unproductive or exploratory table layout.
+   - why: Crafting consumes the table contents, so clearing provides a controlled reset before another arrangement is tested.
+   - after: step-003
+   - expect: success
+   - done when: The mcp__craft__clear call returns success and the table is empty.
+   _evidence: 81a4787e-e0fd-4b25-b777-53663a3b7136, 71a9a344-fc29-4f47-a1fc-1c161b23a22e, e87c627f-5ff2-4b7f-83e4-7e660e60d8f5, df752463-b3c6-4c89-8a16-2ccf03aa1c3e, 96aeccd9-4108-47fb-9b93-ab682e22207e, 8548c38c-ccba-469d-b7d7-f8054a277487, fbd3735e-dbd5-4528-98c9-d777089b9218, 9f4f2a44-69eb-41c3-815d-dcdc4308967e, aa792a02-244d-49ed-ad0d-82f20787528f, 18e81f92-087d-426c-99bb-4cd6be289114, f03de747-76aa-46a9-906a-e0c28f8a99d9, 93a3d817-32ea-4ea7-9731-e9aa0661cd67, 819796e7-3f10-4a18-9a6f-95d65019a61d, 601444b8-5225-41b1-8066-99161f16245f, 3a4dd82d-66ca-4474-8a67-bd4d0cee200f, fbc5a597-330e-4246-a360-2a0c228b41d7, dd068657-2d47-4479-9251-6bac784ddbcd, 2eb4fe49-8581-488a-87db-6b1c6db8bf4f, 717898b2-5f18-45f8-b2f7-e0fc7133b5e3_
+
+5. **Remove selected material** _(tool: mcp__craft__remove)_
+   Use mcp__craft__remove to take a specific placed item off the table when adjusting the layout.
+   - why: Removing individual items lets the agent revise a candidate arrangement without committing to craft.
+   - after: step-004
+   - inputs: col, row
+   - expect: success
+   - done when: The mcp__craft__remove call returns success and the selected item is no longer in its prior table position.
+   _evidence: e8a998e0-6394-4508-ad0b-462f33962f72, 1bc6a8a1-87f1-48c2-b133-f78db0995156, 1436e8b7-de79-4222-abe0-b4df9f5aceb9, fb019bde-4615-4cd5-bedb-26b0e6dfeb7f, 2e4041ce-ab2b-4427-b12f-e1b4a8c13d8a, 726ee7c1-d56b-4265-bf5c-0c7429d61342, 43c7cc25-c541-4947-b99e-9985285eebd2, 8f930e6c-6988-449b-96f3-5f22274637f2, 0443d3ce-3ac3-4bf5-96f1-8b27d32e911f, a3f9bc91-682d-4d40-b227-1bd352436108, bcaa62d3-c2d7-4f3a-86a2-ad0e1587502d, b308f57d-e53a-4f30-91ee-67cfef22c9ff, bbc14e22-69ff-47f4-946d-79d709303a4c, e5f86a01-2afd-4273-b8f5-177f6c29d561, 415d9892-7118-4e41-bf2c-3e584c95a14c, 2eb4fe49-8581-488a-87db-6b1c6db8bf4f, 320a3520-e7e9-48d8-bed5-76af34a092f0_
+
+6. **Craft the target** _(tool: mcp__craft__craft)_
+   Invoke mcp__craft__craft once the confirmed glirol arrangement is on the table.
+   - why: The successful case confirms that two lugli side by side in the top row are the arrangement to commit.
+   - after: step-005
+   - expect: success
+   - done when: The mcp__craft__craft call returns success and inventory or task state confirms that one glirol is held.
+   _evidence: 335c7cee-8747-44d5-b28e-9af70fc3f880, 4a1b44fb-eee4-4184-9ac6-deda2f4d2901, b5aa4074-0677-4ca9-946c-e1cf708d806c, a087e4fe-0b4e-4656-9a17-df246ca3305a, 2409992f-a45c-4200-aa8b-4611f6cc0343, 2eb4fe49-8581-488a-87db-6b1c6db8bf4f, 406b0577-6605-441e-8589-7392e2d5b89c, 968fd72d-1963-45d7-b737-3e680c6fe5f7_
+
+## Tool call templates
+
+Each script step's tool signature, as a starting skeleton:
+
+### Read Craft help
+```python
+mcp__craft__help()
+# expect: success
+```
+
+### Inspect inventory
+```python
+mcp__craft__inventory()
+# expect: success
+```
+
+### Place candidate materials
+```python
+mcp__craft__place(col=..., item=..., row=...)
+# expect: success
+```
+
+### Clear the table
+```python
+mcp__craft__clear()
+# expect: success
+```
+
+### Remove selected material
+```python
+mcp__craft__remove(col=..., row=...)
+# expect: success
+```
+
+### Craft the target
+```python
+mcp__craft__craft()
+# expect: success
+```
+
+# Success criteria & anti-patterns
+
+## Success criteria
+
+- A successful run ends with one glirol held, after which the agent should report completion in one line and stop.  
+  _evidence: c300dfe8-c83e-4f09-997b-cd899e558d26, a7edf6dc-d0e5-4a57-b298-6fe549201523, 97f86e89-2c76-4880-85b5-426a65f4c2c6_
+

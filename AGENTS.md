@@ -71,7 +71,14 @@ These are summarized from the constitution; read it for the full text.
 
 - API base: `https://memory.neo4jlabs.com/v1`. Data calls need `Authorization: Bearer <key>` and an
   `X-Workspace-Id` header. The public spec is at `/openapi.json`.
-- Skills endpoints need a key with `skills:read` and `skills:write` (`NAMS_SKILLS_KEY`).
+- One key, `NAMS_API_KEY`, covers recording and the skills endpoints (it needs `skills:read` and
+  `skills:write` as well as the memory scopes). There is no separate skills key.
+- `NAMS_WORKSPACE_ID` is the dedicated experiment workspace ("Skill Distillation"). Development sessions
+  record to a different workspace on purpose: entities extracted from our own design talk about the
+  world and its goals were found in recall, which would leak solutions into an experiment run. Send the
+  workspace id explicitly on every call, and never export `NAMS_WORKSPACE_ID` in a shell where a
+  development session starts, because the hooks read it and would record that session into the
+  experiment workspace.
 - Read-only calls (GET, and `POST /v1/query` for read-only Cypher) are fine to run. Calls that
   create, review or publish skills (`POST /v1/skills/*`), create keys, or change a workspace are
   outward-facing writes: get the user's go-ahead first.
@@ -99,6 +106,7 @@ zebra-space project with the RFC requirement removed.
 | `src/harness/` | Interim run harness (prompt, SDK options and driver, errors, the command, export, bundle reader) |
 | `src/trace/` | Run measurement: recorder, trace lines, join of trace to run log; no dependency on the SDK or `src/mcp` |
 | `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `score.ts`, `export-run.ts` |
+| `spikes/` | Fixtures from exploratory spikes (for example the skill NAMS distilled in the pilot); not part of the product |
 | `test/` | vitest suites; `fixtures/valid` and `fixtures/invalid` hold the world fixtures |
 | `design/adr/` | ADRs and index |
 | `design/notes/` | Exploratory notes that may become ADRs |
