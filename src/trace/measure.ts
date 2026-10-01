@@ -81,7 +81,9 @@ export function measureRun(
   /** Malformed items the recorder left out. */
   skipped = 0,
 ): Measured {
-  if (lines.length === 0 && (result === null || result.usage === null)) return { trace: "absent" };
+  // With no trace lines and nothing stated to have been used, nothing was measured (a run that never reached the model).
+  const usedNothing = (u: PlayerResult["usage"]) => u === null || (u.inputTokens === 0 && u.outputTokens === 0 && u.cacheReadTokens === 0 && u.cacheCreationTokens === 0);
+  if (lines.length === 0 && (result === null || usedNothing(result.usage))) return { trace: "absent" };
   if (result === null) return { trace: "mismatch", reason: "run ended without a result" };
   if (skipped > 0) return { trace: "mismatch", reason: `${skipped} malformed item${skipped === 1 ? "" : "s"} skipped` };
 

@@ -71,24 +71,35 @@ export function sdkOptionsFor(opts: DriverOptions, sink: DriverSink): Options {
  * The result message is the authority, so a throw after one never changes the answer (`_threw` documents
  * that the caller knows of it); no result at all, thrown or not, is an error.
  */
-export function classifyResult(result: { subtype?: string } | null, _threw: boolean): PlayerResult["ended"] {
+export function classifyResult(result: { subtype?: string; is_error?: boolean } | null, _threw: boolean): PlayerResult["ended"] {
   if (result === null) return "error";
   if (result.subtype === "error_max_turns") return "budget";
-  return result.subtype === "success" ? "stopped" : "error";
+  // A login failure arrives as subtype "success" with is_error set; the agent did not give up, it never started.
+  return result.subtype === "success" && result.is_error !== true ? "stopped" : "error";
 }
+
+/** A code from the SDK's closed sets (such as `authentication_failed`); anything else is not embedded in a reason. */
+const code = (v: unknown): string | undefined => (typeof v === "string" && /^[a-z][a-z_]*$/.test(v) ? v : undefined);
 
 /** Build the harness's view of a finished run from the SDK's result message. */
 export function playerResultFrom(
   result: Record<string, unknown>,
-  ctx: { requestedModel: string | null; initModel: string | null; threw: boolean },
+  ctx: { requestedModel: string | null; initModel: string | null; threw: boolean; assistantError?: string | undefined },
 ): PlayerResult {
-  const ended = classifyResult({ subtype: str(result["subtype"]) ?? "" }, ctx.threw);
+  const ended = classifyResult({ subtype: str(result["subtype"]) ?? "", is_error: result["is_error"] === true }, ctx.threw);
+  const assistantError = code(ctx.assistantError);
+  const terminal = code(result["terminal_reason"]);
+  // Always fixed text plus a code from a closed set; the player's own error message is never kept.
+  const reason =
+    assistantError !== undefined ? `DriverFailed: the player reported ${assistantError}`
+    : result["is_error"] === true ? `DriverFailed: player ended with an error result${terminal === undefined ? "" : ` (${terminal})`}`
+    : `DriverFailed: player ended with ${str(result["subtype"]) ?? "an unknown result"}`;
   const usage = result["usage"];
   const n = (v: unknown): number | null => (typeof v === "number" ? v : null);
   const modelUsage = result["modelUsage"];
   return {
     ended,
-    ...(ended === "error" ? { reason: `DriverFailed: player ended with ${str(result["subtype"]) ?? "an unknown result"}` } : {}),
+    ...(ended === "error" ? { reason } : {}),
     turns: n(result["num_turns"]),
     costUsd: n(result["total_cost_usd"]),
     durationMs: n(result["duration_ms"]),
@@ -103,6 +114,7 @@ export function playerResultFrom(
     requestedModel: ctx.requestedModel,
     initModel: ctx.initModel,
     modelsUsed: isObject(modelUsage) ? Object.keys(modelUsage).sort() : [],
-    text: str(result["result"]) ?? "",
+    // For an error result the "result" is the player's error message, not something the agent said.
+    text: ended === "error" ? "" : (str(result["result"]) ?? ""),
   };
 }

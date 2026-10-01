@@ -58,6 +58,16 @@ describe("sdkDriver", () => {
     expect(r).toMatchObject({ ended: "stopped", initModel: "m-1", modelsUsed: ["m-1"], turns: 2, costUsd: 0.1 });
   });
 
+  it("records a login failure as an error, naming the assistant's error code", async () => {
+    control.messages = [
+      init,
+      { type: "assistant", error: "authentication_failed", message: { content: [] } },
+      { ...result("success"), is_error: true, terminal_reason: "api_error", result: "Failed to authenticate: OAuth session expired" },
+    ];
+    const r = await sdkDriver(opts(new AbortController().signal), sink());
+    expect(r).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported authentication_failed", text: "" });
+  });
+
   it("keeps an error_max_turns result when the SDK throws after delivering it", async () => {
     control.messages = [init, result("error_max_turns")];
     control.throwAfter = new Error("max turns");

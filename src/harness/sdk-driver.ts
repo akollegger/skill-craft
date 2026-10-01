@@ -9,6 +9,7 @@ import { playerResultFrom, sdkOptionsFor } from "./sdk-options.js";
 export const sdkDriver: AgentDriver = async (opts, sink) => {
   let result: Record<string, unknown> | null = null;
   let initModel: string | null = null;
+  let assistantError: string | undefined;
   let threw = false;
   let thrown: unknown;
 
@@ -24,6 +25,7 @@ export const sdkDriver: AgentDriver = async (opts, sink) => {
       sink.onMessage(message as unknown as PlayerMessage);
       const m = message as unknown as Record<string, unknown>;
       if (m["type"] === "system" && m["subtype"] === "init" && typeof m["model"] === "string") initModel = m["model"];
+      if (m["type"] === "assistant" && typeof m["error"] === "string") assistantError = m["error"];
       if (m["type"] === "result") result = m;
     }
   } catch (e) {
@@ -35,5 +37,5 @@ export const sdkDriver: AgentDriver = async (opts, sink) => {
   }
 
   if (result === null) throw threw ? thrown : new Error("the player ended without a result");
-  return playerResultFrom(result, { requestedModel: opts.model ?? null, initModel, threw });
+  return playerResultFrom(result, { requestedModel: opts.model ?? null, initModel, threw, assistantError });
 };
