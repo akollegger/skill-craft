@@ -18,6 +18,10 @@ The demo's claim is that a skill distilled from a strong model's recorded runs l
 
 **No call clears a workspace in place.** On a throwaway workspace holding a conversation with its reasoning trace, entities, a distilled skill and its run, the API could delete the conversations and every entity (the entity list returns at most 200 per call, so deletion repeats until the list is empty). It could not delete the skill, its version and components, the distillation run, or the orphaned tool-call and step nodes, because no endpoint exists for them. The MCP tool `workspace_reprovision`, documented as replacing a managed workspace's database with a fresh one, returned success twice and changed nothing observable over about eight minutes: the same database host, all data intact. Creating a managed workspace with `workspace_create` produced an active one in about 30 seconds, and `workspace_delete` removed one from the account's workspace list.
 
+**Unaided runs on the held-out goal fail for the wrong reason.** On `forge-7`, 5 Haiku and 5 Sonnet runs on `pluzhouvio` (100-turn budget, no skill, unrecorded) reached it 0 times in 10. The goal needs all 4 `lugli`, and 9 of the 10 runs crafted `naeviozhum`, which spends one, so the goal was already unreachable. Sonnet's final messages say as much. With no slack, the outcome measures whether an exploratory craft happened to burn stock, not whether the model found the recipe.
+
+**Prior knowledge decides how much a skill can add, and real processes have some.** In a world of invented names the only way to learn a recipe is to try combinations. Real recipes, workflows and procedures come with a familiar vocabulary whose specifics differ in ratios, order or technique. An experiment on invented names alone cannot say what a skill adds beyond what the model already knows.
+
 **A run can be recorded without the hooks.** A finished run's folder holds its call sequence (`run.jsonl`), per-call timings (`trace.jsonl`), prompt and final answer. The sim is deterministic, so replaying the call sequence through the craft server regenerates each tool output exactly as the agent saw it. Writing the run to NAMS through its REST API (a conversation, its two messages, one reasoning step per distinct tool, and one tool call per call with input, output, status and duration) produced a reasoning trace of the same shape as the hooks' recording of the same 96-call run: 6 steps and 99 tool calls. The skill distilled from it matched the hooks-based skill on grounding and coverage (both 1.0) and on the six-step procedure, and carried the recipe more often. Nothing in that path runs a recall.
 
 **A skill that passes NAMS's checks can still be unhelpful.** The skill distilled from one successful run scored grounding 1.0 and coverage 1.0 (gates 0.9 and 0.6). Its steps replay the teacher's exploration routine (read help, check inventory, place, clear, remove). The recipe it did capture, two `lugli` side by side in the top row, sits in the *why* line of the last step. In three runs the agent loaded the skill late (after 47 calls, then solved in two), never, or at an unrecorded point. The harness prompt told the agent to "use only the craft tools" and to "explore", and the skill's description began with a tool name. NAMS skill distillation is an early service whose output will change between versions.
@@ -32,9 +36,9 @@ The player is Claude Code through the Agent SDK, as the harness already runs it.
 
 Two roles are filled by two different models. The **teacher** works the learn goals and is recorded. The **student** is the model the skill is meant to help. The teacher is Claude Sonnet (`claude-sonnet-5-5`) and the student is Claude Haiku (`claude-haiku-4-5-20251001`).
 
-Calibration checks that this pair shows a gap before an experiment spends anything else. Each model plays the held-out goal with no help for 5 trials. The pair is accepted if the student succeeds in at most 1 of 5 trials (20%) and the teacher in at least 4 of 5 (80%). Calibration runs are not recorded and install no skill.
+Calibration measures each model's unaided success on the held-out goal, 5 trials per model and world, with no recording and no skill. In an invented or perturbed world it is a gate on the student: the student must succeed in at most 1 of 5 trials (20%), otherwise there is nothing for a skill to close. The teacher is not gated on the held-out goal, which it never plays in a recorded run; the solver proves the goal feasible. The teacher must reach the learn goals, since the skill is distilled from those runs, and an experiment whose teacher reaches none ends there. In the faithful world calibration is a measurement, not a gate, since the expected result is near ceiling.
 
-If the student succeeds too often, the world is made harder (a deeper recipe chain, generated from a new seed) and calibration repeats. If the teacher succeeds too rarely, the turn budget or the world is revisited and calibration repeats. The protocol is not loosened to fit the models, and the models are not swapped to fit the world.
+If the student succeeds too often, the world is made harder (a deeper chain, more deviations, or a longer transfer distance) and calibration repeats. The protocol is not loosened to fit the models, and the models are not swapped to fit the world.
 
 ### 2.2 Arms
 
@@ -51,9 +55,21 @@ S1 and S2 are separate arms because they measure different things: S1 whether th
 
 **Deferred: S3, student with memory (recall on, no skill).** It compares the skill against plain recall. The hooks both recall and record, so an S3 trial run under them would write into the workspace the next trial recalls from. With hooks off in every run (2.4), the harness could instead perform the recall itself through the REST API before the run and place the result in the prompt, leaving the workspace untouched. That mechanism is untested; the arm joins the table once it is (see "Not decided"). The first experiment runs T0, S0, S1 and S2.
 
-### 2.3 Goals and transfer
+### 2.3 Worlds, goals and transfer
 
-The teacher is recorded on the learn goals (warm-up and middle) and never on the held-out goal. The experiment records the same fixed number of teacher trials per learn goal, set before the first run. A skill is distilled from the conversations of the trials that reached their goal: one skill per experiment, generated with `scope.type: conversations` over those conversation ids, which the skill's provenance record stores. Trials that did not reach the goal stay in the workspace but are not given to the distiller. Students play the held-out goal as the primary measure, and the learn goals as a sanity check. A result on a learn goal shows that the skill holds the recipe; only a held-out result shows transfer. One generated world is used per experiment, and a claim is repeated on a second world from another seed before it is stated.
+**Prior fit.** Every experiment names the world's prior fit (constitution, Principle III). Three worlds are derived from one base, Minecraft's crafting recipes (a subset on the 3x3 grid, with the game version pinned):
+
+- **Faithful**: the source's vocabulary and recipes. It is the control. A model is expected to do well unaided, which bounds how much any skill or memory can add.
+- **Perturbed**: the faithful vocabulary with four deviations from the source. Two are *systematic* (a rule applied across recipes, such as a quantity rule, which a skill can abstract and carry to a recipe it never saw). Two are *idiosyncratic* (a change to one recipe, which memory can recall but a rule cannot cover).
+- **Invented**: the renamer applied to the base, so no prior applies beyond the game mechanic.
+
+Results are reported per prior fit and never pooled across fits. The first experiment runs the invented world, which has the cleanest signal and the lowest cost; the perturbed and faithful worlds follow once transfer shows there.
+
+**Goals.** Learn and held-out goals come from one recipe family: the same shape with different parameters (for example, wooden and stone pickaxes as learn goals and an iron pickaxe held out; planks from different logs). This is *near* transfer. Longer distances (a shapeless recipe to a shaped one, or a deeper chain, as in the pilot's `forge-7`: `glirol` and `vriobeno` to `pluzhouvio`) come later and are reported as their own distance. In the perturbed world the held-out goal's chain contains one systematically deviated recipe that no learn goal used (so only a rule helps) and one idiosyncratically deviated recipe that a learn goal did use (so only recall helps). Held-out goals carry stock slack, so that an exploratory craft or two leaves the goal reachable.
+
+**Teacher recordings and the distiller's input.** The teacher is recorded on the learn goals and never on the held-out goal. The experiment records the same fixed number of teacher trials per learn goal, set before the first run. A skill is distilled from the conversations of the trials that reached their goal: one skill per experiment, generated with `scope.type: conversations` over those conversation ids, which the skill's provenance record stores. Trials that did not reach the goal stay in the workspace but are not given to the distiller.
+
+**What a result shows.** Students play the held-out goal as the primary measure, and the learn goals as a sanity check. A result on a learn goal shows that the skill holds the recipe; only a held-out result shows transfer. A claim is repeated on a second world (another seed, or another recipe family) before it is stated.
 
 ### 2.4 Isolation
 
@@ -70,7 +86,7 @@ Recorded runs use a dedicated NAMS workspace that no development session records
 
 ### 2.5 Metrics and trials
 
-The primary measure is success on the held-out goal within the turn budget. Beside it, within one model only (ADR-002): action calls and extra calls over the best run, tokens, time and cost to the goal. For skill arms, whether the agent loaded the skill and after how many calls.
+The primary measure is success on the held-out goal within the turn budget. Beside it, within one model only (ADR-002): action calls and extra calls over the best run, tokens, time and cost to the goal. For skill arms, whether the agent loaded the skill and after how many calls. In a perturbed world, how many refused or wasted crafts follow the source's recipe where the world deviates from it.
 
 Each arm runs the same fixed number of trials, set before any trial runs and written into the experiment's summary together with the arms, goals, models and budget. Results are the success count and the distribution (minimum, median, maximum) per arm. No difference is claimed between arms that the trial count cannot support.
 
@@ -82,10 +98,11 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 
 **The rubric** asks what a human reviewer would ask:
 
-- Is the skill general or specific to this world and these item names?
+- Is the skill general or specific to this world and these item names? Is its content a rule that applies across recipes, or a fact about one recipe?
 - Does it cover one task or several?
 - Can it be decomposed into smaller reusable skills?
 - Does it lead with the discovered fact, or replay the teacher's exploration routine?
+- Does it record where this world differs from common knowledge, or restate what the model already knows?
 - Will its description cause an agent to load it?
 
 **The verdict** is structured: a value per question, an overall `accept`, `revise` or `reject`, the reasons, and proposed revisions.
@@ -102,6 +119,8 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 - **Delete each run's conversation instead of using a separate workspace.** Rejected: the extracted entities and the orphaned reasoning nodes remain after deletion, and recall draws on the entities.
 - **Empty one workspace through the API between experiments.** Rejected: conversations and entities can be deleted, but the skill, its version and components, the distillation run and the orphaned tool-call and step nodes cannot, so earlier experiments' artifacts would sit beside the new ones. Entity listing is also capped at 200 per call.
 - **Reprovision the workspace's database in place (`workspace_reprovision`).** Rejected for now: two calls on a managed workspace returned success and changed nothing observable over about eight minutes. It would keep one workspace id across experiments, so it is worth retrying if NAMS fixes it.
+- **Invented worlds only.** Rejected: no real process lacks a prior, and results from invented names cannot say what a skill adds beyond what the model knows.
+- **Faithful worlds only.** Rejected: a model that already knows the recipes leaves nothing for a skill to close, so the effect would sit at the ceiling.
 - **Rely on NAMS's grounding and coverage gates alone.** Rejected: the pilot skill scored 1.0 on both and agents barely loaded it. The gates check that steps trace back to the memory, not that the skill helps.
 - **Human review only.** Rejected: too slow and unrepeatable at the number of skills an experiment produces. A human keeps the approve and publish step.
 - **No review.** Rejected: the raw skill replays the teacher's routine, so results would measure the distiller's current behaviour, not the idea.
@@ -109,7 +128,7 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 
 ## 4. Consequences
 
-- **Cost.** Pilot runs on a Sonnet-class model cost $0.14 to $0.37 each. An experiment of three student arms (S0, S1, S2) with ten trials on two goals is about 60 student runs, plus teacher recordings, critic rounds and calibration, roughly $15 to $40 at those rates. Haiku student runs cost less than the Sonnet rates above, which lowers it.
+- **Cost.** Pilot runs on a Sonnet-class model cost $0.14 to $0.37 each. An experiment of three student arms (S0, S1, S2) with ten trials on two goals is about 60 student runs per world, plus teacher recordings, critic rounds and calibration, roughly $15 to $40 at those rates. Haiku student runs cost less than the Sonnet rates above, which lowers it.
 - **One workspace per experiment, created and deleted by the runner.** An experiment pays for a workspace creation (about 30 seconds in a test) and loses whatever it did not save, so skill packages, run folders and bundles are exported before deletion. The account's workspace limit, and whether soft-deleted workspaces count against it, are unknown. The key in use is an account-wide admin key, so the same tools could delete the development workspace; the runner's rule that it deletes only ids it created is the protection. A key bound to one workspace would suit the recorded runs better, but creating and deleting workspaces needs the admin scope, which a workspace-bound key does not carry.
 - **Comparisons across NAMS versions need records.** Each experiment stores the NAMS capabilities response (thresholds, enabled features) and each run the skill fingerprint, since the service changes.
 - **The critic is a model.** It may share blind spots with the teacher. The first accepted skills are read by a human for that reason.
@@ -117,13 +136,15 @@ A distilled skill is reviewed before any student sees it. The review stands in f
   - recording a finished run to NAMS through the REST API (replay, write, conversation linkage, with the recording guard), and the workspace lifecycle (create, wait until active, delete, with the delete guard);
   - the critic loop;
   - an experiment runner that runs the arms and trials, writes the pre-run summary and aggregates the results;
-  - observer support for arm, model and skill;
+  - observer support for arm, model, skill and prior fit;
+  - world design and generation: the Minecraft base subset and version, keeping names, applying the deviation rules, goal families and stock slack (the generator today only renames and nudges single recipes);
   - the critic's output schema, and updating `AGENTS.md`, which still describes `NAMS_WORKSPACE_ID` as one dedicated workspace.
 
 **Not decided here:**
 
 - the trial count of the experiment arms, including the number of teacher trials per learn goal;
 - the turn budget shared by all arms;
+- the Minecraft subset and version, the four deviations, the goal families and how much stock slack held-out goals carry (the calibration runs showed zero slack makes unaided runs unrecoverable);
 - whether the critic's rubric lives in a file or in its prompt;
 - the mechanism for the deferred arm S3: harness-performed recall placed in the prompt is the candidate, untested;
 - whether REST-written and hooks-written recordings keep extracting equivalently over more runs, and how NAMS stores a refused call, which the one test run (no refusals) could not show;
@@ -135,5 +156,6 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 ## 5. Related
 
 - ADRs: [ADR-001](ADR-001-crafting-table-world.md) (worlds, goals and the run log), [ADR-002](ADR-002-client-otel-trace.md) (measuring time, tokens and cost, and exporting runs).
+- Rules: constitution Principle III (prior fit, version 1.1.0) and the 2026-10-01 amendment to ADR-001, which define the three kinds of world.
 - Design notes: `design/notes/skill-pilot.md` (the pilot's evidence, including the tests of clearing a workspace), `design/notes/agent-player-options.md` (the options this decision replaces).
 - Specs: _(populated automatically by the speckit ADR-link hook once `/speckit-specify` references this ADR)_
