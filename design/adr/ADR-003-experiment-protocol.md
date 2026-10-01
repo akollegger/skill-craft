@@ -67,13 +67,13 @@ S1 and S2 are separate arms because they measure different things: S1 whether th
 
 ### 2.3 Worlds, goals and transfer
 
-**Prior fit.** Every experiment names the world's prior fit (constitution, Principle III). Three worlds are derived from one base, Minecraft's crafting recipes (a subset on the 3x3 grid, with the game version pinned):
+**Prior fit.** Every experiment names the world's prior fit (constitution, Principle III). Three worlds are derived from one base, crafting recipes inspired by Minecraft (a subset on the 3x3 grid, using recipes that are the same across the versions commonly played, with no edition or version pinned):
 
 - **Faithful**: the source's vocabulary and recipes. It is the control. A model is expected to do well unaided (near the ceiling: almost every run succeeds, so little is left to improve), which bounds how much any skill or memory can add.
 - **Perturbed**: the faithful vocabulary with four deviations from the source. Two are *systematic* (a rule applied across recipes, such as a quantity rule, which a skill can abstract and carry to a recipe it never saw). Two are *idiosyncratic* (a change to one recipe, which memory can recall but a rule cannot cover).
 - **Invented**: the renamer (the world generator's tool that replaces every item name with an invented one, ADR-001) applied to the base, so no prior applies beyond the game mechanic.
 
-Results are reported per prior fit and never pooled across fits. The first experiment runs the invented world, which has the cleanest signal and the lowest cost; the perturbed and faithful worlds follow once transfer shows there.
+Results are reported per prior fit and never pooled across fits. The first experiment runs the faithful world (spec 003), because it is the control the other worlds are compared against and the base they derive from; the invented world follows, and the perturbed world after it.
 
 **Goals.** Learn and held-out goals come from one recipe family (recipes of the same shape that differ in items or quantities; for example, wooden and stone pickaxes as learn goals and an iron pickaxe held out, or planks from different logs). This is *near* transfer. Longer distances (a shapeless recipe to a shaped one, or a deeper chain, as in the pilot's `forge-7`: `glirol` and `vriobeno` to `pluzhouvio`) come later and are reported as their own distance. In the perturbed world the held-out goal's chain contains one systematically deviated recipe that no learn goal used, though a learn goal used another recipe governed by the same rule (so only a rule helps) and one idiosyncratically deviated recipe that a learn goal did use (so only recall helps). Held-out goals carry stock slack, so that an exploratory craft or two leaves the goal reachable.
 
@@ -138,9 +138,9 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 
 ## 4. Consequences
 
-- **Cost.** Pilot runs on a Sonnet-class model cost $0.14 to $0.37 each. An experiment of three student arms (S0, S1, S2) with an assumed ten trials on two goals is about 60 student runs per world, plus teacher recordings, critic rounds and calibration, roughly $15 to $40 at those rates. Haiku student runs cost less than the Sonnet rates above, which lowers it. The first experiment runs the invented world, so the cost of the perturbed and faithful worlds is incurred only once transfer shows there.
+- **Cost.** Pilot runs on a Sonnet-class model cost $0.14 to $0.37 each. An experiment of three student arms (S0, S1, S2) with an assumed ten trials on two goals is about 60 student runs per world, plus teacher recordings, critic rounds and calibration, roughly $15 to $40 at those rates. Haiku student runs cost less than the Sonnet rates above, which lowers it. The first experiment runs the faithful world, so the cost of the invented and perturbed worlds is incurred only after the control is established.
 - **One workspace per experiment, created and deleted by the runner.** An experiment pays for a workspace creation (about 30 seconds in a test) and treats the workspace as gone afterwards, so skill packages, run folders and bundles are exported before deletion. The account's workspace limit, and whether soft-deleted workspaces count against it, are unknown. The key in use is an account-wide admin key, so the same tools could delete the development workspace; the runner's rule that it deletes only ids it created is the protection. A key bound to one workspace would suit the recorded runs better, but creating and deleting workspaces needs the admin scope, which a workspace-bound key does not carry.
-- **Minecraft vocabulary in published bundles.** Faithful and perturbed worlds use Minecraft item names and recipes, and replay bundles (ADR-002) are meant to be hosted publicly. Item names are mostly common words and recipes are facts about a game, but the world-design spec confirms the usage terms before bundles of those worlds are published.
+- **Minecraft vocabulary in published bundles.** Faithful and perturbed worlds use Minecraft-inspired item names and recipes, and replay bundles (ADR-002) are meant to be hosted publicly. Minecraft is a trademark of its owner. The worlds credit the game as inspiration in documentation, claim no affiliation, and avoid naming an edition. Item names are mostly common words and recipes are facts about a game, but the spec confirms the usage terms before bundles of those worlds are published.
 - **Comparisons across NAMS versions need records.** Each experiment stores the NAMS capabilities response (thresholds, enabled features) and each run the skill fingerprint, since the service changes.
 - **The critic is a model.** It may share blind spots with the teacher. The first accepted skills are read by a human for that reason.
 - **Follow-up specs:**
@@ -148,14 +148,14 @@ A distilled skill is reviewed before any student sees it. The review stands in f
   - the critic loop;
   - an experiment runner that runs the arms and trials, writes the pre-run summary and aggregates the results;
   - observer support for arm, model, skill and prior fit;
-  - world design and generation: the Minecraft base subset and version, keeping names, applying the deviation rules, goal families and stock slack (the generator today only renames and nudges single recipes);
+  - world design and generation: the Minecraft-inspired base subset, keeping names, applying the deviation rules, goal families and stock slack (the generator today only renames and nudges single recipes);
   - the critic's output schema, and updating `AGENTS.md`, which still describes `NAMS_WORKSPACE_ID` as one dedicated workspace.
 
 **Not decided here:**
 
 - the trial count of the experiment arms, including the number of teacher trials per learn goal;
 - the turn budget shared by all arms;
-- the Minecraft subset and version, the four deviations, the goal families and how much stock slack held-out goals carry (the calibration runs showed zero slack makes unaided runs unrecoverable);
+- the Minecraft-inspired subset, the four deviations, the goal families and how much stock slack held-out goals carry (the calibration runs showed zero slack makes unaided runs unrecoverable);
 - whether the critic's rubric lives in a file or in its prompt;
 - the mechanism for the deferred arm S3: harness-performed recall placed in the prompt is the candidate, untested;
 - whether REST-written and hooks-written recordings keep extracting equivalently over more runs, and how NAMS stores a refused call, which the one test run (no refusals) could not show;
@@ -171,3 +171,14 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 - Rules: constitution Principle III (prior fit, version 1.1.0) and the 2026-10-01 amendment to ADR-001, which define the three kinds of world.
 - Design notes: `design/notes/skill-pilot.md` (the pilot's evidence, including the tests of clearing a workspace), `design/notes/agent-player-options.md` (the options this decision replaces).
 - Specs: _(populated automatically by the speckit ADR-link hook once `/speckit-specify` references this ADR)_
+
+## 6. Amendments
+
+- **2026-10-01, the faithful world runs first.** Section 2.3 and the cost note said the first experiment
+  would run the invented world. It now runs the faithful world (spec 003), with every arm, because that
+  world is the control the others are compared against and the base from which both derive. The invented
+  world follows, then the perturbed world. The rest of the protocol is unchanged.
+- **2026-10-01, no game version pinned.** The faithful base uses recipes that are the same across the
+  versions commonly played and names no edition or version, credits the game as inspiration in
+  documentation, and claims no affiliation. See the matching entry in ADR-001 and constitution
+  Principle III (1.1.1).
