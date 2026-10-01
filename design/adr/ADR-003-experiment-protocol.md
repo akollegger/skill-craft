@@ -14,7 +14,7 @@ The demo's claim is that a skill distilled from a strong model's recorded runs l
 
 **Single runs say little.** The same model on the same goal took 67 action calls without reaching it, and 96 calls reaching it. With a skill installed, three runs took 69 calls (reached), 76 (not reached) and 49 (reached). The best possible run is 3 calls. Neither a with-versus-without pair nor a three-run batch can separate an effect from luck.
 
-**Recall leaks from development sessions.** Recorded runs in a shared Neo4j Agent Memory (NAMS) workspace had their first prompt matched against every entity in the workspace, and the matches came from the design sessions held in that same workspace. One stated that the goal needs "one craft in the best run". Deleting a conversation removes it and its messages, not what was extracted from it: the entity count rose after two experiment conversations were deleted, and a graph query on a test workspace found a deleted conversation's tool-call and step nodes still present as orphans.
+**Recall leaks from development sessions.** The `nams-hooks` plugin for Claude Code records each session to a Neo4j Agent Memory (NAMS) workspace and, at the start of a session, recalls: it searches the workspace's entities for matches to the first prompt. In the shared workspace, the matches came from the design sessions recorded there. One stated that the goal needs "one craft in the best run". Deleting a conversation removes it and its messages, not what was extracted from it: the entity count rose after two experiment conversations were deleted, and a graph query on a test workspace found a deleted conversation's tool-call and step nodes still present as orphans.
 
 **No call clears a workspace in place.** On a throwaway workspace holding a conversation with its reasoning trace, entities, a distilled skill and its run, the API could delete the conversations and every entity (the entity list returns at most 200 per call, so deletion repeats until the list is empty). It could not delete the skill, its version and components, the distillation run, or the orphaned tool-call and step nodes, because no endpoint exists for them. The MCP tool `workspace_reprovision`, documented as replacing a managed workspace's database with a fresh one, returned success twice and changed nothing observable over about eight minutes: the same database host, all data intact. Creating a managed workspace with `workspace_create` produced an active one in about 30 seconds, and `workspace_delete` removed one from the account's workspace list.
 
@@ -42,13 +42,14 @@ All arms use one base prompt. An arm may add one fixed sentence, which is stored
 | S0, student baseline | student | none | no |
 | S1, student with skill | student | the reviewed skill, neutral prompt | no |
 | S2, student with skill, pointed | student | the reviewed skill, plus the sentence "A skill for this kind of task is available; load it before exploring." | no |
-| S3, student with memory | student | recall on, no skill | needs a decision (2.4) |
 
 S1 and S2 are separate arms because they measure different things: S1 whether the agent finds the skill, S2 whether the skill helps once the agent has been told to use it.
 
+**Deferred: S3, student with memory (recall on, no skill).** It compares the skill against plain recall, but the hooks both recall and record, so an S3 trial would write into the workspace the next trial recalls from. It joins the table once a mechanism is chosen (see "Not decided"). The first experiment runs T0, S0, S1 and S2.
+
 ### 2.3 Goals and transfer
 
-The teacher is recorded on the learn goals (warm-up and middle) and never on the held-out goal. Students play the held-out goal as the primary measure, and the learn goals as a sanity check. A result on a learn goal shows that the skill holds the recipe; only a held-out result shows transfer. One generated world is used per experiment, and a claim is repeated on a second world from another seed before it is stated.
+The teacher is recorded on the learn goals (warm-up and middle) and never on the held-out goal. The experiment records the same fixed number of teacher trials per learn goal, set before the first run. A skill is distilled from the conversations of the trials that reached their goal: one skill per experiment, generated with `scope.type: conversations` over those conversation ids, which the skill's provenance record stores. Trials that did not reach the goal stay in the workspace but are not given to the distiller. Students play the held-out goal as the primary measure, and the learn goals as a sanity check. A result on a learn goal shows that the skill holds the recipe; only a held-out result shows transfer. One generated world is used per experiment, and a claim is repeated on a second world from another seed before it is stated.
 
 ### 2.4 Isolation
 
@@ -56,10 +57,10 @@ Recorded runs use a dedicated NAMS workspace that no development session records
 
 - The harness passes `NAMS_WORKSPACE_ID` (and the key) to the recorded run's process only, never to a shell that starts a development session.
 - Each recorded run's `score.json` stores its NAMS conversation id and workspace id, read from the hooks' per-session state file.
-- `--record` refuses to run unless `NAMS_WORKSPACE_ID` is set and differs from the workspace development sessions use.
+- `--record` accepts a workspace id only if it appears in the runner's record of workspaces it created for the current experiment, and refuses the id configured for development sessions (read from the global nams config). A manual `--record` outside an experiment is refused.
 - A new experiment starts from a new managed workspace and ends by deleting it. The experiment runner creates it with `workspace_create` (managed database mode), waits until its database is active, passes its id to recorded runs as `NAMS_WORKSPACE_ID`, and deletes it with `workspace_delete` after the results, skill packages, run folders and bundles are saved. No call clears a workspace in place, so a fresh workspace is the only clean state, and each one is disposable.
 - Creating and deleting a workspace are writes to the account. The runner does them only when an experiment is started with an explicit option, prints the ids, records every id it creates, and refuses to delete any other id, including the development workspace.
-- The experiment workspace is a managed workspace. A sandbox workspace is unsuitable: the one used in the pilot has an expiry timestamp that has already passed.
+- The experiment workspace is a managed workspace (NAMS provisions its own database for it). A sandbox workspace (a shared, time-limited trial database) is unsuitable: the one used in the pilot has an expiry timestamp that has already passed.
 - Conversations of recorded runs are not deleted for isolation; deleting the workspace removes them with everything else.
 
 ### 2.5 Metrics and trials
@@ -102,7 +103,7 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 
 ## 4. Consequences
 
-- **Cost.** Pilot runs on a Sonnet-class model cost $0.14 to $0.37 each. An experiment of four arms with ten trials on two goals is about 80 student runs, plus teacher recordings, critic rounds and calibration, roughly $15 to $40 at those rates. A cheaper student lowers it.
+- **Cost.** Pilot runs on a Sonnet-class model cost $0.14 to $0.37 each. An experiment of three student arms (S0, S1, S2) with ten trials on two goals is about 60 student runs, plus teacher recordings, critic rounds and calibration, roughly $15 to $40 at those rates. A cheaper student lowers it.
 - **One workspace per experiment, created and deleted by the runner.** An experiment pays for a workspace creation (about 30 seconds in a test) and loses whatever it did not save, so skill packages, run folders and bundles are exported before deletion. The account's workspace limit, and whether soft-deleted workspaces count against it, are unknown. The key in use is an account-wide admin key, so the same tools could delete the development workspace; the runner's rule that it deletes only ids it created is the protection. A key bound to one workspace would suit the recorded runs better, but creating and deleting workspaces needs the admin scope, which a workspace-bound key does not carry.
 - **Comparisons across NAMS versions need records.** Each experiment stores the NAMS capabilities response (thresholds, enabled features) and each run the skill fingerprint, since the service changes.
 - **The critic is a model.** It may share blind spots with the teacher. The first accepted skills are read by a human for that reason.
@@ -110,19 +111,20 @@ A distilled skill is reviewed before any student sees it. The review stands in f
   - run-to-conversation linkage, with the recording guard, and the workspace lifecycle (create, wait until active, delete, with the delete guard);
   - the critic loop;
   - an experiment runner that runs the arms and trials, writes the pre-run summary and aggregates the results;
-  - observer support for arm, model and skill.
+  - observer support for arm, model and skill;
+  - the critic's output schema, and updating `AGENTS.md`, which still describes `NAMS_WORKSPACE_ID` as one dedicated workspace.
 
 **Not decided here:**
 
 - the exact teacher and student models, which calibration settles;
-- the trial count;
+- the trial count, including the number of teacher trials per learn goal;
 - the turn budget shared by all arms;
 - whether the critic's rubric lives in a file or in its prompt;
-- how arm S3 can read recorded memory without its own trials writing to the workspace (the hooks both recall and record), which may need a snapshot or a separate workspace per trial;
+- the mechanism for the deferred arm S3: reading recorded memory without its own trials writing to the workspace, which may need a snapshot or a separate workspace per trial;
 - the wording of the S2 sentence, to be fixed before the first trial;
 - whether soft-deleted workspaces count against the account's workspace limit;
 - whether `workspace_reprovision` can be made to work, which would keep one workspace id across experiments;
-- when a sandbox workspace's expiry is enforced (the pilot's expired two days ago and still works).
+- when a sandbox workspace's expiry is enforced (the pilot's expired on 2026-09-29 and still works).
 
 ## 5. Related
 
