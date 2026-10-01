@@ -123,6 +123,20 @@ describe("exportBundle", () => {
   });
 });
 
+describe("exportBundle with a repository-relative world", () => {
+  it("finds a world that mcp.json records relative to the repository", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "skill-craft-export-rel-"));
+    const goal = { item: "c", qty: 1 };
+    const res = await runExperiment({ world: "test/fixtures/valid/mirror-pair.json", goal, runs: 1, maxTurns: 12, out: join(dir, "runs"), label: "lab", record: false, driver: fakePlayer({ mode: "solve", goal }) });
+    const runDir = res.reports[0]?.dir as string;
+    const recorded = (JSON.parse(readFileSync(join(runDir, "mcp.json"), "utf8")) as { mcpServers: { craft: { env: Record<string, string> } } }).mcpServers.craft.env["SIM_WORLD"];
+    expect(recorded).toBe("test/fixtures/valid/mirror-pair.json");
+    const dest = join(dir, "bundle");
+    exportBundle(runDir, dest);
+    expect(readBundle(dest).frames.length).toBeGreaterThan(1);
+  });
+});
+
 describe("exportBundle refuses", () => {
   it("an unfinished run, which has no score.json", async () => {
     const { runDir, dest } = await finishedRun();

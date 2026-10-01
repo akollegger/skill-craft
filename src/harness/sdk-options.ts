@@ -1,11 +1,9 @@
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import type { HookCallback, HookCallbackMatcher, HookEvent, Options } from "@anthropic-ai/claude-agent-sdk";
 import type { DriverOptions, DriverSink, PlayerResult } from "./driver.js";
+import { REPO } from "./paths.js";
 
 // Type-only imports above: loading this file never loads the SDK, so dry runs and tests stay light.
-
-const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const str = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);

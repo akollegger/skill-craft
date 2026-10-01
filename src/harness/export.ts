@@ -6,6 +6,7 @@ import { ReplayError } from "../sim/score.js";
 import { readTrace } from "../trace/lines.js";
 import type { BundleManifest, BundleResult } from "./bundle.js";
 import { ExportRefused } from "./errors.js";
+import { fromRepoPath } from "./paths.js";
 import { readLog, replayFailure } from "./read-log.js";
 
 const jsonl = (rows: readonly unknown[]): string => rows.map((r) => `${JSON.stringify(r)}\n`).join("");
@@ -23,7 +24,8 @@ export function exportBundle(runDir: string, dest: string): { dest: string; fram
 
   const mcpPath = join(runDir, "mcp.json");
   const mcp = existsSync(mcpPath) ? (JSON.parse(readFileSync(mcpPath, "utf8")) as { mcpServers?: { craft?: { env?: { SIM_WORLD?: string } } } }) : {};
-  const worldPath = mcp.mcpServers?.craft?.env?.SIM_WORLD;
+  const recorded = mcp.mcpServers?.craft?.env?.SIM_WORLD;
+  const worldPath = recorded ? fromRepoPath(recorded) : undefined;
   if (!worldPath || !existsSync(worldPath)) throw new ExportRefused("the world file the run used is missing");
   const world = loadWorld(worldPath);
 

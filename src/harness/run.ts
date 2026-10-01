@@ -10,6 +10,7 @@ import { measureRun, type Measured } from "../trace/measure.js";
 import { TraceRecorder } from "../trace/recorder.js";
 import type { AgentDriver, DriverSink, PlayerResult } from "./driver.js";
 import { DriverFailed, HarnessError, RunCancelled, RunFailed, RunFolderExists, RunTimedOut, UnknownGoalItem, reasonOf } from "./errors.js";
+import { toRepoPath } from "./paths.js";
 import { readLog, replayFailure } from "./read-log.js";
 import { craftServer, sdkOptionsFor } from "./sdk-options.js";
 
@@ -51,9 +52,22 @@ export function buildPrompt(goal: SolverGoal, maxTurns: number): string {
   ].join("\n");
 }
 
-/** What `mcp.json` records for a run: how the craft server was started. Export finds the world here. */
-export function mcpConfigFor(worldPath: string, runLog: string): object {
-  return { mcpServers: { craft: craftServer(worldPath, runLog) } };
+/**
+ * What `mcp.json` records for a run: how the craft server was started. Export finds the world here. Paths
+ * inside the repository are recorded relative to it, so the file holds no user name and can be shared.
+ */
+export function mcpConfigFor(worldPath: string, runLog: string) {
+  const server = craftServer(worldPath, runLog);
+  return {
+    mcpServers: {
+      craft: {
+        ...server,
+        command: toRepoPath(server.command),
+        args: server.args.map(toRepoPath),
+        env: { SIM_WORLD: toRepoPath(server.env["SIM_WORLD"] as string), SIM_RUN_LOG: toRepoPath(server.env["SIM_RUN_LOG"] as string) },
+      },
+    },
+  };
 }
 
 /** Which model a run asked for and which ran. */
@@ -123,8 +137,8 @@ export function planExperiment(o: AgentRunOptions) {
       { prompt: buildPrompt(o.goal, o.maxTurns), world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, record: o.record, signal: new AbortController().signal },
       noSink,
     );
-    // Show the craft server as it is recorded, without the PATH the live call adds.
-    return { run: i + 1, dir, runLog, options: { ...options, mcpServers: { craft: craftServer(resolve(o.world), runLog) } } };
+    // Show the plan as it will be recorded: repository-relative paths, and without the PATH the live call adds.
+    return { run: i + 1, dir, runLog: toRepoPath(runLog), options: { ...options, cwd: toRepoPath(resolve(dir)), ...mcpConfigFor(resolve(o.world), runLog) } };
   });
 }
 
