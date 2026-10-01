@@ -116,6 +116,21 @@ skill and its run, and the 28 seeded ontologies.
 Conclusion: nothing clears a workspace in place. A fresh managed workspace per experiment, created and deleted
 through the API, is the clean state (ADR-003).
 
+## Recording through the REST API instead of the hooks
+
+Tested once, on the 96-call baseline run (`runs/pilot-sd/001`), with `spikes/rest-ingest/ingest.ts`.
+
+- The run folder is enough: replaying `run.jsonl` through the craft server regenerates every tool output
+  (the sim is deterministic), and `trace.jsonl` gives each call's duration.
+- Written as a conversation with two messages, one step per distinct tool and 99 tool calls, the reasoning
+  trace had the same shape as the hooks' recording of the same run (6 steps, 99 calls). Extraction finished
+  in about 3 minutes.
+- Generated skill (`spikes/skill-pilot/craft-glirol-rest/`): grounding 1.0, coverage 1.0, the same six steps.
+  The recipe appears in step 3 and step 6 as well as the references. The description still begins with a
+  tool name and the steps still replay the exploration routine, so those are properties of the distiller.
+- No recall runs on this path. Not shown: a fresh REST-only teacher run, refused calls (the run had none),
+  or equivalence over more runs.
+
 ## Open questions for the protocol
 
 1. Does the skill arm's prompt mention skills? A neutral prompt may suppress them (as here); mentioning them

@@ -18,6 +18,8 @@ The demo's claim is that a skill distilled from a strong model's recorded runs l
 
 **No call clears a workspace in place.** On a throwaway workspace holding a conversation with its reasoning trace, entities, a distilled skill and its run, the API could delete the conversations and every entity (the entity list returns at most 200 per call, so deletion repeats until the list is empty). It could not delete the skill, its version and components, the distillation run, or the orphaned tool-call and step nodes, because no endpoint exists for them. The MCP tool `workspace_reprovision`, documented as replacing a managed workspace's database with a fresh one, returned success twice and changed nothing observable over about eight minutes: the same database host, all data intact. Creating a managed workspace with `workspace_create` produced an active one in about 30 seconds, and `workspace_delete` removed one from the account's workspace list.
 
+**A run can be recorded without the hooks.** A finished run's folder holds its call sequence (`run.jsonl`), per-call timings (`trace.jsonl`), prompt and final answer. The sim is deterministic, so replaying the call sequence through the craft server regenerates each tool output exactly as the agent saw it. Writing the run to NAMS through its REST API (a conversation, its two messages, one reasoning step per distinct tool, and one tool call per call with input, output, status and duration) produced a reasoning trace of the same shape as the hooks' recording of the same 96-call run: 6 steps and 99 tool calls. The skill distilled from it matched the hooks-based skill on grounding and coverage (both 1.0) and on the six-step procedure, and carried the recipe more often. Nothing in that path runs a recall.
+
 **A skill that passes NAMS's checks can still be unhelpful.** The skill distilled from one successful run scored grounding 1.0 and coverage 1.0 (gates 0.9 and 0.6). Its steps replay the teacher's exploration routine (read help, check inventory, place, clear, remove). The recipe it did capture, two `lugli` side by side in the top row, sits in the *why* line of the last step. In three runs the agent loaded the skill late (after 47 calls, then solved in two), never, or at an unrecorded point. The harness prompt told the agent to "use only the craft tools" and to "explore", and the skill's description began with a tool name. NAMS skill distillation is an early service whose output will change between versions.
 
 **The pieces for a protocol exist.** Worlds are generated data with warm-up, middle and held-out goals (`forge-7`: `glirol` needs 1 craft and 3 calls, `vriobeno` 2 crafts and 5 calls, `pluzhouvio` 7 crafts and 22 calls with no slack). The harness runs Claude Code through the Agent SDK, scores a run by replaying its log, measures time, tokens and cost, records which model ran, and installs a skill folder into a run (ADR-001 and ADR-002 define the world, the run log and the measurement).
@@ -38,14 +40,14 @@ All arms use one base prompt. An arm may add one fixed sentence, which is stored
 
 | Arm | Model | Help | Recorded to NAMS |
 |---|---|---|---|
-| T0, teacher baseline | teacher | none | yes (the source of recordings) |
+| T0, teacher baseline | teacher | none | yes, written by the harness after the run (2.4) |
 | S0, student baseline | student | none | no |
 | S1, student with skill | student | the reviewed skill, neutral prompt | no |
 | S2, student with skill, pointed | student | the reviewed skill, plus the sentence "A skill for this kind of task is available; load it before exploring." | no |
 
 S1 and S2 are separate arms because they measure different things: S1 whether the agent finds the skill, S2 whether the skill helps once the agent has been told to use it.
 
-**Deferred: S3, student with memory (recall on, no skill).** It compares the skill against plain recall, but the hooks both recall and record, so an S3 trial would write into the workspace the next trial recalls from. It joins the table once a mechanism is chosen (see "Not decided"). The first experiment runs T0, S0, S1 and S2.
+**Deferred: S3, student with memory (recall on, no skill).** It compares the skill against plain recall. The hooks both recall and record, so an S3 trial run under them would write into the workspace the next trial recalls from. With hooks off in every run (2.4), the harness could instead perform the recall itself through the REST API before the run and place the result in the prompt, leaving the workspace untouched. That mechanism is untested; the arm joins the table once it is (see "Not decided"). The first experiment runs T0, S0, S1 and S2.
 
 ### 2.3 Goals and transfer
 
@@ -55,9 +57,10 @@ The teacher is recorded on the learn goals (warm-up and middle) and never on the
 
 Recorded runs use a dedicated NAMS workspace that no development session records to. Only the arms marked recorded write to it.
 
-- The harness passes `NAMS_WORKSPACE_ID` (and the key) to the recorded run's process only, never to a shell that starts a development session.
-- Each recorded run's `score.json` stores its NAMS conversation id and workspace id, read from the hooks' per-session state file.
-- `--record` accepts a workspace id only if it appears in the runner's record of workspaces it created for the current experiment, and refuses the id configured for development sessions (read from the global nams config). A manual `--record` outside an experiment is refused.
+- **The hooks stay off in every experiment run.** `settingSources: []` keeps them out (ADR-002), so no run recalls from or writes to NAMS while it plays.
+- **The harness records a run after it finishes.** It replays the run's call sequence through the craft server to regenerate the outputs, then writes the conversation, its messages, steps and tool calls through the REST API. Refused calls are written with status `failure`. The teacher's final answer is stored as the closing message, and no other agent text is written.
+- The write returns the conversation id, and the run's `score.json` stores it with the workspace id. The hooks' private per-session state file is not read.
+- The recording step takes its workspace id and key from the runner, never from a shell that starts a development session. It accepts a workspace id only if it appears in the runner's record of workspaces it created for the current experiment, and refuses the id configured for development sessions (read from the global nams config). A manual recording outside an experiment is refused.
 - A new experiment starts from a new managed workspace and ends by deleting it. The experiment runner creates it with `workspace_create` (managed database mode), waits until its database is active, passes its id to recorded runs as `NAMS_WORKSPACE_ID`, and deletes it with `workspace_delete` after the results, skill packages, run folders and bundles are saved. No call clears a workspace in place, so a fresh workspace is the only clean state, and each one is disposable.
 - Creating and deleting a workspace are writes to the account. The runner does them only when an experiment is started with an explicit option, prints the ids, records every id it creates, and refuses to delete any other id, including the development workspace.
 - The experiment workspace is a managed workspace (NAMS provisions its own database for it). A sandbox workspace (a shared, time-limited trial database) is unsuitable: the one used in the pilot has an expiry timestamp that has already passed.
@@ -93,6 +96,7 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 
 - **Teacher and student are the same model.** Rejected as the main design: it cannot show a stronger model handing work to a weaker one. It remains a useful diagnostic (does a model benefit from its own skill).
 - **One with-versus-without comparison.** Rejected: a single skill run cannot tell whether the skill was never found, found late, or useless. S1 and S2 separate those.
+- **Record teacher runs with the `nams-hooks` plugin.** Rejected: every recorded run recalls at its start, so later teacher trials draw on entities extracted from earlier ones and are not independent samples; linking a run to its conversation means reading the plugin's private state-file format; and S3's recall cannot be separated from recording. The pilot's REST recording of the same run matched it on trace shape and on the distilled skill.
 - **Delete each run's conversation instead of using a separate workspace.** Rejected: the extracted entities and the orphaned reasoning nodes remain after deletion, and recall draws on the entities.
 - **Empty one workspace through the API between experiments.** Rejected: conversations and entities can be deleted, but the skill, its version and components, the distillation run and the orphaned tool-call and step nodes cannot, so earlier experiments' artifacts would sit beside the new ones. Entity listing is also capped at 200 per call.
 - **Reprovision the workspace's database in place (`workspace_reprovision`).** Rejected for now: two calls on a managed workspace returned success and changed nothing observable over about eight minutes. It would keep one workspace id across experiments, so it is worth retrying if NAMS fixes it.
@@ -108,7 +112,7 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 - **Comparisons across NAMS versions need records.** Each experiment stores the NAMS capabilities response (thresholds, enabled features) and each run the skill fingerprint, since the service changes.
 - **The critic is a model.** It may share blind spots with the teacher. The first accepted skills are read by a human for that reason.
 - **Follow-up specs:**
-  - run-to-conversation linkage, with the recording guard, and the workspace lifecycle (create, wait until active, delete, with the delete guard);
+  - recording a finished run to NAMS through the REST API (replay, write, conversation linkage, with the recording guard), and the workspace lifecycle (create, wait until active, delete, with the delete guard);
   - the critic loop;
   - an experiment runner that runs the arms and trials, writes the pre-run summary and aggregates the results;
   - observer support for arm, model and skill;
@@ -120,7 +124,8 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 - the trial count, including the number of teacher trials per learn goal;
 - the turn budget shared by all arms;
 - whether the critic's rubric lives in a file or in its prompt;
-- the mechanism for the deferred arm S3: reading recorded memory without its own trials writing to the workspace, which may need a snapshot or a separate workspace per trial;
+- the mechanism for the deferred arm S3: harness-performed recall placed in the prompt is the candidate, untested;
+- whether REST-written and hooks-written recordings keep extracting equivalently over more runs, and how NAMS stores a refused call, which the one test run (no refusals) could not show;
 - the wording of the S2 sentence, to be fixed before the first trial;
 - whether soft-deleted workspaces count against the account's workspace limit;
 - whether `workspace_reprovision` can be made to work, which would keep one workspace id across experiments;
