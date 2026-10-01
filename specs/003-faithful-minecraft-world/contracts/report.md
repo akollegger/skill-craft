@@ -14,7 +14,7 @@ One row per arm, model, world and goal:
 |---|---|
 | Arm, model, world | From the run labels and the experiment summary |
 | Prior fit | The world's declared prior fit as recorded in the runs' scores |
-| Goal | Learn or held-out, with the item |
+| Goal | The goal's role (`gap`, `solved`, `ambiguous` or `held-out`) and the item |
 | Reached | Successes out of trials |
 | Rate interval | 95% Wilson score interval for the success rate |
 | Extra calls | Minimum, median and maximum calls over the best run, over successful trials |
@@ -26,7 +26,18 @@ One row per arm, model, world and goal:
 
 For each pair the experiment asks about (faithful against invented, unaided; each skill arm against S0),
 a line states `supported` when the two success-rate intervals do not overlap and `within noise`
-otherwise, with the counts.
+otherwise, with the counts. They are grouped under three headings that stay apart:
+
+- **Repair**: the gap goals, skill arms against S0. A note says the result is not yet distinguished from
+  memory while there is no memory arm.
+- **No harm**: the solved goals.
+- **Transfer**: the held-out goals. When a held-out goal is solved unaided the section reads
+  "unmeasurable: the held-out goal is solved without help".
+
+Before the roles are in the summary the report prints, per goal, the role the calibration rule would assign
+from the student's unaided rows (5 trials: at most 1 success is a gap, at least 4 is solved, otherwise
+ambiguous) and stops there, so the roles can be copied into the summary by hand. The header shows the
+route and primary measure and says they were declared after calibration.
 
 ## Rules
 

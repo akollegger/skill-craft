@@ -26,16 +26,21 @@ experiments. The faithful world comes first here for two reasons: the invented a
 derive from it, and it is the control that bounds what any skill or memory can add. Establishing the
 control early is worth the change of order.
 
+ADR-003 gives each goal a role by measurement. The student plays every goal unaided: a goal it mostly
+fails is a *gap goal*, one it mostly solves is a *solved goal*, and a goal set aside before any trial is
+*held-out*. This experiment follows the *escalating* route: the teacher is recorded only on the gap goals,
+and a skill is distilled from that. Which goals are gaps is a result of the calibration, not an assumption.
+
 The world is inspired by Minecraft's crafting, which is widely known. Minecraft is a trademark of its
 owner, and this project is not affiliated with or endorsed by it.
 
 ### User Story 1 - A faithful world the experiments can trust (Priority: P1)
 
 The experiment runner opens the repository and finds a world made of familiar Minecraft crafting
-vocabulary and recipes, with its goals beside it. The goals form a family: two learn goals and one
-held-out goal that share a recipe shape and differ in material (wooden and stone pickaxes to learn, an
-iron pickaxe held out). Each recipe notes the familiar crafting it is modelled on, and the world states
-which parts of the game it leaves out. The held-out goal leaves room for a wasted craft or two. A note
+vocabulary and recipes, with its goals beside it. The goals form a family of three pickaxe tiers that
+share a recipe shape and differ in material. One tier, the iron pickaxe, is set aside as the held-out
+goal before any trial; the roles of the other two come from measurement. Each recipe notes the familiar crafting it is modelled on, and the world states
+which parts of the game it leaves out. Every goal leaves room for a wasted craft or two. A note
 beside the world credits the game as its inspiration and states that the project is unaffiliated.
 
 **Why this priority**: Everything else, including the invented and perturbed worlds, is derived from
@@ -48,7 +53,7 @@ against its note. Delivers a world that is proven solvable and traceable to what
 
 1. **Given** the faithful world and its goals, **When** the solver runs on each goal, **Then** each is
    reachable and the solver reports its best run and its slack.
-2. **Given** the held-out goal, **When** its slack is read, **Then** at least two wasted crafts can be
+2. **Given** any goal, **When** its slack is read, **Then** at least two wasted crafts can be
    absorbed without making the goal unreachable.
 3. **Given** any recipe in the world, **When** the reviewer looks it up, **Then** a note names the
    familiar crafting it models, and nothing in the world lacks one.
@@ -60,39 +65,44 @@ against its note. Delivers a world that is proven solvable and traceable to what
 
 ---
 
-### User Story 2 - Run every arm on the faithful world (Priority: P2)
+### User Story 2 - Run every arm on the faithful world, by the escalating route (Priority: P2)
 
-The experiment runner follows ADR-003's protocol on the faithful world. The teacher plays the learn
-goals and is recorded. One skill is distilled from the trials that reached their goal and is reviewed
-before any student sees it. The student then plays the held-out goal (and the learn goals as a sanity
-check) with no help, with the skill under a neutral prompt, and with the skill under a prompt that points
-at it. The result is a table per arm of how often the goal was reached and how many calls it took
-compared with the best run, with whether and when each skill arm loaded the skill, all stamped with the
-world's prior fit.
+The experiment runner follows ADR-003's staged protocol on the faithful world. The two models play every
+goal unaided, and the student's results assign each goal a role: gap, solved or ambiguous. The teacher is
+then recorded on the gap goals only, one skill is distilled from the trials that reached their goal, and
+the skill is reviewed before any student sees it. The student plays again with no help (fresh trials), with
+the skill under a neutral prompt, and with the skill under a prompt that points at it. The result is a
+table that keeps three measures apart: repair (the gap goals), no harm (the solved goals) and transfer (the
+held-out goal), with how often each goal was reached, how many calls it took compared with the best run,
+and whether and when each skill arm loaded the skill, all stamped with the world's prior fit.
 
-**Why this priority**: This is the control the other worlds are compared against. It shows what the
-skill adds when the model already knows the recipes, which is expected to be little. A skill that helps
-here is a strong result, and one that does not sets the floor of the effect.
+**Why this priority**: This is the control the other worlds are compared against. In a world the models
+already know, most goals are solved unaided and the interesting question is narrow: does a skill repair the
+specific failure that remains? A skill that repairs it shows the pipeline works where little is left to
+gain, and one that does not sets the floor of the effect.
 
-**Independent Test**: Run the arms with the fixed trial count and produce the table. Every arm has the
-same number of trials under the same budget, each skill run names the exact skill text it had, and the
+**Independent Test**: Run calibration, then the arms with the fixed trial counts, and produce the table.
+The roles are in the summary before the first teacher or arm trial, every arm has the same number of
+trials per kind of goal under the same budget, each skill run names the exact skill text it had, and the
 table is stamped faithful.
 
 **Acceptance Scenarios**:
 
-1. **Given** the faithful world, **When** the teacher trials on the learn goals have run, **Then** the
-   reached trials are recorded to a fresh workspace and one skill is distilled from them, with the
-   conversation ids kept in its provenance.
-2. **Given** the distilled skill, **When** it is reviewed, **Then** a verdict (accept, revise or
-   reject) with reasons is recorded before any student run, and the accepted version's fingerprint is
-   stored.
-3. **Given** the accepted skill, **When** the student arms have run, **Then** the no-help, neutral-skill
-   and pointed-skill arms each have the same number of trials, and each skill run records whether the
-   agent loaded the skill and after how many calls.
-4. **Given** the faithful world's no-help student result is near the ceiling (almost every trial
-   succeeds), **When** the report is read, **Then** it says so and does not claim a skill effect that
-   the counts cannot support.
-5. **Given** the experiment has finished, **When** its workspace is retired, **Then** the results, the
+1. **Given** unaided student trials on every goal, **When** roles are assigned by ADR-003's rule, **Then**
+   each goal is a gap, solved or ambiguous goal, the held-out goal is reported as measured, and the roles
+   are written to the experiment summary before any teacher or arm trial.
+2. **Given** at least one gap goal, **When** the teacher trials have run, **Then** the teacher was
+   recorded only on gap goals, the reached trials are written to a fresh workspace, and one skill is
+   distilled from them with the conversation ids kept in its provenance.
+3. **Given** the distilled skill, **When** it is reviewed, **Then** a verdict (accept, revise or reject)
+   with reasons is recorded before any student run, and the accepted version's fingerprint is stored.
+4. **Given** the accepted skill, **When** the student arms have run, **Then** the no-help, neutral-skill
+   and pointed-skill arms each have the same number of trials on each kind of goal, the no-help arm uses
+   fresh trials, and each skill run records whether the agent loaded the skill and after how many calls.
+5. **Given** the held-out goal is solved unaided, **When** the report is read, **Then** it says transfer
+   is unmeasurable in this experiment, and it states the gap-goal result as repair that is not yet
+   distinguished from a memory of the solution.
+6. **Given** the experiment has finished, **When** its workspace is retired, **Then** the results, the
    skill package, the run folders and the recorded ids are saved first, and only the workspace the
    experiment created is retired.
 
@@ -138,12 +148,15 @@ unaided trials on both, and produce the table.
   the versions commonly played, and leaves out any that are not.
 - Two recipes that make the same output, or two that the matcher cannot tell apart: world validation
   rejects the world.
-- Stock so generous that the held-out goal needs no thought: the slack requirement bounds it, and the
+- Stock so generous that a goal needs no thought: the slack requirement bounds it, and the
   report states each goal's slack.
 - A model that stops early, loops, or uses its whole budget without a result: each is a failed trial.
 - A model that answers from what it knows rather than using the tools: a goal counts as reached only if
   the game state shows it, never from the agent's words.
-- No teacher trial reaches a learn goal: there is nothing to distil, and the experiment ends there and
+- No goal is a gap goal: calibration finds nothing the student mostly fails, so there is nothing for a skill
+  to repair, and the experiment ends there and reports it (the world is made harder, as ADR-003 says).
+- A goal with 2 or 3 successes in 5 unaided trials is ambiguous: it takes no role and is reported.
+- No teacher trial reaches a gap goal: there is nothing to distil, and the experiment ends there and
   reports it.
 - The reviewer rejects the skill: the experiment reports that distillation did not yield a usable skill,
   and the skill arms do not run.
@@ -161,11 +174,12 @@ unaided trials on both, and produce the table.
 - **FR-002**: Every recipe MUST carry a note naming the familiar crafting it models, and the world MUST
   state the features of the game it leaves out. No game edition or version is named.
 - **FR-003**: The world MUST include a family of recipes that share a shape and differ in material (at
-  least three pickaxe tiers), plus the intermediate items they need, so that the held-out goal requires
+  least three pickaxe tiers), plus the intermediate items they need, so that every goal requires
   intermediates made earlier.
-- **FR-004**: A goals file MUST give two learn goals and one held-out goal from that family, and each
-  goal's best run and slack MUST be computed by the solver.
-- **FR-005**: The held-out goal MUST have slack of at least two wasted crafts.
+- **FR-004**: A goals file MUST list the three pickaxe goals and mark the held-out one (the iron pickaxe).
+  No other role is written in the file, because roles come from calibration. Each goal's best run and
+  slack MUST be computed by the solver.
+- **FR-005**: Every goal MUST have slack of at least two wasted crafts.
 - **FR-006**: Item descriptions MUST be category-only, and no tool or refusal in this world may reveal a
   recipe or a solution.
 - **FR-007**: The world MUST be proven solvable for every goal by an automated check that runs with the
@@ -177,13 +191,16 @@ unaided trials on both, and produce the table.
   anything the agent sees.
 - **FR-010**: An invented counterpart MUST be derived from the faithful world and its goals by the
   existing renamer, with the same recipe structure, valid and solvable for the same goals.
-- **FR-011**: The experiment MUST follow ADR-003's protocol on the faithful world: calibration of both
-  models on the held-out goal (a measurement in this world, not a gate), teacher trials on the learn
-  goals, one skill distilled from the reached trials, a reviewed skill, then the student arms: no help,
-  skill under a neutral prompt, skill under a pointed prompt.
-- **FR-012**: The wording of the pointed prompt, the trial count per arm, the turn budget and the spend
-  limit MUST be fixed before the first trial and written into the experiment's summary with the arms,
-  goals and models.
+- **FR-011**: The experiment MUST follow ADR-003's staged protocol on the faithful world: calibration of
+  both models on every goal (5 trials each) that assigns roles by the ADR's rule; the escalating route,
+  recording the teacher only on gap goals; one skill distilled from the reached trials; a reviewed skill;
+  then the student arms (no help on fresh trials, skill under a neutral prompt, skill under a pointed
+  prompt) on the gap, solved and held-out goals.
+- **FR-012**: The route, the primary measure, the wording of the pointed prompt, the trial counts per
+  kind of goal, the turn budget and the spend limit MUST be written into the experiment's summary with the
+  arms, goals and models before any teacher or arm trial. The roles MUST be written after calibration and
+  before any teacher or arm trial, and the report MUST say that the route and primary measure were
+  declared after calibration when they were.
 - **FR-013**: Teacher trials MUST be recorded to a fresh workspace created for the experiment, no
   development session may record to it, and only workspaces the experiment created may be retired.
 - **FR-014**: Each skill run MUST name the exact skill text it had, and MUST record whether and after
@@ -192,9 +209,11 @@ unaided trials on both, and produce the table.
   verdict and reasons recorded, by the critic loop if it exists and by a human reading otherwise.
 - **FR-016**: Each trial's reached or not-reached outcome MUST come from the game state, and its calls
   over the best run, tokens, time and cost MUST come from the existing harness measurements.
-- **FR-017**: The report MUST list, per arm, model, world and goal, the successes out of trials and the
-  distribution (minimum, median, maximum) of calls over the best run, and MUST state when a difference
-  is within what the trial count can support.
+- **FR-017**: The report MUST list, per arm, model, world, goal role and goal, the successes out of
+  trials and the distribution (minimum, median, maximum) of calls over the best run, MUST keep repair,
+  no harm and transfer apart, MUST state when a difference is within what the trial count can support, MUST
+  call transfer unmeasurable when the held-out goal is solved, and MUST label a repair result as not yet
+  distinguished from memory while the memory arm is absent.
 - **FR-018**: The report MUST contain only measured quantities and fixed labels; agent text and
   reasoning MUST NOT appear in it, and it MUST state which steps were carried out by hand.
 - **FR-019**: Reproducing the world and its counterpart from the repository MUST give identical files.
@@ -203,12 +222,14 @@ unaided trials on both, and produce the table.
 
 - **Faithful world**: the crafting table populated with familiar Minecraft-inspired vocabulary and
   recipes, with a note per recipe and a stated list of omissions.
-- **Goal family**: the learn goals and the held-out goal, drawn from recipes of one shape that differ in
-  material.
+- **Goal family**: the pickaxe tiers, recipes of one shape that differ in material. The iron tier is set
+  aside as held-out beforehand.
+- **Goal role**: gap, solved, ambiguous or held-out, assigned by the rule in ADR-003 from the student's
+  unaided trials.
 - **Invented counterpart**: the faithful world after renaming, with the same recipe structure.
 - **Experiment**: one pass of ADR-003's protocol on one world, with its fixed summary, workspace, skill
   and results.
-- **Arm**: one condition of the experiment (teacher on the learn goals, student with no help, student
+- **Arm**: one condition of the experiment (teacher on the gap goals, student with no help, student
   with the skill under a neutral prompt, student with the skill under a pointed prompt).
 - **Reviewed skill**: the distilled skill with its fingerprint and the review verdict that cleared it.
 - **Attribution note**: the documentation text crediting the game as inspiration.
@@ -219,7 +240,7 @@ unaided trials on both, and produce the table.
 
 - **SC-001**: All goals in the faithful world and in its invented counterpart are proven solvable by
   tests that pass in the repository's existing test run.
-- **SC-002**: The held-out goal has slack of at least two wasted crafts, as reported by the solver.
+- **SC-002**: Every goal has slack of at least two wasted crafts, as reported by the solver.
 - **SC-003**: 100% of the recipes in the faithful world have a note, each omission from the game is
   listed, and no edition or version of the game is named anywhere in the world.
 - **SC-004**: The leak sweep over the faithful world finds zero revealed recipes or solutions.
@@ -227,22 +248,32 @@ unaided trials on both, and produce the table.
   receives, as checked by a search of the world and the tool output.
 - **SC-006**: The invented counterpart has the same recipe graph as the faithful world, with no
   Minecraft names among its items.
-- **SC-007**: Every arm has the same trial count, fixed before the first trial, and each skill run
-  names the skill text it had, for 100% of skill runs.
+- **SC-007**: Every arm has the same trial count on each kind of goal, fixed before the first arm trial,
+  and each skill run names the skill text it had, for 100% of skill runs.
 - **SC-008**: The report has an entry for every arm, model, world and goal combination planned, and
   states its prior fit and which steps were manual.
-- **SC-009**: Total spend stays under a limit set before the first trial; at recent pilot rates this is
-  expected to be about $30 to $60 for the arms, the teacher recordings, review and the unaided
-  comparison together.
+- **SC-009**: Total spend stays under a limit set before the first trial; at pilot rates the calibration
+  (about $17), the escalating teacher recordings, review and the arms together are expected to come to
+  about $30 to $40.
 - **SC-010**: The report answers two questions in a sentence each, supported by its counts: whether the
-  faithful world is easier for the models than the invented one, and whether the skill changes the
-  student's result on the faithful world.
+  faithful world is easier for the models than the invented one, and whether the skill repairs the
+  student's gap in the faithful world.
 - **SC-011**: Regenerating the world and its counterpart yields byte-identical files.
+- **SC-012**: The roles are in the experiment summary before the first teacher or arm trial, and the
+  report shows repair, no harm and transfer as separate rows or sections.
 
 ## Assumptions
 
 - ADR-003 orders the first experiment as the invented world. This feature runs the faithful world
   first, as an important control, and notes the change of order above.
+- The route is escalating and the primary measure is repair on the gap goals. They were declared after the
+  calibration trials, which is inherent in the escalating route (the gaps are found first), and the report
+  says so. Which goals are gaps is read from calibration; the first calibration put the student's gap on
+  the stone pickaxe (0 of 5), and left the iron pickaxe held-out goal solved (5 of 5), so transfer is
+  expected to be unmeasurable here.
+- The invented counterpart, as built, is at the floor for both models in calibration (0 of 30 unaided
+  trials), so it cannot yet yield teacher recordings. It supports the unaided comparison only, and an
+  invented experiment needs simpler recipes first (separate work).
 - The perturbed world is out of scope. It needs the generator to keep names and apply rules, which is
   separate work.
 - The recording of a finished run, the workspace lifecycle and the critic loop are separate features,
@@ -256,8 +287,9 @@ unaided trials on both, and produce the table.
 - The subset is small: the pickaxe family (wooden, stone, iron), the planks and sticks they need, and a
   few unrelated items as decoys, within the 3x3 table. Exact items and stock are settled in planning.
 - Models are the teacher (`claude-sonnet-5-5`) and the student (`claude-haiku-4-5-20251001`). Calibration
-  uses 5 trials per model, world and goal. The trial count of the arms (ADR-003 assumes ten) and the
-  turn budget are decided before the first trial.
+  uses 5 trials per model, world and goal. The arms use 10 trials on each gap goal (the primary
+  measure) and 3 on each solved or held-out goal, and the turn budget is 80, all written to the summary
+  before the first arm trial.
 - Controls and arms use the existing harness: user settings are not loaded, and recording happens after
   the run.
 - Using the game's item names and recipes in a published replay bundle is not decided here; no bundle

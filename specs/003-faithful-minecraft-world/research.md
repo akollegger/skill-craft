@@ -52,8 +52,8 @@ world with these recipes was solved in planning:
 | stone_pickaxe | 3 | 11 | 3 |
 | iron_pickaxe | 3 | 11 | 3 |
 
-**Rationale**: Slack 3 meets the requirement of at least two wasted crafts on the held-out goal and
-leaves the goal reachable after a burned sword. The solver's cap is 5, so these values are exact. A test
+**Rationale**: Slack 3 meets the requirement of at least two wasted crafts on every goal and
+leaves each goal reachable after a burned sword. The solver's cap is 5, so these values are exact. A test
 asserts the requirement, so the stock can be tuned later without changing the rule.
 
 **Alternatives**: tighter stock (slack 1 to 2, closer to the pilot's failure), larger stock (slack 4,
@@ -126,17 +126,26 @@ comparison (drops the arms the user asked for).
 
 | Stage | Runs | Model | Notes |
 |---|---|---|---|
-| Calibration, both worlds | 60 | 30 Sonnet, 30 Haiku | 5 trials x 2 worlds x 3 goals per model; unaided, unrecorded |
-| Teacher recordings (T0) | 6 | Sonnet | 3 per learn goal, faithful world; recorded by the ingest step |
-| Student arms S0, S1, S2 | 48 | Haiku | per arm: 10 trials on the held-out goal and 3 on each learn goal |
+| Calibration, both worlds | 60 (done) | 30 Sonnet, 30 Haiku | 5 trials x 2 worlds x 3 goals per model; unaided, unrecorded; assigns the roles |
+| Teacher recordings (T0), escalating route | 3 | Sonnet | 3 per gap goal; the 3 stone runs exist, and the 3 wooden runs made earlier are not used because wooden is not a gap goal |
+| Student arms S0, S1, S2 | 48 | Haiku | per arm: 10 trials on each gap goal (primary), 3 on each solved goal, 3 on the held-out goal; fresh trials for S0 |
 | Skill review | 1 to 3 | critic or human | a verdict per round |
 
 Turn budget 80 for every run, the value the pilot's successful baseline used. Spend limit $60, written
-into the experiment summary before the first run. The expected cost is about $30 to $35 at pilot rates
-($0.14 to $0.37 per run), so the limit leaves room for a repeat of a stage.
+into the experiment summary. Calibration cost $16.62. The teacher runs and the arms are expected to add
+about $10 to $15 at pilot rates ($0.14 to $0.37 per run, less for Haiku on a solved goal), so the limit
+leaves room for a repeat of a stage.
 
-**Rationale**: Ten trials on the held-out goal is ADR-003's assumed count. Three per learn goal is a
-sanity check, not a measure. The calibration size is the protocol's.
+**Rationale**: Ten trials on the primary goals is ADR-003's assumed count and gives an interval that can
+separate a repair from noise; three on solved and held-out goals is a no-harm and ceiling check, not a
+measure of effect. The calibration size is the protocol's. The roles come from the calibration trials and
+the arms use fresh trials, as ADR-003 requires.
+
+**Route and primary measure**: the escalating route, with repair on the gap goals as primary. Both are
+declared after calibration, which the escalating route needs (the gaps are found first), and the report
+says so. The first calibration read: wooden 4/5, stone 0/5, iron 5/5 for Haiku, and 5/5 on every goal for
+Sonnet. Applied to the rule, stone is the gap goal, wooden and iron are solved, and iron is the held-out
+goal set aside beforehand, so transfer is expected to be unmeasurable.
 
 ## R10. The report
 

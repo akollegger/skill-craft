@@ -55,13 +55,17 @@ with the turn budget, spend limit and trial counts. Do not change it after the f
    Repeat for `claude-sonnet-5-5`, for the other two goals, and for the counterpart (its goal names are
    in `worlds/generated/minecraft-inspired-7.goals.json`). 60 runs in all.
 
-2. **Teacher recordings (T0).** 3 trials per learn goal on the faithful world with the teacher model,
+1b. **Assign the roles.** Run the report over the calibration labels; it prints the role the rule gives each goal
+   (stone is expected to be the gap). Write `route`, `primary` and `roles` into `runs/faithful-1/summary.json`
+   before any teacher or arm trial, and set the arm trial counts.
+
+2. **Teacher recordings (T0), escalating route.** 3 trials on each gap goal (stone) with the teacher model,
    unrecorded by the hooks (no `--record`). Then, after the user approves the NAMS writes: create a fresh
    managed workspace with the NAMS tools, note its id in the summary, and write each reached run to it:
 
    ```bash
    set -a; source ./.env; set +a
-   NAMS_WORKSPACE_ID=<the new workspace id> pnpm exec tsx spikes/rest-ingest/ingest.ts runs/faithful-1-t0-wooden/001
+   NAMS_WORKSPACE_ID=<the new workspace id> pnpm exec tsx spikes/rest-ingest/ingest.ts runs/faithful-1-t0-stone/001
    ```
 
    Run the line in a subshell or a single command so the variable is not exported where a development
@@ -77,12 +81,12 @@ with the turn budget, spend limit and trial counts. Do not change it after the f
 5. **Retire the workspace** once the results, skill package and run folders are saved, and only if its id
    is the one the summary records as created by the experiment.
 
-6. **Student arms.** Haiku on the held-out goal (10 trials) and each learn goal (3 trials), for each arm:
+6. **Student arms.** Haiku on each gap goal (10 trials) and on each solved and held-out goal (3 trials), for each arm. The commands below are for the gap goal, `stone_pickaxe`; repeat with `--runs 3` and a new label for the other goals:
 
    ```bash
-   pnpm dev scripts/run-agent.ts --goal iron_pickaxe --world worlds/minecraft-inspired.json --runs 10 --max-turns 80 --model claude-haiku-4-5-20251001 --label faithful-1-s0-iron
-   pnpm dev scripts/run-agent.ts --goal iron_pickaxe --world worlds/minecraft-inspired.json --runs 10 --max-turns 80 --model claude-haiku-4-5-20251001 --skill <reviewed skill folder> --label faithful-1-s1-iron
-   pnpm dev scripts/run-agent.ts --goal iron_pickaxe --world worlds/minecraft-inspired.json --runs 10 --max-turns 80 --model claude-haiku-4-5-20251001 --skill <reviewed skill folder> --prompt-note "<the fixed sentence>" --label faithful-1-s2-iron
+   pnpm dev scripts/run-agent.ts --goal stone_pickaxe --world worlds/minecraft-inspired.json --runs 10 --max-turns 80 --model claude-haiku-4-5-20251001 --label faithful-1-s0-stone
+   pnpm dev scripts/run-agent.ts --goal stone_pickaxe --world worlds/minecraft-inspired.json --runs 10 --max-turns 80 --model claude-haiku-4-5-20251001 --skill <reviewed skill folder> --label faithful-1-s1-stone
+   pnpm dev scripts/run-agent.ts --goal stone_pickaxe --world worlds/minecraft-inspired.json --runs 10 --max-turns 80 --model claude-haiku-4-5-20251001 --skill <reviewed skill folder> --prompt-note "<the fixed sentence>" --label faithful-1-s2-stone
    ```
 
 7. **Report.**

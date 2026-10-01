@@ -49,12 +49,12 @@ Single project: `worlds/`, `src/sim/` (no MCP or SDK dependency), `src/harness/`
 
 ### Tests for User Story 1 (write first, confirm they fail)
 
-- [X] T005 [US1] Write `test/minecraft-world.test.ts` (must fail first): the world loads with 13 items and 10 recipes; the three pickaxe recipes share one arrangement and differ only in material, and the sword recipes share another; `wooden_pickaxe` and `stone_pickaxe` are the learn goals and `iron_pickaxe` the held-out goal in the goals file; the solver reports each goal reachable, and `iron_pickaxe` has slack of at least 2; every item description is category-only; every recipe id has a note and `omissions` is not empty (using `loadNotes`); neither the world, goals nor notes text, and in particular the world's `name`, contains "Java", "Bedrock", "edition", "Minecraft" outside the notes file's `inspiration` field, or a dotted version number; through `connect` from `test/helpers/client.ts`, `help`, `look`, `inventory` and a refusal (an unknown item, an out-of-bounds place, a craft with nothing to make) never contain a recipe id or item name in a recipe context, and none of their text contains the attribution wording of `worlds/README.md`
+- [X] T005 [US1] Write `test/minecraft-world.test.ts` (must fail first): the world loads with 13 items and 10 recipes; the three pickaxe recipes share one arrangement and differ only in material, and the sword recipes share another; `wooden_pickaxe` and `stone_pickaxe` are the learn goals and `iron_pickaxe` the held-out goal in the goals file; the solver reports each goal reachable, and `iron_pickaxe` has slack of at least 2; every item description is category-only; every recipe id has a note and `omissions` is not empty (using `loadNotes`); neither the world, goals nor notes text, and in particular the world's `name`, contains "Java", "Bedrock", "edition", "Minecraft" outside the notes file's `inspiration` field, or a dotted version number; through `connect` from `test/helpers/client.ts`, `help`, `look`, `inventory` and a refusal (an unknown item, an out-of-bounds place, a craft with nothing to make) never contain a recipe id or item name in a recipe context, and none of their text contains the attribution wording of `worlds/README.md` *Superseded in part by T040: the goals file marks only the held-out goal; other roles come from calibration.*
 
 ### Implementation for User Story 1
 
 - [X] T006 [US1] Create `worlds/minecraft-inspired.json` per [data-model.md](data-model.md), Faithful world: `name` `workshop` (the file name says "minecraft-inspired"; the name the agent sees must not), 3x3 table, `hints` `exact`, stock `oak_log` 3, `cobblestone` 6, `iron_ingot` 6, the 13 items with category-only descriptions, and the 10 recipes of research R2 (planks, sticks, crafting table, slab, and a pickaxe and a sword in each of wooden, stone and iron; shaped patterns symmetric)
-- [X] T007 [P] [US1] Create `worlds/minecraft-inspired.goals.json` with `wooden_pickaxe` and `stone_pickaxe` (notes `learn`) and `iron_pickaxe` (note `held-out`)
+- [X] T007 [P] [US1] Create `worlds/minecraft-inspired.goals.json` with `wooden_pickaxe` and `stone_pickaxe` (notes `learn`) and `iron_pickaxe` (note `held-out`) *Superseded by T040.*
 - [X] T008 [P] [US1] Create `worlds/minecraft-inspired.notes.json`: `priorFit` `faithful`, `inspiration` naming the game's crafting without an edition or version, a one-sentence note for every recipe, and the omissions of research R2
 - [X] T009 [P] [US1] Create `worlds/README.md`: what each file beside a world is (world, goals, notes), the attribution (the world is inspired by Minecraft's crafting, Minecraft is a trademark of its owner, the project is not affiliated with or endorsed by it), and that no edition or version is pinned. Add one line linking it from the Worlds item of `README.md`
 - [X] T010 [US1] Make T005 pass. Run `pnpm dev scripts/solve.ts --world worlds/minecraft-inspired.json --goals-file worlds/minecraft-inspired.goals.json`; if `iron_pickaxe` reports slack below 2, raise stock and rerun. Raise the lower bound in `test/worlds.test.ts` from 11 to 12 worlds if the count is asserted, and confirm the whole suite passes
@@ -65,7 +65,7 @@ Single project: `worlds/`, `src/sim/` (no MCP or SDK dependency), `src/harness/`
 
 ## Phase 4: User Story 2 - Run every arm on the faithful world (Priority: P2)
 
-**Goal**: The tooling the arms need (prompt note, prior-fit stamp, report), then the experiment itself by the manual procedure, with a results note.
+**Goal**: The tooling the arms need (prompt note, prior-fit stamp, report), then the experiment itself by the staged protocol and the escalating route, run by the manual procedure, with a results note.
 
 **Independent Test**: Tooling tests pass with the scripted player; the report produces a table from synthetic run folders; then the experiment's table has an entry for every planned arm, model and goal, each stamped `faithful`.
 
@@ -82,18 +82,29 @@ Single project: `worlds/`, `src/sim/` (no MCP or SDK dependency), `src/harness/`
 - [X] T016 [US2] Create `src/harness/report.ts` and `scripts/report.ts` (depends on T013): read the experiment summary, `review.json` and the named run folders; compute the table, flags and comparisons per the contract; print markdown to standard output; exit non-zero on the listed failures. Keep the logic in `src/harness/report.ts` so the test can call it without spawning a process, and keep the SDK out of it. Make T013 pass
 - [X] T017 [US2] Run `pnpm typecheck && pnpm test`; fix regressions
 
+### Amendment (2026-10-01): the staged protocol (goal roles from measurement, escalating route)
+
+Calibration showed the held-out goal was already solved and the student's gap was on another goal (ADR-003, amended). These tasks bring the goals file, the report and the summary in line. Do T040 and T041 first and watch them fail.
+
+- [ ] T040 [US1] Change `worlds/minecraft-inspired.goals.json` so only `iron_pickaxe` carries a note (`held-out`) and the other two goals carry none, and update the goals case in `test/minecraft-world.test.ts` to expect that. Keep the slack assertion for every goal
+- [ ] T041 [P] [US2] Update `test/report.test.ts` (must fail first) to the staged summary of [contracts/experiment-summary.md](contracts/experiment-summary.md) and [contracts/report.md](contracts/report.md): `goals.set` and `goals.heldOut`, `roles`, `route`, `primary`, and trials per kind of goal (`armGap`, `armSolved`, `armHeldOut`, `teacherPerRecordedGoal`); rows labelled by role; planned counts taken from the role; Repair, No harm and Transfer sections kept apart; transfer reported as unmeasurable when the held-out goal is solved; the repair note about memory; the header naming the route and primary measure as declared after calibration; and, when `roles` is absent, a printed role proposal per goal from the student's calibration rows (at most 1 of 5 is a gap, at least 4 is solved, otherwise ambiguous) with nothing else
+- [ ] T042 [US2] Update `src/harness/report.ts` (depends on T041): the summary schema, role-based rows and planned counts, the three comparison sections, the role proposal and the header. Make T041 pass and keep the earlier report cases passing
+- [ ] T043 [US2] Run `pnpm typecheck && pnpm test`; fix regressions
+- [ ] T044 [US2] Run `pnpm dev scripts/report.ts --experiment runs/faithful-1 runs/faithful-1-cal-*` to print the role proposals; write `route` (`escalating`), `primary` (`repair`), `roles`, the arm trial counts and the new label list (drop `faithful-1-t0-wooden`, add the arm labels for each goal) into `runs/faithful-1/summary.json` before any teacher or arm trial beyond the ones already run, and note that they were declared after calibration
+
+
 ### The experiment for User Story 2 (manual procedure; follow [quickstart.md](quickstart.md) Part B)
 
-- [X] T018 [US2] Confirm with the user the values the plan leaves open: turn budget (default 80), spend limit (default $60), trial counts, and the exact pointed sentence (default: "A skill for this kind of task is available; load it before exploring."). Write `runs/faithful-1/summary.json` per [contracts/experiment-summary.md](contracts/experiment-summary.md); do not change it after the first trial
+- [X] T018 [US2] Confirm with the user the values the plan leaves open: turn budget (default 80), spend limit (default $60), trial counts, and the exact pointed sentence (default: "A skill for this kind of task is available; load it before exploring."). Write `runs/faithful-1/summary.json` per [contracts/experiment-summary.md](contracts/experiment-summary.md); do not change it after the first trial *The route, primary measure, roles and arm trial counts were added later (T044), after calibration.*
 - [X] T019 [US2] Dry-run each distinct command (a goal, a model, a skill and a note) with `--dry-run` and check the plan, the prior fit and the absence of recording
 - [X] T020 [US2] **(spends usage)** Faithful calibration: 5 unaided trials for each of Sonnet and Haiku on each of the three goals (30 runs), labels `faithful-1-cal-faithful-<model>-<goal>`
-- [X] T021 [US2] **(spends usage)** Teacher recordings: 3 Sonnet trials on each learn goal in the faithful world (6 runs), no `--record`, labels `faithful-1-t0-<goal>`. If no trial reaches a learn goal, stop and report it
-- [ ] T022 [US2] **(NAMS write)** Create a fresh managed workspace with the NAMS tools, record its id in `runs/faithful-1/summary.json` as created by the experiment, then write each reached teacher run with `spikes/rest-ingest/ingest.ts` (workspace id passed to that command only). Wait until every message has finished extracting
-- [ ] T023 [US2] **(NAMS write)** Generate one skill from the reached runs' conversations; download it into `runs/faithful-1/skill/`; record the skill id, version id and `SKILL.md` SHA-256 in the summary
-- [ ] T024 [US2] Review the skill against the ADR-003 rubric (a human reads it, as the critic loop is not built) and write `runs/faithful-1/review.json`. On `revise`, apply a NAMS lever and review again, at most three rounds; on `reject`, skip T026 to T027 and report that distillation did not yield a usable skill
+- [X] T021 [US2] **(spends usage)** Teacher recordings: 3 Sonnet trials on each learn goal in the faithful world (6 runs), no `--record`, labels `faithful-1-t0-<goal>`. If no trial reaches a learn goal, stop and report it *Under the escalating route only the 3 stone runs are used; the 3 wooden runs were made first and are not ingested.*
+- [ ] T022 [US2] **(NAMS write)** Create a fresh managed workspace with the NAMS tools, record its id in `runs/faithful-1/summary.json` as created by the experiment, then write each reached teacher run on the gap goal(s) with `spikes/rest-ingest/ingest.ts` (workspace id passed to that command only). Wait until every message has finished extracting
+- [ ] T023 [US2] **(NAMS write)** Generate one skill from the reached gap-goal runs' conversations; download it into `runs/faithful-1/skill/`; record the skill id, version id and `SKILL.md` SHA-256 in the summary
+- [ ] T024 [US2] Review the skill against the ADR-003 rubric (a human reads it, as the critic loop is not built) and write `runs/faithful-1/review.json`. On `revise`, apply a NAMS lever and review again, at most three rounds; on `reject`, skip T026 and report that distillation did not yield a usable skill
 - [ ] T025 [US2] **(NAMS write)** Save the results so far: copy the reviewed skill to `spikes/faithful-1/skill/` and the run folders' summaries as needed, then retire the workspace, only after checking that its id is the one the summary records as created by the experiment (never the development workspace)
-- [ ] T026 [US2] **(spends usage)** Student arms with Haiku, per [quickstart.md](quickstart.md) step 6: S0 (no help), S1 (`--skill`), S2 (`--skill` and `--prompt-note`), each with 10 trials on `iron_pickaxe` and 3 on each learn goal (48 runs), labels `faithful-1-s<arm>-<goal>`
-- [ ] T027 [US2] Run `pnpm dev scripts/report.ts --experiment runs/faithful-1 runs/faithful-1-*`; save the table with a short reading to `design/notes/faithful-control-results.md`, answering the second question of the spec's SC-010 (whether the skill changes the student's result on the faithful world) and listing the manual steps
+- [ ] T026 [US2] **(spends usage)** Student arms with Haiku, per [quickstart.md](quickstart.md) step 6: S0 (no help, fresh trials), S1 (`--skill`), S2 (`--skill` and `--prompt-note`), each with the trial counts the summary fixes: 10 on each gap goal, 3 on each solved goal and 3 on the held-out goal (48 runs in all for one gap goal), labels `faithful-1-s<arm>-<goal>`
+- [ ] T027 [US2] Run `pnpm dev scripts/report.ts --experiment runs/faithful-1 runs/faithful-1-*`; save the table with a short reading to `design/notes/faithful-control-results.md`, answering the second question of the spec's SC-010 (whether the skill repairs the student's gap) with repair, no harm and transfer kept apart, transfer called unmeasurable if the held-out goal is solved, repair labelled as not yet distinguished from memory, and the manual steps listed
 
 **Checkpoint**: User Story 2 is complete: the arms ran on the faithful world and the results note exists.
 
@@ -139,13 +150,13 @@ Single project: `worlds/`, `src/sim/` (no MCP or SDK dependency), `src/harness/`
 - **Setup (Phase 1)**: none.
 - **Foundational (Phase 2)**: after Setup; blocks all stories.
 - **User Story 1 (Phase 3)**: after Foundational. It is the MVP and blocks the experiments.
-- **User Story 2 (Phase 4)**: tooling (T011 to T017) needs Foundational only and can start beside US1; the experiment (T018 to T027) needs US1 and the tooling.
+- **User Story 2 (Phase 4)**: tooling (T011 to T017) needs Foundational only and can start beside US1; the experiment needs US1 and the tooling: T018 to T021 are done, then the staged-protocol tasks T040 to T044 (goals file, report, roles in the summary), then T022 to T027.
 - **User Story 3 (Phase 5)**: needs Foundational and US1. Its tests and generator (T028 to T031) can run beside US2; T032 needs T031 and the spend decision of T018.
 - **Polish (Phase 6)**: after the stories you intend to ship; T037 needs the experiment's results.
 
 ### Within each story
 
-Tests are written and seen failing before the code they cover; world and notes files before the tests that read them go green; the experiment tasks run strictly in order (T018 to T027), because each consumes the previous one's output and several write to NAMS.
+Tests are written and seen failing before the code they cover; world and notes files before the tests that read them go green; the experiment tasks run strictly in order (T018 to T021, T044, then T022 to T027), because each consumes the previous one's output and several write to NAMS.
 
 ### Parallel opportunities
 
@@ -176,7 +187,7 @@ Complete Setup, Foundational and US1. That alone delivers a trusted, solvable, a
 3. US3: the counterpart and the comparison.
 4. Polish.
 
-The experiment tasks spend money and write to NAMS, so run them only after the tooling tasks pass and the user has confirmed T018's values.
+The experiment tasks spend money and write to NAMS, so run them only after the tooling tasks pass, the roles are in the summary (T044), and the user has approved each NAMS write.
 
 ## Notes
 

@@ -31,12 +31,12 @@ does not change at run time.
 | Items | 13: 3 raw (`oak_log`, `cobblestone`, `iron_ingot`), 10 made |
 | Recipes | 10: planks, sticks, crafting table, slab, and a pickaxe and a sword in each of three materials |
 | Stock | `oak_log` 3, `cobblestone` 6, `iron_ingot` 6 (initial values; the slack test is the rule) |
-| Goal family | learn: `wooden_pickaxe`, `stone_pickaxe`; held-out: `iron_pickaxe` |
+| Goal family | `wooden_pickaxe`, `stone_pickaxe`, `iron_pickaxe`; iron is set aside as held-out beforehand, the other roles come from calibration |
 | Hint level | `exact` |
 | Descriptions | category-only ("A raw material.", "A made item.") |
 
 Relationships: a pickaxe recipe needs a made item (`stick`) and, for the wooden tier, another made item
-(`oak_planks`), so the held-out goal requires intermediates made earlier in the same run.
+(`oak_planks`), so every goal requires intermediates made earlier in the same run.
 
 ## Invented counterpart
 
@@ -55,8 +55,11 @@ Written before the first trial. See [contracts/experiment-summary.md](contracts/
 | `models` | `teacher` and `student` ids |
 | `arms` | The arms, each with its label, model, whether it is recorded, its skill (if any) and its prompt note (if any) |
 | `labels` | Every run label folder, mapped to `calibration` or to an arm |
-| `goals` | Learn goals and the held-out goal |
-| `trials` | Trials per arm and goal, and per calibration combination |
+| `route` | `escalating` or `preemptive` |
+| `primary` | `repair` or `transfer`: the measure the experiment declared |
+| `goals` | The goal set, and the held-out goals set aside beforehand |
+| `roles` | Each goal's role from calibration: `gap`, `solved` or `ambiguous`. Written after calibration and before any teacher or arm trial |
+| `trials` | Calibration trials per combination, teacher trials per recorded goal, and arm trials per kind of goal (gap, solved, held-out) |
 | `turnBudget`, `spendLimitUsd` | Fixed before the first trial |
 | `manualSteps` | The steps carried out by hand |
 | `workspace` | The workspace id the experiment created, and when it was retired |

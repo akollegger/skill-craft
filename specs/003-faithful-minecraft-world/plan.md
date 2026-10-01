@@ -36,7 +36,7 @@ solver's state budget
 shaped matching is translation-only, so only symmetric or non-mirrored recipes can be included; the world
 schema rejects unknown fields; the engine reads no goals and no notes
 
-**Scale/Scope**: one world of 13 items and 10 recipes, one counterpart, about 120 agent runs in the
+**Scale/Scope**: one world of 13 items and 10 recipes, one counterpart, about 110 agent runs in the
 experiments (see research R9)
 
 ## Constitution Check
@@ -78,7 +78,7 @@ specs/003-faithful-minecraft-world/
 ```text
 worlds/
 ├── minecraft-inspired.json              # the faithful world
-├── minecraft-inspired.goals.json        # two learn goals, one held-out goal
+├── minecraft-inspired.goals.json        # three pickaxe goals; iron marked held-out; other roles come from calibration
 ├── minecraft-inspired.notes.json        # prior fit, per-recipe notes, omissions
 ├── README.md                            # attribution and what the files mean
 └── generated/
