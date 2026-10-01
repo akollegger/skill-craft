@@ -92,7 +92,7 @@ Recorded runs use a dedicated NAMS workspace that no development session records
 - A new experiment starts from a new managed workspace and ends by deleting it. The experiment runner (a program yet to be built that runs an experiment's arms and trials) creates it with `workspace_create` (managed database mode), waits until its database is active, passes its id to recorded runs as `NAMS_WORKSPACE_ID`, and deletes it with `workspace_delete` after the results, skill packages, run folders and replay bundles (ADR-002) are saved. No call clears a workspace in place, so a fresh workspace is the only clean state, and each one is disposable.
 - Creating and deleting a workspace are writes to the account. The runner does them only when an experiment is started with an explicit option, prints the ids, records every id it creates, and refuses to delete any other id, including the development workspace.
 - The experiment workspace is a managed workspace (NAMS provisions its own database for it). A sandbox workspace (a shared, time-limited trial database) is unsuitable: the one used in the pilot has an expiry timestamp that has already passed.
-- Conversations of recorded runs are not deleted for isolation; deleting the workspace removes them with everything else.
+- Conversations of recorded runs are not deleted for isolation. Isolation comes from never reusing a retired workspace id: `workspace_delete` is a soft delete, and whether it removes the workspace's contents is not established (see "Not decided").
 
 ### 2.5 Metrics and trials
 
@@ -139,7 +139,7 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 ## 4. Consequences
 
 - **Cost.** Pilot runs on a Sonnet-class model cost $0.14 to $0.37 each. An experiment of three student arms (S0, S1, S2) with an assumed ten trials on two goals is about 60 student runs per world, plus teacher recordings, critic rounds and calibration, roughly $15 to $40 at those rates. Haiku student runs cost less than the Sonnet rates above, which lowers it. The first experiment runs the invented world, so the cost of the perturbed and faithful worlds is incurred only once transfer shows there.
-- **One workspace per experiment, created and deleted by the runner.** An experiment pays for a workspace creation (about 30 seconds in a test) and loses whatever it did not save, so skill packages, run folders and bundles are exported before deletion. The account's workspace limit, and whether soft-deleted workspaces count against it, are unknown. The key in use is an account-wide admin key, so the same tools could delete the development workspace; the runner's rule that it deletes only ids it created is the protection. A key bound to one workspace would suit the recorded runs better, but creating and deleting workspaces needs the admin scope, which a workspace-bound key does not carry.
+- **One workspace per experiment, created and deleted by the runner.** An experiment pays for a workspace creation (about 30 seconds in a test) and treats the workspace as gone afterwards, so skill packages, run folders and bundles are exported before deletion. The account's workspace limit, and whether soft-deleted workspaces count against it, are unknown. The key in use is an account-wide admin key, so the same tools could delete the development workspace; the runner's rule that it deletes only ids it created is the protection. A key bound to one workspace would suit the recorded runs better, but creating and deleting workspaces needs the admin scope, which a workspace-bound key does not carry.
 - **Minecraft vocabulary in published bundles.** Faithful and perturbed worlds use Minecraft item names and recipes, and replay bundles (ADR-002) are meant to be hosted publicly. Item names are mostly common words and recipes are facts about a game, but the world-design spec confirms the usage terms before bundles of those worlds are published.
 - **Comparisons across NAMS versions need records.** Each experiment stores the NAMS capabilities response (thresholds, enabled features) and each run the skill fingerprint, since the service changes.
 - **The critic is a model.** It may share blind spots with the teacher. The first accepted skills are read by a human for that reason.
@@ -160,7 +160,7 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 - the mechanism for the deferred arm S3: harness-performed recall placed in the prompt is the candidate, untested;
 - whether REST-written and hooks-written recordings keep extracting equivalently over more runs, and how NAMS stores a refused call, which the one test run (no refusals) could not show;
 - the wording of the S2 sentence, to be fixed before the first trial;
-- whether soft-deleted workspaces count against the account's workspace limit;
+- whether soft-deleted workspaces count against the account's workspace limit, and whether `workspace_delete` removes a workspace's data or only hides it (in the test, its endpoints still answered with empty lists);
 - whether `workspace_reprovision` can be made to work, which would keep one workspace id across experiments;
 - when a sandbox workspace's expiry is enforced (the pilot's expired on 2026-09-29 and still works).
 

@@ -10,16 +10,26 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createCraftServer } from "../../src/mcp/server.js";
 import { loadWorld } from "../../src/sim/loader.js";
 
-const [dir, flag] = process.argv.slice(2);
-if (!dir) throw new Error("usage: ingest.ts <run folder> [--dry]");
+const [dir, flag, ...extra] = process.argv.slice(2);
+if (!dir || extra.length > 0 || (flag !== undefined && flag !== "--dry")) throw new Error("usage: ingest.ts <run folder> [--dry]");
 const dry = flag === "--dry";
 
 const jsonl = (f: string) => readFileSync(join(dir, f), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
 const mcp = JSON.parse(readFileSync(join(dir, "mcp.json"), "utf8")).mcpServers.craft.env;
 const calls: { tool: string; args: Record<string, unknown>; ok: boolean }[] = jsonl("run.jsonl");
-const durations: number[] = jsonl("trace.jsonl").filter((l) => l.kind === "tool").map((l) => Math.max(0, l.endMs - l.startMs));
+const toolLines: { tool: string; startMs: number; endMs: number }[] = jsonl("trace.jsonl").filter((l) => l.kind === "tool");
 const prompt = readFileSync(join(dir, "prompt.txt"), "utf8");
-const final: string = JSON.parse(readFileSync(join(dir, "score.json"), "utf8")).text;
+const score = JSON.parse(readFileSync(join(dir, "score.json"), "utf8"));
+const final: string = score.text;
+
+// Durations come from the trace, so refuse a run whose trace does not pair one-to-one with its log.
+if (score.measured?.trace !== "matched") throw new Error("score.json does not report a matched trace");
+if (toolLines.length !== calls.length) throw new Error(`trace has ${toolLines.length} tool lines for ${calls.length} logged calls`);
+const durations = toolLines.map((l, i) => {
+  const d = l.endMs - l.startMs;
+  if (l.tool !== calls[i]!.tool || !Number.isFinite(d) || d < 0) throw new Error(`trace line ${i + 1} does not match the logged call`);
+  return d;
+});
 
 // Replay on a fresh game through the real server; the text is what the agent saw.
 const { server } = createCraftServer(loadWorld(mcp.SIM_WORLD));
@@ -30,7 +40,7 @@ const replayed: { tool: string; input: string; output: string; status: string; d
 for (const [i, c] of calls.entries()) {
   const r = (await client.callTool({ name: c.tool, arguments: c.args })) as { content: { text: string }[]; isError?: boolean };
   if (Boolean(r.isError) === c.ok) throw new Error(`replay diverged at call ${i + 1}`);
-  replayed.push({ tool: `mcp__craft__${c.tool}`, input: JSON.stringify(c.args), output: r.content[0]!.text, status: r.isError ? "failure" : "success", durationMs: durations[i] ?? 0 });
+  replayed.push({ tool: `mcp__craft__${c.tool}`, input: JSON.stringify(c.args), output: r.content[0]!.text, status: r.isError ? "failure" : "success", durationMs: durations[i]! });
 }
 console.log(`replayed ${replayed.length} calls; ${replayed.filter((c) => c.status === "failure").length} refusals; ${new Set(replayed.map((c) => c.tool)).size} distinct tools`);
 if (dry) process.exit(0);
