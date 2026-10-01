@@ -61,7 +61,8 @@ less cost to a wrong craft). Revisit if calibration shows the student at the cei
 
 ## R4. File and world names
 
-**Decision**: `worlds/minecraft-inspired.json`, with the world's `name` the same. The counterpart is
+**Decision**: The file is `worlds/minecraft-inspired.json`, but the world's `name` field is `workshop`, because
+`help` returns the name to the agent and the file name must not reach it. The counterpart is
 `worlds/generated/minecraft-inspired-7.json` from seed 7.
 
 **Rationale**: The name says "inspired", not "Minecraft", and names no edition. The generated name
