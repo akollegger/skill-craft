@@ -84,10 +84,10 @@ Single project: `worlds/`, `src/sim/` (no MCP or SDK dependency), `src/harness/`
 
 ### The experiment for User Story 2 (manual procedure; follow [quickstart.md](quickstart.md) Part B)
 
-- [ ] T018 [US2] Confirm with the user the values the plan leaves open: turn budget (default 80), spend limit (default $60), trial counts, and the exact pointed sentence (default: "A skill for this kind of task is available; load it before exploring."). Write `runs/faithful-1/summary.json` per [contracts/experiment-summary.md](contracts/experiment-summary.md); do not change it after the first trial
-- [ ] T019 [US2] Dry-run each distinct command (a goal, a model, a skill and a note) with `--dry-run` and check the plan, the prior fit and the absence of recording
-- [ ] T020 [US2] **(spends usage)** Faithful calibration: 5 unaided trials for each of Sonnet and Haiku on each of the three goals (30 runs), labels `faithful-1-cal-faithful-<model>-<goal>`
-- [ ] T021 [US2] **(spends usage)** Teacher recordings: 3 Sonnet trials on each learn goal in the faithful world (6 runs), no `--record`, labels `faithful-1-t0-<goal>`. If no trial reaches a learn goal, stop and report it
+- [X] T018 [US2] Confirm with the user the values the plan leaves open: turn budget (default 80), spend limit (default $60), trial counts, and the exact pointed sentence (default: "A skill for this kind of task is available; load it before exploring."). Write `runs/faithful-1/summary.json` per [contracts/experiment-summary.md](contracts/experiment-summary.md); do not change it after the first trial
+- [X] T019 [US2] Dry-run each distinct command (a goal, a model, a skill and a note) with `--dry-run` and check the plan, the prior fit and the absence of recording
+- [X] T020 [US2] **(spends usage)** Faithful calibration: 5 unaided trials for each of Sonnet and Haiku on each of the three goals (30 runs), labels `faithful-1-cal-faithful-<model>-<goal>`
+- [X] T021 [US2] **(spends usage)** Teacher recordings: 3 Sonnet trials on each learn goal in the faithful world (6 runs), no `--record`, labels `faithful-1-t0-<goal>`. If no trial reaches a learn goal, stop and report it
 - [ ] T022 [US2] **(NAMS write)** Create a fresh managed workspace with the NAMS tools, record its id in `runs/faithful-1/summary.json` as created by the experiment, then write each reached teacher run with `spikes/rest-ingest/ingest.ts` (workspace id passed to that command only). Wait until every message has finished extracting
 - [ ] T023 [US2] **(NAMS write)** Generate one skill from the reached runs' conversations; download it into `runs/faithful-1/skill/`; record the skill id, version id and `SKILL.md` SHA-256 in the summary
 - [ ] T024 [US2] Review the skill against the ADR-003 rubric (a human reads it, as the critic loop is not built) and write `runs/faithful-1/review.json`. On `revise`, apply a NAMS lever and review again, at most three rounds; on `reject`, skip T026 to T027 and report that distillation did not yield a usable skill
@@ -114,7 +114,7 @@ Single project: `worlds/`, `src/sim/` (no MCP or SDK dependency), `src/harness/`
 
 - [X] T030 [US3] Edit `scripts/make-world.ts` (depends on T029): write the notes file beside the world and goals file; keep output deterministic. Make T029 pass
 - [X] T031 [US3] Run `pnpm dev scripts/make-world.ts --base worlds/minecraft-inspired.json --seed 7 --out worlds/generated/minecraft-inspired-7.json`; commit the three generated files; make T028 pass; confirm `pnpm test` finds and solves the new world through `test/worlds.test.ts`
-- [ ] T032 [US3] **(spends usage)** Counterpart calibration: 5 unaided trials for each of Sonnet and Haiku on each of the counterpart's three goals (30 runs), labels `faithful-1-cal-invented-<model>-<goal>`; goal names come from `worlds/generated/minecraft-inspired-7.goals.json`
+- [X] T032 [US3] **(spends usage)** Counterpart calibration: 5 unaided trials for each of Sonnet and Haiku on each of the counterpart's three goals (30 runs), labels `faithful-1-cal-invented-<model>-<goal>`; goal names come from `worlds/generated/minecraft-inspired-7.goals.json`
 - [ ] T033 [US3] Run the report over the calibration labels of both worlds; add the faithful-against-invented table and the `supported` or `within noise` line for each model to `design/notes/faithful-control-results.md`, answering the first question of the spec's SC-010 (whether the faithful world is easier for the models than the invented one) in one sentence supported by the counts
 
 **Checkpoint**: All three stories are complete.
