@@ -54,6 +54,7 @@ Written before the first trial. See [contracts/experiment-summary.md](contracts/
 | `priorFit` | The world the arms ran on |
 | `models` | `teacher` and `student` ids |
 | `arms` | The arms, each with its label, model, whether it is recorded, its skill (if any) and its prompt note (if any) |
+| `labels` | Every run label folder, mapped to `calibration` or to an arm |
 | `goals` | Learn goals and the held-out goal |
 | `trials` | Trials per arm and goal, and per calibration combination |
 | `turnBudget`, `spendLimitUsd` | Fixed before the first trial |

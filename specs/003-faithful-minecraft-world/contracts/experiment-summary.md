@@ -18,6 +18,13 @@ without it. JSON.
     { "label": "S2", "model": "student", "recorded": false, "skill": true,
       "promptNote": "A skill for this kind of task is available; load it before exploring." }
   ],
+  "labels": {
+    "faithful-1-cal-faithful-haiku-iron": { "stage": "calibration" },
+    "faithful-1-t0-wooden": { "arm": "T0" },
+    "faithful-1-s0-iron": { "arm": "S0" },
+    "faithful-1-s1-iron": { "arm": "S1" },
+    "faithful-1-s2-iron": { "arm": "S2" }
+  },
   "trials": { "calibration": 5, "teacherPerLearnGoal": 3, "armHeldOut": 10, "armPerLearnGoal": 3 },
   "turnBudget": 80,
   "spendLimitUsd": 60,
@@ -28,6 +35,9 @@ without it. JSON.
 ```
 
 Rules:
+- `labels` maps every run label folder the report may read to its stage (`calibration`) or its arm. The
+  report refuses a folder that is not listed, so a stray folder cannot change a result. The world a row ran on
+  comes from the prior fit stamped in each run, not from the label.
 - Written once, before any trial. The fields `workspace` and `skill` are filled in later as the steps
   happen; no other field changes after the first trial.
 - `promptNote` is stored verbatim and must equal the `promptNote` recorded in the S2 runs' scores.

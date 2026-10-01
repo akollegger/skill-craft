@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { loadWorld } from "../sim/loader.js";
+import { priorFitOf, type DeclaredPriorFit } from "../sim/notes.js";
 import type { RunLogEntry } from "../sim/runlog.js";
 import { ReplayError, scoreRun, type RunScore } from "../sim/score.js";
 import type { SolverGoal } from "../sim/solver.js";
@@ -39,12 +40,14 @@ export interface AgentRunOptions {
   signal?: AbortSignal | undefined;
   /** A skill folder (with a SKILL.md) to make available to the agent. Each run gets its own copy. */
   skill?: string | undefined;
+  /** One fixed sentence added to the end of the base prompt, for an arm that points at the skill. */
+  promptNote?: string | undefined;
   /** How the agent is run. Default: the Claude Agent SDK, loaded only when needed. */
   driver?: AgentDriver | undefined;
 }
 
 /** The goal reaches the agent only through this prompt; the world never states goals. */
-export function buildPrompt(goal: SolverGoal, maxTurns: number): string {
+export function buildPrompt(goal: SolverGoal, maxTurns: number, note?: string): string {
   const what = goal.qty === 1 ? `one ${goal.item}` : `${goal.qty} of ${goal.item}`;
   return [
     `You are at a crafting table in an unfamiliar workshop. Your goal: end up holding ${what}.`,
@@ -52,6 +55,7 @@ export function buildPrompt(goal: SolverGoal, maxTurns: number): string {
     `Nobody can answer questions or give hints, so do not ask for any. Keep trying on your own until you hold ${goal.item}, or until your budget of ${maxTurns} turns is used up.`,
     "craft is irreversible and uses up whatever is on the table, so explore with place, remove, clear and look before you commit.",
     "When you hold it, say so in one line and stop.",
+    ...(note === undefined ? [] : [note]),
   ].join("\n");
 }
 
@@ -85,6 +89,10 @@ export interface RunReport extends PlayerResult {
   score: RunScore;
   measured: Measured;
   model: ModelInfo;
+  /** The world's declared prior fit, or `undeclared` when it has no notes file. */
+  priorFit: DeclaredPriorFit;
+  /** The fixed sentence added to this run's prompt, when there was one. */
+  promptNote?: string | undefined;
   /** The skill this run had available, when one was installed. */
   skill?: { name: string; sha256: string; invoked: boolean; loadedAfterCalls: number | null } | undefined;
 }
@@ -135,6 +143,8 @@ const noSink: DriverSink = { onMessage: () => {}, onToolStart: () => {}, onToolE
 
 /** What a run would do, without running or creating anything (a dry run). */
 export function planExperiment(o: AgentRunOptions) {
+  const priorFit = priorFitOf(o.world);
+  const prompt = buildPrompt(o.goal, o.maxTurns, o.promptNote);
   return Array.from({ length: o.runs }, (_, i) => {
     const dir = runDir(o, i + 1);
     const runLog = resolve(dir, "run.jsonl");
@@ -143,11 +153,11 @@ export function planExperiment(o: AgentRunOptions) {
       ? { pluginDir: join(resolve(dir), "skill-plugin"), qualifiedName: `${SKILL_PLUGIN}:${skillName(readFileSync(join(o.skill, "SKILL.md"), "utf8"))}` }
       : undefined;
     const { hooks: _hooks, abortController: _abort, ...options } = sdkOptionsFor(
-      { prompt: buildPrompt(o.goal, o.maxTurns), world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, record: o.record, signal: new AbortController().signal, skill },
+      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, record: o.record, signal: new AbortController().signal, skill },
       noSink,
     );
     // Show the plan as it will be recorded: repository-relative paths, and without the PATH the live call adds.
-    return { run: i + 1, dir, runLog: toRepoPath(runLog), ...(o.skill ? { skill: toRepoPath(resolve(o.skill)) } : {}), options: { ...options, cwd: toRepoPath(resolve(dir)), ...mcpConfigFor(resolve(o.world), runLog) } };
+    return { run: i + 1, dir, priorFit, prompt, runLog: toRepoPath(runLog), ...(o.skill ? { skill: toRepoPath(resolve(o.skill)) } : {}), options: { ...options, cwd: toRepoPath(resolve(dir)), ...mcpConfigFor(resolve(o.world), runLog) } };
   });
 }
 
@@ -175,16 +185,16 @@ const failedResult = (requested: string | null, reason: string): PlayerResult =>
 const writeScore = (dir: string, r: RunReport): void =>
   writeFileSync(
     join(dir, "score.json"),
-    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, text: r.text, score: r.score, measured: r.measured, model: r.model, ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
+    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, text: r.text, score: r.score, measured: r.measured, model: r.model, priorFit: r.priorFit, ...(r.promptNote === undefined ? {} : { promptNote: r.promptNote }), ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
   );
 
 /** Run the agent once against a fresh server, then score and measure it. A failed player is a recorded error. */
-async function runOnce(o: AgentRunOptions, index: number, world: World, driver: AgentDriver): Promise<RunReport> {
+async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit: DeclaredPriorFit, driver: AgentDriver): Promise<RunReport> {
   const dir = runDir(o, index);
   mkdirSync(dir, { recursive: true });
   const runLog = resolve(dir, "run.jsonl");
   const tracePath = join(dir, "trace.jsonl");
-  const prompt = buildPrompt(o.goal, o.maxTurns);
+  const prompt = buildPrompt(o.goal, o.maxTurns, o.promptNote);
   const requested = o.model ?? null;
   writeFileSync(join(dir, "mcp.json"), `${JSON.stringify(mcpConfigFor(resolve(o.world), runLog), null, 2)}\n`);
   writeFileSync(join(dir, "prompt.txt"), `${prompt}\n`);
@@ -239,6 +249,8 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, driver: 
     score,
     measured: measureRun(entries, readTrace(tracePath), result, score, recorder.skipped),
     model: modelInfo(requested, result),
+    priorFit,
+    ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }),
     ...(skill ? { skill: { name: skill.name, sha256: skill.sha256, invoked: result?.skillInvoked === true, loadedAfterCalls: result?.skillLoadedAfterCalls ?? null } } : {}),
   };
   writeScore(dir, report);
@@ -246,12 +258,13 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, driver: 
 }
 
 /** A run that could not even be set up or recorded, such as a folder that cannot be written. */
-function brokenRun(o: AgentRunOptions, index: number, world: World, e: unknown): RunReport {
+function brokenRun(o: AgentRunOptions, index: number, world: World, priorFit: DeclaredPriorFit, e: unknown): RunReport {
   const dir = runDir(o, index);
   const reason = reasonOf(e instanceof HarnessError ? e : new RunFailed(e));
   const report: RunReport = {
     ...failedResult(o.model ?? null, reason),
-    index, dir, score: scoreRun(world, o.goal, []), measured: { trace: "absent" }, model: modelInfo(o.model ?? null, null),
+    index, dir, score: scoreRun(world, o.goal, []), measured: { trace: "absent" }, model: modelInfo(o.model ?? null, null), priorFit,
+    ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }),
   };
   try {
     writeScore(dir, report);
@@ -265,6 +278,8 @@ function brokenRun(o: AgentRunOptions, index: number, world: World, e: unknown):
 export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; reports: RunReport[]; aggregate: Aggregate; cancelled: boolean }> {
   const world = loadWorld(o.world);
   if (!world.items.some((i) => i.id === o.goal.item)) throw new UnknownGoalItem(o.goal.item);
+  // An invalid notes file ends the batch here, before anything is created or spent.
+  const priorFit = priorFitOf(o.world);
   if (o.skill && !existsSync(join(o.skill, "SKILL.md"))) throw new SkillNotFound(`${o.skill} has no SKILL.md`);
   // Refuse before spending anything on a label that has already been used.
   for (let i = 1; i <= o.runs; i++) if (existsSync(runDir(o, i))) throw new RunFolderExists(runDir(o, i));
@@ -282,9 +297,9 @@ export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; 
     }
     let report: RunReport;
     try {
-      report = await runOnce(o, i, world, driver);
+      report = await runOnce(o, i, world, priorFit, driver);
     } catch (e) {
-      report = brokenRun(o, i, world, e);
+      report = brokenRun(o, i, world, priorFit, e);
     }
     reports.push(report);
     if (report.reason?.startsWith("RunCancelled")) cancelled = true;
@@ -293,7 +308,7 @@ export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; 
   const agg = aggregate(reports);
   writeFileSync(
     join(dir, "summary.json"),
-    `${JSON.stringify({ world: o.world, goal: o.goal, maxTurns: o.maxTurns, record: o.record, timeoutMs: o.timeoutMs ?? DEFAULT_TIMEOUT_MS, cancelled, aggregate: agg, models: agg.models, mixedModels: agg.mixedModels, runs: reports.map(({ text: _text, ...r }) => r) }, null, 2)}\n`,
+    `${JSON.stringify({ world: o.world, priorFit, ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }), goal: o.goal, maxTurns: o.maxTurns, record: o.record, timeoutMs: o.timeoutMs ?? DEFAULT_TIMEOUT_MS, cancelled, aggregate: agg, models: agg.models, mixedModels: agg.mixedModels, runs: reports.map(({ text: _text, ...r }) => r) }, null, 2)}\n`,
   );
   return { dir, reports, aggregate: agg, cancelled };
 }

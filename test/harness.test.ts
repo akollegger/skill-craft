@@ -1,9 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AgentDriver, DriverOptions } from "../src/harness/driver.js";
 import { REPO } from "../src/harness/paths.js";
+import { WorldError } from "../src/sim/errors.js";
 import { aggregate, buildPrompt, planExperiment, runExperiment, type RunReport } from "../src/harness/run.js";
 import { readTrace, type RequestLine, type ToolLine } from "../src/trace/lines.js";
 import { FAKE_TOKENS, fakePlayer, type FakePlayerOptions } from "./helpers/fake-player.js";
@@ -37,6 +38,7 @@ const report = (over: Partial<RunReport> & { reached: boolean; callsToGoal: numb
   text: "",
   measured: { trace: "absent" },
   model: { requested: null, resolved: ["m"] },
+  priorFit: "undeclared",
   score: {
     goal: { item: "x", qty: 1 },
     reached: over.reached,
@@ -341,5 +343,42 @@ describe("what the trace says about a run, at the harness level", () => {
     };
     const out = await runExperiment(options({}, { driver: noisy, runs: 1 }));
     expect(out.reports[0]?.measured).toEqual({ trace: "mismatch", reason: "1 malformed item skipped" });
+  });
+});
+
+describe("the world's prior fit in a run's record (spec 003)", () => {
+  const dirWithNotes = (notes: unknown): string => {
+    const dir = mkdtempSync(join(tmpdir(), "skill-craft-fit-"));
+    writeFileSync(join(dir, "w.json"), readFileSync(WORLD, "utf8"));
+    if (notes !== undefined) writeFileSync(join(dir, "w.notes.json"), typeof notes === "string" ? notes : JSON.stringify(notes));
+    return join(dir, "w.json");
+  };
+
+  it("stamps a declared prior fit on each score and on the batch summary", async () => {
+    const world = dirWithNotes({ priorFit: "invented", derivedFrom: "worlds/forge.json" });
+    const out = await runExperiment(options({ mode: "solve" }, { world, runs: 1 }));
+    expect(scoreOf(out.reports[0]!.dir)["priorFit"]).toBe("invented");
+    expect(JSON.parse(readFileSync(join(out.dir, "summary.json"), "utf8")).priorFit).toBe("invented");
+    expect(out.reports[0]!.priorFit).toBe("invented");
+  });
+
+  it("says 'undeclared' for a world with no notes file", async () => {
+    const out = await runExperiment(options({ mode: "solve" }, { runs: 1 }));
+    expect(scoreOf(out.reports[0]!.dir)["priorFit"]).toBe("undeclared");
+  });
+
+  it("refuses a world whose notes file is invalid before any run starts", async () => {
+    const world = dirWithNotes({ priorFit: "mostly-real" });
+    const opts = options({ mode: "solve" }, { world });
+    await expect(runExperiment(opts)).rejects.toBeInstanceOf(WorldError);
+    expect(existsSync(join(opts.out, "t"))).toBe(false);
+    const broken = options({ mode: "solve" }, { world: dirWithNotes("{not json") });
+    await expect(runExperiment(broken)).rejects.toBeInstanceOf(WorldError);
+  });
+
+  it("names the prior fit in the dry-run plan", () => {
+    const world = dirWithNotes({ priorFit: "faithful", inspiration: "a crafting game", recipes: {}, omissions: ["x"] });
+    expect(() => planExperiment(options({}, { world }))).toThrow(WorldError); // an incomplete faithful file is refused, not guessed at
+    expect(planExperiment(options({}, { world: dirWithNotes({ priorFit: "invented" }) }))[0]?.priorFit).toBe("invented");
   });
 });

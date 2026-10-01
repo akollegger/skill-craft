@@ -115,9 +115,9 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
     await runExperiment({ world: WORLD, goal: GOAL, runs: 2, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "crash", personal: PERSONAL }) });
     const score = JSON.parse(readFileSync(join(out, "p", "001", "score.json"), "utf8")) as Record<string, unknown>;
-    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "measured", "model", "reason", "score", "text", "turns"].sort());
+    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "measured", "model", "priorFit", "reason", "score", "text", "turns"].sort());
     const summary = JSON.parse(readFileSync(join(out, "p", "summary.json"), "utf8")) as { runs: Record<string, unknown>[] } & Record<string, unknown>;
-    expect(Object.keys(summary).sort()).toEqual(["aggregate", "cancelled", "goal", "maxTurns", "mixedModels", "models", "record", "runs", "timeoutMs", "world"].sort());
+    expect(Object.keys(summary).sort()).toEqual(["aggregate", "cancelled", "goal", "maxTurns", "mixedModels", "models", "priorFit", "record", "runs", "timeoutMs", "world"].sort());
     for (const run of summary.runs) expect(run).not.toHaveProperty("text"); // the agent's final message stays in score.json only
   });
 });

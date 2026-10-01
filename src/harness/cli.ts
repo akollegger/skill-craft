@@ -16,7 +16,7 @@ export interface CliDeps {
 
 const USAGE =
   "usage: run-agent.ts --goal <item>[:<qty>] [--world <world.json>] [--runs n] [--max-turns n] [--timeout-minutes n]\n" +
-  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--record] [--dry-run]";
+  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--record] [--dry-run]";
 
 class UsageError extends Error {}
 
@@ -35,10 +35,11 @@ function line(r: RunReport): string {
   const time = t ? `${(t.durationMs / 1000).toFixed(1)} s` : "- s";
   const tokens = t ? `${t.inputTokens} in / ${t.outputTokens} out / ${t.cacheReadTokens} cache read / ${t.cacheCreationTokens} cache write` : "-";
   const model = r.model.resolved.length > 0 ? r.model.resolved.join("+") : "-";
+  const fit = `  prior fit ${r.priorFit}`;
   const skill = r.skill ? `  skill ${r.skill.name} (${r.skill.invoked ? `loaded after ${r.skill.loadedAfterCalls ?? "?"} calls` : "NOT loaded"})` : "";
   return (
     `run ${String(r.index).padStart(3, "0")}  ${s.reached ? "reached " : "NOT reached"}  calls ${calls}  crafts ${s.craftsMade}  failed crafts ${s.failedCrafts}  refusals ${refusals}  ` +
-    `turns ${r.turns ?? "-"}  ${cost}  model ${model}${skill}  time ${time}  tokens ${tokens}  ended ${r.ended}${r.reason ? ` (${r.reason})` : ""}`
+    `turns ${r.turns ?? "-"}  ${cost}  model ${model}${fit}${skill}  time ${time}  tokens ${tokens}  ended ${r.ended}${r.reason ? ` (${r.reason})` : ""}`
   );
 }
 
@@ -60,6 +61,7 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
         label: { type: "string" },
         model: { type: "string" },
         skill: { type: "string" },
+        "prompt-note": { type: "string" },
         record: { type: "boolean", default: false },
         "dry-run": { type: "boolean", default: false },
       },
@@ -68,6 +70,8 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
     const [item = "", qty = "1"] = values.goal.split(":");
     const world = loadWorld(values.world as string);
     if (!world.items.some((i) => i.id === item)) throw new UnknownGoalItem(item);
+    const note = values["prompt-note"];
+    if (note !== undefined && note.trim() === "") throw new UsageError("--prompt-note must not be empty");
     const minutes = Number(values["timeout-minutes"]);
     if (!Number.isFinite(minutes) || minutes <= 0 || minutes * 60_000 > MAX_TIMEOUT_MS) {
       throw new UsageError(`--timeout-minutes must be a number greater than 0 and at most ${Math.floor(MAX_TIMEOUT_MS / 60_000)}`);
@@ -83,6 +87,7 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
       label: values.label ?? `${basename(values.world as string, ".json")}-${item}-${new Date().toISOString().replace(/[:.]/g, "-")}`,
       ...(values.model ? { model: values.model } : {}),
       ...(values.skill ? { skill: values.skill } : {}),
+      ...(note === undefined ? {} : { promptNote: note }),
       record: values.record ?? false,
       driver: deps.driver,
       signal: deps.signal,
