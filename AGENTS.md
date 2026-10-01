@@ -74,7 +74,10 @@ These are summarized from the constitution; read it for the full text.
   `X-Workspace-Id` header. The public spec is at `/openapi.json`.
 - One key, `NAMS_API_KEY`, covers recording and the skills endpoints (it needs `skills:read` and
   `skills:write` as well as the memory scopes). There is no separate skills key.
-- `NAMS_WORKSPACE_ID` is the dedicated experiment workspace ("Skill Distillation"). Development sessions
+- `NAMS_WORKSPACE_ID` is the experiment workspace, never the one development sessions record to. Today
+  it is the "Skill Distillation" workspace from the pilot; ADR-003 has each experiment use a fresh
+  managed workspace that the experiment runner (not built yet) creates and deletes. Experiment runs keep
+  the hooks off and a finished run is written to NAMS through the REST API. Development sessions
   record to a different workspace on purpose: entities extracted from our own design talk about the
   world and its goals were found in recall, which would leak solutions into an experiment run. Send the
   workspace id explicitly on every call, and never export `NAMS_WORKSPACE_ID` in a shell where a

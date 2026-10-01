@@ -1,7 +1,7 @@
 ---
 id: ADR-003
 title: Experiment protocol: arms, models, isolation and skill review
-status: proposed
+status: accepted
 created: 2026-10-01
 specs: []
 ---
