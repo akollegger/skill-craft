@@ -11,7 +11,7 @@ const dirs = ["worlds", "worlds/generated", "test/fixtures/valid"];
 const worldFiles = dirs.flatMap((dir) =>
   existsSync(dir)
     ? readdirSync(dir)
-        .filter((f) => f.endsWith(".json") && !f.endsWith(".goals.json"))
+        .filter((f) => f.endsWith(".json") && !f.endsWith(".goals.json") && !f.endsWith(".notes.json"))
         .sort()
         .map((f) => join(dir, f))
     : [],

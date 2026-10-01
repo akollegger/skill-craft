@@ -23,7 +23,7 @@ Single project: `worlds/`, `src/sim/` (no MCP or SDK dependency), `src/harness/`
 
 **Purpose**: Know the baseline before changing anything. No dependency is added.
 
-- [ ] T001 Run `pnpm typecheck` and `pnpm test` on the branch and note the passing count, so later phases can show nothing regressed
+- [X] T001 Run `pnpm typecheck` and `pnpm test` on the branch and note the passing count, so later phases can show nothing regressed
 
 ---
 
@@ -33,9 +33,9 @@ Single project: `worlds/`, `src/sim/` (no MCP or SDK dependency), `src/harness/`
 
 **⚠️ CRITICAL**: No user story work starts until this phase is complete.
 
-- [ ] T002 [P] Write `test/notes.test.ts` (must fail first), covering [contracts/world-notes.md](contracts/world-notes.md): a valid faithful file parses; an invalid `priorFit` is rejected; a faithful file missing `inspiration`, `omissions` or any recipe note is rejected; a note for a recipe the world lacks is rejected; an unknown field is rejected; text naming "edition", "Java", "Bedrock" or a dotted version number is rejected; problems are reported together; `priorFitOf` returns `"undeclared"` when no file exists and throws when a file exists but is invalid
-- [ ] T003 Create `src/sim/notes.ts` (depends on T002): the zod schema, `loadNotes(path, world)` and `priorFitOf(worldPath)` per the contract, with errors reported as a `WorldError` list. No import of `src/mcp` or the SDK, and nothing in `src/sim/engine.ts`, `loader.ts` or `src/mcp/server.ts` imports it. Make T002 pass
-- [ ] T004 [P] Backfill `worlds/generated/forge-7.notes.json` and `worlds/generated/forge-8-perturbed.notes.json` as `{ "priorFit": "invented", "derivedFrom": "worlds/forge.json" }`, and add a case to `test/notes.test.ts` that every world under `worlds/generated/` has a valid notes file declaring `invented` or `perturbed`
+- [X] T002 [P] Write `test/notes.test.ts` (must fail first), covering [contracts/world-notes.md](contracts/world-notes.md): a valid faithful file parses; an invalid `priorFit` is rejected; a faithful file missing `inspiration`, `omissions` or any recipe note is rejected; a note for a recipe the world lacks is rejected; an unknown field is rejected; text naming "edition", "Java", "Bedrock" or a dotted version number is rejected; problems are reported together; `priorFitOf` returns `"undeclared"` when no file exists and throws when a file exists but is invalid
+- [X] T003 Create `src/sim/notes.ts` (depends on T002): the zod schema, `loadNotes(path, world)` and `priorFitOf(worldPath)` per the contract, with errors reported as a `WorldError` list. No import of `src/mcp` or the SDK, and nothing in `src/sim/engine.ts`, `loader.ts` or `src/mcp/server.ts` imports it. Make T002 pass
+- [X] T004 [P] Backfill `worlds/generated/forge-7.notes.json` and `worlds/generated/forge-8-perturbed.notes.json` as `{ "priorFit": "invented", "derivedFrom": "worlds/forge.json" }`, and add a case to `test/notes.test.ts` that every world under `worlds/generated/` has a valid notes file declaring `invented` or `perturbed`; make `test/worlds.test.ts` and `test/determinism.test.ts` skip `*.notes.json` when they list worlds
 
 **Checkpoint**: `pnpm typecheck && pnpm test` pass; the notes module exists and is imported by nothing in the engine or server.
 
