@@ -63,6 +63,25 @@ describe("sdkOptionsFor", () => {
   });
 });
 
+describe("sdkOptionsFor with a skill", () => {
+  const skill = { pluginDir: "/r/skill-plugin", qualifiedName: "run-skill:demo" };
+
+  it("loads the skill as a local plugin, enables only it, and lets the agent use the Skill tool and nothing else", () => {
+    const o = sdkOptionsFor(base({ skill }), sink());
+    expect(o.plugins).toEqual([{ type: "local", path: "/r/skill-plugin" }]);
+    expect(o.skills).toEqual(["run-skill:demo"]);
+    expect(o.tools).toEqual(["Skill"]);
+    expect(o.allowedTools).toEqual(["mcp__craft"]);
+  });
+
+  it("changes nothing without a skill: no tools, no plugin, no skills option", () => {
+    const o = sdkOptionsFor(base(), sink());
+    expect(o.tools).toEqual([]);
+    expect(o).not.toHaveProperty("plugins");
+    expect(o).not.toHaveProperty("skills");
+  });
+});
+
 describe("buildHooks", () => {
   const call = async (hooks: ReturnType<typeof buildHooks>, event: "PreToolUse" | "PostToolUse" | "PostToolUseFailure", input: object) => {
     const cb = hooks[event]?.[0]?.hooks[0];

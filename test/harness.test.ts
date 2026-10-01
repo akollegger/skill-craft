@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:f
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { AgentDriver } from "../src/harness/driver.js";
+import type { AgentDriver, DriverOptions } from "../src/harness/driver.js";
 import { REPO } from "../src/harness/paths.js";
 import { aggregate, buildPrompt, planExperiment, runExperiment, type RunReport } from "../src/harness/run.js";
 import { readTrace, type RequestLine, type ToolLine } from "../src/trace/lines.js";
@@ -195,6 +195,61 @@ describe("what mcp.json records", () => {
     const res = await runExperiment(options({ mode: "solve" }, { runs: 1 }));
     const craft = (JSON.parse(readFileSync(join(res.reports[0]?.dir as string, "mcp.json"), "utf8")) as { mcpServers: { craft: { env: Record<string, string> } } }).mcpServers.craft;
     expect(craft.env["SIM_RUN_LOG"]).toBe(resolve(res.reports[0]?.dir as string, "run.jsonl"));
+  });
+});
+
+describe("a skill under test", () => {
+  const SKILL = "spikes/skill-pilot/craft-glirol";
+
+  it("installs a copy in each run folder, offers it to the player, and records which skill the run had", async () => {
+    const seen: (DriverOptions["skill"])[] = [];
+    const driver: AgentDriver = (o, s) => {
+      seen.push(o.skill);
+      return fakePlayer({ mode: "solve", goal: GOAL })(o, s);
+    };
+    const out = await runExperiment(options({}, { driver, runs: 2, skill: SKILL }));
+    for (const r of out.reports) {
+      expect(existsSync(join(r.dir, "skill-plugin", ".claude-plugin", "plugin.json"))).toBe(true);
+      expect(existsSync(join(r.dir, "skill-plugin", "skills", "craft-glirol", "SKILL.md"))).toBe(true);
+      expect(r.skill).toMatchObject({ name: "craft-glirol", invoked: false, loadedAfterCalls: null });
+      expect(r.skill?.sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(scoreOf(r.dir)["skill"]).toMatchObject({ name: "craft-glirol" });
+    }
+    expect(seen.map((s) => s?.qualifiedName)).toEqual(["run-skill:craft-glirol", "run-skill:craft-glirol"]);
+    expect(seen[0]?.pluginDir).toContain("skill-plugin");
+  });
+
+  it("records that the agent used the skill when the driver says so", async () => {
+    const driver: AgentDriver = async (o, s) => ({ ...(await fakePlayer({ mode: "solve", goal: GOAL })(o, s)), skillInvoked: true, skillLoadedAfterCalls: 4 });
+    const out = await runExperiment(options({}, { driver, runs: 1, skill: SKILL }));
+    expect(out.reports[0]?.skill).toMatchObject({ invoked: true, loadedAfterCalls: 4 });
+  });
+
+  it("leaves runs without a skill exactly as they were: nothing offered, nothing recorded", async () => {
+    let offered: unknown = "unset";
+    const driver: AgentDriver = (o, s) => {
+      offered = o.skill;
+      return fakePlayer({ mode: "solve", goal: GOAL })(o, s);
+    };
+    const out = await runExperiment(options({}, { driver, runs: 1 }));
+    expect(offered).toBeUndefined();
+    expect(out.reports[0]).not.toHaveProperty("skill");
+    expect(scoreOf(out.reports[0]?.dir as string)).not.toHaveProperty("skill");
+    expect(existsSync(join(out.reports[0]?.dir as string, "skill-plugin"))).toBe(false);
+  });
+
+  it("refuses a skill folder with no SKILL.md before running anything", async () => {
+    const o = options({}, { skill: "test/fixtures/valid" });
+    await expect(runExperiment(o)).rejects.toThrow(/cannot use the skill/);
+    expect(existsSync(join(o.out, "t"))).toBe(false);
+  });
+
+  it("shows the skill in the dry-run plan without installing it", () => {
+    const plan = planExperiment(options({}, { skill: SKILL, runs: 1 }));
+    expect(plan[0]?.skill).toBe(SKILL);
+    expect(plan[0]?.options.tools).toEqual(["Skill"]); // what a real run with a skill would pass, not the no-skill default
+    expect(plan[0]?.options.skills).toEqual(["run-skill:craft-glirol"]);
+    expect(existsSync(plan[0]?.dir as string)).toBe(false);
   });
 });
 

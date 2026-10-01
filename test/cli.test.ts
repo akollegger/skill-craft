@@ -47,6 +47,15 @@ describe("runAgentCli", () => {
     expect(await h.run(["--goal", "c", "--runs", "1", "--label", "ok", "--timeout-minutes", "35000", "--dry-run"])).toBe(0);
   });
 
+  it("passes --skill to the runs and says on each line when the agent loaded it", async () => {
+    const driver: AgentDriver = async (o, s) => ({ ...(await fakePlayer({ mode: "solve", goal: GOAL })(o, s)), skillInvoked: true, skillLoadedAfterCalls: 7 });
+    const h = harness(driver);
+    expect(await h.run(["--goal", "c", "--runs", "1", "--label", "sk", "--skill", "spikes/skill-pilot/craft-glirol"])).toBe(0);
+    expect(h.out.join("\n")).toMatch(/skill craft-glirol \(loaded after 7 calls\)/);
+    expect(await h.run(["--goal", "c", "--runs", "1", "--label", "sk2", "--skill", "test/fixtures"])).toBe(1);
+    expect(h.err.join("\n")).toMatch(/cannot use the skill/);
+  });
+
   it("prints the dry-run plan and creates nothing", async () => {
     const h = harness();
     expect(await h.run(["--goal", "c", "--runs", "2", "--label", "d", "--dry-run"])).toBe(0);

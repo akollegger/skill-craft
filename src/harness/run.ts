@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { loadWorld } from "../sim/loader.js";
 import type { RunLogEntry } from "../sim/runlog.js";
@@ -9,9 +9,10 @@ import { readTrace } from "../trace/lines.js";
 import { measureRun, type Measured } from "../trace/measure.js";
 import { TraceRecorder } from "../trace/recorder.js";
 import type { AgentDriver, DriverSink, PlayerResult } from "./driver.js";
-import { DriverFailed, HarnessError, RunCancelled, RunFailed, RunFolderExists, RunTimedOut, UnknownGoalItem, reasonOf } from "./errors.js";
+import { DriverFailed, HarnessError, RunCancelled, RunFailed, RunFolderExists, RunTimedOut, SkillNotFound, UnknownGoalItem, reasonOf } from "./errors.js";
 import { toRepoPath } from "./paths.js";
 import { readLog, replayFailure } from "./read-log.js";
+import { installSkill, SKILL_PLUGIN, skillName } from "./skill.js";
 import { craftServer, sdkOptionsFor } from "./sdk-options.js";
 
 export const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
@@ -36,6 +37,8 @@ export interface AgentRunOptions {
   timeoutMs?: number | undefined;
   /** Aborting it ends the current run and starts no further one. */
   signal?: AbortSignal | undefined;
+  /** A skill folder (with a SKILL.md) to make available to the agent. Each run gets its own copy. */
+  skill?: string | undefined;
   /** How the agent is run. Default: the Claude Agent SDK, loaded only when needed. */
   driver?: AgentDriver | undefined;
 }
@@ -82,6 +85,8 @@ export interface RunReport extends PlayerResult {
   score: RunScore;
   measured: Measured;
   model: ModelInfo;
+  /** The skill this run had available, when one was installed. */
+  skill?: { name: string; sha256: string; invoked: boolean; loadedAfterCalls: number | null } | undefined;
 }
 
 export interface Aggregate {
@@ -133,12 +138,16 @@ export function planExperiment(o: AgentRunOptions) {
   return Array.from({ length: o.runs }, (_, i) => {
     const dir = runDir(o, i + 1);
     const runLog = resolve(dir, "run.jsonl");
+    // The skill is not installed in a dry run, but its options are what a real run would pass.
+    const skill = o.skill
+      ? { pluginDir: join(resolve(dir), "skill-plugin"), qualifiedName: `${SKILL_PLUGIN}:${skillName(readFileSync(join(o.skill, "SKILL.md"), "utf8"))}` }
+      : undefined;
     const { hooks: _hooks, abortController: _abort, ...options } = sdkOptionsFor(
-      { prompt: buildPrompt(o.goal, o.maxTurns), world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, record: o.record, signal: new AbortController().signal },
+      { prompt: buildPrompt(o.goal, o.maxTurns), world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, record: o.record, signal: new AbortController().signal, skill },
       noSink,
     );
     // Show the plan as it will be recorded: repository-relative paths, and without the PATH the live call adds.
-    return { run: i + 1, dir, runLog: toRepoPath(runLog), options: { ...options, cwd: toRepoPath(resolve(dir)), ...mcpConfigFor(resolve(o.world), runLog) } };
+    return { run: i + 1, dir, runLog: toRepoPath(runLog), ...(o.skill ? { skill: toRepoPath(resolve(o.skill)) } : {}), options: { ...options, cwd: toRepoPath(resolve(dir)), ...mcpConfigFor(resolve(o.world), runLog) } };
   });
 }
 
@@ -166,7 +175,7 @@ const failedResult = (requested: string | null, reason: string): PlayerResult =>
 const writeScore = (dir: string, r: RunReport): void =>
   writeFileSync(
     join(dir, "score.json"),
-    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, text: r.text, score: r.score, measured: r.measured, model: r.model }, null, 2)}\n`,
+    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, text: r.text, score: r.score, measured: r.measured, model: r.model, ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
   );
 
 /** Run the agent once against a fresh server, then score and measure it. A failed player is a recorded error. */
@@ -179,6 +188,7 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, driver: 
   const requested = o.model ?? null;
   writeFileSync(join(dir, "mcp.json"), `${JSON.stringify(mcpConfigFor(resolve(o.world), runLog), null, 2)}\n`);
   writeFileSync(join(dir, "prompt.txt"), `${prompt}\n`);
+  const skill = o.skill ? installSkill(dir, resolve(o.skill)) : undefined;
 
   // One controller per run: the experiment's own signal and the time limit both abort it.
   const limit = Math.min(o.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
@@ -197,7 +207,7 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, driver: 
   let failure: HarnessError | null = null;
   try {
     result = await driver(
-      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, record: o.record, signal: control.signal },
+      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, record: o.record, signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
       recorder,
     );
   } catch (e) {
@@ -229,6 +239,7 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, driver: 
     score,
     measured: measureRun(entries, readTrace(tracePath), result, score, recorder.skipped),
     model: modelInfo(requested, result),
+    ...(skill ? { skill: { name: skill.name, sha256: skill.sha256, invoked: result?.skillInvoked === true, loadedAfterCalls: result?.skillLoadedAfterCalls ?? null } } : {}),
   };
   writeScore(dir, report);
   return report;
@@ -254,6 +265,7 @@ function brokenRun(o: AgentRunOptions, index: number, world: World, e: unknown):
 export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; reports: RunReport[]; aggregate: Aggregate; cancelled: boolean }> {
   const world = loadWorld(o.world);
   if (!world.items.some((i) => i.id === o.goal.item)) throw new UnknownGoalItem(o.goal.item);
+  if (o.skill && !existsSync(join(o.skill, "SKILL.md"))) throw new SkillNotFound(`${o.skill} has no SKILL.md`);
   // Refuse before spending anything on a label that has already been used.
   for (let i = 1; i <= o.runs; i++) if (existsSync(runDir(o, i))) throw new RunFolderExists(runDir(o, i));
 

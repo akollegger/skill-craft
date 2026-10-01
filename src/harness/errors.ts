@@ -52,6 +52,13 @@ export class ExportRefused extends HarnessError {
   }
 }
 
+/** A skill that cannot be installed: no SKILL.md, or no usable name in it. */
+export class SkillNotFound extends HarnessError {
+  constructor(why: string) {
+    super("SkillNotFound", `cannot use the skill: ${why}`);
+  }
+}
+
 /** Anything outside the player that stops a run, such as a file that cannot be written. */
 export class RunFailed extends HarnessError {
   constructor(cause?: unknown) {
@@ -73,5 +80,5 @@ export function reasonOf(e: unknown): string {
 
 /** Mistakes the operator can fix, as opposed to a run that failed. Matched by class, never by message text. */
 export function isUserError(e: unknown): boolean {
-  return e instanceof RunFolderExists || e instanceof ExportRefused || e instanceof UnknownGoalItem || e instanceof WorldError || e instanceof RunLogInUseError;
+  return e instanceof RunFolderExists || e instanceof ExportRefused || e instanceof SkillNotFound || e instanceof UnknownGoalItem || e instanceof WorldError || e instanceof RunLogInUseError;
 }

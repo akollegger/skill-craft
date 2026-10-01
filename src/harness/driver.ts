@@ -45,6 +45,8 @@ export interface DriverOptions {
   record: boolean;
   /** Aborting it must end the run promptly. */
   signal: AbortSignal;
+  /** A skill to make available to the agent: a local plugin folder, and the skill's `plugin:skill` name. */
+  skill?: { pluginDir: string; qualifiedName: string } | undefined;
 }
 
 export interface TokenUsage {
@@ -72,6 +74,10 @@ export interface PlayerResult {
   modelsUsed: string[];
   /** The agent's final message. Kept in score.json, never in a trace or a bundle. */
   text: string;
+  /** Whether the agent loaded the installed skill at least once. Absent when no skill was installed. */
+  skillInvoked?: boolean | undefined;
+  /** How many craft calls the agent had made when it first loaded the skill; null if it never did. */
+  skillLoadedAfterCalls?: number | null | undefined;
 }
 
 /** Run the player once. Resolves with the result; a driver reports failures by returning `ended: "error"` or by rejecting. */
