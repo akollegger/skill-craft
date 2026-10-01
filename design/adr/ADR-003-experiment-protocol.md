@@ -12,7 +12,7 @@ specs: []
 
 The demo's claim is that a skill distilled from a strong model's recorded runs lets a smaller model finish a task it cannot finish alone. A *skill* is a folder an agent can load (a `SKILL.md` plus reference files); Neo4j Agent Memory (NAMS), a memory service for agents, *distills* one from recorded runs. The strong model is the *teacher* and the smaller model the *student*.
 
-The task is a simulated crafting table (ADR-001). The agent places items on a 3x3 grid, and `craft` consumes the grid's contents and produces whatever recipe they match. Raw items are limited (the *stock*), so a wrong craft costs something. A recipe is *shapeless* (the right items in any arrangement) or *shaped* (the right items in the right arrangement). A *goal* is an item to hold. The *best run* for a goal is the fewest calls the solver (an exact search) finds, and *slack* is how much stock a goal leaves beyond what the best run needs.
+The task is a simulated crafting table (ADR-001). The agent places items on a 3x3 grid, and `craft` consumes the grid's contents and produces whatever recipe they match. Raw items are limited (the *stock*), so a wrong craft costs something. A recipe is *shapeless* (the right items in any arrangement) or *shaped* (the right items in the right arrangement). A *goal* is an item to hold. The *best run* for a goal is the fewest calls the solver (an exact search) finds, and *slack* is how many wasted crafts a run can absorb and still reach the goal.
 
 The teacher is recorded on *learn goals*. The *held-out goal* is one the teacher is never recorded on and the skill is never distilled from, so success on it measures whether the skill *transfers* and not whether it memorized an answer.
 

@@ -32,6 +32,46 @@ changed later gains a trailing `## 6. Amendments` section listing each dated cha
 
 Use `/adr-review` before moving a draft to `accepted`.
 
+## Glossary
+
+Terms the ADRs use. Each ADR still introduces a term in a clause on first use; this list is for
+looking one up. The last column names where the term is decided.
+
+| Term | Meaning | Decided in |
+|---|---|---|
+| **crafting table** | The task environment: a grid (3x3 in the base world) where the agent places items; `craft` consumes the grid's contents and makes the item whose recipe they match | ADR-001 |
+| **world** | A JSON file with the table size, stock, items, recipes and hint level. It holds no goals | ADR-001 |
+| **stock** | The limited raw items a world starts with. Only `craft` spends it, so a wrong craft costs something | ADR-001 |
+| **shapeless / shaped** | A shapeless recipe needs the right items in any arrangement; a shaped one needs them in the right arrangement | ADR-001 |
+| **hint level** | A world setting: `exact` gives no signal for a mismatch, `partial` also says whether adding items could still make a match | ADR-001 |
+| **goal** | An item (and quantity) to hold. Goals live in a sibling goals file, not in the world | ADR-001 |
+| **best run** | The fewest calls (and crafts) that reach a goal, found by the solver | ADR-001 |
+| **slack** | How many wasted crafts a run can absorb and still reach the goal. Zero slack means one wasted craft makes the goal unreachable | ADR-001 |
+| **solver** | An exact search over craft orders that proves a goal reachable and gives its best run | ADR-001 |
+| **renamer** | The generator tool that replaces item names with invented ones; `--perturb` also nudges recipes | ADR-001 |
+| **run** | One agent session on one goal against a fresh game, with its own run folder | ADR-001, ADR-002 |
+| **run log** | `run.jsonl`: every tool call of a run, refusals included, with no timestamps. Replaying it gives the score | ADR-001 |
+| **trace** | `trace.jsonl`: the time, tokens and cost of a run, measured by the harness | ADR-002 |
+| **replay bundle** | An exported run (frames, trace and score) that a static viewer plays back | ADR-002 |
+| **harness** | The program that runs Claude Code against a world, scores and measures the run | ADR-002 |
+| **action call** | A tool call that changes the world (`place`, `remove`, `clear`, `craft`), as opposed to `help`, `inventory` and `look` | ADR-001 |
+| **arm** | One experimental condition: a model with a given kind of help (none, a skill, memory) | ADR-003 |
+| **trial** | One run of one arm | ADR-003 |
+| **teacher / student** | The stronger model that is recorded and whose runs a skill is distilled from, and the smaller model the skill is meant to help | ADR-003 |
+| **learn goal** | A goal the teacher is recorded on and a skill is distilled from | ADR-003 |
+| **held-out goal** | A goal the teacher is never recorded on and no skill is distilled from. Success on it measures whether a skill transfers | ADR-003 |
+| **transfer** | Succeeding on a goal that the skill was not distilled from. Near transfer: the same recipe shape with different parameters | ADR-003 |
+| **calibration** | Unaided trials of each model on the held-out goal, to check that the student has something left to gain | ADR-003 |
+| **prior fit** | How far a model's existing knowledge predicts a world's recipes: *invented* (none), *faithful* (a well-known source's vocabulary and recipes, a control), or *perturbed* (faithful with stated deviations) | constitution III, ADR-003 |
+| **systematic / idiosyncratic deviation** | In a perturbed world, a rule applied across recipes (a skill can abstract it) versus a change to one recipe (memory can recall it) | ADR-001, ADR-003 |
+| **critic** | A separate model that reviews a distilled skill against a rubric before any student sees it | ADR-003 |
+| **turn budget** | The cap on the agent's turns in a run | ADR-003 |
+| **NAMS** | Neo4j Agent Memory Service: stores conversations, tool calls and extracted entities, and distills skills from them | ADR-003 |
+| **workspace** | An isolated NAMS store. Experiments record to a workspace no development session uses | ADR-003 |
+| **hooks / recall** | The `nams-hooks` plugin records a Claude Code session to NAMS; at a session's start it also recalls entities that match the first prompt | ADR-003 |
+| **skill** | A folder an agent can load: a `SKILL.md` plus reference files | ADR-003 |
+| **distillation** | NAMS deriving a skill from recorded runs. Its grounding score checks that steps trace back to the memory, its coverage score that the recorded work is represented | ADR-003 |
+
 ## Index
 
 | ADR | Title | Status | Specs |
