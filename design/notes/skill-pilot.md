@@ -28,8 +28,10 @@ Everything below is from small samples (one to three runs per arm) on one world 
 - Recall at the start of a session reads the new conversation's context (empty) and runs a workspace-wide
   entity search by the prompt. In the shared workspace that search returned entities extracted from **our own
   design sessions**, including one that said glirol needs "one craft in the best run". That is a solution leak.
-- Deleting a conversation (`DELETE /v1/conversations/{id}`) removes it and its messages only. The entities
-  extracted from it survive. So clearing run conversations does not isolate runs; a separate workspace does.
+- Deleting a conversation (`DELETE /v1/conversations/{id}`) removes it and its messages. The entities extracted
+  from it survive, and its tool-call and step nodes stay in the graph as orphans (the API reports 0 steps and 0
+  calls for the deleted conversation only because the link used to find them is gone). So clearing run
+  conversations does not isolate runs; a separate workspace does. See "Clearing a workspace" below.
 - Experiment runs now record to the dedicated "Skill Distillation" workspace by passing `NAMS_WORKSPACE_ID`
   (the hooks read it from the environment) to that run only. The first recorded run there started with 0
   entities and an empty recall.
@@ -82,6 +84,37 @@ What the runs do show:
 - **Likely causes** (not yet tested): the harness prompt says "Use only the craft tools" and "explore with place,
   remove, clear and look before you commit", which steers away from the `Skill` tool; and the skill's
   description is generic and begins with a tool name, so nothing signals that it holds the answer.
+
+## Clearing a workspace
+
+Tested on a throwaway managed workspace, created and deleted through the NAMS MCP tools. It held one
+conversation with messages, a reasoning step and five tool calls, entities (written and extracted), a distilled
+skill and its run, and the 28 seeded ontologies.
+
+| Data | Result |
+|---|---|
+| Conversations and messages | deleted by `DELETE /conversations/{id}` |
+| Entities | deleted by `DELETE /entities/{id}`; `GET /entities` returns at most 200 per call (the undocumented `limit` is capped there), so deletion repeats until the list is empty (10 entities took 2 rounds) |
+| Reasoning steps and tool calls | **not deleted**: orphaned `AgentStep` and `ToolCall` nodes remain; the trace endpoint reads 0 only because the conversation is gone |
+| Skill, version, components, distillation run | **no delete endpoint**; the skill survives, and its drift check turns `drifted` once its sources are gone |
+| Ontologies | soft delete only; the 28 present are seeded defaults, identical in every workspace |
+| The workspace | no REST delete or reset; MCP `workspace_delete` is a soft delete and removed it from the list |
+
+- `workspace_reprovision` (MCP, needs `workspace:admin`), documented as replacing a managed workspace's database
+  with a fresh one, returned "provisioning" twice. The status read `active` within a second, and over about
+  eight minutes the database host and all data were unchanged. It is not usable as a reset today.
+- `workspace_create` with a managed database became active in about 30 seconds, through the API with the key,
+  although the REST description says provisioning needs the dashboard. The MCP session token expires within
+  minutes, so a long script must reconnect.
+- A soft-deleted workspace's REST endpoints still answered 200 with empty lists, so a 404 is not proof of
+  deletion; `workspace_list` and `workspace_get` are.
+- Skill Distillation is a sandbox workspace (`dbMode: null`, `sandboxActive: true`) with an `expiresAt` of
+  2026-09-29 13:40, already past, yet it still works. "My Workspace" is on an external database, so
+  reprovisioning would not apply to it.
+- No backups were listed for either workspace, so a reprovision (if it ever worked) could not be undone.
+
+Conclusion: nothing clears a workspace in place. A fresh managed workspace per experiment, created and deleted
+through the API, is the clean state (ADR-003).
 
 ## Open questions for the protocol
 
