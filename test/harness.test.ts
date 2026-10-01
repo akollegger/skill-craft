@@ -1,8 +1,9 @@
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AgentDriver } from "../src/harness/driver.js";
+import { REPO } from "../src/harness/paths.js";
 import { aggregate, buildPrompt, planExperiment, runExperiment, type RunReport } from "../src/harness/run.js";
 import { readTrace, type RequestLine, type ToolLine } from "../src/trace/lines.js";
 import { FAKE_TOKENS, fakePlayer, type FakePlayerOptions } from "./helpers/fake-player.js";
@@ -172,6 +173,31 @@ describe("runExperiment with a scripted player", () => {
   });
 });
 
+describe("what mcp.json records", () => {
+  it("is portable: paths inside the repository are relative, so the file holds no user name", async () => {
+    mkdirSync(join(REPO, "runs"), { recursive: true });
+    const out = mkdtempSync(join(REPO, "runs", "test-mcp-"));
+    try {
+      const res = await runExperiment(options({ mode: "solve" }, { runs: 1, out }));
+      const text = readFileSync(join(res.reports[0]?.dir as string, "mcp.json"), "utf8");
+      const craft = (JSON.parse(text) as { mcpServers: { craft: { command: string; args: string[]; env: Record<string, string> } } }).mcpServers.craft;
+      expect(craft.command).toBe("node_modules/.bin/tsx");
+      expect(craft.args).toEqual(["src/mcp/server.ts"]);
+      expect(craft.env["SIM_WORLD"]).toBe("test/fixtures/valid/mirror-pair.json");
+      expect(craft.env["SIM_RUN_LOG"]).toMatch(/^runs\/test-mcp-[^/]+\/t\/001\/run\.jsonl$/);
+      expect(text).not.toContain(homedir());
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps a path outside the repository as it is", async () => {
+    const res = await runExperiment(options({ mode: "solve" }, { runs: 1 }));
+    const craft = (JSON.parse(readFileSync(join(res.reports[0]?.dir as string, "mcp.json"), "utf8")) as { mcpServers: { craft: { env: Record<string, string> } } }).mcpServers.craft;
+    expect(craft.env["SIM_RUN_LOG"]).toBe(resolve(res.reports[0]?.dir as string, "run.jsonl"));
+  });
+});
+
 describe("the model a run used", () => {
   it("records no request and the model that ran when none was asked for", async () => {
     const out = await runExperiment(options({ mode: "solve", models: ["fake-a"] }, { runs: 1 }));
@@ -219,6 +245,7 @@ describe("planExperiment (dry run)", () => {
     expect(Object.keys(craft.env).sort()).toEqual(["SIM_RUN_LOG", "SIM_WORLD"]);
     expect(plan[0]?.options).not.toHaveProperty("abortController");
     expect(plan[0]?.runLog).not.toBe(plan[1]?.runLog);
+    expect(JSON.stringify(plan)).not.toContain(homedir()); // paths inside the repository are shown relative to it
     expect(existsSync(plan[0]?.dir as string)).toBe(false);
   });
 });

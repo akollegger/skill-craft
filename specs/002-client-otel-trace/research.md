@@ -178,9 +178,11 @@ One short real run (`--goal glirol --runs 1 --max-turns 20`, no `--model`) and t
   so in `mcp.json` and in the dry-run output. The old harness never wrote it. `craftServer` now has only
   `SIM_WORLD` and `SIM_RUN_LOG`; the live call adds `PATH` in memory. Tests cover `mcp.json`, the plan and the
   whole run folder.
-- **Not fixed: absolute paths.** `mcp.json` holds absolute paths for the world and run log, which include the
-  operator's OS user name. The old harness did the same. They are not in a bundle. Making them relative to the
-  repository would need export to resolve them; left as a follow-up.
+- **Absolute paths, fixed afterwards.** `mcp.json` first held absolute paths for the world and run log, which
+  include the operator's OS user name; the old harness did the same. It now records paths inside the repository
+  relative to it (`src/harness/paths.ts`), and export resolves them against the repository, not the working
+  directory. A path outside the repository (an `--out` elsewhere) stays absolute, and run folders written
+  earlier still export.
 - **"To goal" is by completion order, not by time.** A scripted player puts every event in one millisecond, so
   comparing end times charged the closing request to the goal. `toGoal` sums the request lines written before the
   goal-reaching tool line, which is exact at any clock resolution.
