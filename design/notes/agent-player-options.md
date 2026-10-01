@@ -1,7 +1,7 @@
 # Design note: who plays the game?
 
-Status: exploratory. Intended to feed a later ADR (working title: the experiment-protocol ADR, covering the
-player and the protocol). Nothing here is decided.
+Status: exploratory, taken forward by [ADR-003](../adr/ADR-003-experiment-protocol.md) (proposed), which decides
+the player, models, arms and isolation. The options below are kept as the record of what was considered.
 Date: 2026-09-29
 
 ## Question

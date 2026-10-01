@@ -50,7 +50,8 @@ These are summarized from the constitution; read it for the full text.
 - **Data-driven worlds.** The engine knows nothing about any specific world. Swapping a world must
   never need a code change.
 - **Discovery over disclosure.** Tools never reveal recipes or solutions, and error messages state
-  the constraint, not the fix. Experimental worlds use invented names.
+  the constraint, not the fix. Every experimental world declares its prior fit (invented, perturbed
+  or faithful); a faithful world is a control.
 - **Test first.** Write the test for engine rules, world validation and the renamer before the
   implementation. Every committed world must be proven solvable by a test.
 - **Simplicity.** Do not add a mechanic unless it adds something to the with/without-memory
@@ -117,9 +118,11 @@ zebra-space project with the RFC requirement removed.
 
 - Worlds hold no goals. Goals live in a sibling `<world>.goals.json` that only tests, the solver
   and the generator read; the engine never does.
-- A world used for an experiment must be a generated one (invented names). `worlds/forge.json` keeps
-  neutral ids on purpose and is only a base for generation. Generated goals omit notes, because
-  notes name base items.
+- A world used for an experiment declares its prior fit (constitution, Principle III). Today every
+  experimental world is *invented*: a generated one from `worlds/generated/`, because
+  `worlds/forge.json` keeps neutral ids on purpose and is only a base for generation. Generated goals
+  omit notes, because notes name base items. Faithful and perturbed worlds (Minecraft vocabulary,
+  ADR-001 amendment of 2026-10-01) are decided but not built; the generator cannot yet keep names.
 - The run log has no timestamps and one process is one run. The server refuses to start on a
   `SIM_RUN_LOG` file that already has data; give each run a new path.
 - Tests never use randomness. Use fixed or exhaustively enumerated sequences. `src/sim/prng.ts` is

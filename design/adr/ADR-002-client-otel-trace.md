@@ -192,3 +192,8 @@ mirror could be added later without changing the viewer.
   made and the refusal code, not only whether the call succeeded; a trace is a mismatch when the player states no
   token totals, or names no models while the lines do, since the check cannot be made; and a model request whose
   usage lacks any of the four counts is skipped and counted, not read as zero.
+- **2026-10-01**: ADR-003 retires hooks-based recording for experiment runs. §2.2's rule that user settings
+  (and so the NAMS hooks) load when a run is recorded describes the interim `--record` flag. Experiment runs
+  no longer use it: user settings stay out of every experiment run, and the harness records a finished run to
+  NAMS afterward through the REST API, regenerating each tool output by replaying the run log. The
+  measurement design here is unchanged.

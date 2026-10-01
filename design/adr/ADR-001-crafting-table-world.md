@@ -28,8 +28,10 @@ solution to score against, and many short runs. The distiller also withholds a s
 scope mixes several procedures, and it needs at least three recorded steps, so each run has to be
 one coherent task.
 
-**The agent must not be able to answer from prior knowledge.** If items are called `torch` and
-`lantern`, a model already knows the recipes, and memory has nothing to add.
+**Prior knowledge decides how much memory can add.** If items are called `torch` and `lantern`, a
+model already knows the recipes, and memory has nothing to add. That suits a control world and
+not a demo of help on real processes, where the vocabulary is familiar and the specifics differ.
+A world therefore declares its prior fit: invented, perturbed or faithful (see Amendments).
 
 A first implementation modelled a Minecraft-shaped workshop: gatherable raw materials, tool
 tiers that gate gathering, placeable stations, fuel, and seven tools. Its base world has 17 items
@@ -117,7 +119,8 @@ Worlds are JSON files validated against a schema:
 named by the `SIM_WORLD` environment variable, and writes the run log to the file named by
 `SIM_RUN_LOG`. A seeded renamer re-skins any world with invented
 item names and, by default, replaces flavour text with category-only descriptions, so an agent
-cannot infer a recipe from a name. Its `--perturb` option changes quantities and patterns
+cannot infer a recipe from a name. This is the *invented* prior fit; the other two are described in
+Amendments. Its `--perturb` option changes quantities and patterns
 deterministically, which produces a world whose recorded results no longer match the original
 (used later to exercise drift detection).
 
@@ -241,3 +244,15 @@ Section 2 was updated to match.
   recipes that each needed the other's output passed the first and failed the second. Both
   sections now say *obtainable*, the stricter rule, which the loader checks in one pass without a
   search. The spec, data model and plan were updated to match.
+- **2026-10-01, three prior fits.** A world declares how far an agent's existing knowledge predicts
+  its recipes: *invented* (no prior beyond the mechanic), *faithful* (the vocabulary and recipes of a
+  well-known source) or *perturbed* (a faithful vocabulary with stated deviations). Faithful is
+  perturbation zero, and invented is the renamer applied on top, so all three derive from one base
+  world. The base is Minecraft's crafting recipes, a subset on the 3x3 grid, with the game version
+  named. A faithful world is a control that marks where memory adds nothing. A perturbed world has
+  two systematic deviations (a rule that applies across recipes, which a skill can abstract) and two
+  idiosyncratic ones (a change to a single recipe, which memory can recall). Results name the prior
+  fit. Descriptions stay category-only in every kind of world. The renamer and `--perturb` as built
+  produce only invented, idiosyncratic variants (`--perturb` always renames and nudges single
+  recipes); keeping names and applying a rule need generator work, which goes through a spec.
+  Constitution Principle III (version 1.1.0) and `AGENTS.md` are updated to match.
