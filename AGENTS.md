@@ -106,6 +106,7 @@ zebra-space project with the RFC requirement removed.
 | `src/harness/` | Interim run harness (prompt, SDK options and driver, errors, the command, export, bundle reader) |
 | `src/trace/` | Run measurement: recorder, trace lines, join of trace to run log; no dependency on the SDK or `src/mcp` |
 | `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `score.ts`, `export-run.ts` |
+| `spikes/` | Fixtures from exploratory spikes (for example the skill NAMS distilled in the pilot); not part of the product |
 | `test/` | vitest suites; `fixtures/valid` and `fixtures/invalid` hold the world fixtures |
 | `design/adr/` | ADRs and index |
 | `design/notes/` | Exploratory notes that may become ADRs |
