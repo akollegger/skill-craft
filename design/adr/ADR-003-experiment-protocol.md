@@ -30,9 +30,11 @@ The demo's claim is that a skill distilled from a strong model's recorded runs l
 
 The player is Claude Code through the Agent SDK, as the harness already runs it. Every run pins its model by id; no run uses a default.
 
-Two roles are filled by two different models. The **teacher** works the learn goals and is recorded. The **student** is the model the skill is meant to help. A pair is chosen by calibration: each candidate model plays the held-out goal with no help for the same number of trials, then the student is the smallest model that mostly fails it and the teacher is a stronger model that mostly succeeds. Calibration runs are not recorded and install no skill.
+Two roles are filled by two different models. The **teacher** works the learn goals and is recorded. The **student** is the model the skill is meant to help. The teacher is Claude Sonnet (`claude-sonnet-5-5`) and the student is Claude Haiku (`claude-haiku-4-5-20251001`).
 
-If no pair shows a gap, the world is made harder (a deeper recipe chain, generated from a new seed) and calibration repeats. The protocol is not loosened to fit the models.
+Calibration checks that this pair shows a gap before an experiment spends anything else. Each model plays the held-out goal with no help for 5 trials. The pair is accepted if the student succeeds in at most 1 of 5 trials (20%) and the teacher in at least 4 of 5 (80%). Calibration runs are not recorded and install no skill.
+
+If the student succeeds too often, the world is made harder (a deeper recipe chain, generated from a new seed) and calibration repeats. If the teacher succeeds too rarely, the turn budget or the world is revisited and calibration repeats. The protocol is not loosened to fit the models, and the models are not swapped to fit the world.
 
 ### 2.2 Arms
 
@@ -107,7 +109,7 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 
 ## 4. Consequences
 
-- **Cost.** Pilot runs on a Sonnet-class model cost $0.14 to $0.37 each. An experiment of three student arms (S0, S1, S2) with ten trials on two goals is about 60 student runs, plus teacher recordings, critic rounds and calibration, roughly $15 to $40 at those rates. A cheaper student lowers it.
+- **Cost.** Pilot runs on a Sonnet-class model cost $0.14 to $0.37 each. An experiment of three student arms (S0, S1, S2) with ten trials on two goals is about 60 student runs, plus teacher recordings, critic rounds and calibration, roughly $15 to $40 at those rates. Haiku student runs cost less than the Sonnet rates above, which lowers it.
 - **One workspace per experiment, created and deleted by the runner.** An experiment pays for a workspace creation (about 30 seconds in a test) and loses whatever it did not save, so skill packages, run folders and bundles are exported before deletion. The account's workspace limit, and whether soft-deleted workspaces count against it, are unknown. The key in use is an account-wide admin key, so the same tools could delete the development workspace; the runner's rule that it deletes only ids it created is the protection. A key bound to one workspace would suit the recorded runs better, but creating and deleting workspaces needs the admin scope, which a workspace-bound key does not carry.
 - **Comparisons across NAMS versions need records.** Each experiment stores the NAMS capabilities response (thresholds, enabled features) and each run the skill fingerprint, since the service changes.
 - **The critic is a model.** It may share blind spots with the teacher. The first accepted skills are read by a human for that reason.
@@ -120,8 +122,7 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 
 **Not decided here:**
 
-- the exact teacher and student models, which calibration settles;
-- the trial count, including the number of teacher trials per learn goal;
+- the trial count of the experiment arms, including the number of teacher trials per learn goal;
 - the turn budget shared by all arms;
 - whether the critic's rubric lives in a file or in its prompt;
 - the mechanism for the deferred arm S3: harness-performed recall placed in the prompt is the candidate, untested;
