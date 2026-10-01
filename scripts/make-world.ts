@@ -1,10 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { WorldError } from "../src/sim/errors.js";
 import { goalsPathFor, loadGoals } from "../src/sim/goals.js";
 import { loadWorld } from "../src/sim/loader.js";
 import { renameWorld } from "../src/sim/rename.js";
+import { notesPathFor } from "../src/sim/notes.js";
+import { toRepoPath } from "../src/harness/paths.js";
 
 const { values } = parseArgs({
   options: {
@@ -38,7 +40,9 @@ try {
     mkdirSync(dirname(values.out), { recursive: true });
     writeFileSync(values.out, json(world));
     writeFileSync(goalsPathFor(values.out), json({ goals: mapped }));
-    console.error(`wrote ${values.out} and ${goalsPathFor(values.out)} (${world.name})`);
+    // Names are invented whether or not recipes were nudged; the notes file says so and where it came from.
+    writeFileSync(notesPathFor(values.out), json({ priorFit: "invented", derivedFrom: toRepoPath(resolve(basePath)) }));
+    console.error(`wrote ${values.out}, ${goalsPathFor(values.out)} and ${notesPathFor(values.out)} (${world.name})`);
   } else {
     process.stdout.write(json(world));
   }

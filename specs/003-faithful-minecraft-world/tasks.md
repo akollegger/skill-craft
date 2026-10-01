@@ -107,13 +107,13 @@ Single project: `worlds/`, `src/sim/` (no MCP or SDK dependency), `src/harness/`
 
 ### Tests for User Story 3 (write first, confirm they fail)
 
-- [ ] T028 [P] [US3] Write `test/counterpart.test.ts` (must fail first): `renameWorld` on the faithful world and goals with seed 7 yields a valid world whose recipe kinds, quantities, arrangements, table and stock quantities equal the base's; every goal is reachable with the same minimum crafts and calls; none of the base's item or recipe names appears anywhere in the output; the committed `worlds/generated/minecraft-inspired-7.json` and its goals file equal the regenerated output byte for byte; its notes file declares `invented` and `derivedFrom` `worlds/minecraft-inspired.json`
-- [ ] T029 [P] [US3] Add a case to `test/scripts.test.ts` (must fail first): `scripts/make-world.ts` with `--out` also writes `<out stem>.notes.json` containing `priorFit` `invented` and `derivedFrom` set to the `--base` path (repository-relative)
+- [X] T028 [P] [US3] Write `test/counterpart.test.ts` (must fail first): `renameWorld` on the faithful world and goals with seed 7 yields a valid world whose recipe kinds, quantities, arrangements, table and stock quantities equal the base's; every goal is reachable with the same minimum crafts and calls; none of the base's item or recipe names appears anywhere in the output; the committed `worlds/generated/minecraft-inspired-7.json` and its goals file equal the regenerated output byte for byte; its notes file declares `invented` and `derivedFrom` `worlds/minecraft-inspired.json`
+- [X] T029 [P] [US3] Add a case to `test/scripts.test.ts` (must fail first): `scripts/make-world.ts` with `--out` also writes `<out stem>.notes.json` containing `priorFit` `invented` and `derivedFrom` set to the `--base` path (repository-relative)
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Edit `scripts/make-world.ts` (depends on T029): write the notes file beside the world and goals file; keep output deterministic. Make T029 pass
-- [ ] T031 [US3] Run `pnpm dev scripts/make-world.ts --base worlds/minecraft-inspired.json --seed 7 --out worlds/generated/minecraft-inspired-7.json`; commit the three generated files; make T028 pass; confirm `pnpm test` finds and solves the new world through `test/worlds.test.ts`
+- [X] T030 [US3] Edit `scripts/make-world.ts` (depends on T029): write the notes file beside the world and goals file; keep output deterministic. Make T029 pass
+- [X] T031 [US3] Run `pnpm dev scripts/make-world.ts --base worlds/minecraft-inspired.json --seed 7 --out worlds/generated/minecraft-inspired-7.json`; commit the three generated files; make T028 pass; confirm `pnpm test` finds and solves the new world through `test/worlds.test.ts`
 - [ ] T032 [US3] **(spends usage)** Counterpart calibration: 5 unaided trials for each of Sonnet and Haiku on each of the counterpart's three goals (30 runs), labels `faithful-1-cal-invented-<model>-<goal>`; goal names come from `worlds/generated/minecraft-inspired-7.goals.json`
 - [ ] T033 [US3] Run the report over the calibration labels of both worlds; add the faithful-against-invented table and the `supported` or `within noise` line for each model to `design/notes/faithful-control-results.md`, answering the first question of the spec's SC-010 (whether the faithful world is easier for the models than the invented one) in one sentence supported by the counts
 

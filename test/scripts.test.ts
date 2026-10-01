@@ -94,6 +94,14 @@ describe("scripts/make-world.ts", () => {
     expect(existsSync(join(dir, "a.goals.json"))).toBe(true);
   });
 
+  it("also writes a notes file declaring the world invented and naming the world it came from", () => {
+    const dir = fresh();
+    expect(run("scripts/make-world.ts", ["--seed", "7", "--out", join(dir, "a.json")]).status).toBe(0);
+    expect(JSON.parse(readFileSync(join(dir, "a.notes.json"), "utf8"))).toEqual({ priorFit: "invented", derivedFrom: "worlds/forge.json" });
+    expect(run("scripts/make-world.ts", ["--base", "worlds/minecraft-inspired.json", "--seed", "7", "--out", join(dir, "b.json")]).status).toBe(0);
+    expect(JSON.parse(readFileSync(join(dir, "b.notes.json"), "utf8"))).toEqual({ priorFit: "invented", derivedFrom: "worlds/minecraft-inspired.json" });
+  });
+
   it("writes files that load and whose goals are solvable", () => {
     const dir = fresh();
     const out = join(dir, "w.json");
