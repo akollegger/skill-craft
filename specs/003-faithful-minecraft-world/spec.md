@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-01
 
-**Status**: Draft
+**Status**: Implemented; the skill arms were not run (distillation produced no usable skill). Results: `design/notes/faithful-control-results.md`
 
 **Input**: User description: "experiments on the faithful minecraft world as detailed in @design/adr/ADR-003-experiment-protocol.md and mentioned in discussion above"
 

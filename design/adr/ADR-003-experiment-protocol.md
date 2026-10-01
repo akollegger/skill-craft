@@ -182,15 +182,16 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 **Not decided here:**
 
 - the trial count of the experiment arms, including the number of teacher trials per recorded goal;
-- the turn budget shared by all arms;
+- the turn budget for experiments other than the first (the faithful-world experiment used 80);
 - how a real workflow would detect that the student failed (the simulation reads the game state, a perfect signal), and the cost comparison between routes as a metric;
 - what to do with an ambiguous goal beyond reporting it;
-- the Minecraft-inspired subset, the four deviations, the goal families and how much stock slack held-out goals carry (the calibration runs showed zero slack makes unaided runs unrecoverable);
+- the four deviations of the perturbed world, and the subset, goal families and slack of worlds other than the faithful one (the faithful world fixed 13 items, 10 recipes, the pickaxe family and slack 3);
 - whether the critic's rubric lives in a file or in its prompt;
 - the mechanism for the deferred arm S3: harness-performed recall placed in the prompt is the candidate, untested;
 - whether REST-written and hooks-written recordings keep extracting equivalently over more runs, and how NAMS stores a refused call, which the one test run (no refusals) could not show;
-- the wording of the S2 sentence, to be fixed before the first trial;
+- the wording of the S2 sentence for experiments other than the first (the faithful-world experiment fixed ADR-003's sentence: "A skill for this kind of task is available; load it before exploring.");
 - whether soft-deleted workspaces count against the account's workspace limit, and whether `workspace_delete` removes a workspace's data or only hides it (in the test, its endpoints still answered with empty lists);
+- what teacher material makes NAMS keep domain content in a distilled skill. Efficient, error-free runs distilled to a skill with no recipe in the faithful world (spec 003), so the recorded runs may need contrast (failed attempts beside a success), or the skill may need to come from the student's own successful runs;
 - whether `workspace_reprovision` can be made to work, which would keep one workspace id across experiments;
 - when a sandbox workspace's expiry is enforced (the pilot's expired on 2026-09-29 and still works).
 
@@ -225,3 +226,16 @@ A distilled skill is reviewed before any student sees it. The review stands in f
   reach its goals there, so no recordings exist to distil from. Section 2.3's expectation that the invented
   world follows the faithful one now depends on a simpler invented world (see the follow-up specs in
   section 4); the counterpart serves as a bound for the prior fit and nothing more.
+- **2026-10-01, a skill that passes the gates can be empty.** In the faithful world (spec 003) the escalating
+  route recorded Sonnet on the student's gap goal, three runs of 11 action calls each with no refusals. NAMS
+  distilled skills from them that pass the gates (grounding 1.0, coverage 1.0 in graph format for each run
+  alone and in prose for the three together; the three together in graph format failed coverage at 0.50) but
+  contain no recipe. Review rejected them, so no skill arm ran. Coverage measures recurring patterns, which a
+  generic workflow satisfies, so the review step of 2.6 is what decides whether a skill is worth testing, as
+  the Context already says. Teacher material with contrast is now an open question (see "Not decided").
+  Results: `design/notes/faithful-control-results.md`.
+- **2026-10-01, values the first experiment fixed.** The faithful-world experiment (spec 003) used a turn
+  budget of 80, 5 calibration trials per model and goal, the escalating route with repair as the primary
+  measure, 3 teacher trials per recorded goal, planned arm trials of 10 per gap goal and 3 per solved or
+  held-out goal, a spend limit of $60, and the S2 sentence in 2.2. The world is 13 items and 10 recipes with
+  the pickaxe family and slack of 3 on every goal. The arm trials were not run.

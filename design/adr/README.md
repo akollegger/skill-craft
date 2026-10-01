@@ -69,6 +69,8 @@ looking one up. The last column names where the term is decided.
 | **critic** | A separate model that reviews a distilled skill against a rubric before any student sees it | ADR-003 |
 | **turn budget** | The cap on the agent's turns in a run | ADR-003 |
 | **NAMS** | Neo4j Agent Memory Service: stores conversations, tool calls and extracted entities, and distills skills from them | ADR-003 |
+| **notes file** | `<world>.notes.json`: a world's declared prior fit, a note per recipe for a faithful world, and what it leaves out. Read by tests, the generator and the harness, never by the engine or the agent | constitution III, spec 003 |
+| **experiment summary** | `runs/<experiment>/summary.json`, fixed before the first teacher or arm trial: route, primary measure, goal roles, arms, trial counts, turn budget, spend limit and the list of steps done by hand | spec 003 |
 | **workspace** | An isolated NAMS store. Experiments record to a workspace no development session uses | ADR-003 |
 | **hooks / recall** | The `nams-hooks` plugin records a Claude Code session to NAMS; at a session's start it also recalls entities that match the first prompt | ADR-003 |
 | **skill** | A folder an agent can load: a `SKILL.md` plus reference files | ADR-003 |
