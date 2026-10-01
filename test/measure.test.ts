@@ -72,6 +72,15 @@ describe("measureRun, absent", () => {
     expect(measureRun(entries, [], null, score(3))).toEqual({ trace: "absent" });
   });
 
+  it("is absent with no trace lines and a result whose totals are all zero, since nothing was measured", () => {
+    const zero = result({ usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }, costUsd: 0, durationMs: 90 });
+    expect(measureRun(entries, [], zero, score(3))).toEqual({ trace: "absent" });
+  });
+
+  it("is a mismatch with no trace lines when the result states tokens that were used", () => {
+    expect(measureRun(entries, [], result(), score(3)).trace).toBe("mismatch");
+  });
+
   it("is absent with no trace lines and a result that carries no figures", () => {
     const silent = result({ usage: null, durationMs: null, costUsd: null, turns: null, modelsUsed: [], initModel: null });
     expect(measureRun(entries, [], silent, score(3))).toEqual({ trace: "absent" });

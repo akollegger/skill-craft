@@ -103,6 +103,15 @@ describe("classifyResult", () => {
     expect(classifyResult({ subtype: "error_during_execution" }, false)).toBe("error");
   });
 
+  it("is error for a success-shaped result that is flagged as an error, such as a login failure", () => {
+    expect(classifyResult({ subtype: "success", is_error: true }, false)).toBe("error");
+    expect(classifyResult({ subtype: "success", is_error: false }, false)).toBe("stopped");
+  });
+
+  it("is still budget for error_max_turns even though that result is flagged as an error", () => {
+    expect(classifyResult({ subtype: "error_max_turns", is_error: true }, false)).toBe("budget");
+  });
+
   it("is error for a throw with no result", () => {
     expect(classifyResult(null, true)).toBe("error");
   });
@@ -128,6 +137,29 @@ describe("playerResultFrom", () => {
     expect(r.ended).toBe("error");
     expect(r.reason).toBe("DriverFailed: player ended with error_during_execution");
     expect(JSON.stringify(r)).not.toContain("secret");
+  });
+
+  describe("a result flagged as an error although its subtype is success", () => {
+    const failed = { subtype: "success", is_error: true, terminal_reason: "api_error", num_turns: 1, total_cost_usd: 0, duration_ms: 90, result: "Failed to authenticate: OAuth session expired and could not be refreshed", usage: { input_tokens: 0, output_tokens: 0 } };
+
+    it("is an error with a reason that names the assistant's error code, and keeps no message text", () => {
+      const r = playerResultFrom(failed, { requestedModel: null, initModel: "m-1", threw: false, assistantError: "authentication_failed" });
+      expect(r.ended).toBe("error");
+      expect(r.reason).toBe("DriverFailed: the player reported authentication_failed");
+      expect(r.text).toBe("");
+      expect(JSON.stringify(r)).not.toContain("OAuth");
+    });
+
+    it("falls back to the terminal reason when there was no assistant error", () => {
+      const r = playerResultFrom(failed, { requestedModel: null, initModel: null, threw: false });
+      expect(r.reason).toBe("DriverFailed: player ended with an error result (api_error)");
+    });
+
+    it("only ever embeds a code made of lowercase letters and underscores", () => {
+      const r = playerResultFrom({ ...failed, terminal_reason: "/Users/someone/secret" }, { requestedModel: null, initModel: null, threw: false, assistantError: "has spaces and /paths" });
+      expect(r.reason).toBe("DriverFailed: player ended with an error result");
+      expect(JSON.stringify(r)).not.toContain("secret");
+    });
   });
 
   it("tolerates a result with missing figures", () => {
