@@ -37,4 +37,4 @@ Use `/adr-review` before moving a draft to `accepted`.
 | ADR | Title | Status | Specs |
 |---|---|---|---|
 | [ADR-001](ADR-001-crafting-table-world.md) | Grid-based crafting table as the distillation demo world | accepted | specs/001-crafting-table-sim |
-| [ADR-002](ADR-002-client-otel-trace.md) | Measure run time and tokens on the client with OpenTelemetry | accepted | |
+| [ADR-002](ADR-002-client-otel-trace.md) | Measure run time and tokens on the client | accepted | specs/002-client-otel-trace |

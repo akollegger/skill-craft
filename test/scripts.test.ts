@@ -1,12 +1,15 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { readBundle } from "../src/harness/bundle.js";
+import { runExperiment } from "../src/harness/run.js";
 import { Game } from "../src/sim/engine.js";
 import { loadWorld } from "../src/sim/loader.js";
 import { createRunLog } from "../src/sim/runlog.js";
 import { solve } from "../src/sim/solver.js";
+import { fakePlayer } from "./helpers/fake-player.js";
 
 /** Run a script the way a user would: `node --import tsx <script> ...args` from the repo root. */
 function run(script: string, args: string[], env: Record<string, string> = {}) {
@@ -167,13 +170,13 @@ describe("scripts/score.ts", () => {
 });
 
 describe("scripts/run-agent.ts", () => {
-  it("prints the exact commands for a dry run and creates nothing", () => {
+  it("prints the SDK options for a dry run and creates nothing", () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-runs-"));
     const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--runs", "2", "--out", out, "--label", "dry", "--dry-run"]);
     expect(res.status, res.stderr).toBe(0);
-    const plan = JSON.parse(res.stdout) as { command: string[]; dir: string }[];
+    const plan = JSON.parse(res.stdout) as { options: Record<string, unknown>; dir: string }[];
     expect(plan).toHaveLength(2);
-    expect(plan[0]?.command).toEqual(expect.arrayContaining(["--strict-mcp-config", "--setting-sources", "project"]));
+    expect(plan[0]?.options).toMatchObject({ tools: [], allowedTools: ["mcp__craft"], strictMcpConfig: true, persistSession: false, settingSources: [] });
     expect(existsSync(join(out, "dry"))).toBe(false);
   });
 
@@ -183,17 +186,43 @@ describe("scripts/run-agent.ts", () => {
     expect(run("scripts/run-agent.ts", ["--goal", GOAL, "--runs", "0", "--dry-run"]).status).toBe(1);
     expect(run("scripts/run-agent.ts", []).status).toBe(1);
   });
+});
 
-  it("runs, scores and summarises with a stand-in claude", () => {
-    const bin = join(mkdtempSync(join(tmpdir(), "skill-craft-fake-")), "claude");
-    writeFileSync(bin, `#!/bin/sh\nexec node --import tsx ${resolve("test/helpers/fake-claude.ts")} "$@"\n`);
-    chmodSync(bin, 0o755);
-    const out = mkdtempSync(join(tmpdir(), "skill-craft-runs-"));
-    const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--runs", "2", "--out", out, "--label", "t", "--claude", bin], { FAKE_CLAUDE_MODE: "solve", FAKE_CLAUDE_GOAL: `${GOAL}:1` });
-    expect(res.status, res.stderr).toBe(0);
-    expect(res.stdout).toContain("run 001");
-    expect(res.stdout).toContain("2 runs: 2 reached (100%)");
-    const summary = JSON.parse(readFileSync(join(out, "t", "summary.json"), "utf8")) as { aggregate: { reached: number } };
-    expect(summary.aggregate.reached).toBe(2);
+// Running, scoring and cancelling are covered in test/cli.test.ts and test/harness*.test.ts with a scripted
+// player; there is no longer a stand-in for the `claude` binary to run the script against.
+
+describe("scripts/export-run.ts", () => {
+  async function finished() {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-exp-"));
+    const r = await runExperiment({
+      world: "test/fixtures/valid/mirror-pair.json", goal: { item: "c", qty: 1 }, runs: 1, maxTurns: 12, out, label: "x", record: false,
+      driver: fakePlayer({ mode: "solve", goal: { item: "c", qty: 1 } }),
+    });
+    return { runDir: r.reports[0]?.dir as string, dest: join(out, "bundle") };
+  }
+
+  it("exports a finished run, prints where and how many frames, and refuses to overwrite", async () => {
+    const { runDir, dest } = await finished();
+    const ok = run("scripts/export-run.ts", [runDir, dest]);
+    expect(ok.status, ok.stderr).toBe(0);
+    expect(ok.stdout).toMatch(/bundle \(\d+ frames\)/);
+    expect(readBundle(dest).frames.length).toBeGreaterThan(1);
+    const again = run("scripts/export-run.ts", [runDir, dest]);
+    expect(again.status).toBe(1);
+    expect(again.stderr).toContain("already exists");
+  });
+
+  it("refuses an unfinished run with a one-line cause and leaves nothing behind", async () => {
+    const { runDir, dest } = await finished();
+    rmSync(join(runDir, "score.json"));
+    const res = run("scripts/export-run.ts", [runDir, dest]);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("unfinished");
+    expect(res.stderr.trim().split("\n")).toHaveLength(1);
+    expect(existsSync(dest)).toBe(false);
+  });
+
+  it("exits 1 without arguments", () => {
+    expect(run("scripts/export-run.ts", []).status).toBe(1);
   });
 });

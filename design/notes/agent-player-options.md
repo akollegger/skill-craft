@@ -54,6 +54,13 @@ from a distilled skill. That suggests three arms, not two:
 
 This compares agent memory with skill distillation, not only with versus without.
 
+**Model is a second dimension.** The aim of distillation is to let a strong model work a task out,
+then hand the result to a smaller model that follows instructions. So the comparison that matters is
+often across models: a frontier model with no help (the teacher), a smaller model with no help, and the
+smaller model with the distilled skill. Tokens, cost and time are only comparable within one model, so
+each run records the model requested and the model that ran (spec 002), and a label that mixes models is
+flagged, not averaged. The arms above each get run per model of interest.
+
 ## Risks to check in a pilot
 
 - **Noise calls.** Earlier traces held many `ToolSearch` and `Bash` calls. Claude Code may defer
@@ -61,7 +68,9 @@ This compares agent memory with skill distillation, not only with versus without
   list so the recorded procedure is only the game's tools.
 - **Arm separation in NAMS.** One workspace is usable so far, so recalled memory can leak between
   arms. Runs need scoping or tagging.
-- **Model variance.** Pin the model and run several trials per arm; report a distribution.
+- **Model variance.** Pin the model for each arm (the run records which one ran) and run several trials
+  per arm; report a distribution. Runs started without choosing a model use the default, which can change
+  between sessions, so pin explicitly for experiments.
 - **Hooks under headless and SDK modes.** Confirm the hooks fire and record.
 - **Reasoning capture.** Placeholder reasoning limits what a distilled skill can say about
   judgment. Option 4 fixes this at the cost of more build.
@@ -78,7 +87,8 @@ tighter player (option 3), richer recording (option 4), or a change to the tool 
 ## Interim tooling
 
 Until the decision is made, `scripts/run-agent.ts` (with `src/harness/`) runs the leaning option:
-headless Claude Code, built-in tools removed, one run log per run, scored by replaying the log. It
+Claude Code run through the Claude Agent SDK, built-in tools removed, one run log per run, scored by
+replaying the log and measured for time, tokens and cost (ADR-002). It
 keeps sessions out of NAMS by default, so it does not yet exercise the memory and skill arms; that
 waits on the ADR. A first real run showed the baseline can fail by giving up or asking for a hint
 rather than by getting the answer wrong, so the harness prompt forbids questions, sets a turn budget,

@@ -6,6 +6,8 @@ import type { World } from "./schema.js";
 /** Calls that change the table or the inventory. `help`, `inventory` and `look` are free. */
 const ACTIONS = new Set(["place", "remove", "clear", "craft"]);
 
+export const isAction = (tool: string): boolean => ACTIONS.has(tool);
+
 export interface RunScore {
   goal: SolverGoal;
   /** Whether the agent ever held the goal. */
@@ -28,6 +30,8 @@ export interface RunScore {
   extraCalls: number | null;
   /** Successful crafts up to the goal minus the best run's minimum crafts; null unless reached. */
   extraCrafts: number | null;
+  /** Log `seq` of the entry after which the goal was first held; 0 if held before any call; null if never. */
+  reachedSeq: number | null;
 }
 
 /** Thrown when a run log cannot be replayed on the given world. */
@@ -36,6 +40,37 @@ export class ReplayError extends Error {
     super(`run log entry ${seq} (${tool}) does not replay: ${detail}`);
     this.name = "ReplayError";
   }
+}
+
+/**
+ * Apply one logged call to a game and check it behaves as the log says. Throws `ReplayError` when it does
+ * not, so a log that does not match its world is an error, never a score. Shared by scoring and frames.
+ */
+export function replayEntry(game: Game, entry: RunLogEntry): { ok: boolean; error?: string; crafted?: { item: string; qty: number } } {
+  const { args } = entry;
+  const outcome = (() => {
+    switch (entry.tool) {
+      case "place": return game.place(String(args["item"]), Number(args["row"]), Number(args["col"]));
+      case "remove": return game.remove(Number(args["row"]), Number(args["col"]));
+      case "clear": return game.clear();
+      case "craft": return game.craft();
+      case "look": return game.look();
+      case "inventory": return game.inventory();
+      case "help": return { ok: true };
+      default: throw new ReplayError(entry.seq, entry.tool, "unknown tool");
+    }
+  })();
+  const ok = !("ok" in outcome && outcome.ok === false);
+  if (ok !== entry.ok) throw new ReplayError(entry.seq, entry.tool, `logged ok=${entry.ok}, replay gave ok=${ok}`);
+  // The same call can still succeed and do something else if the world changed, so what it made and why it was
+  // refused must match too. The replayed values are the ones returned, never the logged ones.
+  const error = !ok && "error" in outcome ? String(outcome.error) : undefined;
+  const crafted = ok && "crafted" in outcome ? (outcome.crafted as { item: string; qty: number }) : undefined;
+  if (entry.error !== error) throw new ReplayError(entry.seq, entry.tool, `logged error=${String(entry.error)}, replay gave error=${String(error)}`);
+  if (JSON.stringify(entry.crafted) !== JSON.stringify(crafted)) {
+    throw new ReplayError(entry.seq, entry.tool, `logged crafted=${JSON.stringify(entry.crafted)}, replay gave crafted=${JSON.stringify(crafted)}`);
+  }
+  return { ok, ...(error === undefined ? {} : { error }), ...(crafted === undefined ? {} : { crafted }) };
 }
 
 /**
@@ -49,29 +84,14 @@ export function scoreRun(world: World, goal: SolverGoal, entries: readonly RunLo
   let craftsMade = 0;
   let failedCrafts = 0;
   // A goal that is already held at the start is reached with no calls.
-  let reachedAt: { actions: number; crafts: number } | null = game.count(goal.item) >= goal.qty ? { actions: 0, crafts: 0 } : null;
+  let reachedAt: { actions: number; crafts: number; seq: number } | null = game.count(goal.item) >= goal.qty ? { actions: 0, crafts: 0, seq: 0 } : null;
 
   for (const entry of entries) {
-    const { args } = entry;
-    const outcome = (() => {
-      switch (entry.tool) {
-        case "place": return game.place(String(args["item"]), Number(args["row"]), Number(args["col"]));
-        case "remove": return game.remove(Number(args["row"]), Number(args["col"]));
-        case "clear": return game.clear();
-        case "craft": return game.craft();
-        case "look": return game.look();
-        case "inventory": return game.inventory();
-        case "help": return { ok: true };
-        default: throw new ReplayError(entry.seq, entry.tool, "unknown tool");
-      }
-    })();
-    const ok = !("ok" in outcome && outcome.ok === false);
-    if (ok !== entry.ok) throw new ReplayError(entry.seq, entry.tool, `logged ok=${entry.ok}, replay gave ok=${ok}`);
-
-    if (!ok && "error" in outcome) refusals[String(outcome.error)] = (refusals[String(outcome.error)] ?? 0) + 1;
-    if (ACTIONS.has(entry.tool)) actionCalls++;
+    const { ok, error } = replayEntry(game, entry);
+    if (!ok && error !== undefined) refusals[error] = (refusals[error] ?? 0) + 1;
+    if (isAction(entry.tool)) actionCalls++;
     if (entry.tool === "craft") ok ? craftsMade++ : failedCrafts++;
-    if (reachedAt === null && game.count(goal.item) >= goal.qty) reachedAt = { actions: actionCalls, crafts: craftsMade };
+    if (reachedAt === null && game.count(goal.item) >= goal.qty) reachedAt = { actions: actionCalls, crafts: craftsMade, seq: entry.seq };
   }
 
   const solved = solve(world, goal);
@@ -89,5 +109,6 @@ export function scoreRun(world: World, goal: SolverGoal, entries: readonly RunLo
     best,
     extraCalls: reachedAt && best ? reachedAt.actions - best.minCalls : null,
     extraCrafts: reachedAt && best ? reachedAt.crafts - best.minCrafts : null,
+    reachedSeq: reachedAt ? reachedAt.seq : null,
   };
 }

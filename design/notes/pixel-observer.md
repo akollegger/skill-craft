@@ -57,13 +57,13 @@ The picker
 - A sidebar with **All runs**, the experiment folders (one per harness `--label`), and smart groups:
   Live now, Got it, Didn't get it. Each shows a count.
 - A **grid** of tiles or a **list**, chosen with a toggle, and a sort of run order, calls, or time.
-  A tile has the score in large numerals, a thumbnail, the run's name, a **call strip**, its
-  outcome in words, and its time. The thumbnail shows the item the run made if it got it, and
+  A tile has the score in large numerals, a thumbnail, the run's name, the **model** that ran, a
+  **call strip**, its outcome in words, and its time. The thumbnail shows the item the run made if it got it, and
   where the table was left if not. The call strip is one small square per action call: amber for a
   placement, mint for a craft, coral for a refusal, lilac for a take-back. A direct run shows a
   short strip and a flailing run shows a long, mixed one, so runs can be told apart without
   opening them.
-- The **list** view acts as a leaderboard. Columns are rank, run, outcome, calls, time and the call
+- The **list** view acts as a leaderboard. Columns are rank, run, model, outcome, calls, time and the call
   strip. Clicking the Calls or Time header sorts by it. Runs that got the goal rank first, ordered by
   the chosen key (calls, then time as the tiebreak, or the reverse); finished runs that did not get it
   follow, ordered the same way but unranked; runs still going come last. Only runs that got the goal
@@ -134,54 +134,31 @@ Time and tokens are measured on the client
   treat it as independent ground truth. **The client trace** is what the run cost: turns, time and
   tokens. The server log is never given a timestamp.
 
-The trace source is Claude Code's OpenTelemetry export (verified)
-- Tested on real runs, exporting OTLP over HTTP/JSON to a local receiver. The harness sets these on
-  each `claude -p` child: `CLAUDE_CODE_ENABLE_TELEMETRY=1`, `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1`
-  (for spans), `OTEL_LOGS_EXPORTER`, `OTEL_TRACES_EXPORTER` and `OTEL_METRICS_EXPORTER` set to
-  `otlp`, `OTEL_EXPORTER_OTLP_PROTOCOL=http/json`, `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:<port>`,
-  `OTEL_LOG_TOOL_DETAILS=1` (to get tool arguments), and short export intervals
-  (`OTEL_LOGS_EXPORT_INTERVAL` and `OTEL_TRACES_EXPORT_INTERVAL` of 250 ms).
-- **Tokens and cost are exact.** Each `claude_code.api_request` event carries `input_tokens`,
-  `output_tokens`, `cache_read_tokens`, `cache_creation_tokens`, `cost_usd`, `duration_ms` and a
-  `request_id`. Summed over a run they equal the CLI's own totals exactly, for tokens and for cost.
-- **Durations.** The `claude_code.llm_request` span adds `ttft_ms`. `claude_code.tool.execution`
-  gives each tool call's duration (4 to 17 ms here). The `claude_code.interaction` span is the whole
-  run. So a turn splits cleanly into the model's thinking time and the tool's time.
-- **Joining.** `tool_use_id` is identical in the spans, the log events and the CLI stream. Spans
-  give the full tool name (`mcp__craft__place`); the `tool_result` log event gives the arguments in
-  `tool_input`. Both join to `run.jsonl` by order, tool and arguments.
-- **Near-live.** With a 250 ms interval, events reached the receiver 30 to 360 ms after they
-  happened (median about 240 ms). The default is 5 s, so the interval must be set. In `-p` mode
-  everything is also flushed on exit.
-- **The harness hosts the receiver** ([ADR-002](../adr/ADR-002-client-otel-trace.md)). It listens on
-  `127.0.0.1`, writes a scrubbed `trace.jsonl` beside each run's log, and totals the run into
-  `score.json`. The observer reads those files, so live time and tokens need no polling of the CLI.
-- **Do not keep the raw posts.** Every log record carries the user's email, user id, account ids and
-  organization id (seen in the capture; the docs say email and organization id are always included,
-  and the account ids can be turned off with `OTEL_METRICS_INCLUDE_ACCOUNT_UUID`). `runs/` is
-  gitignored, but run folders get shared when a demo is shared. The harness's receiver derives the trace
-  (turn, times, the four token counts, cost, `tool_use_id`, tool name and arguments) and drop the
-  personal attributes on ingest.
-- The CLI's stream-json output (with `--include-partial-messages`) gives the same tokens with no
-  infrastructure, and remains the fallback.
+The trace source is the Claude Agent SDK ([ADR-002](../adr/ADR-002-client-otel-trace.md), verified)
+- The harness runs the player through the SDK in its own process and records from its streamed
+  messages and tool hooks into `trace.jsonl` beside each run's log. The observer reads that file, so
+  live time and tokens need no polling of the CLI.
+- A spike ran one real 20-request run through the SDK with OpenTelemetry export on as ground truth.
+  **Tokens, time to first token, tool arguments and duration matched**: all 20 requests were
+  identical token for token, and the run duration agreed within 6 ms.
+- **Cost is a run total only.** The SDK does not report cost per request, so the score row shows a
+  whole-run cost, and "to goal" is tokens and time.
+- **No personal data in the stream.** The OTel posts carried the user's email, user id, account ids
+  and organization id on every record (385 occurrences each in the spike); the SDK stream carried none.
+  The recorder still keeps only an allowlist, and the agent's text and reasoning are never written.
+- **In-process, no lag.** OTel events arrived 30 to 360 ms after they happened; SDK messages are
+  received as they are produced.
+- OpenTelemetry export remains a documented alternative in the ADR, for per-request cost or for a
+  player that is not run through the SDK.
 
 The CLI and the desktop app
-- Runs the **harness** starts are child processes, so it sets the variables directly and the desktop
-  app is irrelevant. This is the demo path.
-- An **interactive Code-tab session** is different. The desktop app does not read the shell
-  environment, and project `.claude/settings.json` deliberately ignores the exporter endpoint
-  variables. The `env` block in `~/.claude/settings.json` (or managed settings) is the only way, and it
-  would apply to every session the user runs. The user's settings have no `env` block today, so this is
-  an explicit opt-in and is not needed for the demo.
-- MCP servers and hooks do not receive the `OTEL_*` variables, so the `craft` server is unaffected.
+- Runs the **harness** starts are in its own process, so nothing needs setting and the desktop app is
+  irrelevant. This is the demo path.
+- An **interactive Code-tab session** is not measured by either route without editing the user's
+  global settings (the desktop app does not read the shell environment, and project settings ignore the
+  exporter endpoint variables). It is out of scope for the demo.
 
 Things to know about the numbers
-- **One request is off the books.** The spans show a fifth, auxiliary request after the turn ends
-  (about 127 input and 63 output tokens, apparently the post-turn summary). It is not in the CLI's
-  totals, the `api_request` events or the metrics. It is small, but real cost.
-- **`mcp_tool.name` on `api_request` labels the previous tool's result**, not the call that turn made.
-  Attribute tokens to calls through `tool_use_id` and the spans instead.
-- **Log events call every MCP tool `mcp_tool`.** The full name is in the spans.
 - **Three plugins load in every harness run, and none of them touches the numbers.** They load even
   with `--setting-sources project`, and `plugin_loaded` events record where each came from:
   `clover` (a security plugin, from the `clover-security` marketplace) is pushed by the user's
@@ -197,8 +174,8 @@ Things to know about the numbers
   Clover's purpose (reviewing plans and file edits) is inferred from those hook points and its name,
   not from reading the plugin.
 - So no isolation is needed. Report about 0.2 to 0.3 s of start-up time per run and move on.
-- Scoring gains time, tokens and cost **to the goal**, up to the turn that made the goal-reaching
-  call. In the mock only run 1's total (19.0 s) is real; its per-call times are spread across it,
+- Scoring gains time and tokens **to the goal**, up to the turn that made the goal-reaching
+  call, and the whole run's cost. In the mock only run 1's total (19.0 s) is real; its per-call times are spread across it,
   and the other runs' times are illustrative.
 
 Frames
@@ -292,9 +269,10 @@ and sprites drop to their 10 pixel size when tiles are small.
 - Clock time on every step and the total in the score row.
 - Time and tokens are measured on the client. `run.jsonl` stays clock-free and remains the ground
   truth of what the world did.
-- The client trace comes from Claude Code's OpenTelemetry export, which was tested: exact tokens and
-  cost, per-request and per-tool durations, near-live delivery, and the harness hosts the receiver (ADR-002).
-- Raw OTLP posts are not stored, because they carry the user's identity; a scrubbed trace is.
+- The client trace comes from the Claude Agent SDK, which was tested against OpenTelemetry on the same
+  run: matching tokens, time to first token and durations, no personal data in the stream, cost as a run
+  total only (ADR-002).
+- Agent text, reasoning and raw messages are never stored; the trace holds an allowlist of fields.
 - No baseline isolation is needed. The organization's plugin adds about 0.2 to 0.3 s of start-up per
   run and no tokens; that is reported, not removed.
 - Hosting means replay: a run is exported as a bundle (frames, scrubbed trace, score; no world file)

@@ -122,3 +122,63 @@ describe("scoreRun", () => {
     expect(() => scoreRun(makeWorld({ stock: { a: 1, b: 1 } }), goal, play(bestRun))).toThrow(/does not replay/);
   });
 });
+
+describe("a log must match what the world does, not only whether a call succeeded", () => {
+  const worldTwo = makeWorld({
+    recipes: [
+      { id: "r-d", kind: "shapeless", inputs: [{ item: "a", qty: 2 }], output: { item: "d", qty: 2 } }, // now makes two
+      { id: "r-e", kind: "shapeless", inputs: [{ item: "d", qty: 1 }, { item: "b", qty: 1 }], output: { item: "e", qty: 1 } },
+      { id: "r-s", kind: "shaped", pattern: [["a", "b"], [null, "c"]], output: { item: "s", qty: 1 } },
+    ],
+  });
+
+  it("refuses a log whose craft made something different in this world", () => {
+    const entries = play(bestRun);
+    expect(() => scoreRun(worldTwo, goal, entries)).toThrow(/crafted/);
+  });
+
+  it("refuses a log whose refusal had a different code", () => {
+    const entries = play((g) => {
+      g.place("a", 0, 0);
+      g.place("a", 0, 0); // cell_occupied
+    });
+    const tampered = entries.map((e) => (e.ok ? e : { ...e, error: "out_of_bounds" }));
+    expect(() => scoreRun(world, goal, tampered)).toThrow(/error/);
+  });
+
+  it("still accepts an honest log", () => {
+    expect(() => scoreRun(world, goal, play(bestRun))).not.toThrow();
+  });
+});
+
+describe("scoreRun reachedSeq", () => {
+  it("is the log seq of the entry after which the goal is first held", () => {
+    const entries = play(bestRun); // the goal is held after the 6th call
+    expect(scoreRun(world, goal, entries).reachedSeq).toBe(6);
+  });
+
+  it("counts free calls in the seq, not only action calls", () => {
+    const entries = play((g) => {
+      g.look();
+      bestRun(g);
+    });
+    expect(scoreRun(world, goal, entries).reachedSeq).toBe(7);
+  });
+
+  it("is 0 when the goal is held before any call", () => {
+    expect(scoreRun(world, { item: "a", qty: 1 }, play((g) => g.look())).reachedSeq).toBe(0);
+  });
+
+  it("is null when the goal is never held", () => {
+    expect(scoreRun(world, goal, play((g) => g.place("a", 0, 0))).reachedSeq).toBeNull();
+  });
+
+  it("does not move when the run carries on after reaching the goal", () => {
+    const entries = play((g) => {
+      bestRun(g);
+      g.look();
+      g.look();
+    });
+    expect(scoreRun(world, goal, entries).reachedSeq).toBe(6);
+  });
+});
