@@ -38,3 +38,4 @@ Use `/adr-review` before moving a draft to `accepted`.
 |---|---|---|---|
 | [ADR-001](ADR-001-crafting-table-world.md) | Grid-based crafting table as the distillation demo world | accepted | specs/001-crafting-table-sim |
 | [ADR-002](ADR-002-client-otel-trace.md) | Measure run time and tokens on the client | accepted | specs/002-client-otel-trace |
+| [ADR-003](ADR-003-experiment-protocol.md) | Experiment protocol: arms, models, isolation and skill review | proposed | |
