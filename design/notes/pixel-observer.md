@@ -326,16 +326,33 @@ The page
 
 ## Visual language
 
-**Direction (2026-10-02):** the palette will be drawn from the Neo4j brand colors (the brand colors page of the Needle
-design system, https://neo4j.design/40a8cff71/v/0/p/606e3d-brand-colors). The table below is the first mock's own palette
-and is a reference for roles, not for values. The page did not load in the browser used for this note, so the values
-below, taken from a second-hand copy of the brand guide, are unverified until they are checked against it:
-primary Baltic `#018BFF`, `#009999`, `#00C1B6`; green `#2F9E44`, `#B2F2BB`; orange `#F79767`, `#FFEC99`; red `#E03131`,
-`#FFC9C9`; purple `#C990C0`, `#D0BFFF`; pink `#DA7194`; dark `#1E1E1E`; gray `#A5ABB6`; light `#F3F3F0`; white `#FFFFFF`.
-Which color plays which role (placement, craft, refusal, take-back, goal reached), whether the backdrop is dark or light,
-and whether the pixel look survives a corporate palette are open, as are contrast checks.
+**Direction (2026-10-02):** the palette will be drawn from the Neo4j brand colors, read from the brand colors page of
+the Needle design system (https://neo4j.design/40a8cff71/p/606e3d-brand-colors.md). The table after this paragraph is the
+first mock's own palette and is a reference for roles, not for values.
 
-Palette (a full dusk, not one accent on black)
+| Group | Name | Hex |
+|---|---|---|
+| Primary | Dark Baltic | `#014063` |
+| Primary | Mid Baltic | `#0A6190` |
+| Primary | Baltic | `#4C99A4` |
+| Primary | Light Baltic | `#8FE3E8` |
+| Primary highlight | Highlight Periwinkle | `#6A82FF` |
+| Primary highlight | Highlight Yellow | `#FAFF00` |
+| Neutral | Black | `#181414` |
+| Neutral | Darkest Baltic | `#002B43` |
+| Neutral | Dark Gray | `#4F4E4D` |
+| Neutral | Cream | `#F2EAD4` |
+| Neutral | Light Gray | `#FCF9F6` |
+| Secondary | Forest, Mid Forest, Light Forest | `#145439`, `#6FA646`, `#90CB62` |
+| Secondary | Marigold, Mid Marigold, Light Marigold | `#FFA901`, `#FFC450`, `#FFCF72` |
+| Secondary | Hibiscus, Mid Hibiscus, Light Hibiscus | `#D43300`, `#F96746`, `#FF8E6A` |
+
+The page's own rules: gradients are backgrounds only, with Baltic or Forest, at 45 degrees and lightest at the top right;
+the documented color combinations meet contrast guidance; the secondary palette is more saturated than its earth-tone
+names suggest. Baltic is the core brand color. Which color plays which role (placement, craft, refusal, take-back,
+goal reached), whether the backdrop is dark or light, and whether the pixel look suits this palette are open.
+
+The first mock's own palette (a full dusk, not one accent on black):
 
 | Name | Hex | Used for |
 |---|---|---|
