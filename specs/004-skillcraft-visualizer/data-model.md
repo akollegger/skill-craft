@@ -15,9 +15,9 @@ CatalogEntry  { id, kind, status, reason?, attributes, preview?, bundle? }
 | `id` | first 16 hex of SHA-256 of `<kind>:<relative path with />` (R3 of research); stable across scans |
 | `kind` | `run` (a run folder) or `bundle` (an exported bundle folder) |
 | `status` | `ready` (opens), `unfinished` (no `score.json`), `unreadable` (cannot be opened) |
-| `reason` | for `unfinished` and `unreadable`: `code: fixed message`, never a wrapped error's text. Codes: `Unfinished`, `WorldMissing`, `ReplayFailed`, `BundleInvalid` |
+| `reason` | for `unfinished` and `unreadable`: `code: fixed message`, never a wrapped error's text. Codes: `Unfinished`, `WorldMissing`, `ReplayFailed`, `BundleInvalid` (a bundle folder), `RunInvalid` (a run folder whose files cannot be read) |
 | `attributes` | flat record, below; present for every status, with whatever the folder yields |
-| `preview` | `ready` only: `{ strip, table }` |
+| `preview` | `ready` only: `{ strip, table, made? }` (`made` names the goal item when the run reached it) |
 | `bundle` | `ready` only: relative address prefix of the bundle, `bundles/<id>/` |
 
 ## Attributes
@@ -47,7 +47,7 @@ defaulted. The page treats the set of names as open.
 | | `crafts`, `failedCrafts`, `refusals` | number | `score.craftsMade`, `score.failedCrafts`, sum of `score.refusals` |
 | Cost | `durationMs` | number | `measured.total.durationMs` (matched traces only) |
 | | `inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheCreationTokens` | number | `measured.total` |
-| | `costUsd` | number | `costUsd` (a run total only) |
+| | `costUsd` | number | `measured.total.costUsd` (a run total only; matched traces only) |
 | | `traceMatched` | flag | `measured.trace === "matched"` |
 
 Run folders with no `priorFit` or `skill` fields (older harness) simply lack those attributes.

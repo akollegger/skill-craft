@@ -35,5 +35,5 @@ pnpm build:viz     # vite build -> dist-viz/
 pnpm dev:viz <folder>   # runs scripts/dev-viz.ts: the Vite dev server with the local process's request handler mounted over <folder>; hot reload
 ```
 
-`pnpm typecheck` also checks `viz/` (TypeScript and `svelte-check`). `pnpm test` runs both test projects.
+`pnpm typecheck` also checks the page's TypeScript files in `viz/` (`.svelte` files are not type-checked yet; see research R2). `pnpm test` runs both test projects.
 CI builds the page.

@@ -114,7 +114,8 @@ describe("Story 2: only crafting spends stock", () => {
     };
     walk([]);
     expect(sequences).toBe(1 + 13 + 13 ** 2 + 13 ** 3 + 13 ** 4);
-  });
+    // Exhaustive: about a second alone, and more than the default timeout when the suite runs in parallel.
+  }, 30_000);
 
   it("a refusal leaves inventory, table and preview unchanged", () => {
     const game = new Game(makeWorld());

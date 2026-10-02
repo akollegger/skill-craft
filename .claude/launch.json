@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "visualizer",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev:viz", "runs"],
+      "port": 5173
+    }
+  ]
+}

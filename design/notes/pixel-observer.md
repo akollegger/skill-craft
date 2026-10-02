@@ -487,24 +487,32 @@ fixed floor of about 4.3k tokens. The leaderboard needs one number to sort by; o
 
 ## From here
 
-- **The first mock is the baseline for the implementation.** It is not polished further; it will be iterated on
-  as the build teaches us.
-- **Carried over from the mock:** the palette and type; the sprite generator; the table drawing and its
-  elements (score, pips, board, output slot, hotbar, tape, status); the grid and list layouts; the motion
-  rules; the finder-like sidebar.
-- **Stack (ADR-004):** TypeScript built to static files; Svelte for the application shell; PixiJS for the table
-  scene; generated sprites; bundled fonts. The mock is a visual reference and is not ported.
-- **To build new:**
-  - discover runs in an arbitrary folder, and read their score, trace and (for exported bundles) frames;
-  - derive frames by replay with the existing `deriveFrames`;
-  - make group, sort and filter attribute-driven, where the mock hard-codes a few;
-  - show skill presence on a tile, in a row and in the open view;
-  - bundle fonts and sprites so it works offline.
-- **Left behind from the mock:** the live badge, the thinking bubble, tailing the log, and the stand-in labels.
-- **Next:** an ADR for the visualizer. Two choices it will need to make are how the page gets its data (a small
-  process that scans a folder, or a static page that loads exported bundles; they can share the frame
-  derivation, but one has to come first) and what the default drawing of an item is for a world with
-  familiar names. The architecture section above (a separate read-only process, frames derived by replay,
-  discovery from the harness's folders) has not been questioned by any of this and is one input.
-- **Still open, to be worked out while building:** the shape of group, sort and filter, what a tile or row shows
-  when runs differ in world and goal, and how two runs are chosen for comparison.
+**Built (2026-10-02).** The visualizer follows ADR-004 and spec 004: a read-only page over a folder of runs, served
+by a local process or from a static copy. This note's earlier sections stay as the record of the thinking; the
+choices below were made while building and are held loosely.
+
+What the build taught, in the order it was met:
+
+- **The group-by menu lists every attribute the runs carry**, so grouping by tokens or cost is offered too. World,
+  outcome, model, prior fit and whether a skill loaded make useful groups on the recorded runs; the others are
+  numbers with few repeats. Hinting at the useful ones is open.
+- **A thumbnail of the last table is empty for most successful runs**, since crafting clears the table. The tile now
+  shows the goal item instead when the run reached it, and the last table otherwise.
+- **The creatures hide which item is which.** On the faithful world's table and hotbar nothing says `oak_planks`;
+  only the call list does. A legend or a label on hover is the next thing to try, and the world with familiar names
+  is where it matters.
+- **The scene stopped drawing after one step** when an effect outlived its sprite. Effects now end when the next frame is
+  shown, and a failing effect is dropped instead of stopping the ticker. The check that found it was looking at the
+  real page, which is why drawing is checked by hand for now.
+- **Roles for the palette:** a dark backdrop (Black), panels in Darkest Baltic, text in Light Gray and Light Baltic,
+  the goal and crafts in Light Forest, placements in Mid Marigold, refusals in Mid Hibiscus and take-backs in
+  Highlight Periwinkle. Periwinkle reads at 4.4:1 on the panel, so calls are listed on the backdrop. The roles and a
+  contrast test are in `viz/src/roles.ts`.
+- **Rows are wide.** With nine columns a list row needs about 1280 pixels; below that it wraps, and the wrapped layout
+  is plain. The grid reads better on a narrow screen.
+- **Speed is not a concern at this size:** 200 runs scan in about 0.3 seconds, a table opens in about 0.1 seconds and 200
+  tiles switch in under 20 milliseconds.
+- **`svelte-check` does not support TypeScript 7,** so the TypeScript inside `.svelte` files is not type-checked yet.
+
+Still open, to be worked out with use: item art for familiar names, how much of group, sort and filter to expose,
+whether a view could be saved, comparing by state instead of by step, and sound.

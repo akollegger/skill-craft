@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* The same values as palette.ts; viz/test/palette.test.ts keeps the two equal. */
+@theme {
+  --color-dark-baltic: #014063;
+  --color-mid-baltic: #0a6190;
+  --color-baltic: #4c99a4;
+  --color-light-baltic: #8fe3e8;
+  --color-highlight-periwinkle: #6a82ff;
+  --color-highlight-yellow: #faff00;
+  --color-black: #181414;
+  --color-darkest-baltic: #002b43;
+  --color-dark-gray: #4f4e4d;
+  --color-cream: #f2ead4;
+  --color-light-gray: #fcf9f6;
+  --color-forest: #145439;
+  --color-mid-forest: #6fa646;
+  --color-light-forest: #90cb62;
+  --color-marigold: #ffa901;
+  --color-mid-marigold: #ffc450;
+  --color-light-marigold: #ffcf72;
+  --color-hibiscus: #d43300;
+  --color-mid-hibiscus: #f96746;
+  --color-light-hibiscus: #ff8e6a;
+
+  --font-pixel: "Pixelify Sans", ui-sans-serif, sans-serif;
+  --font-score: "Jersey 10", ui-sans-serif, sans-serif;
+  --font-mono: "Fira Code", ui-monospace, monospace;
+}

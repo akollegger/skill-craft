@@ -1,7 +1,7 @@
 ---
 id: ADR-004
 title: The skillcraft visualizer: a read-only view of a folder of runs
-status: proposed
+status: accepted
 created: 2026-10-02
 specs: [specs/004-skillcraft-visualizer]
 ---
@@ -222,21 +222,32 @@ process serves and what a static host holds.
   - updating `AGENTS.md` for the page's build, commands and dependencies, and an amendment to ADR-002 for the
     bundle manifest's new attributes.
 
-**Not decided here:**
+**Left open when this was written, and what building it settled (2026-10-02).** Each choice below was made in a
+provisional form so building could start (spec 004, `research.md`), and stays open to change unless it says otherwise.
 
-- how an item is drawn for a world with familiar names (the first mock hashes each name to a small creature, which
-  signals "unknown" and may or may not suit a faithful world);
-- where the page's code lives in the repository;
-- how thumbnails are produced (one shared renderer, or pre-rendered at export or scan);
-- the tools for testing the page (component tests, screenshot comparison);
-- the exact shape of group, sort and filter, and how much of it to expose;
-- how two runs are chosen for comparison;
-- how the process is started and pointed at a folder;
-- how a run's id is formed and kept unique across folders and bundles, the attribute names and types, the shape of a
-  catalog entry and of an unreadable run's reason, and a version for the contract (all left to the spec);
-- the repository's own license, which the rejection of a GPL-3.0 package depends on;
-- whether bundle consumption and folder scanning ship together or in sequence;
-- whether an unfinished run could be opened to the point it reached.
+- *How an item is drawn for a world with familiar names.* Every world uses the hashed creature, behind an `ItemArt`
+  function of the item's name that a world's own art could replace. In the faithful world the creatures hide which
+  item is which on the table and the hotbar (names appear only in the call list), so a legend or hover label is
+  still open.
+- *Where the page's code lives.* The data side is `src/viz/` and the page is `viz/`, with its own TypeScript
+  configuration and one shared file (`src/viz/contract.ts`). Settled.
+- *How thumbnails are produced.* A tile or row paints a small 2D canvas, once, from a preview in the catalog entry
+  (the call strip, the last table and, for a run that reached its goal, the goal item). No WebGL context is used.
+- *The tools for testing the page.* vitest with jsdom for components, a scene model tested without WebGL, and a Node
+  test that serves the built page and compares it with a static host. Drawing is checked by hand; automated pixel
+  checks wait for the first visual regression.
+- *The shape of group, sort and filter.* One grouping level, one sort, and filters whose operators suit the attribute's
+  kind, over attributes discovered from the data. Nested grouping and saved views are open.
+- *How two runs are chosen for comparison.* Tick two runs, or open one and choose another beside it. A third replaces
+  the second.
+- *How the process is started.* `scripts/viz.ts <folder>`, with `viz-export.ts` for the static copy and `dev:viz` for
+  work on the page.
+- *Run ids, attribute names and kinds, the catalog entry, reasons and the contract version.* Fixed in the spec's data
+  model and contracts (`format: 1`). Settled.
+- *Whether bundle consumption and folder scanning ship together.* They did, data side first.
+
+Still open: the repository's own license, which the rejection of a GPL-3.0 package depends on; whether an unfinished
+run could be opened to the point it reached; and how a view could be saved or shared.
 
 ## 5. Related
 

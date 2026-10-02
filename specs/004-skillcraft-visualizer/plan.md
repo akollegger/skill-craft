@@ -28,7 +28,7 @@ current evergreen browsers with WebGL.
 **Primary Dependencies**: existing: zod. New, page only (devDependencies, since the page is built to static
 files): `vite` 8, `svelte` 5, `@sveltejs/vite-plugin-svelte` 7, `pixi.js` 8, `tailwindcss` 4 and
 `@tailwindcss/vite`, `@fontsource/pixelify-sans`, `@fontsource/jersey-10`, `@fontsource/fira-code`,
-`svelte-check`, and for component tests `jsdom` and `@testing-library/svelte`. The local process uses
+and for component tests `jsdom` and `@testing-library/svelte`. The local process uses
 `node:http`, `node:fs` and `node:path` only. Versions and licenses are in research R2.
 
 **Storage**: none. Reads run folders (`run.jsonl`, `score.json`, `trace.jsonl`, `mcp.json`) and bundle

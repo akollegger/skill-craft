@@ -24,11 +24,15 @@ build is expected to revise them, and the ADR's list is updated when it does.
 | `pixi.js` | 8.22.0 | MIT | table scene |
 | `tailwindcss` + `@tailwindcss/vite` | 4.3.3 | MIT | styling (plugin supports Vite 8) |
 | `@fontsource/pixelify-sans`, `jersey-10`, `fira-code` | 5.3.0 | OFL-1.1 | bundled fonts |
-| `svelte-check` | 4.7.6 | MIT | type checking `.svelte` files |
 | `jsdom`, `@testing-library/svelte` | 30.1.1, 5.4.2 | MIT | component tests |
 
 - **Decision**: add them as devDependencies. The repository's own license is still undeclared (ADR-004); all
   of these are permissive or the SIL Open Font License, which allows bundling the fonts.
+- **Finding at setup (2026-10-02)**: `svelte-check` 4.7.6 refuses TypeScript 7 unless TypeScript 6 is also
+  installed and `--tsgo` is passed, so it is not installed. `pnpm typecheck` checks the page's `.ts` files with
+  `tsc -p viz/tsconfig.json`; the TypeScript inside `.svelte` files is not type-checked yet. Revisit when
+  `svelte-check` supports TypeScript 7 directly, or add TypeScript 6 beside 7 if that gap starts to matter.
+  `pixi.js` resolved to 8.21.0 (the registry's newest, 8.22.0, was inside the repository's release-age hold).
 - **Check at setup**: Vite 8's Node floor (`>=22.12`) is above the repository's `>=22` engines field and CI
   uses `22`. Setup raises the `engines` field and the CI matrix to `22.12` (or pins the page build to
   Node 24 in CI). vitest 5 accepts Vite 8 as a peer. If any peer pairing fails at install, fall back to the
@@ -79,6 +83,11 @@ build is expected to revise them, and the ADR's list is updated when it does.
   cold scan misses SC-001, fall back to a cheaper readiness check (world present, log parses, score present)
   and derive frames only on open; the catalog's `preview` would then be built on first open and the tile
   would show a placeholder until then.
+- **Measured (2026-10-02)**: a cold scan of 200 synthetic runs of 22 calls each took 0.31 s, and the 86 recorded
+  runs in `runs/` took 0.23 s; `catalog.json` for 200 runs is 227 KB and took 0.19 s over HTTP. In the page, opening a
+  run took about 0.1 s to a drawn table and switching 200 tiles to the grid took under 20 ms. The fallback below is
+  not needed at this size. A run with hundreds of calls costs more to replay; the 86 real runs include several with
+  150 to 330 calls.
 - **Alternatives**: derive only on open (cannot report unreadable runs in the list, fails spec Story 1
   scenario 3); watch the folder with file-system events (live view is out of scope).
 

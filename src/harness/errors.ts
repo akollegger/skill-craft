@@ -47,8 +47,12 @@ export class RunTimedOut extends HarnessError {
 
 /** An export that cannot go ahead: the run is unfinished, the destination is taken, or the world is gone. */
 export class ExportRefused extends HarnessError {
-  constructor(why: string) {
+  /** Which refusal this is, so a caller can tell them apart without reading the message. */
+  readonly refusal: "unfinished" | "world" | "destination" | "other";
+
+  constructor(why: string, refusal: "unfinished" | "world" | "destination" | "other" = "other") {
     super("ExportRefused", `cannot export: ${why}`);
+    this.refusal = refusal;
   }
 }
 

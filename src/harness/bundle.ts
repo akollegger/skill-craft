@@ -17,6 +17,12 @@ export interface BundleManifest {
   frames: number;
   trace: "matched" | "mismatch" | "absent";
   model: ModelInfo;
+  /** The world's prior fit as the run recorded it. Absent in bundles exported before the visualizer. */
+  priorFit?: string;
+  /** The fixed sentence added to the prompt, when the run had one. */
+  promptNote?: string;
+  /** The skill the run had installed: its name, whether the agent loaded it and after how many calls. */
+  skill?: { name: string; loaded: boolean; loadedAfter: number | null };
 }
 
 /** The run's result without the agent's own text. */
