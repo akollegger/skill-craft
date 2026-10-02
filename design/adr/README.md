@@ -83,4 +83,4 @@ looking one up. The last column names where the term is decided.
 | [ADR-001](ADR-001-crafting-table-world.md) | Grid-based crafting table as the distillation demo world | accepted | specs/001-crafting-table-sim |
 | [ADR-002](ADR-002-client-otel-trace.md) | Measure run time and tokens on the client | accepted | specs/002-client-otel-trace |
 | [ADR-003](ADR-003-experiment-protocol.md) | Experiment protocol: arms, models, isolation and skill review | accepted | specs/003-faithful-minecraft-world |
-| [ADR-004](ADR-004-run-observer.md) | The observer: a read-only view of a folder of runs | proposed | |
+| [ADR-004](ADR-004-skillcraft-visualizer.md) | The skillcraft visualizer: a read-only view of a folder of runs | proposed | specs/004-skillcraft-visualizer |

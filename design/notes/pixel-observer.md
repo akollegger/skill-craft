@@ -1,9 +1,9 @@
-# Design note: the observer
+# Design note: the visualizer
 
 Status: scope settled (see "Scope and user goals"); the design inside that scope is still exploratory, and the
 earlier choices below are held loosely.
 Date: 2026-09-30, reframed 2026-10-02 after the first experiments and two rounds of feedback.
-Feeds: an ADR on the observer, which comes next, and later a speckit feature. Neither is started.
+Feeds: an ADR on the visualizer, which comes next, and later a speckit feature. Neither is started.
 
 ## Why: scenarios, not requirements
 
@@ -42,25 +42,25 @@ Every finished run folder holds these today, without any new recording:
 | Cost | time per request and per tool call, tokens of four kinds, cost as a run total; whether and after how many calls a skill was loaded |
 | Optional, from an experiment summary | arm, goal role (gap, solved, held-out), the route |
 
-Whatever the observer does should be expressible in terms of these. New fields should be able to join them
+Whatever the visualizer does should be expressible in terms of these. New fields should be able to join them
 without changing the design.
 
 ### Principles worth testing, not rules
 
 - **General before specific.** Prefer an operation that works on any attribute over one that works on the
   attribute we have today.
-- **Attributes, not experiments.** The ADR-003 vocabulary is one set of attributes. The observer should
+- **Attributes, not experiments.** The ADR-003 vocabulary is one set of attributes. The skillcraft visualizer should
   cope without it.
 - **Layers that each stand alone.** Seeing one run is useful without browsing; browsing is useful without
   comparing.
 - **Extension points over special cases.** Where something varies (how an item is drawn, what is
   revealed, which measure is shown), make it a choice and not a fork.
-- **Watching, not controlling.** The observer reads; it does not start runs or inject calls. This one
+- **Watching, not controlling.** The skillcraft visualizer reads; it does not start runs or inject calls. This one
   looks sturdy, but it is also still a choice.
 
 ## Scope and user goals
 
-Settled on 2026-10-02, at the level of what a person wants to do. The observer is **a way to see what runs
+Settled on 2026-10-02, at the level of what a person wants to do. The skillcraft visualizer is **a way to see what runs
 did and what they cost**, for an arbitrary folder of runs. A person should be able to:
 
 - see which worlds were used;
@@ -92,7 +92,7 @@ Choices made while discussing it:
   skill came from is not needed.
 - **Dropped for now:** associating teacher and student runs.
 - **Out of scope for now:** live viewing (watching a run as it happens) and aggregates over many runs.
-- **Input:** only what runs already carry, so the observer works on any folder without an experiment summary.
+- **Input:** only what runs already carry, so the visualizer works on any folder without an experiment summary.
 
 The four earlier features fit these goals, and are the starting point: finder-like navigation and selection
 of runs; a grid for visual appeal and a list for detail; opening a run into the crafting-table view; two
@@ -130,7 +130,7 @@ out of scope for now, and layer 4 is limited to showing that a run had a skill.
 **5. Aggregates over a selection.**
 - Shapes: counts and rates with intervals; distributions of calls or cost; small multiples of runs; the
   outcome strip of each run in a grid.
-- Open: where this stops being the observer and becomes a report. The report script already prints a
+- Open: where this stops being the visualizer and becomes a report. The report script already prints a
   table of this kind. A visual aggregate might be a different tool that shares the data model.
 
 ## Extension points to consider
@@ -174,7 +174,7 @@ a match, which they are not: it is one agent under different memory conditions, 
 chat to drive. The organising idea is now **runs you open**, like files in a small Finder.
 
 - The stage holds one **slot**. A slot is either the **run picker** or an open **table**.
-- The observer **opens on the picker**, always. A live run shows up there as a pulsing tile with its
+- The skillcraft visualizer **opens on the picker**, always. A live run shows up there as a pulsing tile with its
   clock running. It does not open anything for you (no follow mode).
 - Clicking a run opens its table. Closing a table (the coral dot in its title bar, or Esc) turns the
   slot back into the picker. That dot is the only window control; the yellow and green ones did
@@ -227,13 +227,13 @@ live run. Space plays and pauses, the arrows step, `r` restarts, Esc closes, `c`
 
 ## Architecture (one option)
 
-The observer is a **separate process** that reads the run logs. It is not part of the `craft` server.
+The skillcraft visualizer is a **separate process** that reads the run logs. It is not part of the `craft` server.
 
 ```text
  agent ── MCP ──> craft server ──appends──> runs/<label>/<NNN>/run.jsonl
                                                │  (read only)
                                                ▼
-     runs/ directory ─────────────>  observer process
+     runs/ directory ─────────────>  visualizer process
    (run.jsonl, mcp.json, score.json)   discovers runs, replays each log through the
                                        engine, derives one frame per call
                                                │  Server-Sent Events on 127.0.0.1
@@ -256,8 +256,8 @@ Run discovery
   `mcp.json` (which names the world), `prompt.txt` (the goal) and, once finished, `score.json`.
   That is enough to list runs, group them by label, and know each one's world, goal and outcome.
 - **Live** means a run whose `run.jsonl` is still growing and which has no `score.json` yet. The
-  observer tails the file and streams each new frame.
-- The log has no timestamps by design, so the observer notes arrival time itself, in memory, for
+  visualizer tails the file and streams each new frame.
+- The log has no timestamps by design, so the visualizer notes arrival time itself, in memory, for
   animation and the thinking bubble. Arrival time is never written back to the log.
 
 Time and tokens are measured on the client
@@ -271,7 +271,7 @@ Time and tokens are measured on the client
 
 The trace source is the Claude Agent SDK ([ADR-002](../adr/ADR-002-client-otel-trace.md), verified)
 - The harness runs the player through the SDK in its own process and records from its streamed
-  messages and tool hooks into `trace.jsonl` beside each run's log. The observer reads that file, so
+  messages and tool hooks into `trace.jsonl` beside each run's log. The skillcraft visualizer reads that file, so
   live time and tokens need no polling of the CLI.
 - A spike ran one real 20-request run through the SDK with OpenTelemetry export on as ground truth.
   **Tokens, time to first token, tool arguments and duration matched**: all 20 requests were
@@ -478,10 +478,10 @@ fixed floor of about 4.3k tokens. The leaderboard needs one number to sort by; o
 - The four user goals now frame the work. Are the layers above still a useful way to think about it, or are they extra?
 - Which run attributes should be an axis or a facet, and which are only labels?
 - How does a collection show runs of different worlds and goals together without implying they compete?
-- ~~Is an aggregate view part of the observer?~~ Out of scope for now.
+- ~~Is an aggregate view part of the visualizer?~~ Out of scope for now.
 - How should an item look when its name is familiar, and should that be a choice of the world or of the viewer?
 - ~~What is shown of a skill?~~ That a run had one, whether it was loaded and after how many calls; not its source.
-- ~~Does the observer need to know what an arm or a goal role is?~~ No: the folder alone is the input.
+- ~~Does the visualizer need to know what an arm or a goal role is?~~ No: the folder alone is the input.
 - Should a view (selection, grouping, layout) be saveable and shareable as data?
 - What makes a design here "general enough"? Is it that it reads well on all of the datasets above?
 
@@ -501,7 +501,7 @@ fixed floor of about 4.3k tokens. The leaderboard needs one number to sort by; o
   - show skill presence on a tile, in a row and in the open view;
   - bundle fonts and sprites so it works offline.
 - **Left behind from the mock:** the live badge, the thinking bubble, tailing the log, and the stand-in labels.
-- **Next:** an ADR for the observer. Two choices it will need to make are how the page gets its data (a small
+- **Next:** an ADR for the visualizer. Two choices it will need to make are how the page gets its data (a small
   process that scans a folder, or a static page that loads exported bundles; they can share the frame
   derivation, but one has to come first) and what the default drawing of an item is for a world with
   familiar names. The architecture section above (a separate read-only process, frames derived by replay,

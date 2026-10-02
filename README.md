@@ -27,7 +27,7 @@ validation, an exact solver that scores runs, a run log, and a world re-skinner.
 Claude Code against it, measures each run's time, tokens and cost, and exports a run as a replay bundle
 ([ADR-002](design/adr/ADR-002-client-otel-trace.md)).
 
-Not built yet: the record, distill and compare workflow, and the observer. Those wait on a decision about
+Not built yet: the record, distill and compare workflow, and the skillcraft visualizer. Those wait on a decision about
 which agent plays and how arms are compared (see [design/notes/agent-player-options.md](design/notes/agent-player-options.md)).
 
 ## Requirements

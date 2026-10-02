@@ -1,12 +1,12 @@
 ---
 id: ADR-004
-title: The observer: a read-only view of a folder of runs
+title: The skillcraft visualizer: a read-only view of a folder of runs
 status: proposed
 created: 2026-10-02
-specs: []
+specs: [specs/004-skillcraft-visualizer]
 ---
 
-# ADR-004: The observer: a read-only view of a folder of runs
+# ADR-004: The skillcraft visualizer: a read-only view of a folder of runs
 
 ## 1. Context
 
@@ -43,7 +43,7 @@ through. Frame derivation must stay deterministic and free of clocks.
 
 ### 2.1 Role and scope
 
-The observer is a read-only viewer: **a way to see what runs did and what they cost**, for an arbitrary folder of
+The skillcraft visualizer is a read-only viewer: **a way to see what runs did and what they cost**, for an arbitrary folder of
 runs. Its only input is that folder; it needs no experiment summary and writes nothing into it. A person can:
 
 - see which worlds were used;
@@ -196,7 +196,7 @@ process serves and what a static host holds.
   second TypeScript configuration for the browser, and CI builds the page. The server and the engine gain none.
   Pixel snapshots of the scene are likely practical with nearest-neighbour sampling and no filters, since frames are
   deterministic; that is to be confirmed on CI's renderer, because WebGL output can differ across GPUs.
-  Running the observer needs a built page or the Vite dev server, and the local process finds the build output.
+  Running the visualizer needs a built page or the Vite dev server, and the local process finds the build output.
 - **Tailwind and a local palette.** Tailwind and its Vite integration join the dependencies. The palette is copied
   from a page the repository does not control, so it can drift from the brand's; the module records where and when
   it was read. Three fonts are bundled, and the licenses of the fonts and of Svelte, PixiJS, Vite and Tailwind are
@@ -242,5 +242,5 @@ process serves and what a static host holds.
 
 - ADRs: [ADR-001](ADR-001-crafting-table-world.md) (the world, the run log), [ADR-002](ADR-002-client-otel-trace.md) (frames, trace, replay bundles, hosted viewing), [ADR-003](ADR-003-experiment-protocol.md) (the prior fit and the other conditions a run records).
 - Extends ADR-002 §2.6: the bundle manifest gains optional attributes (2.3). ADR-002 carries the matching amendment.
-- Design note: `design/notes/pixel-observer.md` (the scenarios, the settled scope and the first mock's visual language), with the mock in `design/notes/pixel-observer/mock/`.
-- Specs: _(populated automatically by the speckit ADR-link hook once `/speckit-specify` references this ADR)_
+- Design note: `design/notes/pixel-visualizer.md` (the scenarios, the settled scope and the first mock's visual language), with the mock in `design/notes/pixel-visualizer/mock/`.
+- Specs: [specs/004-skillcraft-visualizer](../../specs/004-skillcraft-visualizer/spec.md)

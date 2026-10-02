@@ -11,7 +11,7 @@ it are compared. The environment's design is [ADR-001](design/adr/ADR-001-crafti
 
 The simulation implements ADR-001 (feature spec `specs/001-crafting-table-sim`). An interim run
 harness runs Claude Code against it, measures each run and exports replay bundles (ADR-002, feature
-spec `specs/002-client-otel-trace`). The record, distill and compare workflow and the observer are not
+spec `specs/002-client-otel-trace`). The record, distill and compare workflow and the skillcraft visualizer are not
 built yet; they wait on the player and experiment-protocol decision
 (`design/notes/agent-player-options.md`). Do not add mechanics beyond ADR-001 (gathering, tool tiers,
 stations, fuel were deliberately removed).
