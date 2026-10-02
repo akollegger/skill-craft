@@ -129,6 +129,9 @@ process serves and what a static host holds.
 - **Table scene: PixiJS.** The crafting-table view (the board, items, output slot, hotbar, and the effects for
   placing, crafting, refusing and finishing) is a PixiJS scene, drawn at the native pixel size and scaled by whole
   numbers with nearest-neighbour sampling.
+- **Palette: the Neo4j brand colors.** The page's colors are drawn from the Neo4j brand palette (the brand colors
+  page of the Needle design system, neo4j.design). The exact values, their roles (outcome, refusal, craft, take-back)
+  and the contrast checks are set when the page is specified.
 - **Assets: generated sprites and bundled fonts.** Each item name hashes to a small symmetric sprite, generated into
   a texture at run time, so no art is shipped per item. Fonts are bundled with the build. No asset is fetched from
   the network.

@@ -326,6 +326,15 @@ The page
 
 ## Visual language
 
+**Direction (2026-10-02):** the palette will be drawn from the Neo4j brand colors (the brand colors page of the Needle
+design system, https://neo4j.design/40a8cff71/v/0/p/606e3d-brand-colors). The table below is the first mock's own palette
+and is a reference for roles, not for values. The page did not load in the browser used for this note, so the values
+below, taken from a second-hand copy of the brand guide, are unverified until they are checked against it:
+primary Baltic `#018BFF`, `#009999`, `#00C1B6`; green `#2F9E44`, `#B2F2BB`; orange `#F79767`, `#FFEC99`; red `#E03131`,
+`#FFC9C9`; purple `#C990C0`, `#D0BFFF`; pink `#DA7194`; dark `#1E1E1E`; gray `#A5ABB6`; light `#F3F3F0`; white `#FFFFFF`.
+Which color plays which role (placement, craft, refusal, take-back, goal reached), whether the backdrop is dark or light,
+and whether the pixel look survives a corporate palette are open, as are contrast checks.
+
 Palette (a full dusk, not one accent on black)
 
 | Name | Hex | Used for |
