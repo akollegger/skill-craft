@@ -326,7 +326,35 @@ The page
 
 ## Visual language
 
-Palette (a full dusk, not one accent on black)
+**Direction (2026-10-02):** the palette will be a local one, transcribed from the Neo4j brand colors on the brand colors
+page of the Needle design system (https://neo4j.design/40a8cff71/p/606e3d-brand-colors.md), and not the Neo4j
+design-system package or its Tailwind preset (GPL-3.0). The shell uses Tailwind with a theme built from it. Fonts are
+Pixelify Sans, Jersey 10 and Fira Code. The table after this paragraph is the first mock's own palette and is a
+reference for roles, not for values.
+
+| Group | Name | Hex |
+|---|---|---|
+| Primary | Dark Baltic | `#014063` |
+| Primary | Mid Baltic | `#0A6190` |
+| Primary | Baltic | `#4C99A4` |
+| Primary | Light Baltic | `#8FE3E8` |
+| Primary highlight | Highlight Periwinkle | `#6A82FF` |
+| Primary highlight | Highlight Yellow | `#FAFF00` |
+| Neutral | Black | `#181414` |
+| Neutral | Darkest Baltic | `#002B43` |
+| Neutral | Dark Gray | `#4F4E4D` |
+| Neutral | Cream | `#F2EAD4` |
+| Neutral | Light Gray | `#FCF9F6` |
+| Secondary | Forest, Mid Forest, Light Forest | `#145439`, `#6FA646`, `#90CB62` |
+| Secondary | Marigold, Mid Marigold, Light Marigold | `#FFA901`, `#FFC450`, `#FFCF72` |
+| Secondary | Hibiscus, Mid Hibiscus, Light Hibiscus | `#D43300`, `#F96746`, `#FF8E6A` |
+
+The page's own rules: gradients are backgrounds only, with Baltic or Forest, at 45 degrees and lightest at the top right;
+the documented color combinations meet contrast guidance; the secondary palette is more saturated than its earth-tone
+names suggest. Baltic is the core brand color. Which color plays which role (placement, craft, refusal, take-back,
+goal reached), whether the backdrop is dark or light, and whether the pixel look suits this palette are open.
+
+The first mock's own palette (a full dusk, not one accent on black):
 
 | Name | Hex | Used for |
 |---|---|---|
@@ -341,7 +369,7 @@ Palette (a full dusk, not one accent on black)
 Type
 - **Pixelify Sans** for large text only: the brand, window titles, the goal. It is too hard to read
   at small sizes, so it stops at about 20 pixels.
-- **JetBrains Mono** for everything small: the tape, status, controls, sidebar, tiles and footer.
+- **Fira Code** (in place of the first mock's JetBrains Mono) for everything small: the tape, status, controls, sidebar, tiles and footer.
 - **Jersey 10** for the score numerals. The scoreboard is the memorable element, so it gets its own
   face and the most space.
 - All three are bundled with the page in the real build.
@@ -464,6 +492,8 @@ fixed floor of about 4.3k tokens. The leaderboard needs one number to sort by; o
 - **Carried over from the mock:** the palette and type; the sprite generator; the table drawing and its
   elements (score, pips, board, output slot, hotbar, tape, status); the grid and list layouts; the motion
   rules; the finder-like sidebar.
+- **Stack (ADR-004):** TypeScript built to static files; Svelte for the application shell; PixiJS for the table
+  scene; generated sprites; bundled fonts. The mock is a visual reference and is not ported.
 - **To build new:**
   - discover runs in an arbitrary folder, and read their score, trace and (for exported bundles) frames;
   - derive frames by replay with the existing `deriveFrames`;
