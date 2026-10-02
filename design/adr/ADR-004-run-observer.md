@@ -122,6 +122,8 @@ not replay on its world, or whose world file is missing, is listed with that rea
 The page is written in TypeScript and built to static files. A build step is accepted; its output is what the local
 process serves and what a static host holds.
 
+- **Bundler: Vite** with the Svelte plugin. It builds the TypeScript, Svelte and PixiJS code and the bundled fonts
+  into the static files, and provides a dev server with hot reload for iterating on the page.
 - **Application shell: Svelte.** The picker, group, sort and filter, the open view's panels, keyboard handling and
   the layout of two runs side by side are Svelte components.
 - **Table scene: PixiJS.** The crafting-table view (the board, items, output slot, hotbar, and the effects for
@@ -134,7 +136,8 @@ process serves and what a static host holds.
   catalog and bundles), the view state (selection, grouping, sorting, filtering), the shell components, the scene,
   the sprite generator, and the assets. The first mock is a visual reference and is not ported.
 - **Scenes are few.** Each PixiJS application holds a WebGL context and browsers cap how many can be live. Only
-  open tables hold a live scene (two at most); tiles and rows show thumbnails drawn once into images.
+  open tables hold a live scene, and at most two tables are open at once; tiles and rows show thumbnails drawn once
+  into images.
 - **The server stays plain.** The local process uses Node's built-ins and has no framework.
 
 ## 3. Alternatives Considered
@@ -171,7 +174,7 @@ process serves and what a static host holds.
   tape, picker layouts and motion carry over as design, and are rewritten into the separate parts of 2.6. Its
   inlined data, hard-coded sorts and groups, live badge, thinking bubble, log tailing and network fonts do not.
   Left unpolished, it leaves the data plumbing and the group, sort and filter model to be built.
-- **A build step and new dependencies.** Svelte, PixiJS and a bundler join the repository's dependencies, with a
+- **A build step and new dependencies.** Svelte, PixiJS and Vite join the repository's dependencies, with a
   second TypeScript configuration for the browser, and CI builds the page. The server and the engine gain none.
   Pixel snapshots of the scene are practical, since frames are deterministic.
 - **WebGL contexts are scarce**, so the thumbnails for tiles and rows must be images and not live scenes.
@@ -197,7 +200,7 @@ process serves and what a static host holds.
 
 - how an item is drawn for a world with familiar names (the first mock hashes each name to a small creature, which
   signals "unknown" and may or may not suit a faithful world);
-- the bundler (Vite with the Svelte plugin is the usual pairing) and where the page's code lives in the repository;
+- where the page's code lives in the repository;
 - how thumbnails are produced (one shared renderer, or pre-rendered at export or scan);
 - the tools for testing the page (component tests, screenshot comparison);
 - the exact shape of group, sort and filter, and how much of it to expose;
