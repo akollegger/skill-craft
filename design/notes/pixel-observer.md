@@ -326,9 +326,11 @@ The page
 
 ## Visual language
 
-**Direction (2026-10-02):** the palette will be drawn from the Neo4j brand colors, read from the brand colors page of
-the Needle design system (https://neo4j.design/40a8cff71/p/606e3d-brand-colors.md). The table after this paragraph is the
-first mock's own palette and is a reference for roles, not for values.
+**Direction (2026-10-02):** the palette will be a local one, transcribed from the Neo4j brand colors on the brand colors
+page of the Needle design system (https://neo4j.design/40a8cff71/p/606e3d-brand-colors.md), and not the Neo4j
+design-system package or its Tailwind preset (GPL-3.0). The shell uses Tailwind with a theme built from it. Fonts are
+Pixelify Sans, Jersey 10 and Fira Code. The table after this paragraph is the first mock's own palette and is a
+reference for roles, not for values.
 
 | Group | Name | Hex |
 |---|---|---|
@@ -367,7 +369,7 @@ The first mock's own palette (a full dusk, not one accent on black):
 Type
 - **Pixelify Sans** for large text only: the brand, window titles, the goal. It is too hard to read
   at small sizes, so it stops at about 20 pixels.
-- **JetBrains Mono** for everything small: the tape, status, controls, sidebar, tiles and footer.
+- **Fira Code** (in place of the first mock's JetBrains Mono) for everything small: the tape, status, controls, sidebar, tiles and footer.
 - **Jersey 10** for the score numerals. The scoreboard is the memorable element, so it gets its own
   face and the most space.
 - All three are bundled with the page in the real build.

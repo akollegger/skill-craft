@@ -129,12 +129,17 @@ process serves and what a static host holds.
 - **Table scene: PixiJS.** The crafting-table view (the board, items, output slot, hotbar, and the effects for
   placing, crafting, refusing and finishing) is a PixiJS scene, drawn at the native pixel size and scaled by whole
   numbers with nearest-neighbour sampling.
-- **Palette: the Neo4j brand colors.** The page's colors are drawn from the Neo4j brand palette (the brand colors
-  page of the Needle design system, neo4j.design). The exact values, their roles (outcome, refusal, craft, take-back)
-  and the contrast checks are set when the page is specified.
-- **Assets: generated sprites and bundled fonts.** Each item name hashes to a small symmetric sprite, generated into
-  a texture at run time, so no art is shipped per item. Fonts are bundled with the build. No asset is fetched from
-  the network.
+- **Styling: Tailwind CSS** for the Svelte shell, with a theme defined in the repository and not taken from the
+  Neo4j design-system package.
+- **Palette: a local palette based on the Neo4j brand colors.** One TypeScript module holds the palette, with the
+  values transcribed from the brand colors page of the Needle design system (neo4j.design) and that page's address and
+  the date read. The Tailwind theme and the PixiJS scene both read this module, so the shell and the scene share
+  one set of colors. Which color plays which role (outcome, refusal, craft, take-back, goal reached), whether the
+  backdrop is dark or light, and the contrast checks are set when the page is specified.
+- **Fonts: bundled.** Pixelify Sans for large text, Jersey 10 for the score numerals, and Fira Code for small text.
+  The font files are bundled with the build.
+- **Sprites: generated.** Each item name hashes to a small symmetric sprite, generated into a texture at run time, so
+  no art is shipped per item. No asset is fetched from the network.
 - **Separation.** The code divides by concern, so each part can be read and reviewed alone: the contract client (the
   catalog and bundles), the view state (selection, grouping, sorting, filtering), the shell components, the scene,
   the sprite generator, and the assets. The first mock is a visual reference and is not ported.
@@ -159,6 +164,9 @@ process serves and what a static host holds.
   roles are one experiment's vocabulary.
 - **A hand-built page with no framework or build step**, as the mock is. Rejected for the implementation: it kept
   every concern in one file, and several views plus assets would multiply that.
+- **The Neo4j design-system package and its Tailwind preset** (`@neo4j-ndl/base`). Rejected: it is licensed
+  GPL-3.0 and this repository declares no license, it ties the build to a version of someone else's tokens, and it
+  brings fonts and themes the viewer does not use. The brand palette is transcribed into a local module instead.
 - **A heavier shell framework (React or Vue).** Rejected: more runtime and ecosystem than a read-only viewer needs;
   Svelte compiles to small output and has transitions built in. A no-build shell (Preact with htm, Lit) was also
   weighed, and a build step was accepted instead.
@@ -180,6 +188,9 @@ process serves and what a static host holds.
 - **A build step and new dependencies.** Svelte, PixiJS and Vite join the repository's dependencies, with a
   second TypeScript configuration for the browser, and CI builds the page. The server and the engine gain none.
   Pixel snapshots of the scene are practical, since frames are deterministic.
+- **Tailwind and a local palette.** Tailwind and its Vite integration join the dependencies. The palette is copied
+  from a page the repository does not control, so it can drift from the brand's; the module records where and when
+  it was read. Three fonts are bundled, and their licenses are checked when the files are added.
 - **WebGL contexts are scarce**, so the thumbnails for tiles and rows must be images and not live scenes.
 - **Two suppliers share one contract**, which has to be kept stable. The bundle manifest extension is additive. It
   changes the export code and the privacy test that pins what a bundle holds, and bundles exported earlier lack the
