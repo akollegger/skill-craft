@@ -1,0 +1,265 @@
+{
+  "name": "workshop",
+  "description": "A small workshop with a single crafting table.",
+  "grid": {
+    "rows": 3,
+    "cols": 3
+  },
+  "hints": "exact",
+  "stock": {
+    "oak_log": 3,
+    "cobblestone": 6,
+    "iron_ingot": 6
+  },
+  "items": [
+    {
+      "id": "oak_log",
+      "description": "A raw material."
+    },
+    {
+      "id": "cobblestone",
+      "description": "A raw material."
+    },
+    {
+      "id": "iron_ingot",
+      "description": "A raw material."
+    },
+    {
+      "id": "oak_planks",
+      "description": "A made item."
+    },
+    {
+      "id": "stick",
+      "description": "A made item."
+    },
+    {
+      "id": "crafting_table",
+      "description": "A made item."
+    },
+    {
+      "id": "oak_slab",
+      "description": "A made item."
+    },
+    {
+      "id": "wooden_pickaxe",
+      "description": "A made item."
+    },
+    {
+      "id": "stone_pickaxe",
+      "description": "A made item."
+    },
+    {
+      "id": "iron_pickaxe",
+      "description": "A made item."
+    },
+    {
+      "id": "wooden_sword",
+      "description": "A made item."
+    },
+    {
+      "id": "stone_sword",
+      "description": "A made item."
+    },
+    {
+      "id": "iron_sword",
+      "description": "A made item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r-planks",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "oak_log",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "oak_planks",
+        "qty": 4
+      }
+    },
+    {
+      "id": "r-sticks",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "oak_planks"
+        ],
+        [
+          "oak_planks"
+        ]
+      ],
+      "output": {
+        "item": "stick",
+        "qty": 4
+      }
+    },
+    {
+      "id": "r-crafting_table",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "oak_planks",
+          "oak_planks"
+        ],
+        [
+          "oak_planks",
+          "oak_planks"
+        ]
+      ],
+      "output": {
+        "item": "crafting_table",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-slab",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "oak_planks",
+          "oak_planks",
+          "oak_planks"
+        ]
+      ],
+      "output": {
+        "item": "oak_slab",
+        "qty": 6
+      }
+    },
+    {
+      "id": "r-wooden_pickaxe",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "oak_planks",
+          "oak_planks",
+          "oak_planks"
+        ],
+        [
+          null,
+          "stick",
+          null
+        ],
+        [
+          null,
+          "stick",
+          null
+        ]
+      ],
+      "output": {
+        "item": "wooden_pickaxe",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-wooden_sword",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "oak_planks"
+        ],
+        [
+          "oak_planks"
+        ],
+        [
+          "stick"
+        ]
+      ],
+      "output": {
+        "item": "wooden_sword",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-stone_pickaxe",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "cobblestone",
+          "cobblestone",
+          "cobblestone"
+        ],
+        [
+          null,
+          "stick",
+          null
+        ],
+        [
+          null,
+          "stick",
+          null
+        ]
+      ],
+      "output": {
+        "item": "stone_pickaxe",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-stone_sword",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "cobblestone"
+        ],
+        [
+          "cobblestone"
+        ],
+        [
+          "stick"
+        ]
+      ],
+      "output": {
+        "item": "stone_sword",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-iron_pickaxe",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "iron_ingot",
+          "iron_ingot",
+          "iron_ingot"
+        ],
+        [
+          null,
+          "stick",
+          null
+        ],
+        [
+          null,
+          "stick",
+          null
+        ]
+      ],
+      "output": {
+        "item": "iron_pickaxe",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r-iron_sword",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "iron_ingot"
+        ],
+        [
+          "iron_ingot"
+        ],
+        [
+          "stick"
+        ]
+      ],
+      "output": {
+        "item": "iron_sword",
+        "qty": 1
+      }
+    }
+  ]
+}

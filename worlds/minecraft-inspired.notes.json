@@ -1,0 +1,24 @@
+{
+  "priorFit": "faithful",
+  "inspiration": "Minecraft's crafting",
+  "recipes": {
+    "r-planks": "Planks from a log: one log makes four planks.",
+    "r-sticks": "Sticks from two planks stacked in a column: four sticks.",
+    "r-crafting_table": "A crafting table from a two-by-two square of planks.",
+    "r-slab": "Slabs from a row of three planks: six slabs.",
+    "r-wooden_pickaxe": "A pickaxe: three planks across the top and two sticks down the centre.",
+    "r-stone_pickaxe": "A pickaxe: three cobblestone across the top and two sticks down the centre.",
+    "r-iron_pickaxe": "A pickaxe: three iron ingots across the top and two sticks down the centre.",
+    "r-wooden_sword": "A sword: two planks in a column over a stick.",
+    "r-stone_sword": "A sword: two cobblestone in a column over a stick.",
+    "r-iron_sword": "A sword: two iron ingots in a column over a stick."
+  },
+  "omissions": [
+    "Gathering raw materials: the stock is given",
+    "Smelting and fuel",
+    "Tool durability and enchanting",
+    "Recipes whose shape the game accepts mirrored (axes and hoes)",
+    "Recipes that accept any of several materials: oak stands for every kind of wood",
+    "Recipes that differ between versions of the game"
+  ]
+}

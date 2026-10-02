@@ -11,7 +11,7 @@ const dirs = ["worlds", "worlds/generated", "test/fixtures/valid"];
 const worldFiles = dirs.flatMap((dir) =>
   existsSync(dir)
     ? readdirSync(dir)
-        .filter((f) => f.endsWith(".json") && !f.endsWith(".goals.json"))
+        .filter((f) => f.endsWith(".json") && !f.endsWith(".goals.json") && !f.endsWith(".notes.json"))
         .sort()
         .map((f) => join(dir, f))
     : [],
@@ -19,7 +19,7 @@ const worldFiles = dirs.flatMap((dir) =>
 
 describe("every committed world (FR-021)", () => {
   it("finds worlds to check", () => {
-    expect(worldFiles.length).toBeGreaterThanOrEqual(11);
+    expect(worldFiles.length).toBeGreaterThanOrEqual(12);
   });
 
   for (const path of worldFiles) {

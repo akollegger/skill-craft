@@ -1,0 +1,265 @@
+{
+  "name": "bouplae-7",
+  "description": "An unfamiliar workshop. Find out what can be made.",
+  "grid": {
+    "rows": 3,
+    "cols": 3
+  },
+  "hints": "exact",
+  "stock": {
+    "doudrur": 3,
+    "lugli": 6,
+    "tepitil": 6
+  },
+  "items": [
+    {
+      "id": "doudrur",
+      "description": "A raw material."
+    },
+    {
+      "id": "lugli",
+      "description": "A raw material."
+    },
+    {
+      "id": "tepitil",
+      "description": "A raw material."
+    },
+    {
+      "id": "thegen",
+      "description": "A made item."
+    },
+    {
+      "id": "glavruzael",
+      "description": "A made item."
+    },
+    {
+      "id": "vriobeno",
+      "description": "A made item."
+    },
+    {
+      "id": "glirol",
+      "description": "A made item."
+    },
+    {
+      "id": "drinefoun",
+      "description": "A made item."
+    },
+    {
+      "id": "zibael",
+      "description": "A made item."
+    },
+    {
+      "id": "plaevratael",
+      "description": "A made item."
+    },
+    {
+      "id": "pluzhouvio",
+      "description": "A made item."
+    },
+    {
+      "id": "naeviozhum",
+      "description": "A made item."
+    },
+    {
+      "id": "braevin",
+      "description": "A made item."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "r1-thegen",
+      "kind": "shapeless",
+      "inputs": [
+        {
+          "item": "doudrur",
+          "qty": 1
+        }
+      ],
+      "output": {
+        "item": "thegen",
+        "qty": 4
+      }
+    },
+    {
+      "id": "r2-glavruzael",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "thegen"
+        ],
+        [
+          "thegen"
+        ]
+      ],
+      "output": {
+        "item": "glavruzael",
+        "qty": 4
+      }
+    },
+    {
+      "id": "r3-vriobeno",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "thegen",
+          "thegen"
+        ],
+        [
+          "thegen",
+          "thegen"
+        ]
+      ],
+      "output": {
+        "item": "vriobeno",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r4-glirol",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "thegen",
+          "thegen",
+          "thegen"
+        ]
+      ],
+      "output": {
+        "item": "glirol",
+        "qty": 6
+      }
+    },
+    {
+      "id": "r5-drinefoun",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "thegen",
+          "thegen",
+          "thegen"
+        ],
+        [
+          null,
+          "glavruzael",
+          null
+        ],
+        [
+          null,
+          "glavruzael",
+          null
+        ]
+      ],
+      "output": {
+        "item": "drinefoun",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r6-pluzhouvio",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "thegen"
+        ],
+        [
+          "thegen"
+        ],
+        [
+          "glavruzael"
+        ]
+      ],
+      "output": {
+        "item": "pluzhouvio",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r7-zibael",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "lugli",
+          "lugli",
+          "lugli"
+        ],
+        [
+          null,
+          "glavruzael",
+          null
+        ],
+        [
+          null,
+          "glavruzael",
+          null
+        ]
+      ],
+      "output": {
+        "item": "zibael",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r8-naeviozhum",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "lugli"
+        ],
+        [
+          "lugli"
+        ],
+        [
+          "glavruzael"
+        ]
+      ],
+      "output": {
+        "item": "naeviozhum",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r9-plaevratael",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "tepitil",
+          "tepitil",
+          "tepitil"
+        ],
+        [
+          null,
+          "glavruzael",
+          null
+        ],
+        [
+          null,
+          "glavruzael",
+          null
+        ]
+      ],
+      "output": {
+        "item": "plaevratael",
+        "qty": 1
+      }
+    },
+    {
+      "id": "r10-braevin",
+      "kind": "shaped",
+      "pattern": [
+        [
+          "tepitil"
+        ],
+        [
+          "tepitil"
+        ],
+        [
+          "glavruzael"
+        ]
+      ],
+      "output": {
+        "item": "braevin",
+        "qty": 1
+      }
+    }
+  ]
+}

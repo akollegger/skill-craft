@@ -64,7 +64,7 @@ SIM_WORLD=worlds/generated/forge-7.json pnpm exec tsx src/mcp/server.ts
 SIM_WORLD=worlds/forge.json SIM_RUN_LOG=runs/run-001.jsonl pnpm exec tsx src/mcp/server.ts
 ```
 
-- **Worlds** are JSON files (`worlds/forge.json` is the base). A world sets the table size, the
+- **Worlds** are JSON files (`worlds/forge.json` is the base; see [worlds/README.md](worlds/README.md) for the sibling files, the notes file that declares a world's prior fit, and the faithful world's credit). A world sets the table size, the
   starting stock, the items, the recipes (shapeless or shaped) and a hint level. It holds no goals;
   each committed world has a sibling `<name>.goals.json` for tests and the solver.
 - **Best run.** `pnpm dev scripts/solve.ts --world worlds/forge.json --goals-file worlds/forge.goals.json`
@@ -90,6 +90,8 @@ pnpm dev scripts/run-agent.ts --goal glirol --runs 3 --dry-run
 # Run it: three attempts at the warm-up goal on a generated world, 40 turns each
 pnpm dev scripts/run-agent.ts --goal glirol --runs 3 --max-turns 40 --label baseline
 ```
+
+`--prompt-note <text>` adds one fixed sentence to the end of the prompt (for an arm that points at a skill). Every score and summary names the world's prior fit, taken from its notes file (`undeclared` when there is none). `scripts/report.ts` turns run folders into the results table of an experiment ([quickstart](specs/003-faithful-minecraft-world/quickstart.md)).
 
 Each run gets a folder under `runs/<label>/` (gitignored) with `prompt.txt`, `mcp.json`, `run.jsonl`
 (the server's log, with no clock), `trace.jsonl` (model requests and tool calls with times and tokens,
@@ -149,7 +151,7 @@ provides them.
 | `worlds/` | World definitions and goals (JSON); `worlds/generated/` holds re-skinned examples |
 | `src/harness/` | Interim run harness: prompt, SDK options and driver, errors, the command, export and bundle reader |
 | `src/trace/` | Run measurement: the recorder, trace lines, and joining the trace to the run log |
-| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `score.ts`, `export-run.ts` |
+| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `report.ts`, `score.ts`, `export-run.ts` |
 | `test/` | vitest suites, plus `fixtures/valid` (ten worlds) and `fixtures/invalid` (sixteen broken worlds) |
 | `design/adr/` | Architecture Decision Records and their index |
 | `design/notes/` | Exploratory design notes that may become ADRs |

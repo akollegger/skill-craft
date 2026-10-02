@@ -29,7 +29,8 @@ pnpm dev <file>    # run a TypeScript file with tsx
 Scripts (run with `pnpm dev`): `scripts/solve.ts` (best run for a goal), `scripts/make-world.ts`
 (re-skinned world plus goals), `scripts/smoke.ts` (replay a best run over stdio),
 `scripts/run-agent.ts` (Claude Code runs through the Claude Agent SDK, scored and measured; `--dry-run`
-spends nothing), `scripts/score.ts` (score run logs against the best run) and `scripts/export-run.ts`
+spends nothing; `--prompt-note` adds one fixed sentence to the prompt), `scripts/report.ts` (run folders to the
+experiment results table), `scripts/score.ts` (score run logs against the best run) and `scripts/export-run.ts`
 (export a finished run as a replay bundle). The server runs as
 `SIM_WORLD=<world.json> [SIM_RUN_LOG=<fresh file>] pnpm exec tsx src/mcp/server.ts`.
 
@@ -106,11 +107,12 @@ zebra-space project with the RFC requirement removed.
 |---|---|
 | `src/sim/` | Schema, matcher, engine, run log, solver, loader, goals, re-skinner; no MCP dependency |
 | `src/mcp/server.ts` | MCP server exposing a world to an agent (`SIM_WORLD` selects the file, `SIM_RUN_LOG` the log) |
-| `worlds/` | World and goals JSON files; `worlds/generated/` holds re-skinned examples |
+| `worlds/` | World, goals and notes JSON files (the notes file declares the world's prior fit); `worlds/README.md` explains them and credits the faithful world's inspiration; `worlds/generated/` holds re-skinned examples |
 | `src/harness/` | Interim run harness (prompt, SDK options and driver, errors, the command, export, bundle reader) |
 | `src/trace/` | Run measurement: recorder, trace lines, join of trace to run log; no dependency on the SDK or `src/mcp` |
-| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `score.ts`, `export-run.ts` |
-| `spikes/` | Fixtures from exploratory spikes (for example the skill NAMS distilled in the pilot); not part of the product |
+| `src/sim/notes.ts` | The world notes file: prior fit, per-recipe notes and omissions; never imported by the engine or server |
+| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `report.ts`, `score.ts`, `export-run.ts` |
+| `spikes/` | Fixtures and helper scripts from exploratory spikes (the pilot's distilled skill, the REST-ingest script, the experiment workspace helpers, the faithful-world skills); not part of the product |
 | `test/` | vitest suites; `fixtures/valid` and `fixtures/invalid` hold the world fixtures |
 | `design/adr/` | ADRs and index |
 | `design/notes/` | Exploratory notes that may become ADRs |
@@ -132,7 +134,8 @@ zebra-space project with the RFC requirement removed.
   for world generation only.
 - `run-agent.ts` costs real Claude usage. Use `--dry-run` first, keep `--runs` small, and never
   point it at `worlds/forge.json` (neutral names). Built-in tools stay removed so the agent cannot
-  read world files. `--record` sends the session to NAMS; only pass it when asked.
+  read world files. `--record` sends the session to NAMS; only pass it when asked. A world with no notes
+  file is stamped `undeclared` in every score and summary; an experimental world carries one.
 - The Claude Agent SDK is imported only in `src/harness/sdk-driver.ts`; everything else talks to the
   `AgentDriver` seam, and tests use the scripted player in `test/helpers/fake-player.ts`.
 - Time, tokens and cost live in `trace.jsonl` and `score.json`, measured by the harness. Never add a clock

@@ -1,0 +1,81 @@
+{
+  "provenanceId": "prov_run-1023909f-14c3-4bca-8477-05d7abc6e0d9",
+  "distillationRun": "run-1023909f-14c3-4bca-8477-05d7abc6e0d9",
+  "groundingScore": 1,
+  "digest": "sha256:1d39f4bcf05ea8c2e34def3b11d52909bce66dae0c1f17357d633bf160c319d8",
+  "procedureFormat": "prose",
+  "claims": [
+    {
+      "claimId": "c-001",
+      "component": "procedure",
+      "text": "Begin an unfamiliar crafting task by running the craft help operation to discover the available interface before committing materials.",
+      "groundedIn": [
+        "5abd8179-d362-442c-ae36-31a248d58d97",
+        "3ba0810c-f27e-4664-a40a-3a70fd973798"
+      ]
+    },
+    {
+      "claimId": "c-002",
+      "component": "procedure",
+      "text": "Use inventory checks and table-placement operations to inspect or prepare the crafting state before invoking the irreversible craft operation.",
+      "groundedIn": [
+        "c528a938-d1f1-44ed-b60e-51dba4c3ce0a",
+        "9d930652-39ca-40c2-8da4-887099063b93",
+        "c74ddb50-a900-4ebf-9233-231e56e57f2a",
+        "70768165-d4c5-4002-b9b3-feab8e8b6572"
+      ]
+    },
+    {
+      "claimId": "c-003",
+      "component": "procedure",
+      "text": "Invoke the craft operation only after the table is prepared, then check inventory to confirm that the target object is being held.",
+      "groundedIn": [
+        "ff666652-6098-4adc-a0ec-57230524d0e7",
+        "9881401f-ee83-4c24-9ba3-3c13e2aa16ba",
+        "87dd8d70-d58e-42d8-b184-71eaaf74fc70",
+        "d5850e73-de2a-479a-b539-029b7f9bc716"
+      ]
+    },
+    {
+      "claimId": "c-004",
+      "component": "domain_model",
+      "text": "The stone_pickaxe is the target object that must be crafted and held before the task is complete.",
+      "groundedIn": [
+        "a4e68d89-3605-4aa0-9dc2-89e38e25e0de",
+        "81aaa2b5-4fb8-4ac6-98b8-9a2161a181cc"
+      ]
+    },
+    {
+      "claimId": "c-005",
+      "component": "domain_model",
+      "text": "The craft operation is irreversible and consumes whatever materials are currently on the table, so exploratory state checks should precede the final craft.",
+      "groundedIn": [
+        "cd12829f-8169-4f06-be33-3d181296d727",
+        "e095f91c-8464-49e1-a050-b4834647f264",
+        "81aaa2b5-4fb8-4ac6-98b8-9a2161a181cc"
+      ]
+    },
+    {
+      "claimId": "c-006",
+      "component": "exemplar",
+      "text": "In the unfamiliar-workshop scenario, the agent successfully used the craft tools to craft and hold a stone_pickaxe, then reported completion in one line.",
+      "groundedIn": [
+        "81aaa2b5-4fb8-4ac6-98b8-9a2161a181cc",
+        "1be49a50-2670-4b5c-9c0f-9136ef499cd0",
+        "3ba0810c-f27e-4664-a40a-3a70fd973798",
+        "ff666652-6098-4adc-a0ec-57230524d0e7"
+      ]
+    },
+    {
+      "claimId": "c-007",
+      "component": "success_criteria",
+      "text": "Treat the task as complete only when inventory verification confirms that one stone_pickaxe is held; report that result briefly and stop.",
+      "groundedIn": [
+        "9d930652-39ca-40c2-8da4-887099063b93",
+        "1be49a50-2670-4b5c-9c0f-9136ef499cd0",
+        "d27d6cc4-409a-4a8e-ad86-86552b577309"
+      ]
+    }
+  ],
+  "steps": null
+}

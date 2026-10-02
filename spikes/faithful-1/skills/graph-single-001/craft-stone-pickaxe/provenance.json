@@ -1,0 +1,118 @@
+{
+  "provenanceId": "prov_run-116b0560-21df-4133-8f3e-13ecb1c6b3b2",
+  "distillationRun": "run-116b0560-21df-4133-8f3e-13ecb1c6b3b2",
+  "groundingScore": 1,
+  "digest": "sha256:b8a217e4599bbac4b4f96cb59edc60f2de50b5fa994d6f643aaa65b95d2be2f9",
+  "procedureFormat": "graph",
+  "claims": [
+    {
+      "claimId": "c-005",
+      "component": "domain_model",
+      "text": "A crafting table is the workspace surface where materials are arranged and consumed by the craft operation.",
+      "groundedIn": [
+        "7ef41050-f32a-4218-ace9-e0368c11167a",
+        "cd12829f-8169-4f06-be33-3d181296d727"
+      ]
+    },
+    {
+      "claimId": "c-006",
+      "component": "domain_model",
+      "text": "The craft operation is an irreversible action that uses the current contents of the table.",
+      "groundedIn": [
+        "cd12829f-8169-4f06-be33-3d181296d727",
+        "e095f91c-8464-49e1-a050-b4834647f264"
+      ]
+    },
+    {
+      "claimId": "c-007",
+      "component": "exemplar",
+      "text": "In the unfamiliar-workshop task, the agent used the craft tools, obtained the stone_pickaxe, announced possession in one line, and stopped.",
+      "groundedIn": [
+        "1be49a50-2670-4b5c-9c0f-9136ef499cd0"
+      ]
+    },
+    {
+      "claimId": "c-008",
+      "component": "success_criteria",
+      "text": "The procedure is complete when the target stone_pickaxe is held, after which the agent should report completion briefly and stop.",
+      "groundedIn": [
+        "a4e68d89-3605-4aa0-9dc2-89e38e25e0de",
+        "1be49a50-2670-4b5c-9c0f-9136ef499cd0",
+        "d27d6cc4-409a-4a8e-ad86-86552b577309"
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "id": "step-001",
+      "kind": "script",
+      "tool": "mcp__craft__help",
+      "name": "Read crafting help",
+      "branch": "seq",
+      "dependsOn": [],
+      "groundedIn": [
+        "5abd8179-d362-442c-ae36-31a248d58d97",
+        "3ba0810c-f27e-4664-a40a-3a70fd973798",
+        "0b5c86e7-55ea-481b-a731-6d3f384f2f9d",
+        "22961bd3-9286-4bf7-a007-1890c5581a3a"
+      ]
+    },
+    {
+      "id": "step-002",
+      "kind": "script",
+      "tool": "mcp__craft__inventory",
+      "name": "Inspect inventory",
+      "branch": "seq",
+      "dependsOn": [
+        "step-001"
+      ],
+      "groundedIn": [
+        "c528a938-d1f1-44ed-b60e-51dba4c3ce0a",
+        "9d930652-39ca-40c2-8da4-887099063b93",
+        "0b5c86e7-55ea-481b-a731-6d3f384f2f9d",
+        "f3d83edd-f951-4451-8860-17d2fb9df161"
+      ]
+    },
+    {
+      "id": "step-003",
+      "kind": "script",
+      "tool": "mcp__craft__place",
+      "name": "Arrange materials",
+      "branch": "seq",
+      "dependsOn": [
+        "step-002"
+      ],
+      "groundedIn": [
+        "c74ddb50-a900-4ebf-9233-231e56e57f2a",
+        "70768165-d4c5-4002-b9b3-feab8e8b6572",
+        "33160d0b-ebb4-4b61-b402-06673feaf3aa",
+        "2ec4e29d-8082-44f3-86fa-9357f91cbf02",
+        "391c4f13-c4d2-42a2-85d3-55a8c49ee5e9",
+        "bb5ed783-2c74-4d12-bcce-160aa335e19d",
+        "fa2052d7-86c6-4909-9acb-3f6bea85373e",
+        "355d3167-5b82-4df6-bd67-fc2849f7a61a",
+        "b21f4658-4b0b-452d-8847-1bf33e047742",
+        "0b5c86e7-55ea-481b-a731-6d3f384f2f9d",
+        "9c2dc97a-62a5-4c21-a61a-bff6af383cd3"
+      ]
+    },
+    {
+      "id": "step-004",
+      "kind": "script",
+      "tool": "mcp__craft__craft",
+      "name": "Craft the pickaxe",
+      "branch": "seq",
+      "dependsOn": [
+        "step-003"
+      ],
+      "groundedIn": [
+        "ff666652-6098-4adc-a0ec-57230524d0e7",
+        "9881401f-ee83-4c24-9ba3-3c13e2aa16ba",
+        "87dd8d70-d58e-42d8-b184-71eaaf74fc70",
+        "da02b272-d61c-414c-8089-e9c153434879",
+        "0b5c86e7-55ea-481b-a731-6d3f384f2f9d",
+        "36d63162-0927-45c4-ba15-687d55724f74"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.2 → 1.1.0 (Principle III: experimental worlds declare a prior fit instead of
+- Version change: 1.1.0 → 1.1.1 (Principle III: a faithful world names its source and credits it; a
+  version is named only where the source's recipes differ between versions)
+- Earlier: 1.0.2 → 1.1.0 (Principle III: experimental worlds declare a prior fit instead of
   always using invented names)
 - Modified principles: III. Discovery Over Disclosure
 - Earlier: (unratified template) → 1.0.2 (goals are not part of a world; Principle II
@@ -49,8 +51,8 @@ existing knowledge predicts the world's actual recipes:
 
 - **invented**: names and descriptions carry no meaning, so no prior applies beyond the game
   mechanic;
-- **faithful**: the vocabulary and recipes of a well-known source, with the source and its version
-  named;
+- **faithful**: the vocabulary and recipes of a well-known source, with the source named and credited
+  as the inspiration, and a version named only where the source's recipes differ between versions;
 - **perturbed**: a faithful vocabulary with a stated list of deviations from its source.
 
 Results MUST name the prior fit of the world they come from. A faithful world is a control: it
@@ -124,4 +126,4 @@ The constitution is versioned semantically. MAJOR: a principle is removed or red
 incompatibly. MINOR: a principle or section is added or materially expanded. PATCH:
 clarifications and wording fixes.
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-10-01
+**Version**: 1.1.1 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-10-01

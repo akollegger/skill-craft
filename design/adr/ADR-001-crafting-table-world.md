@@ -256,3 +256,8 @@ Section 2 was updated to match.
   produce only invented, idiosyncratic variants (`--perturb` always renames and nudges single
   recipes); keeping names and applying a rule need generator work, which goes through a spec.
   Constitution Principle III (version 1.1.0) and `AGENTS.md` are updated to match.
+- **2026-10-01, no game version pinned.** The faithful base does not name a game edition or version. It
+  uses crafting that is the same across the versions commonly played, credits the game as inspiration
+  in documentation beside the world (never in text the agent sees), and claims no affiliation with its
+  owner. A version is named only for a recipe that differs between versions. This replaces "with the
+  game version named" in the entry above. Constitution Principle III is updated to match (1.1.1).
