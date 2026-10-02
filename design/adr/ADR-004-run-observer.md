@@ -15,19 +15,19 @@ trace of model requests and tool calls with times and tokens, the prompt, and th
 server. Reading what such a run did means replaying its calls by hand, and comparing two runs means doing that
 twice. The state of the table after each call can be derived from the log, but nothing shows it. The runs on disk
 differ enough that the difference matters: a model finishing a goal in 11 calls, another failing the same goal in
-166 to 223, a run with a skill installed that loaded it after 47 calls, a run that gave up. JSON hides that, and it
+166 to 223, a run with a skill (a folder of instructions an agent can load) installed that loaded it after 47 calls, a run that gave up. JSON hides that, and it
 is not pleasant to look at.
 
 The input is also unconstrained. A folder may hold runs from several experiments and several worlds, finished and
 unfinished runs, runs from older versions of the harness that lack fields newer ones have, and replay bundles
 exported for sharing. The conditions that distinguish runs keep changing as experiments change: the world's prior
-fit (invented, perturbed or faithful), whether a skill was installed and loaded, an added prompt sentence, the
+fit (how far a model's existing knowledge predicts the world's recipes: invented, perturbed or faithful), whether a skill was installed and loaded, an added prompt sentence, the
 model. A viewer that hard-codes one experiment's vocabulary is out of date after the next experiment.
 
 Several pieces exist. `deriveFrames` replays a log on its world into one frame per call (the table, what is held,
 what `craft` would make). A replay bundle packages frames, trace and result for sharing, without the world file. The
 score records the world's prior fit, any prompt sentence, and a skill's name, fingerprint, whether the agent loaded
-it and after how many calls. Two gaps follow. A bundle's manifest does not yet carry the prior fit, the prompt
+it and after how many calls. Two gaps remain. A bundle's manifest does not yet carry the prior fit, the prompt
 sentence or the skill, so a viewer fed only bundles cannot show them. And a first mock exists: a single 60 KB HTML
 file with six runs inlined, drawn in a pixel style, with live-tailing features and fonts fetched from the network.
 It shows what the table view and the picker could look like. It cannot read a folder, and its data, state, layout,
@@ -65,7 +65,7 @@ run folder or a bundle already holds:
 |---|---|
 | Identity | label (the experiment folder) and run number; world name and table size; goal item and quantity |
 | Conditions | model requested and model that ran; the world's prior fit; the added prompt sentence, if any; the installed skill's name, whether the agent loaded it, and after how many calls |
-| Result | outcome (reached, gave up, out of turns, error, unfinished); action calls, extra calls over the best run, crafts, failed crafts, refusals |
+| Result | outcome (reached, gave up, out of turns, error, unfinished); action calls, extra calls over the best run (the fewest calls that reach the goal), crafts, failed crafts, refusals |
 | Cost | duration, tokens of each kind, and cost as a run total; whether the trace matched the log |
 
 An attribute a run lacks is absent, not guessed. Older runs without a prior fit or skill are shown without those
@@ -80,8 +80,9 @@ The page reads two things over a stable, read-only contract:
 
 The page uses relative addresses and no other source, so it runs unchanged against either supplier:
 
-- **A local process** pointed at a folder of runs. It finds run folders (a label folder holding numbered run
-  folders with a `score.json`) and bundle folders (holding a `bundle.json`), builds the catalog, derives frames for
+- **A local process** pointed at a folder of runs. It scans that folder recursively for run folders (a label folder
+  holding numbered run folders with a `score.json`) and bundle folders (holding a `bundle.json`), so the folder may be
+  a collection of experiments, one label folder or a single run. It builds the catalog, derives frames for
   run folders with `deriveFrames` on demand, and serves the page, the catalog and the bundles on `127.0.0.1`. It
   serves nothing outside what it derives from the folder.
 - **A static host** holding the page, pre-exported bundles and a catalog file generated from them. This is the
@@ -124,7 +125,7 @@ process serves and what a static host holds.
 
 - **Bundler: Vite** with the Svelte plugin. It builds the TypeScript, Svelte and PixiJS code and the bundled fonts
   into the static files, and provides a dev server with hot reload for iterating on the page.
-- **Application shell: Svelte.** The picker, group, sort and filter, the open view's panels, keyboard handling and
+- **Application shell: Svelte**, without SvelteKit, as a single-page app. The picker, group, sort and filter, the open view's panels, keyboard handling and
   the layout of two runs side by side are Svelte components.
 - **Table scene: PixiJS.** The crafting-table view (the board, items, output slot, hotbar, and the effects for
   placing, crafting, refusing and finishing) is a PixiJS scene, drawn at the native pixel size and scaled by whole
@@ -167,13 +168,18 @@ process serves and what a static host holds.
 - **The Neo4j design-system package and its Tailwind preset** (`@neo4j-ndl/base`). Rejected: it is licensed
   GPL-3.0 and this repository declares no license, it ties the build to a version of someone else's tokens, and it
   brings fonts and themes the viewer does not use. The brand palette is transcribed into a local module instead.
+- **esbuild alone as the bundler.** Rejected: it bundles the TypeScript but has no dev server or hot reload, and the
+  Svelte and Tailwind integrations would need wiring by hand; Vite provides them.
+- **Svelte's scoped styles or plain CSS for the shell.** Rejected: Tailwind is portable, since its utilities and
+  theme carry to any component without a style architecture to maintain, and easier to customize, since the theme
+  is one local palette module.
 - **A heavier shell framework (React or Vue).** Rejected: more runtime and ecosystem than a read-only viewer needs;
   Svelte compiles to small output and has transitions built in. A no-build shell (Preact with htm, Lit) was also
   weighed, and a build step was accepted instead.
 - **Canvas 2D, DOM and CSS, or SVG for the table scene.** Rejected for the scene: each is workable at this size, but
   the effects (drops, flashes, sparkles, confetti, and any later filters) are what a scene graph, a ticker and a
-  particle system exist for, and they grow with the views. DOM keeps accessibility for free, which the shell and the
-  DOM mirrors of score and tape cover.
+  particle system exist for, and they grow with the views. DOM's built-in accessibility is replaced by DOM mirrors of the
+  score and the tape.
 - **A game framework (Phaser, Kaplay).** Rejected: tweens, input and audio the viewer does not use, in a heavier
   runtime than a renderer alone.
 - **A fixed hierarchy (world, goal, run) as the navigation.** Rejected as the only structure: it fits the common case
@@ -182,23 +188,27 @@ process serves and what a static host holds.
 ## 4. Consequences
 
 - **The first mock is the visual reference and not code to port.** Its palette, type, sprite idea, table layout,
-  tape, picker layouts and motion carry over as design, and are rewritten into the separate parts of 2.6. Its
+  tape, picker layouts and motion carry over as design, and are rewritten as separate parts (the contract client, view state, shell, scene, sprite
+  generator and assets). Its
   inlined data, hard-coded sorts and groups, live badge, thinking bubble, log tailing and network fonts do not.
   Left unpolished, it leaves the data plumbing and the group, sort and filter model to be built.
 - **A build step and new dependencies.** Svelte, PixiJS and Vite join the repository's dependencies, with a
   second TypeScript configuration for the browser, and CI builds the page. The server and the engine gain none.
-  Pixel snapshots of the scene are practical, since frames are deterministic.
+  Pixel snapshots of the scene are likely practical with nearest-neighbour sampling and no filters, since frames are
+  deterministic; that is to be confirmed on CI's renderer, because WebGL output can differ across GPUs.
+  Running the observer needs a built page or the Vite dev server, and the local process finds the build output.
 - **Tailwind and a local palette.** Tailwind and its Vite integration join the dependencies. The palette is copied
   from a page the repository does not control, so it can drift from the brand's; the module records where and when
-  it was read. Three fonts are bundled, and their licenses are checked when the files are added.
+  it was read. Three fonts are bundled, and the licenses of the fonts and of Svelte, PixiJS, Vite and Tailwind are
+  checked when they are added.
 - **WebGL contexts are scarce**, so the thumbnails for tiles and rows must be images and not live scenes.
 - **Two suppliers share one contract**, which has to be kept stable. The bundle manifest extension is additive. It
   changes the export code and the privacy test that pins what a bundle holds, and bundles exported earlier lack the
   new attributes.
 - **A raw run needs its world file**, as a bundle needs none. A folder whose run records name worlds that have moved
   opens only as bundles.
-- **Scale.** The catalog is small per run and frames load on demand, so hundreds of runs are listable. Whether
-  group, sort and filter stay usable at that size is untested.
+- **Scale.** The catalog is small per run and frames load on demand, so hundreds of runs should be listable.
+  Whether group, sort and filter stay usable at that size is untested.
 - **Disclosure.** Frames reveal every recipe a run exercised, so opening runs shows how crafts work. Bundles of
   faithful-world runs carry Minecraft-inspired item names, and ADR-003's check of usage terms applies before any
   such bundle is published. The local process binds to `127.0.0.1` and serves only data derived from the chosen
@@ -208,7 +218,9 @@ process serves and what a static host holds.
     unfinished and unreadable runs, with tests;
   - the page: the picker (grid and list), group, sort and filter, the open view, comparison, skill markers and
     offline assets;
-  - exporting a whole folder as bundles plus a catalog for a static host, if it is wanted.
+  - exporting a whole folder as bundles plus a catalog for a static host, if it is wanted;
+  - updating `AGENTS.md` for the page's build, commands and dependencies, and an amendment to ADR-002 for the
+    bundle manifest's new attributes.
 
 **Not decided here:**
 
@@ -220,11 +232,15 @@ process serves and what a static host holds.
 - the exact shape of group, sort and filter, and how much of it to expose;
 - how two runs are chosen for comparison;
 - how the process is started and pointed at a folder;
+- how a run's id is formed and kept unique across folders and bundles, the attribute names and types, the shape of a
+  catalog entry and of an unreadable run's reason, and a version for the contract (all left to the spec);
+- the repository's own license, which the rejection of a GPL-3.0 package depends on;
 - whether bundle consumption and folder scanning ship together or in sequence;
 - whether an unfinished run could be opened to the point it reached.
 
 ## 5. Related
 
 - ADRs: [ADR-001](ADR-001-crafting-table-world.md) (the world, the run log), [ADR-002](ADR-002-client-otel-trace.md) (frames, trace, replay bundles, hosted viewing), [ADR-003](ADR-003-experiment-protocol.md) (the prior fit and the other conditions a run records).
+- Extends ADR-002 §2.6: the bundle manifest gains optional attributes (2.3). ADR-002 carries the matching amendment.
 - Design note: `design/notes/pixel-observer.md` (the scenarios, the settled scope and the first mock's visual language), with the mock in `design/notes/pixel-observer/mock/`.
 - Specs: _(populated automatically by the speckit ADR-link hook once `/speckit-specify` references this ADR)_

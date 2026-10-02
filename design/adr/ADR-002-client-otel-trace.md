@@ -197,3 +197,8 @@ mirror could be added later without changing the viewer.
   no longer use it: user settings stay out of every experiment run, and the harness records a finished run to
   NAMS afterward through the REST API, regenerating each tool output by replaying the run log. The
   measurement design here is unchanged.
+- **2026-10-02**: ADR-004 (the observer) extends §2.6. A replay bundle's manifest gains optional attributes so a
+  catalog of runs can be built from bundles alone: the world's prior fit, the added prompt sentence, and the
+  installed skill's name, whether the agent loaded it and after how many calls. The attributes are additive and
+  readers ignore fields they do not know, so earlier bundles stay valid; the bundle still holds no world file, raw
+  messages or agent text. The export code and the test that pins a bundle's contents change with it.
