@@ -78,10 +78,23 @@ Reading it with the ADR-003 rule (at most 1 success in 5 is a gap, at least 4 is
   goal set aside as held-out beforehand, is solved (5 of 5), so **transfer was unmeasurable** here.
 - Sonnet solved every faithful goal in 11 or 13 calls, the best runs, every time. Haiku's stone failures were
   runs of 166 to 223 calls in which it made planks but never sticks, in the two I read.
-- Route (escalating) and primary measure (repair) were declared after calibration and after the three stone
-  teacher runs, and before any NAMS write or arm trial. The route needs this: the gaps are found first.
+- Route (escalating) and primary measure (repair) were written to the summary after calibration **and after
+  the three stone teacher runs**, which is a deviation from the protocol (see "Protocol deviation" below).
+  Declaring them after calibration is inherent in the route: the gaps are found first.
 - The invented rows carry the faithful role labels (for example "gap stone_pickaxe"). They come from the
   faithful calibration and are only a mapping of goal names; every invented row is at the floor.
+
+## Protocol deviation
+
+The spec (FR-012) and the summary contract require the route, the primary measure and the roles to be written
+after calibration and **before any teacher or arm trial**. Here the three stone teacher runs were made first,
+right after calibration and on the goal that calibration had shown to be the gap, and the summary was written
+afterward. The roles were computed from the calibration trials only, and nothing in the teacher runs (Sonnet
+reached the goal at the best run each time) influenced them, but the order was not the protocol's. The
+experiment should therefore be read as a run of the staged protocol with that deviation, not as a clean
+instance of it. The consequence is limited: no skill arm ran, so no comparison depends on the declared route,
+and the faithful-against-invented bound comes from calibration alone. Repeating the teacher stage after
+declaration would cost about $0.10 and would not change the distillation finding.
 
 ## Faithful against invented
 

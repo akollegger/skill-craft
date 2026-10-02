@@ -88,7 +88,7 @@ Results are reported per prior fit and never pooled across fits. The first exper
 
 **Roles.** Goal roles come from calibration by the rule in 2.1 and are not named by the ADR or fixed by a spec in advance. A spec for an experiment names the goal set and the held-out goals, and the experiment's results decide which goals are gap goals and which are solved.
 
-**Routes.** An experiment declares its route in its summary before the first trial, and the arms and measures are the same for both:
+**Routes.** An experiment declares its route in its summary after calibration (which finds the gaps) and before its first teacher or arm trial, and the arms and measures are the same for both:
 
 - *Escalating*: the teacher is recorded on the gap goals only. The skill is specific to what the student could not do, and teacher cost is paid only for the gaps.
 - *Preemptive*: the teacher is recorded on a wider set of goals chosen in advance, whether or not the student fails them.
@@ -103,7 +103,7 @@ Results are reported per prior fit and never pooled across fits. The first exper
 - *No harm*: the solved goals. It shows whether the skill costs calls, time or success where the student already succeeds.
 - *Transfer*: the held-out goals. Only this measure shows that the skill generalizes beyond the goals it was built from.
 
-An experiment declares before its first trial which measure is primary: transfer where a held-out goal has room to improve, repair otherwise. A claim is repeated on a second world (another seed, or another recipe family) before it is stated.
+An experiment declares, after calibration and before its first teacher or arm trial, which measure is primary: transfer where a held-out goal has room to improve, repair otherwise. A claim is repeated on a second world (another seed, or another recipe family) before it is stated.
 
 ### 2.4 Isolation
 

@@ -43,8 +43,11 @@ Expected: the plan shows the prompt ending with the note, the prior fit `faithfu
 
 ## B. The experiments (spends usage; manual procedure)
 
-Write `runs/faithful-1/summary.json` first, from [contracts/experiment-summary.md](contracts/experiment-summary.md),
-with the turn budget, spend limit and trial counts. Do not change it after the first trial.
+Write `runs/faithful-1/summary.json` first, from [contracts/experiment-summary.md](contracts/experiment-summary.md).
+Some fields are fixed before calibration (the models, arms, prompt note, labels, calibration trial count, turn
+budget and spend limit) and some are added after calibration assigns the roles and before any teacher or arm
+trial (`route`, `primary`, `roles` and the teacher and arm trial counts). Once a teacher or arm trial has run,
+change nothing except `workspace` and `skill`, which are filled in as those steps happen.
 
 1. **Calibration (unaided, unrecorded), both worlds.** For each model and each goal, 5 trials:
 

@@ -44,9 +44,13 @@ Rules:
 - `labels` maps every run label folder the report may read to its stage (`calibration`) or its arm. The
   report refuses a folder that is not listed, so a stray folder cannot change a result. The world a row ran on
   comes from the prior fit stamped in each run, not from the label.
-- Written before any teacher or arm trial. `roles` is added after calibration and before the first teacher
-  or arm trial, from the calibration rule in ADR-003. The fields `workspace` and `skill` are filled in
-  later as the steps happen; no other field changes once a teacher or arm trial has run.
+- Fixed before calibration: `experiment`, `priorFit`, `world`, `counterpart`, `models`, `arms` (with the
+  prompt note), `labels`, `counterpartGoals`, `goals`, the calibration trial count, `turnBudget`,
+  `spendLimitUsd` and `manualSteps`.
+- Added after calibration and before the first teacher or arm trial: `roles` (from the calibration rule in
+  ADR-003), `route`, `primary`, and the teacher and arm trial counts. The report prints role proposals while
+  `roles` is absent.
+- Once a teacher or arm trial has run, only `workspace` and `skill` change, as those steps happen.
 - `route` and `primary` are declared after calibration under the escalating route, and the report says so.
 - `roles` covers every goal in `goals.set`; a held-out goal is also given the role calibration measured
   for it (a held-out goal that is `solved` makes transfer unmeasurable).

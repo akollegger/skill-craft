@@ -39,17 +39,20 @@ const summarySchema = z.object({
 });
 type Summary = z.infer<typeof summarySchema>;
 
-const reviewSchema = z.object({ skillSha256: z.string() });
+const reviewSchema = z.object({ verdict: z.enum(["accept", "revise", "reject"]), skillSha256: z.string() });
 
-interface Score {
-  costUsd: number | null;
-  priorFit?: string;
-  promptNote?: string;
-  score: { reached: boolean; extraCalls: number | null };
-  measured?: { total?: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheCreationTokens: number } };
-  model: { resolved: string[] };
-  skill?: { sha256: string; invoked: boolean; loadedAfterCalls: number | null };
-}
+/** What a run's score.json must hold. Parsed, not cast: a string "false" would otherwise count as a success. */
+const scoreSchema = z.object({
+  costUsd: z.number().nullable(),
+  priorFit: z.string().optional(),
+  promptNote: z.string().optional(),
+  score: z.object({ reached: z.boolean(), extraCalls: z.number().nullable() }),
+  measured: z
+    .object({ total: z.object({ inputTokens: z.number(), outputTokens: z.number(), cacheReadTokens: z.number(), cacheCreationTokens: z.number() }).optional() })
+    .optional(),
+  model: z.object({ resolved: z.array(z.string()) }),
+  skill: z.object({ sha256: z.string(), invoked: z.boolean(), loadedAfterCalls: z.number().nullable() }).optional(),
+});
 
 function readJson<T>(path: string, what: string): unknown {
   if (!existsSync(path)) throw new ReportRefused(`no ${what} at ${path}`);
@@ -100,6 +103,11 @@ export function buildReport(input: ReportInput): string {
   if (!parsed.success) throw new ReportRefused(`the experiment summary does not match the contract: ${parsed.error.issues[0]?.path.join(".") ?? ""}`);
   const summary: Summary = parsed.data;
 
+  if (summary.roles !== undefined) {
+    for (const goal of summary.goals.set) if (summary.roles[goal] === undefined) throw new ReportRefused(`the summary has no role for goal ${goal}`);
+  }
+  for (const goal of summary.goals.heldOut) if (!summary.goals.set.includes(goal)) throw new ReportRefused(`held-out goal ${goal} is not in the goal set`);
+
   const dirs = [...input.labels].sort((a, b) => (basename(a) < basename(b) ? -1 : 1));
   const rows = new Map<string, Row>();
   const skillArmUsed = dirs.some((d) => {
@@ -109,7 +117,9 @@ export function buildReport(input: ReportInput): string {
   let reviewSha: string | undefined;
   if (skillArmUsed) {
     const review = reviewSchema.safeParse(readJson(join(input.experiment, "review.json"), "review record (review.json)"));
-    if (!review.success) throw new ReportRefused("review.json has no skillSha256");
+    if (!review.success) throw new ReportRefused("review.json needs a verdict (accept, revise or reject) and skillSha256");
+    // Only a skill that cleared review may reach a student arm.
+    if (review.data.verdict !== "accept") throw new ReportRefused(`the skill's review verdict is ${review.data.verdict}; only an accepted skill reaches the student arms, so there are no skill-arm results to report`);
     reviewSha = review.data.skillSha256;
   }
 
@@ -140,9 +150,26 @@ export function buildReport(input: ReportInput): string {
                 ? summary.trials.armSolved
                 : null;
 
+    // The model an arm declares ("teacher" or "student") resolved through the summary; a calibration folder declares none.
+    const expectedModel = arm === undefined ? undefined : summary.models[arm.model as "teacher" | "student"];
+    if (arm !== undefined && expectedModel === undefined) throw new ReportRefused(`arm ${arm.label} names model "${arm.model}", which the summary's models do not define`);
+    const rowFor = (model: string, fit: string): Row => {
+      const key = [stage, model, fit, goal].join("\u0000");
+      let row = rows.get(key);
+      if (row === undefined) {
+        row = { order: STAGES.indexOf(stage), stage, model, fit, goal, role, trials: 0, planned, reached: 0, extras: [], cost: 0, tokens: [0, 0, 0, 0], skillRuns: 0, loaded: [], skilled: arm?.skill === true };
+        rows.set(key, row);
+      }
+      return row;
+    };
+
     const runDirs = readdirSync(dir).filter((f) => /^\d{3}$/.test(f)).sort();
+    // A planned arm with no runs stays visible as 0 trials, so a skipped arm cannot hide.
+    if (runDirs.length === 0) rowFor(expectedModel ?? "unknown", expectedModel === undefined ? "unknown" : summary.priorFit);
     for (const rd of runDirs) {
-      const s = readJson(join(dir, rd, "score.json"), `score of ${name}/${rd}`) as Score;
+      const parsedScore = scoreSchema.safeParse(readJson(join(dir, rd, "score.json"), `score of ${name}/${rd}`));
+      if (!parsedScore.success) throw new ReportRefused(`score of ${name}/${rd} does not match the expected shape: ${parsedScore.error.issues[0]?.path.join(".") ?? ""}`);
+      const s = parsedScore.data;
       const wantsSkill = arm?.skill === true;
       if (wantsSkill) {
         if (s.skill === undefined) throw new ReportRefused(`${name}/${rd} has no skill, but arm ${arm?.label} should`);
@@ -154,13 +181,9 @@ export function buildReport(input: ReportInput): string {
         throw new ReportRefused(`${name}/${rd} has a different prompt note from its arm's`);
       }
       const model = s.model.resolved.length > 0 ? s.model.resolved.join("+") : "unknown";
+      if (expectedModel !== undefined && model !== expectedModel) throw new ReportRefused(`${name}/${rd} ran model ${model}, but arm ${arm?.label} declares ${expectedModel}`);
       const fit = s.priorFit ?? "undeclared";
-      const key = [stage, model, fit, goal].join("\u0000");
-      let row = rows.get(key);
-      if (row === undefined) {
-        row = { order: STAGES.indexOf(stage), stage, model, fit, goal, role, trials: 0, planned, reached: 0, extras: [], cost: 0, tokens: [0, 0, 0, 0], skillRuns: 0, loaded: [], skilled: wantsSkill };
-        rows.set(key, row);
-      }
+      const row = rowFor(model, fit);
       row.trials += 1;
       if (s.score.reached) {
         row.reached += 1;
@@ -191,7 +214,7 @@ export function buildReport(input: ReportInput): string {
     const proposal = [`# Role proposals: ${summary.experiment}`, "", "From the student's unaided calibration trials in this world (at most 20% is a gap, at least 80% is solved, otherwise ambiguous):", ""];
     for (const goal of summary.goals.set) {
       const r = sorted.find((x) => x.stage === "calibration" && x.model === summary.models.student && x.fit === summary.priorFit && x.goal === goal);
-      if (r === undefined) proposal.push(`- ${goal}: no student trials`);
+      if (r === undefined || r.trials === 0) proposal.push(`- ${goal}: no student trials`);
       else {
         const rate = r.reached / r.trials;
         proposal.push(`- ${goal}: ${rate <= 0.2 ? "gap" : rate >= 0.8 ? "solved" : "ambiguous"} (${r.reached}/${r.trials})`);

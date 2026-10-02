@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -143,6 +143,15 @@ describe("buildReport", () => {
     const md = buildReport({ experiment: f.write(), labels: f.labels });
     expect(md.split("\n").find((l) => l.includes("gap stone"))).toMatch(/2\/7.*short/);
     expect(md.split("\n").find((l) => l.includes("solved wooden"))).not.toContain("short");
+  });
+
+  it("keeps a planned arm with no runs visible, as 0 trials and short", () => {
+    const f = fixture();
+    f.addLabel("s0-empty", { arm: "S0" }, "iron", STUDENT, "faithful", []);
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    const row = md.split("\n").find((l) => l.startsWith("| S0"));
+    expect(row).toContain("| held-out iron | 0/0 |");
+    expect(row).toContain("short");
   });
 
   it("shows, for skill arms, the share that loaded the skill and the median call count at load", () => {
@@ -308,6 +317,47 @@ describe("what the report refuses", () => {
     f.addLabel("s1", { arm: "S1" }, "iron", STUDENT, "faithful", [{ reached: true, loadedAfter: 1, sha: "b".repeat(64) }]);
     f.review();
     refused(() => buildReport({ experiment: f.write(), labels: f.labels }), /fingerprint|sha/i);
+  });
+
+  it("a skill arm whose review verdict is not accept", () => {
+    for (const verdict of ["reject", "revise"]) {
+      const f = fixture();
+      f.addLabel("s1", { arm: "S1" }, "iron", STUDENT, "faithful", [{ reached: true, loadedAfter: 1 }]);
+      f.review({ verdict });
+      refused(() => buildReport({ experiment: f.write(), labels: f.labels }), /accept/);
+    }
+  });
+
+  it("roles that leave out a goal, or a held-out goal that is not in the goal set", () => {
+    const f = fixture({ roles: { wooden: "solved" } }); // iron has no role
+    f.addLabel("s0", { arm: "S0" }, "iron", STUDENT, "faithful", wins(1, 1));
+    refused(() => buildReport({ experiment: f.write(), labels: f.labels }), /role.*iron/i);
+    const g = fixture({ goals: { set: ["wooden"], heldOut: ["iron"] } });
+    g.addLabel("s0", { arm: "S0" }, "wooden", STUDENT, "faithful", wins(1, 1));
+    refused(() => buildReport({ experiment: g.write(), labels: g.labels }), /held-out.*iron/i);
+  });
+
+  it("a score file with a value of the wrong type", () => {
+    const f = fixture();
+    f.addLabel("s0", { arm: "S0" }, "iron", STUDENT, "faithful", wins(1, 1));
+    const file = join(f.labels[0]!, "001", "score.json");
+    const bad = JSON.parse(readFileSync(file, "utf8"));
+    bad.score.reached = "false"; // truthy, so it would count as a success
+    writeFileSync(file, JSON.stringify(bad));
+    refused(() => buildReport({ experiment: f.write(), labels: f.labels }), /score/i);
+  });
+
+  it("a run whose model is not the one its arm declares", () => {
+    const f = fixture();
+    f.addLabel("t0", { arm: "T0" }, "wooden", STUDENT, "faithful", wins(1, 1)); // T0 is the teacher
+    refused(() => buildReport({ experiment: f.write(), labels: f.labels }), /model/i);
+  });
+
+  it("a skill arm whose skill is not accepted, even when the fingerprint matches", () => {
+    const f = fixture();
+    f.addLabel("s2", { arm: "S2" }, "iron", STUDENT, "faithful", [{ reached: true, loadedAfter: 1, note: NOTE }]);
+    f.review({ verdict: "reject", skillSha256: SHA });
+    refused(() => buildReport({ experiment: f.write(), labels: f.labels }), /accept/);
   });
 
   it("a skill arm with no review record", () => {

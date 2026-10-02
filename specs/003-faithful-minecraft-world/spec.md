@@ -273,9 +273,10 @@ unaided trials on both, and produce the table.
 
 - ADR-003 orders the first experiment as the invented world. This feature runs the faithful world
   first, as an important control, and notes the change of order above.
-- The route is escalating and the primary measure is repair on the gap goals. They were declared after the
-  calibration trials, which is inherent in the escalating route (the gaps are found first), and the report
-  says so. Which goals are gaps is read from calibration; the first calibration put the student's gap on
+- The route is escalating and the primary measure is repair on the gap goals. They are declared after the
+  calibration trials, which is inherent in the escalating route (the gaps are found first), and before any
+  teacher or arm trial; the report says so. In the first run of this experiment the three teacher runs came
+  before the declaration, a deviation recorded in the results note. Which goals are gaps is read from calibration; the first calibration put the student's gap on
   the stone pickaxe (0 of 5), and left the iron pickaxe held-out goal solved (5 of 5), so transfer is
   expected to be unmeasurable here.
 - The invented counterpart, as built, is at the floor for both models in calibration (0 of 30 unaided
