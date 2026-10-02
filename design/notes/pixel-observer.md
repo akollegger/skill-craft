@@ -464,6 +464,8 @@ fixed floor of about 4.3k tokens. The leaderboard needs one number to sort by; o
 - **Carried over from the mock:** the palette and type; the sprite generator; the table drawing and its
   elements (score, pips, board, output slot, hotbar, tape, status); the grid and list layouts; the motion
   rules; the finder-like sidebar.
+- **Stack (ADR-004):** TypeScript built to static files; Svelte for the application shell; PixiJS for the table
+  scene; generated sprites; bundled fonts. The mock is a visual reference and is not ported.
 - **To build new:**
   - discover runs in an arbitrary folder, and read their score, trace and (for exported bundles) frames;
   - derive frames by replay with the existing `deriveFrames`;

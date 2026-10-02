@@ -28,9 +28,11 @@ Several pieces exist. `deriveFrames` replays a log on its world into one frame p
 what `craft` would make). A replay bundle packages frames, trace and result for sharing, without the world file. The
 score records the world's prior fit, any prompt sentence, and a skill's name, fingerprint, whether the agent loaded
 it and after how many calls. Two gaps follow. A bundle's manifest does not yet carry the prior fit, the prompt
-sentence or the skill, so a viewer fed only bundles cannot show them. And a first mock exists: a single HTML page
-with six runs inlined, drawn in a pixel style, with live-tailing features and fonts fetched from the network. It
-shows what the table view and the picker could look like. It cannot read a folder.
+sentence or the skill, so a viewer fed only bundles cannot show them. And a first mock exists: a single 60 KB HTML
+file with six runs inlined, drawn in a pixel style, with live-tailing features and fonts fetched from the network.
+It shows what the table view and the picker could look like. It cannot read a folder, and its data, state, layout,
+drawing, effects and assets are interleaved in one file, which makes it hard to review in pieces and will not
+scale to several views and a growing set of assets.
 
 Other constraints apply. Frames reveal every recipe a run exercised, since crafted outputs appear in them, so what
 a viewer shows of a run is a disclosure decision. Faithful-world runs carry Minecraft-inspired item names. The
@@ -111,8 +113,29 @@ not replay on its world, or whose world file is missing, is listed with that rea
 - Frame derivation is the existing pure function of a world and a log, with no clock. There is no live view, so no
   arrival time exists.
 - The viewer shows table states, not a recipe list. Recipes appear only as far as frames show a craft.
-- The page is self-contained: no framework, no build step if achievable, fonts and sprites bundled, no network.
+- The built page is self-contained: its code, generated sprites and fonts are bundled, and it needs no network at
+  run time.
 - Tests are written before the catalog builder, the scanner and the page's data handling.
+
+### 2.6 The page's stack
+
+The page is written in TypeScript and built to static files. A build step is accepted; its output is what the local
+process serves and what a static host holds.
+
+- **Application shell: Svelte.** The picker, group, sort and filter, the open view's panels, keyboard handling and
+  the layout of two runs side by side are Svelte components.
+- **Table scene: PixiJS.** The crafting-table view (the board, items, output slot, hotbar, and the effects for
+  placing, crafting, refusing and finishing) is a PixiJS scene, drawn at the native pixel size and scaled by whole
+  numbers with nearest-neighbour sampling.
+- **Assets: generated sprites and bundled fonts.** Each item name hashes to a small symmetric sprite, generated into
+  a texture at run time, so no art is shipped per item. Fonts are bundled with the build. No asset is fetched from
+  the network.
+- **Separation.** The code divides by concern, so each part can be read and reviewed alone: the contract client (the
+  catalog and bundles), the view state (selection, grouping, sorting, filtering), the shell components, the scene,
+  the sprite generator, and the assets. The first mock is a visual reference and is not ported.
+- **Scenes are few.** Each PixiJS application holds a WebGL context and browsers cap how many can be live. Only
+  open tables hold a live scene (two at most); tiles and rows show thumbnails drawn once into images.
+- **The server stays plain.** The local process uses Node's built-ins and has no framework.
 
 ## 3. Alternatives Considered
 
@@ -128,15 +151,30 @@ not replay on its world, or whose world file is missing, is listed with that rea
   table over time, which needs drawing.
 - **The experiment summary as the primary input.** Rejected: a folder must be readable without one, and arms and
   roles are one experiment's vocabulary.
+- **A hand-built page with no framework or build step**, as the mock is. Rejected for the implementation: it kept
+  every concern in one file, and several views plus assets would multiply that.
+- **A heavier shell framework (React or Vue).** Rejected: more runtime and ecosystem than a read-only viewer needs;
+  Svelte compiles to small output and has transitions built in. A no-build shell (Preact with htm, Lit) was also
+  weighed, and a build step was accepted instead.
+- **Canvas 2D, DOM and CSS, or SVG for the table scene.** Rejected for the scene: each is workable at this size, but
+  the effects (drops, flashes, sparkles, confetti, and any later filters) are what a scene graph, a ticker and a
+  particle system exist for, and they grow with the views. DOM keeps accessibility for free, which the shell and the
+  DOM mirrors of score and tape cover.
+- **A game framework (Phaser, Kaplay).** Rejected: tweens, input and audio the viewer does not use, in a heavier
+  runtime than a renderer alone.
 - **A fixed hierarchy (world, goal, run) as the navigation.** Rejected as the only structure: it fits the common case
   and blocks questions across worlds. It remains available as a grouping.
 
 ## 4. Consequences
 
-- **The first mock is the visual baseline and not the architecture.** Its palette, type, sprite generator, table
-  drawing, tape, picker layouts and motion carry over. Its inlined data, hard-coded sorts and groups, live
-  badge, thinking bubble, log tailing and network fonts do not. Keeping it unpolished leaves rework in the data
-  plumbing and the group, sort and filter model, which the mock does not have.
+- **The first mock is the visual reference and not code to port.** Its palette, type, sprite idea, table layout,
+  tape, picker layouts and motion carry over as design, and are rewritten into the separate parts of 2.6. Its
+  inlined data, hard-coded sorts and groups, live badge, thinking bubble, log tailing and network fonts do not.
+  Left unpolished, it leaves the data plumbing and the group, sort and filter model to be built.
+- **A build step and new dependencies.** Svelte, PixiJS and a bundler join the repository's dependencies, with a
+  second TypeScript configuration for the browser, and CI builds the page. The server and the engine gain none.
+  Pixel snapshots of the scene are practical, since frames are deterministic.
+- **WebGL contexts are scarce**, so the thumbnails for tiles and rows must be images and not live scenes.
 - **Two suppliers share one contract**, which has to be kept stable. The bundle manifest extension is additive. It
   changes the export code and the privacy test that pins what a bundle holds, and bundles exported earlier lack the
   new attributes.
@@ -159,6 +197,9 @@ not replay on its world, or whose world file is missing, is listed with that rea
 
 - how an item is drawn for a world with familiar names (the first mock hashes each name to a small creature, which
   signals "unknown" and may or may not suit a faithful world);
+- the bundler (Vite with the Svelte plugin is the usual pairing) and where the page's code lives in the repository;
+- how thumbnails are produced (one shared renderer, or pre-rendered at export or scan);
+- the tools for testing the page (component tests, screenshot comparison);
 - the exact shape of group, sort and filter, and how much of it to expose;
 - how two runs are chosen for comparison;
 - how the process is started and pointed at a folder;
