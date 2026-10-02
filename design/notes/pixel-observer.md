@@ -1,36 +1,171 @@
-# Design note: the pixel observer
+# Design note: the observer
 
-Status: exploratory, with a working mock. Nothing here is decided.
-Date: 2026-09-30 (revised after two rounds of feedback)
-Feeds: an ADR on the observer's architecture, then a speckit feature.
+Status: scope settled (see "Scope and user goals"); the design inside that scope is still exploratory, and the
+earlier choices below are held loosely.
+Date: 2026-09-30, reframed 2026-10-02 after the first experiments and two rounds of feedback.
+Feeds: an ADR on the observer, which comes next, and later a speckit feature. Neither is started.
 
-## Why
+## Why: scenarios, not requirements
 
-The project's argument is that an agent with a distilled skill gets to the answer faster than one
-without. A table of numbers makes that argument. A screen that shows it makes the demo. The model is
-the Pong demo that got DeepMind funded: a small world, a score, and an unmistakable difference
-between "before" and "after" that anyone in the room can read in seconds.
+These are situations in which someone would want to see what agents did in this world. They motivate the
+work. None of them is the thing being designed, and a design that serves only one of them is the wrong design.
 
-So the observer is **live first**. You watch an agent work at the crafting table as its calls
-arrive, then scrub back through the run afterward. It is lofi pixel art on purpose: warm, a little
-funny, and not a dashboard.
+- A talk or demo, where an audience that has never seen the project follows what an agent did and what
+  changed between two conditions. The first version of this note was written with this one in mind, as a
+  "Pong demo": a small world, a score, a before and after that is readable in seconds.
+- An experimenter asking why a run failed, or why it took 200 calls where another took 11.
+- A reviewer comparing conditions across many runs: models, prior fit, with or without a skill.
+- A reader of a shared bundle, later, who was not there.
+- Someone watching a run in progress and deciding whether to stop it.
+- Someone checking whether a distilled skill actually contains anything.
 
-## Goals and non-goals
+Scenarios will keep arriving and changing. The experiments themselves changed within a day of the first
+mock: they found that familiar and invented worlds behave very differently, that a model's gap can be on an
+unexpected goal, and that a skill can pass every gate and still be empty.
 
-Goals
-- Show a run as it happens, and replay it afterward.
-- Let you browse the runs that exist, open any of them, and put two side by side when comparing.
-- Make invented items feel like distinct little creatures, so a viewer can follow "the agent placed
-  this one, then that one" without reading names.
-- Keep the crafting table the star. Nothing decorative competes with it.
+## What is being designed
 
-Non-goals
-- It does not control anything. There is no chat, no way to start a run or inject a call. It watches.
-- It does not show recipes. A viewer who knows the answer spoils the demo for everyone else. A
-  recipe view may exist later, off by default.
-- It is not an analytics dashboard. `scripts/score.ts` and `summary.json` already answer "how many
-  and how often".
-- It is not the run harness. It watches; `scripts/run-agent.ts` runs.
+A way to see what runs did and what they cost. A **run** is a model, under some conditions, playing a
+goal in a world: a sequence of table states, with measurements and an outcome. The design question is which
+operations on runs should exist, and which of them should be general rather than shaped to one use.
+
+### What a run already carries
+
+Every finished run folder holds these today, without any new recording:
+
+| Group | Fields |
+|---|---|
+| Identity | label (the experiment folder) and index; the world file; the goal |
+| Conditions | the model requested and the model that ran; the world's prior fit (or `undeclared`); an added prompt sentence, if any; whether a skill was installed, its name and fingerprint |
+| Behaviour | the calls in order, with arguments and outcomes; a frame per call (the table, what is held, what `craft` would make); refusals; crafts made and failed |
+| Result | outcome (reached, gave up, out of turns, error); calls to the goal over the best run; extra calls |
+| Cost | time per request and per tool call, tokens of four kinds, cost as a run total; whether and after how many calls a skill was loaded |
+| Optional, from an experiment summary | arm, goal role (gap, solved, held-out), the route |
+
+Whatever the observer does should be expressible in terms of these. New fields should be able to join them
+without changing the design.
+
+### Principles worth testing, not rules
+
+- **General before specific.** Prefer an operation that works on any attribute over one that works on the
+  attribute we have today.
+- **Attributes, not experiments.** The ADR-003 vocabulary is one set of attributes. The observer should
+  cope without it.
+- **Layers that each stand alone.** Seeing one run is useful without browsing; browsing is useful without
+  comparing.
+- **Extension points over special cases.** Where something varies (how an item is drawn, what is
+  revealed, which measure is shown), make it a choice and not a fork.
+- **Watching, not controlling.** The observer reads; it does not start runs or inject calls. This one
+  looks sturdy, but it is also still a choice.
+
+## Scope and user goals
+
+Settled on 2026-10-02, at the level of what a person wants to do. The observer is **a way to see what runs
+did and what they cost**, for an arbitrary folder of runs. A person should be able to:
+
+- see which worlds were used;
+- see the runs of each world;
+- see the details of a run;
+- compare two runs.
+
+The reason to build it, when a few terminal commands could list much of this, is that JSON files hide the
+meaning of a run and are not pleasant to look at. A disk defragmenter or a process monitor is not strictly
+necessary either; it earns its place by showing the structure of its domain in a way that suits it, and by being
+something you enjoy leaving on a screen. The design goal is **an idiomatic visual representation that
+highlights the logical domain in semantically meaningful ways**. For this domain the idiom is the crafting
+table, with items placed on it over time, and how it looks matters as much as what it can do.
+
+Choices made while discussing it:
+
+- **A world is an attribute of a run.** It is a label to group and filter by. Drilling into a world's own
+  details (stock, grid size, hint level) is not needed yet.
+- **Hierarchy emerges from grouping.** A folder holds worlds and goals holds runs, but a hierarchy can also
+  come from group, sort and filter on any attribute (compare the shortest runs across every world, for
+  example). Group, sort and filter give the most flexibility at some cost in interface complexity; how much of
+  that to expose is open. The Finder's Group By, Sort By and attribute search tokens are a familiar model, not
+  a decision.
+- **Comparison is a presentation, not a mode.** Two selected runs show side by side in the table view, or as
+  rows in the list view. Runs sharing a goal in the same world is one reason to compare, not the definition;
+  any two runs may be shown together.
+- **Skills are surfaced from what is already recorded.** Whether a run had a skill installed, its name, whether the
+  agent loaded it and after how many calls, and whether the prompt carried a pointing sentence. Showing where a
+  skill came from is not needed.
+- **Dropped for now:** associating teacher and student runs.
+- **Out of scope for now:** live viewing (watching a run as it happens) and aggregates over many runs.
+- **Input:** only what runs already carry, so the observer works on any folder without an experiment summary.
+
+The four earlier features fit these goals, and are the starting point: finder-like navigation and selection
+of runs; a grid for visual appeal and a list for detail; opening a run into the crafting-table view; two
+tables side by side. The first mock is the baseline for the build and is not to be polished further; it will
+change as the implementation teaches us (see "From here").
+
+## Layers and the options inside them
+
+Each layer lists alternatives and what each assumes. None is chosen. Layer 5 and the live part of layer 1 are
+out of scope for now, and layer 4 is limited to showing that a run had a skill.
+
+**1. One run: replay and live.**
+- Shapes: a table you step through; a timeline of calls; both; the table plus a strip of what the agent saw.
+- Open: what time means during replay (original pace, compressed, step only); how a live run signals that
+  it is waiting; what to do with calls that change nothing (reads).
+
+**2. A collection: browse, group, filter, sort.**
+- Shapes: a grid of tiles; a list or leaderboard; a matrix with two attributes as axes; a faceted filter over
+  any attribute; free text.
+- Open: which attributes can be an axis or a facet; whether grouping can be nested; how to scale from a
+  dozen runs to hundreds; what a "tile" shows when the runs differ in world or goal.
+- Assumption to question: a leaderboard assumes runs are comparable by outcome, which is false across goals.
+
+**3. Juxtaposing runs.**
+- Shapes: two or more tables side by side with independent playheads; aligned by step, by state, or by time;
+  a diff of what two runs did differently; an overlay of a run on the best run.
+- Open: what "aligned" means when runs take different paths to the same place; whether more than two are
+  useful; whether the pairing is chosen by the viewer or implied by the data.
+
+**4. Artifacts attached to a run** (for now, only that a run had a skill, and how it was used).
+- Examples: an installed skill and where it was loaded; a review verdict; the prompt as given.
+- Shapes: a side panel; an event on the timeline (the skill was loaded here); a link out.
+- Open: whether an artifact can be shown without revealing what the world hides (see the extension points).
+
+**5. Aggregates over a selection.**
+- Shapes: counts and rates with intervals; distributions of calls or cost; small multiples of runs; the
+  outcome strip of each run in a grid.
+- Open: where this stops being the observer and becomes a report. The report script already prints a
+  table of this kind. A visual aggregate might be a different tool that shares the data model.
+
+## Extension points to consider
+
+- **How an item is drawn.** The first mock hashed each invented name to a small creature. A world with
+  familiar names might want recognisable icons, or plain labels, or a pack supplied with the world. The
+  creature scheme itself signals "unknown", which may or may not be wanted.
+- **What is revealed.** Frames show every recipe a run exercised. Whether a viewer sees recipes, the
+  skill's contents or the agent's text is a policy, and the policy could be a viewer setting, a property of
+  the bundle, or both.
+- **Which measure leads.** Calls, time, tokens, cost or none. Calls understate the gap between runs
+  because context grows each turn; cost is a run total only.
+- **Views as data.** A selection, grouping and layout could be saved and shared as data, so a particular
+  way of looking is a bookmark and not a feature.
+
+## Data to test against
+
+A design that reads well on one dataset says little. Runs on disk differ in character, which is the point:
+
+| Dataset | What it shows |
+|---|---|
+| The pilot's `forge-7` runs (`glirol`, `pluzhouvio`) | invented names, long wandering, a run that reaches the goal after 96 calls, ten that never do |
+| Faithful-world runs | the same model finishing at the best run's length, and a weaker one failing on one goal in 166 to 223 calls |
+| Invented counterpart runs | two models at the floor, with many calls and no success |
+| Runs with a skill installed (`skill-glirol`, `skill-glirol-b`) | a skill loaded late, loaded never, or loaded and followed |
+| The recorded teacher runs | short, error-free, and the source of skills that turned out empty |
+
+## First exploration: runs you open
+
+The sections below record the first mock's organising idea and its elements. They are one worked rendering,
+useful for the visual language and for what it taught, and they carry assumptions that came from the motivating
+scenario: runs framed as opponents in a match (the first mock) and then as files you open; a score styled
+as a Pong numeral; a leaderboard; a pairwise Compare that only makes sense for two runs of one goal; one world and
+one goal; item creatures that suit invented names; and a before and after as the central comparison.
+The layers above are meant to be the broader frame in which this rendering is one option.
 
 ## How it is organised: runs, and tables you open
 
@@ -90,7 +225,7 @@ The header carries the goal ("Make one glirol") with its sprite and the Compare 
 its own controls: play or pause, step, restart, a scrubber, and "go live" when scrubbed away from a
 live run. Space plays and pauses, the arrows step, `r` restarts, Esc closes, `c` compares.
 
-## Architecture (recommended)
+## Architecture (one option)
 
 The observer is a **separate process** that reads the run logs. It is not part of the `craft` server.
 
@@ -261,63 +396,85 @@ and sprites drop to their 10 pixel size when tiles are small.
 - Decisions before specs: the architecture above is significant enough for an ADR, and the speckit
   gate requires one before `/speckit-specify`.
 
-## Decided so far
+## Earlier decisions, held loosely
 
-- Opens on the run picker; no follow mode.
-- A finished run opens at its start state, paused.
-- Compare is a second slot, with independent tables. A per-state comparison is deferred.
-- Clock time on every step and the total in the score row.
-- Time and tokens are measured on the client. `run.jsonl` stays clock-free and remains the ground
-  truth of what the world did.
-- The client trace comes from the Claude Agent SDK, which was tested against OpenTelemetry on the same
-  run: matching tokens, time to first token and durations, no personal data in the stream, cost as a run
-  total only (ADR-002).
+These were settled during the first exploration. Each may still be right, and each was made while one scenario
+was in view. They are listed so they can be questioned, not so they bind.
+
+- Opens on the run picker. (Assumes a collection is the entry point.)
+- A finished run opens at its start state, paused. (Live runs are out of scope for now.)
+- Compare is a second slot with independent tables. (Assumes pairs.)
+- Clock time on every step, and the total in the score row.
+- Time and tokens are measured on the client; `run.jsonl` stays clock-free and is the ground truth of what the
+  world did. The client trace comes from the Claude Agent SDK (ADR-002).
 - Agent text, reasoning and raw messages are never stored; the trace holds an allowlist of fields.
-- No baseline isolation is needed. The organization's plugin adds about 0.2 to 0.3 s of start-up per
-  run and no tokens; that is reported, not removed.
-- Hosting means replay: a run is exported as a bundle (frames, scrubbed trace, score; no world file)
-  and a static viewer plays it, so visitors can explore. Live stays local (ADR-002).
+- Hosting means replay: a run is exported as a bundle (frames, scrubbed trace, score; no world file) and a
+  static viewer plays it; live stays local (ADR-002). ADR-003 adds that bundles of worlds with Minecraft
+  names need their usage terms checked before they are published.
 - The close dot is the only window control.
-- The picker has a grid and a list, and the list works as a leaderboard sorted by calls or time.
+- The picker has a grid and a list. (Assumes ranking by outcome makes sense.)
 
 ## Open questions
 
-1. **What "cost" means.** Tokens come in four kinds priced very differently, and context grows each
-   turn, so calls understate the gap between runs. A fixed floor of about 4.3k tokens (system prompt
-   and tool schemas) also narrows it. The skill arm adds its text and the memory arm adds recalled
-   context on every prompt. Do we show raw counts, the CLI's cost in dollars, or a derived figure? The
-   leaderboard needs one number to sort by.
-2. **Ranking.** Only runs that got the goal are ranked, by calls then time, or by time then calls.
-   Should a run that got it with more calls but faster ever outrank a slower, leaner one? Is "best" a
-   single number the leaderboard should show, or is a choice of sort enough?
-3. **Comparing by state.** Line two runs up when their tables match, and show where they diverge.
-   This is the meaningful comparison, and it is deferred. It may change what the second slot is.
-4. **Sound.** A soft tick per placement, a chime on craft, a low note on refusal, muted by default.
-   Worth it for talks and video, awkward for a shared office.
-5. **The win.** Confetti and a mint numeral, or quieter? A talk wants a bigger payoff than a desk
-   monitor.
-6. **Best possible.** Pips show the target. A faint "ghost" of the best run replaying alongside would
-   show it as motion. Which is clearer?
-7. **The agent as a character.** A small pixel figure that thinks, reaches and shrugs on a refusal,
-   in place of the abstract bubble. More charm, more art to draw.
-8. **Speech.** Streaming the CLI's output would let the bubble show what the agent says ("trying
-   pairs"). That is compelling, but it shows reasoning and couples the observer to the harness.
-9. **Sprite legibility.** Eight palettes and symmetric shapes may collide for similar names. Hover
-   names, a legend, or a bigger palette?
-10. **Many runs.** A grid or list works for a dozen runs. With hundreds, does it need search and
-    collapsing folders?
-11. **Naming and arms.** Runs are numbered under their label (`baseline / 001`). The player note
-    proposes baseline, memory and skill arms. Does the harness need an `--arm` flag, and a human name,
-    so the picker can group and label runs?
-12. **Presentation.** A full-screen mode with larger type for talks, and exporting a run as a GIF or
-    video for the write-up?
-13. **Where it starts.** A `--watch` flag on `run-agent`, a standalone `pnpm observe`, or both?
+Grouped by the layer they touch. The first set is the original thirteen; the second is new. The scope above
+settles some of them, which are struck out below and kept so the reasoning stays visible.
 
-## Path to implementation
+**One run**
+- Sound: ticks, a chime, a low note on refusal, muted by default? Worth it on stage, awkward in an office.
+- The agent as a character: a small figure that thinks and shrugs, instead of three dots. More charm, more art.
+- ~~Speech: showing what the agent says~~ (it shows reasoning, which the harness never stores, and live is out of scope).
+- Best possible: pips show the target; a ghost of the best run replaying alongside might show it as motion.
 
-1. Iterate this note and the mock until the look and the questions above settle.
-2. Write the observer ADR: a separate read-only process, frames derived by replay, runs discovered from the
-   harness's folders, live by tailing the log.
-3. `/speckit-specify` referencing that ADR, then plan, tasks and implementation.
-4. Build order: the frame function, run discovery, the static page from the mock, the
-   tail-and-stream server, then the two-slot comparison layout.
+**A collection**
+- Many runs: do hundreds need search and collapsing folders?
+- Ranking: only runs that reached the goal are ranked, by calls then time. Is one "best" number wanted, or is
+  a choice of sort enough?
+- ~~Naming and arms~~ Arms and teacher or student roles are not needed (the folder is the only input). Runs are
+  numbered under their label, and the label, world, model, goal and skill presence are the attributes to group by.
+
+**Juxtaposing**
+- Comparing by state: line two runs up when their tables match and show where they diverge. This may change
+  what a second slot is.
+
+**Items and presentation**
+- Sprite legibility: eight palettes and symmetric shapes may collide for similar names. Hover names, a
+  legend, a bigger palette?
+- The win: confetti and a mint numeral, or quieter?
+- Full-screen mode with larger type, and exporting a run as a GIF or video?
+- ~~Where it starts: a `--watch` flag on `run-agent`, a standalone `pnpm observe`, or both?~~ (no `--watch` while live is out of scope; how it starts is for the ADR.)
+
+**What cost means.** Four kinds of tokens priced very differently, context that grows each turn, and a
+fixed floor of about 4.3k tokens. The leaderboard needs one number to sort by; other views may not.
+
+**New, from the experiments**
+- The four user goals now frame the work. Are the layers above still a useful way to think about it, or are they extra?
+- Which run attributes should be an axis or a facet, and which are only labels?
+- How does a collection show runs of different worlds and goals together without implying they compete?
+- ~~Is an aggregate view part of the observer?~~ Out of scope for now.
+- How should an item look when its name is familiar, and should that be a choice of the world or of the viewer?
+- ~~What is shown of a skill?~~ That a run had one, whether it was loaded and after how many calls; not its source.
+- ~~Does the observer need to know what an arm or a goal role is?~~ No: the folder alone is the input.
+- Should a view (selection, grouping, layout) be saveable and shareable as data?
+- What makes a design here "general enough"? Is it that it reads well on all of the datasets above?
+
+## From here
+
+- **The first mock is the baseline for the implementation.** It is not polished further; it will be iterated on
+  as the build teaches us.
+- **Carried over from the mock:** the palette and type; the sprite generator; the table drawing and its
+  elements (score, pips, board, output slot, hotbar, tape, status); the grid and list layouts; the motion
+  rules; the finder-like sidebar.
+- **To build new:**
+  - discover runs in an arbitrary folder, and read their score, trace and (for exported bundles) frames;
+  - derive frames by replay with the existing `deriveFrames`;
+  - make group, sort and filter attribute-driven, where the mock hard-codes a few;
+  - show skill presence on a tile, in a row and in the open view;
+  - bundle fonts and sprites so it works offline.
+- **Left behind from the mock:** the live badge, the thinking bubble, tailing the log, and the stand-in labels.
+- **Next:** an ADR for the observer. Two choices it will need to make are how the page gets its data (a small
+  process that scans a folder, or a static page that loads exported bundles; they can share the frame
+  derivation, but one has to come first) and what the default drawing of an item is for a world with
+  familiar names. The architecture section above (a separate read-only process, frames derived by replay,
+  discovery from the harness's folders) has not been questioned by any of this and is one input.
+- **Still open, to be worked out while building:** the shape of group, sort and filter, what a tile or row shows
+  when runs differ in world and goal, and how two runs are chosen for comparison.
