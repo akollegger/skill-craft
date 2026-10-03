@@ -126,6 +126,8 @@ Each arm runs the same fixed number of trials, set before any trial runs and wri
 
 ### 2.6 Skill review: a critic loop
 
+_Amended 2026-10-03: `revise` is performed by a reviser model editing the skill in place, not through NAMS. See Amendments._
+
 A distilled skill is reviewed before any student sees it. The review stands in for a human reviewer and is itself part of the protocol, because distillation output will change as the service does.
 
 **The critic** is a model run separate from the teacher and the student, pinned by id, with a versioned rubric. It reads the skill package (`SKILL.md`, references, provenance) and the list of goals the recordings covered. It is not shown any held-out goal or any evaluation result, so it cannot tune the skill to the test.
@@ -141,9 +143,9 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 
 **The verdict** is structured: a value per question, an overall `accept`, `revise` or `reject`, the reasons, and proposed revisions.
 
-**On `revise`**, the loop acts through NAMS: re-distilling (`skillId`, `focusEntityIds`, `nameHint`, `procedureFormat`), the validated edit endpoint, or `extract-subprocedure` to decompose. The loop runs at most three rounds. Each round records the skill version id and the SHA-256 of `SKILL.md`, so every student run names the exact text it had. The loop ends in `accept` (the version students receive), or `reject` (the experiment reports that distillation did not yield a usable skill).
+**On `revise`**, a reviser model edits the skill in place, as local files (see the 2026-10-03 amendment). The loop runs at most three rounds. Each round records the SHA-256 of `SKILL.md`, so every student run names the exact text it had. The loop ends in `accept` (the version students receive), or `reject` (the experiment reports that distillation did not yield a usable skill).
 
-**Approving and publishing** in NAMS stay human actions. Early on, a human also reads the first skills the critic accepts, to check the critic.
+Early on, a human also reads the first skills the critic accepts, to check the critic.
 
 ## 3. Alternatives Considered
 
@@ -200,7 +202,7 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 - ADRs: [ADR-001](ADR-001-crafting-table-world.md) (worlds, goals and the run log), [ADR-002](ADR-002-client-otel-trace.md) (measuring time, tokens and cost, and exporting runs).
 - Supersedes in part: ADR-002 §2.2 on recording. Experiment runs no longer load user settings so that the hooks record (`--record` as ADR-002 defines it); the harness records a finished run itself (2.4). ADR-002 carries the matching amendment.
 - Rules: constitution Principle III (prior fit, version 1.1.0) and the 2026-10-01 amendment to ADR-001, which define the three kinds of world.
-- Design notes: `design/notes/skill-pilot.md` (the pilot's evidence, including the tests of clearing a workspace), `design/notes/agent-player-options.md` (the options this decision replaces).
+- Design notes: `design/notes/critic-loop-spike.md` and `design/notes/critic-loop-findings.md` (the critic loop run once, with its results), `design/notes/skill-pilot.md` (the pilot's evidence, including the tests of clearing a workspace), `design/notes/agent-player-options.md` (the options this decision replaces).
 - Specs: _(populated automatically by the speckit ADR-link hook once `/speckit-specify` references this ADR)_
 
 ## 6. Amendments
@@ -239,3 +241,40 @@ A distilled skill is reviewed before any student sees it. The review stands in f
   measure, 3 teacher trials per recorded goal, planned arm trials of 10 per gap goal and 3 per solved or
   held-out goal, a spend limit of $60, and the S2 sentence in 2.2. The world is 13 items and 10 recipes with
   the pickaxe family and slack of 3 on every goal. The arm trials were not run.
+- **2026-10-03, the critic's revision is an in-place edit by a model, not a NAMS operation.** Section 2.6 had
+  `revise` act through NAMS: re-distilling with `skillId`, `focusEntityIds`, `nameHint` or `procedureFormat`, the
+  validated edit endpoint, or `extract-subprocedure`. This project demonstrates the concept of distilling a
+  skill from memory traces, and where the revision happens matters less than learning what each stage adds or
+  misses, so the loop now works as follows. The distiller produces the first skill. A *reviser* model then
+  edits a local copy of the skill folder in place, as files, guided by the critic's verdict and the
+  recordings. NAMS is still the memory (recordings, including procedural memory) and the source of the initial
+  candidate skill; its revision operations are not used. A revised skill is local to the run and is never
+  published back, since the experiment's workspaces are disposable. The rest of 2.6 stands: a critic separate from the teacher and the student, pinned by
+  id with a versioned rubric; a structured verdict of `accept`, `revise` or `reject`; at most three rounds;
+  the loop ends in `accept` (the version students receive) or `reject` (the experiment reports that no usable
+  skill was obtained).
+  - **Separate contexts.** Critic and reviser are separate runs. Each round's critic is fresh, with no sight of
+    earlier rounds' verdicts, so it cannot grade its own earlier edit.
+  - **What each may read.** Recordings and skill text only; the critic also gets the list of goals the
+    recordings covered. Neither reads the world file, recipes, the solver's output, a held-out goal or any
+    evaluation result. A fact a reviser adds is therefore a fact the recordings held.
+  - **Rules for the reviser.** Every added fact cites the recorded call it came from. What the recordings do
+    not show is stated as not known, with a cheap way to find out, never as fact. The skill leads with the
+    discovered fact and drops generic advice a capable model already follows. The description says when to
+    load the skill, without a tool-name prefix.
+  - **What a round records.** The skill text, its SHA-256, the critic's verdict and the diff to the previous
+    round; the student's run records the SHA-256 of the text it had (unchanged).
+  - **A rubric question the recordings cannot answer.** "Does it record where this world differs from common
+    knowledge" cannot be judged from a teacher's recordings when the teacher made no exploratory calls, since
+    nothing shows what it knew beforehand. The critic answers that it cannot be determined from the
+    recordings, and does not guess; the reviser does not add such a claim from outside knowledge.
+  - **Why.** In one pass over the faithful-world recordings, the distilled skills held no recipe although the
+    recordings did, and three rounds of in-place revision produced a skill the critic accepted. The student
+    (Haiku, three trials per skill, plain prompt, unrecorded) reached `stone_pickaxe` 0 of 3 with the prose
+    distilled skill (critic: reject), 1 of 3 with the graph distilled skill (revise) and 3 of 3 at the best
+    run's call count with the revised skill (accept). A fresh critic caught a factual error the reviser had
+    introduced in round 1. The revision also changed the description, and the student loaded the revised skill
+    within 3 calls where it loaded the originals late, so the gain is not yet split between content and
+    description. Results: `design/notes/critic-loop-findings.md`.
+  - **Still to do.** A person reads the first accepted skills, as 2.6 says; none has yet. The critic's
+    rubric location and output schema remain open (see "Not decided" and the follow-up specs).
