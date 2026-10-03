@@ -234,3 +234,19 @@ describe("scripts/export-run.ts", () => {
     expect(run("scripts/export-run.ts", []).status).toBe(1);
   });
 });
+
+describe("scripts/critic-loop.ts", () => {
+  it("prints its usage and exits 1 without --runs", () => {
+    const res = run("scripts/critic-loop.ts", []);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("usage:");
+  });
+
+  it("prints the plan for a dry run over the faithful stone-pickaxe runs and makes no call", () => {
+    if (!existsSync("runs/faithful-1-t0-stone/001/score.json")) return; // the runs are local and gitignored
+    const res = run("scripts/critic-loop.ts", ["--runs", "runs/faithful-1-t0-stone/001", "runs/faithful-1-t0-stone/002", "--candidate", "spikes/faithful-1/skills/graph-single-001/craft-stone-pickaxe", "--dry-run"]);
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain("stone_pickaxe x1");
+    expect(res.stdout).toMatch(/no NAMS call/);
+  });
+});

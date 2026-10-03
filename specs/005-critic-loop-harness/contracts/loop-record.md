@@ -8,7 +8,7 @@ loops/<label>/
 │   └── ...                    #   (generation.json: runId, skillId, format, capabilities as returned)
 ├── rounds/
 │   └── 01/
-│       ├── skill.md           # the SKILL.md the critic reviewed (not named SKILL.md: not installable)
+│       ├── reviewed-skill.txt # the SKILL.md text the critic reviewed (no case variant of SKILL.md: not installable)
 │       ├── provenance.md      # the provenance file reviewed, if any
 │       ├── verdict.json       # the critic's verdict plus rubric version and sha256
 │       ├── revision.json      # if revised: changes[] and the new sha256
@@ -51,6 +51,6 @@ loops/<label>/
 - No timestamps in the per-round files; times and durations live in `stages`.
 - The loop reads run folders and never writes into them or into any other loop's folder.
 - Agent-authored text appears only in `rounds/*` and `skill/`, and only as the schema's fields.
-- A rejected loop has no `skill/`; round snapshots use `skill.md`, so none of them installs through `--skill`.
+- A rejected loop has no `skill/`; round snapshots use `reviewed-skill.txt` (not any case variant of `SKILL.md`, since macOS ignores case), so none of them installs through `--skill`.
 - `references/provenance.md` ends with a harness-generated `## Uncited changes` section when any change had no source.
 - The accepted `skill/SKILL.md` hash equals the last round's `skillSha256` and the hash a student run's `score.json` records.

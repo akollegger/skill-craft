@@ -184,8 +184,8 @@ Ctrl-C to end the current round and write the record. Two entries: runs only (ne
 ## R16. Installability
 
 **Decision**: an accepted loop writes `loops/<label>/skill/` (SKILL.md and `references/provenance.md`). A rejected loop writes
-no such folder. Round snapshots are stored as `rounds/NN/skill.md` and `rounds/NN/provenance.md`, not as a folder with a
-`SKILL.md`, so no rejected or intermediate text can be passed to `--skill` by accident. The existing installer already hashes
+no such folder. Round snapshots are stored as `rounds/NN/reviewed-skill.txt` and `rounds/NN/provenance.md`, not as a folder with a
+`SKILL.md` (and not under any case variant of that name, since the default macOS filesystem ignores case: a first draft used `skill.md`, and a test showed it installed), so no rejected or intermediate text can be passed to `--skill` by accident. The existing installer already hashes
 `SKILL.md` and the run's score records the hash (FR-020); the plan adds a test that the loop's accepted folder installs and
 that the recorded hash equals the loop record's.
 

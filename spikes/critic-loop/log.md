@@ -1,5 +1,8 @@
 # Critic-loop spike log (steps 1 to 3)
 
+Note: `transcript.ts` in this folder is superseded by `src/loop/transcript.ts` (spec 005), which adds the replay checks of
+`src/sim/score.ts`. The spike's files stay as the record.
+
 Plan: `design/notes/critic-loop-spike.md`. No NAMS calls. Each role ran as a separate agent that read only
 the files named in its prompt (recordings and skill text, never the world, goals or solver).
 

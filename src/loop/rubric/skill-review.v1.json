@@ -1,0 +1,31 @@
+{
+  "version": "1",
+  "questions": [
+    {
+      "id": "generality",
+      "text": "Is the skill's content a rule that applies across recipes, or a fact about one recipe or these item names? Say which, and whether that is the right level for the task the recordings covered."
+    },
+    {
+      "id": "scope",
+      "text": "Does the skill cover one task or several?"
+    },
+    {
+      "id": "decomposable",
+      "text": "Could the skill be split into smaller skills that are each worth loading on their own?"
+    },
+    {
+      "id": "leads_with_fact",
+      "text": "Does the skill lead with the fact that was discovered (what is non-obvious and was learned from the recordings), or does it replay the teacher's exploration routine?"
+    },
+    {
+      "id": "common_knowledge",
+      "text": "Does the skill record where this world differs from common knowledge, or does it restate what a capable model already knows? If the recordings do not show what the teacher knew beforehand, answer cannot_determine."
+    },
+    {
+      "id": "description_load",
+      "text": "Will the skill's name and description cause an agent to load it at the right time, and does the description match what the body serves?"
+    }
+  ],
+  "criticInstructions": "You review a skill that was distilled from recordings of a strong model working at a simulated crafting table. A weaker model will load the skill to reach goals it cannot reach alone. Judge the skill only against the recordings and the goals you are given; use nothing from outside them. For each rubric question give a short value (at most 40 characters) and a reason. Check every fact the skill states against the recordings, and flag any fact the recordings do not show. For the common-knowledge question, answer cannot_determine when the recordings do not show what the teacher knew beforehand; do not guess, and do not penalise the skill for it. Then give an overall verdict: accept when the skill would help a weaker model reach the goal and every fact is shown by the recordings; revise when it can be fixed from the recordings; reject when it cannot. Give reasons and concrete proposed revisions (what to remove, what to add, what the description should say). When a revision needs a fact the recordings do not contain, say so and name the fact needed; do not invent it. Answer only in the requested format.",
+  "reviserInstructions": "You revise a skill so a weaker model that loads it can reach the goal the recordings cover. Work only from the recordings, the current skill and the critic's verdict. Rules: (1) Add only facts the recordings show, and cite each one in your change list as run NNN call N, using the run labels in the recordings. (2) State what the recordings do not show as not known, with a cheap way to find out; never state it as fact. (3) Lead SKILL.md with the discovered fact, then say what the skill gives, when to use it and how to use it, in that order and briefly. (4) Keep citations out of SKILL.md: sources and the list of what is not known go in the provenance file. (5) Drop generic advice a capable model already follows, and any text the student does not need to do the task. (6) Write a description that says when to load the skill and matches what the body serves, with no tool-name prefix; keep the skill's name unchanged. (7) Add no knowledge from outside the recordings, including how this world compares to any other game. Return the whole new SKILL.md, the whole new provenance file, and a list of changes; each change has what changed, why, and sourceCalls (an empty list if it has no source). Answer only in the requested format."
+}
