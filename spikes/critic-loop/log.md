@@ -10,6 +10,7 @@ the files named in its prompt (recordings and skill text, never the world, goals
 | Step 3 round 1 | `rounds/round1/` sha256 `7b977c5a...74c5` | revise (minor): 3 overreaching claims, no WRONG. |
 | Step 3 round 2 | `rounds/round2/` sha256 `d1152bab...c047` | revise: 1 WRONG claim (sticks placement, introduced in round 1 by the reviser), over-hedged quantities. |
 | Step 3 round 3 | `rounds/round3/` sha256 `ac6abbc1...8662` | accept: 15 of 17 claims SHOWN, 2 mild INFERRED, none WRONG. |
+| Round 4, outside the loop's cap | `rounds/round4/` sha256 `da4e5018...8501063` | accept: every recipe, coordinate and yield claim SHOWN, none WRONG; optional edits only. |
 
 Known flaw in round 3 (raised in PR review): its description advertises oak_planks and sticks as goals, but the
 body has the student make all three crafts and stop only at the pickaxe, so following it for an intermediate
@@ -33,6 +34,7 @@ has no separate measurement.
 | Step 3 critic, round 1 | separate agent | 69,232 | 55 s |
 | Step 3 critic, round 2 | separate agent | 68,799 | 49 s |
 | Step 3 critic, round 3 | separate agent | 67,274 | 38 s |
+| Round 4 critic | separate agent | 67,328 | 40 s |
 
 Dollar cost of these agents was not measured. The student runs in steps 4 and 4b were costed by the harness
 ($0.137, $1.201 and $0.962).
@@ -85,3 +87,25 @@ and round 3: the content (the recipe chain) and the description. The originals w
 start in 5 of 6 runs; round 3 was loaded within 3 calls every time. A skill that is found late is a skill
 that has not yet helped, so the description rewrite may account for part of the gain. This spike did not
 separate the two (that would need round 3's body under the old description, or the reverse).
+
+## Round 4: keeping the audit trail out of the skill
+
+Prompted by the user (SKILL.md carried citations and recording detail the student does not need) and by a PR
+review comment (the description advertised oak_planks and stick goals the body did not serve). Not a loop round:
+ADR-003 caps the loop at three. Changes: `rounds/round4/changes.md`. SKILL.md went from 643 to about 240 words,
+organised as capability, when to use, how to use; citations moved to `references/provenance.md`; the description
+is scoped to the pickaxe goal.
+
+Critic (fresh agent): accept (`critic-round4.json`). Install check, same setup as step 4 (Haiku, 3 trials,
+plain prompt, unrecorded), output `runs/critic-loop-s1-round4/`:
+
+| Run | Reached | Calls (best 11) | Skill loaded after | Cost | Time |
+|---|---|---|---|---|---|
+| 001 | yes | 12 (+1) | 2 calls | $0.042 | 23.5 s |
+| 002 | yes | 13 (+2) | 2 calls | $0.039 | 22.2 s |
+| 003 | yes | 14 (+3) | 2 calls | $0.041 | 25.6 s |
+
+3 of 3, $0.122, no refusals and no failed crafts. Round 3 took exactly 11 calls each; round 4 took 1 to 3 more.
+The extra calls were not inspected (candidates: a `look` or `inventory` check the shorter skill no longer
+makes unnecessary, or the added "start from an empty table" line). Three trials cannot say whether the
+difference is real. The skill was loaded within 2 calls every time, so the trim did not hurt discovery.

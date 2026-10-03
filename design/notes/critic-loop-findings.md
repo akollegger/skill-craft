@@ -61,6 +61,14 @@ every run. It loaded the distilled skills late (after 20 to 92 calls) in 5 of 6 
 call 90 has little left to help with. The revision changed both the content and the description that decides
 whether a skill is loaded, and these runs do not separate the two.
 
+**5. Keeping the audit trail out of the skill.** The loop's rule that every added fact cites its source call
+put run and call numbers, the starting stock and a long list of unknowns into the skill itself, so the student
+read them too. A trimmed version (about 240 words against 643) organises the skill around what it does, when
+to use it and how, and moves the citations to a separate file. The critic accepted it, and the small model
+reached the goal in 3 of 3 runs, loading it within 2 calls, but took 1 to 3 more calls than the longer version
+(12, 13 and 14 against 11). Three trials cannot say whether that difference is real. This round was prompted
+by a reader's note and a review comment, not by the loop, which is capped at three rounds.
+
 ## What the loop taught us about distilling skills from memory
 
 - **A well-grounded skill is not necessarily a useful one.** Quality checks that ask "is every step
@@ -81,6 +89,8 @@ whether a skill is loaded, and these runs do not separate the two.
   the student than a confident claim the record does not support.
 - **Keep the reviser and the critic apart.** The one factual error in the loop came from the reviser and was
   found by a critic that had not seen the earlier rounds.
+- **An audit trail is a different artifact from the skill.** Citations make a skill checkable, and they
+  are noise to the agent that follows it. Keep them in a separate file.
 - **Descriptions matter as much as bodies.** An agent decides whether to load a skill from its name and
   description. One that opens with a tool name, or says nothing about when to use it, may be loaded late or never.
 - **A critic's verdict can be checked.** Here it predicted the ordering of install results, which is

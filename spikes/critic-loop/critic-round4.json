@@ -1,0 +1,38 @@
+{
+"critic":"claude-sonnet-5-5",
+"rubric":{
+"generalOrSpecific":{"value":"specific, appropriately","reason":"Capability is 'The recipe chain for a stone_pickaxe at the 3x3 table'; the recordings cover only that goal, and the skill says other arrangements/quantities were not tested. Not over-generalised."},
+"oneTaskOrSeveral":{"value":"one task","reason":"Single goal (hold a stone_pickaxe); the description's 'Use when your goal is to hold a stone_pickaxe' matches the body."},
+"decomposable":{"value":"yes","reason":"Three numbered crafts, each with placements, an expected craftable value and a craft yield, so the student can verify each stage."},
+"leadsWithDiscoveredFact":{"value":"mostly","reason":"After a Capability/When boilerplate, the first body content is the cell-coordinate chain. The reader reaches the discovered facts quickly, but the Capability/When lines add little and the opening could lead with the chain itself (log -> planks -> sticks -> pickaxe)."},
+"recordsDifferenceFromCommonKnowledge":{"value":"not determinable from the recordings","reason":"The recordings never show a comparison with any other recipe source. What is recorded is the exact grid positions (planks one log at (0,0); two planks vertical at (0,0),(1,0); 3 cobblestone top row + 2 sticks in column 1) and yields (4 planks, 4 sticks). The skill makes no claim of difference, which is correct."},
+"descriptionWillBeFound":{"value":"yes","reason":"Names the goal item stone_pickaxe, the 3x3 crafting table and the tool 'craftable'. Does not advertise anything the body does not serve."}
+},
+"factCheck":[
+{"claim":"3x3 grid, (row,col) zero-based, row 0 at top","status":"SHOWN","source":"run 001 call 1 (grid rows 3 cols 3; 'zero-based; row 0 is the top, col 0 is the left')"},
+{"claim":"Placing oak_log at (0,0) makes craftable = oak_planks; craft gives 4 oak_planks","status":"SHOWN","source":"all runs calls 3-4"},
+{"claim":"Placing oak_planks at (0,0) and (1,0) makes craftable = stick; craft gives 4 sticks","status":"SHOWN","source":"all runs calls 5-7"},
+{"claim":"cobblestone at (0,0),(0,1),(0,2) plus stick at (1,1),(2,1) makes craftable = stone_pickaxe; craft gives 1","status":"SHOWN","source":"all runs calls 8-13"},
+{"claim":"craft uses up everything on the table","status":"SHOWN","source":"help text in call 1: 'Consumes everything on the table'"},
+{"claim":"Start each craft with an empty table (clear if needed)","status":"INFERRED","source":"Each craft in the recordings began with an empty table (calls 3, 5, 8), but a non-empty table at craft start was never tried and clear was never called. The 'clear' advice is a safe reading of the help text, not a recorded behaviour. Mild."},
+{"claim":"craftable: null means nothing matches yet","status":"SHOWN","source":"help 'preview' text; null seen in calls 5, 8-11"},
+{"claim":"Only call craft when craftable names the item you want","status":"INFERRED","source":"Every craft in the recordings followed that pattern, but this is advice, not an observed rule (a craft with null was never tried). Reasonable and labelled as advice."},
+{"claim":"Other arrangements and quantities were not tested; only the one above is known to work","status":"SHOWN","source":"All three runs are identical; no variants appear"},
+{"claim":"look, place, remove, clear are available to try variants","status":"SHOWN","source":"help tool list, call 1 (remove and clear never executed, but listed)"},
+{"claim":"Done when you hold 1 stone_pickaxe: say so in one line and stop","status":"SHOWN","source":"task prompt"},
+{"claim":"provenance: starting inventory cobblestone 6, iron_ingot 6, oak_log 3; iron never used","status":"SHOWN","source":"call 2 of all runs; no iron placed"},
+{"claim":"provenance: runs 002 and 003 match 001 call for call","status":"SHOWN","source":"diff of the three transcripts"},
+{"claim":"provenance: craftable null on one oak_planks (call 5), 1-3 cobblestone (calls 8-10), 3 cobblestone + 1 stick (call 11)","status":"SHOWN","source":"calls 5, 8-11"},
+{"claim":"provenance: craft puts crafted items in inventory (sticks later placed)","status":"INFERRED","source":"Stated as 'suggests; not confirmed' - appropriately hedged; sticks placed at call 11 after craft at call 7"},
+{"claim":"provenance: no inventory call after a craft; remove/clear never called; refusals never seen","status":"SHOWN","source":"call sequences"}
+],
+"overall":"accept",
+"reasons":"Every instruction in SKILL.md that is stated as a fact is shown identically in all three runs, and the unshown parts (clear-before-craft, craft-only-when-craftable) are advice, hedged, and low-risk. Scope is honest (one goal, one arrangement, untested variants flagged) and the description matches the body. Remaining weaknesses are minor: the student is not told its starting stock (the recordings show cobblestone 6, oak_log 3; the chain uses 1 log, 3 cobblestone), so it cannot tell it has enough materials before starting or that one log is enough; it is not told that 4 sticks result but only 2 are used (leftover planks/sticks remain in inventory, inferred), which could lead a weaker model to waste effort or worry; the 'When to use' and 'Capability' lines are thin and 'Only call craft when craftable names the item' is stated twice.",
+"proposedRevisions":[
+"Optional: add one line 'You start with cobblestone 6, iron_ingot 6, oak_log 3 (seen in all three runs); the chain needs 1 oak_log and 3 cobblestone, and iron_ingot is not used.' This is SHOWN (call 2) and helps a student confirm it has the materials via inventory.",
+"Optional: add 'Crafts 1 and 2 each make 4 items; you only need 2 oak_planks and 2 sticks, so extras are expected' (yields SHOWN; that extras remain available is INFERRED, so say 'extras are expected' rather than where they go).",
+"Optional: merge the two 'only craft when craftable names the item' sentences into one.",
+"Optional: label the clear advice as 'safe habit' rather than a requirement, since clear was never exercised in the recordings.",
+"Otherwise nothing is worth changing; do not add speculation about other goals."
+]
+}
