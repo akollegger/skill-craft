@@ -1,8 +1,10 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CandidateFailed, WorkspaceRefused } from "../src/harness/errors.js";
 import { createNamsClient, guarded, WorkspaceGuard, type WorkspaceTools } from "../src/loop/nams.js";
 import { FakeNams, FAKE_SECRET } from "./helpers/fake-nams.js";
 
+const fixture = (name: string): unknown => JSON.parse(readFileSync(`test/fixtures/nams/${name}.json`, "utf8"));
 const KEY = "nams_test_KEY_must_never_appear_0123456789";
 const signal = new AbortController().signal;
 
@@ -162,5 +164,38 @@ describe("the real client's requests", () => {
     await nams.waitActive("ws-1", signal);
     expect(active).toBeGreaterThanOrEqual(3);
     expect(s.seen.some((r) => r.url.endsWith("/v1/entities/count") && r.headers["X-Workspace-Id"] === "ws-1")).toBe(true);
+  });
+});
+
+describe("against the shapes the live probe observed (test/fixtures/nams)", () => {
+  const make = (answers: Record<string, unknown>) => {
+    const s = stub(answers);
+    return createNamsClient({ key: KEY, baseUrl: "https://nams.test", fetch: s.fetch, tools, pollMs: 1, maxWaitMs: 200 });
+  };
+
+  it("reads a generate answer, and a run through its pending states to success with the skill id and both scores", async () => {
+    const nams = make({
+      "POST /v1/skills/generate": fixture("generate-accepted"),
+      "GET /v1/skills/runs/*": (n: number) => fixture(n === 1 ? "run-snapshot-pinned" : n === 2 ? "run-packaging" : "run-succeeded"),
+    });
+    expect((await nams.generateSkill("ws-1", { conversationIds: ["c1"], procedureFormat: "prose" })).runId).toMatch(/^run-/);
+    expect(await nams.getRun("ws-1", "r")).toMatchObject({ status: "snapshot_pinned", skillId: undefined, failure: undefined });
+    expect((await nams.getRun("ws-1", "r")).status).toBe("packaging");
+    expect(await nams.getRun("ws-1", "r")).toMatchObject({ status: "succeeded", skillId: "sk-run-00000000-0000-0000-0000-000000000001", gates: { grounding: 1, coverage: 1 } });
+  });
+
+  it("reads a failed run's code and scores (shape assumed, not observed)", async () => {
+    const nams = make({ "GET /v1/skills/runs/*": fixture("run-failed-assumed") });
+    expect(await nams.getRun("ws-1", "r")).toMatchObject({ status: "failed", failure: "low_coverage", gates: { grounding: 1, coverage: 0.5 } });
+  });
+
+  it("waits through the observed extraction states", async () => {
+    const nams = make({ "GET /v1/conversations/*": (n: number) => fixture(n < 3 ? "extraction-processing" : "extraction-done") });
+    await expect(nams.waitExtracted("ws-1", ["c1"], signal)).resolves.toBeUndefined();
+  });
+
+  it("accepts the capabilities answer unchanged", async () => {
+    const nams = make({ "GET /v1/skills/capabilities": fixture("capabilities") });
+    expect(await nams.capabilities("ws-1")).toMatchObject({ coverageThreshold: 0.6, groundingThreshold: 0.9 });
   });
 });

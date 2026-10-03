@@ -85,9 +85,9 @@ generation the step stops and reports the distiller's reasons with no retry (FR-
 **Rationale**: matches the spike and the OpenAPI spec (`application/zip`). A reader is about 60 lines and removes a dependency.
 
 **Alternatives**: `fflate` or `adm-zip`: rejected, see Complexity Tracking in the plan. `unzip`: rejected, platform difference.
-**probe (go-ahead needed)**: the run-status values, where the skill id appears in the run response, what a gate failure looks
-like, and the zip's file list. The OpenAPI response is an untyped object, so the first task is one real generation on a throwaway
-workspace, recorded as a fixture for the stand-in.
+**probe (done 2026-10-04; results in `contracts/nams-seam.md`, shapes in `test/fixtures/nams/`)**: the run statuses are `snapshot_pinned`,
+`packaging` and `succeeded`; the skill id is `skillId` on the run, empty until success; the two scores are top-level (`groundingScore`,
+`coverageScore`) and a failure carries `failCode`; the zip's files sit at its root. A failed run was not provoked, so its shape is still assumed.
 
 ## R7. The rubric and the roles' instructions are one versioned file
 

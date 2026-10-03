@@ -1,0 +1,17 @@
+{
+  "batchId": "",
+  "completedAt": "2026-10-04T00:01:00.000Z",
+  "coverageScore": 0.5,
+  "createdAt": "2026-10-04T00:00:00.000",
+  "error": "coverage below the threshold",
+  "failCode": "low_coverage",
+  "groundingScore": 1,
+  "id": "run-00000000-0000-0000-0000-000000000001",
+  "kind": "distill",
+  "progress": 0,
+  "scopeJson": "{\"type\":\"conversations\"}",
+  "skillId": "",
+  "skillVersionId": null,
+  "status": "failed",
+  "suggestSplitJson": null
+}

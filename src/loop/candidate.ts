@@ -86,6 +86,7 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
   const file = join(a.loopDir, "workspace.json");
   const writeWorkspace = (rec: { id: string | null; retired: boolean }) => writeFileSync(file, `${JSON.stringify({ name, createdBy: "loop", ...rec }, null, 2)}\n`);
   // Written before the workspace exists, so a crash leaves a record of what the step meant to create.
+  mkdirSync(a.loopDir, { recursive: true });
   writeWorkspace({ id: null, retired: false });
 
   // The id lives in a holder so the closures below can set it and the `finally` can read it.

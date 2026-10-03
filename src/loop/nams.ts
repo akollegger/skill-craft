@@ -214,11 +214,14 @@ export function createNamsClient(o: NamsClientOptions): NamsApi {
     async getRun(ws, runId) {
       const body = await json("GET", `/v1/skills/runs/${runId}`, ws);
       const result = obj(body["result"]);
+      // Observed on a succeeded run (2026-10-04 probe): status, skillId, failCode, groundingScore and coverageScore at the top level.
+      const grounding = body["groundingScore"] ?? result["groundingScore"];
+      const coverage = body["coverageScore"] ?? result["coverageScore"];
       return {
         status: (str(body["status"]) ?? str(body["state"]) ?? "unknown").toLowerCase(),
         skillId: str(body["skillId"]) ?? str(body["skill_id"]) ?? str(result["skillId"]) ?? str(result["skill_id"]),
-        gates: body["gates"] ?? result["gates"],
-        failure: str(body["failure"]) ?? str(body["error_code"]) ?? str(body["reason"]),
+        gates: body["gates"] ?? (typeof grounding === "number" || typeof coverage === "number" ? { grounding: grounding ?? null, coverage: coverage ?? null } : undefined),
+        failure: str(body["failCode"]) ?? str(body["fail_code"]) ?? str(body["failure"]) ?? str(body["error_code"]) ?? str(body["reason"]),
       };
     },
     async downloadSkill(ws, skillId) {
@@ -248,7 +251,12 @@ export function createMcpWorkspaceTools(key: string, baseUrl = "https://memory.n
     const res = (await c.callTool({ name: tool, arguments: args })) as { content: { text?: string }[]; isError?: boolean };
     const text = res.content.map((x) => x.text ?? "").join("");
     if (res.isError) throw new CandidateFailed(`the service refused ${tool}`);
-    try { return JSON.parse(text); } catch { return { text }; }
+    // The tools may put a line of prose before the JSON ("Listed 3 workspaces"), so parse from the first brace.
+    for (const from of [0, text.search(/[[{]/)]) {
+      if (from < 0) break;
+      try { return JSON.parse(text.slice(from)); } catch { /* try the next start */ }
+    }
+    return { text };
   }
   return {
     async create(name) {

@@ -1,0 +1,23 @@
+{
+  "messages": [
+    {
+      "attempts": 1,
+      "error": null,
+      "id": "m1",
+      "lastRunAt": "2026-10-04T00:00:30.000Z",
+      "role": "user",
+      "status": "done"
+    },
+    {
+      "attempts": 1,
+      "error": null,
+      "id": "m2",
+      "lastRunAt": "2026-10-04T00:00:40.000Z",
+      "role": "assistant",
+      "status": "done"
+    }
+  ],
+  "summary": {
+    "done": 2
+  }
+}

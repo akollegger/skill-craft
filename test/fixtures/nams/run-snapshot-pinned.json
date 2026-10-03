@@ -1,0 +1,17 @@
+{
+  "batchId": "",
+  "completedAt": null,
+  "coverageScore": null,
+  "createdAt": "2026-10-04T00:00:00.000",
+  "error": null,
+  "failCode": "",
+  "groundingScore": null,
+  "id": "run-00000000-0000-0000-0000-000000000001",
+  "kind": "distill",
+  "progress": 0,
+  "scopeJson": "{\"type\":\"conversations\"}",
+  "skillId": "",
+  "skillVersionId": null,
+  "status": "snapshot_pinned",
+  "suggestSplitJson": null
+}

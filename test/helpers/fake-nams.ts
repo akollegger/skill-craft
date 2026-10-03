@@ -73,7 +73,8 @@ export class FakeNams implements NamsApi {
   async generateSkill(ws: string, req: { conversationIds: string[]; procedureFormat: "graph" | "prose"; nameHint?: string }) { await this.enter("generateSkill", ws, req); return { runId: "run-1" }; }
   async getRun(ws: string, runId: string): Promise<RunStatus> {
     await this.enter("getRun", ws, { runId });
-    const runs = this.o.runs ?? [{ status: "completed", skillId: "skill-1", gates: { grounding: 1, coverage: 1 } }];
+    // The sequence the probe saw: snapshot_pinned, packaging, then succeeded with the skill id and the two scores.
+    const runs = this.o.runs ?? [{ status: "snapshot_pinned" }, { status: "packaging" }, { status: "succeeded", skillId: "skill-1", gates: { grounding: 1, coverage: 1 } }];
     return runs[Math.min(this.runIndex++, runs.length - 1)]!;
   }
   async downloadSkill(ws: string, skillId: string) { await this.enter("downloadSkill", ws, { skillId }); return this.o.zip ?? new Uint8Array(); }
