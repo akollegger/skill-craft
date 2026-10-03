@@ -89,7 +89,7 @@ whether a skill is loaded, and these runs do not separate the two.
 ## What worked and what to improve
 
 **Worked:**
-- Reviewing before installing: it cost a few cents and predicted the ranking.
+- Reviewing before installing: each critic or reviser round used about 67,000 to 71,000 tokens and 35 to 55 seconds (dollar cost was not measured), and the verdicts predicted the ranking.
 - Citing the source call for every added fact, which made each claim checkable.
 - Editing in place as plain files, with the diff and a hash kept for each round.
 

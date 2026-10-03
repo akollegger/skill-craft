@@ -145,7 +145,7 @@ A distilled skill is reviewed before any student sees it. The review stands in f
 
 **On `revise`**, a reviser model edits the skill in place, as local files (see the 2026-10-03 amendment). The loop runs at most three rounds. Each round records the SHA-256 of `SKILL.md`, so every student run names the exact text it had. The loop ends in `accept` (the version students receive), or `reject` (the experiment reports that distillation did not yield a usable skill).
 
-Early on, a human also reads the first skills the critic accepts, to check the critic.
+Early on, a human also reads the first skills the critic accepts, as a post-hoc audit of the critic. It is not a gate: students may run on an accepted skill before the audit, and a skill the audit faults is reported, not silently replaced.
 
 ## 3. Alternatives Considered
 
@@ -161,7 +161,7 @@ Early on, a human also reads the first skills the critic accepts, to check the c
 - **Invented worlds only.** Rejected: no real process lacks a prior, and results from invented names cannot say what a skill adds beyond what the model knows.
 - **Faithful worlds only.** Rejected: a model that already knows the recipes leaves nothing for a skill to close, so the effect would sit at the ceiling.
 - **Rely on NAMS's grounding and coverage gates alone.** Rejected: the pilot skill scored 1.0 on both and agents barely loaded it. The gates check that steps trace back to the memory, not that the skill helps.
-- **Human review only.** Rejected: too slow and unrepeatable at the number of skills an experiment produces. A human keeps the approve and publish step.
+- **Human review only.** Rejected: too slow and unrepeatable at the number of skills an experiment produces. A human audits the first accepted skills (2.6).
 - **No review.** Rejected: the raw skill replays the teacher's routine, so results would measure the distiller's current behaviour, not the idea.
 - **Tell every arm about skills.** Rejected as the only condition: a prompt that names the skill removes the question of whether the skill is discoverable.
 
@@ -276,5 +276,5 @@ Early on, a human also reads the first skills the critic accepts, to check the c
     introduced in round 1. The revision also changed the description, and the student loaded the revised skill
     within 3 calls where it loaded the originals late, so the gain is not yet split between content and
     description. Results: `design/notes/critic-loop-findings.md`.
-  - **Still to do.** A person reads the first accepted skills, as 2.6 says; none has yet. The critic's
+  - **Still to do.** A person audits the first accepted skills after the fact, as 2.6 says (it is not a gate); none has yet. The critic's
     rubric location and output schema remain open (see "Not decided" and the follow-up specs).

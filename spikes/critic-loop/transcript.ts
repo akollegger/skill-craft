@@ -14,7 +14,7 @@ import { loadWorld } from "../../src/sim/loader.js";
 const [dir, out, ...extra] = process.argv.slice(2);
 if (!dir || !out || extra.length > 0) throw new Error("usage: transcript.ts <run folder> <output file>");
 
-const calls: { tool: string; args: Record<string, unknown>; ok: boolean }[] = readFileSync(join(dir, "run.jsonl"), "utf8")
+const calls: { tool: string; args: Record<string, unknown>; ok: boolean; error?: string; crafted?: { item: string; qty: number } }[] = readFileSync(join(dir, "run.jsonl"), "utf8")
   .split("\n").filter(Boolean).map((l) => JSON.parse(l));
 const mcp = JSON.parse(readFileSync(join(dir, "mcp.json"), "utf8")).mcpServers.craft.env;
 const prompt = readFileSync(join(dir, "prompt.txt"), "utf8");
@@ -28,6 +28,13 @@ const lines = ["# Recorded run", "", "## Prompt", "", prompt.trim(), "", "## Cal
 for (const [i, c] of calls.entries()) {
   const r = (await client.callTool({ name: c.tool, arguments: c.args })) as { content: { text: string }[]; isError?: boolean };
   if (Boolean(r.isError) === c.ok) throw new Error(`replay diverged at call ${i + 1}`);
+  // As src/sim/score.ts does: the same call can succeed and make something else if the world changed, so what
+  // it made and why it was refused must match the log too, or the transcript is not what the agent saw.
+  const body = JSON.parse(r.content[0]!.text) as { crafted?: unknown; error?: unknown };
+  const error = r.isError && body.error !== undefined ? String(body.error) : undefined;
+  const crafted = !r.isError ? body.crafted : undefined;
+  if (c.error !== error) throw new Error(`call ${i + 1}: logged error=${String(c.error)}, replay gave error=${String(error)}`);
+  if (JSON.stringify(c.crafted) !== JSON.stringify(crafted)) throw new Error(`call ${i + 1}: logged crafted=${JSON.stringify(c.crafted)}, replay gave crafted=${JSON.stringify(crafted)}`);
   lines.push(`### Call ${i + 1}: ${c.tool} ${JSON.stringify(c.args)}`, `Status: ${r.isError ? "refused" : "ok"}`, "```", r.content[0]!.text, "```", "");
 }
 writeFileSync(out, lines.join("\n"));

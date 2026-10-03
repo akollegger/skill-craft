@@ -11,8 +11,31 @@ the files named in its prompt (recordings and skill text, never the world, goals
 | Step 3 round 2 | `rounds/round2/` sha256 `d1152bab...c047` | revise: 1 WRONG claim (sticks placement, introduced in round 1 by the reviser), over-hedged quantities. |
 | Step 3 round 3 | `rounds/round3/` sha256 `ac6abbc1...8662` | accept: 15 of 17 claims SHOWN, 2 mild INFERRED, none WRONG. |
 
+Known flaw in round 3 (raised in PR review): its description advertises oak_planks and sticks as goals, but the
+body has the student make all three crafts and stop only at the pickaxe, so following it for an intermediate
+goal would consume that intermediate. Round 3 is left unchanged because it is the artifact the install check
+measured. A narrower description is drafted in `rounds/round4/` and is not yet reviewed or tested.
+
 Full hashes: `shasum -a 256 rounds/*/craft-stone-pickaxe/SKILL.md`. Transcripts come from `transcript.ts`, which
 replays a run log through the craft server.
+
+## Cost of each stage
+
+Measured from each agent's completion notice (total tokens as one number, not split into input and output, and
+no dollar figure; wall-clock duration). Round 2's revision was made by the session's main model directly, so it
+has no separate measurement.
+
+| Stage | Agent | Tokens | Duration |
+|---|---|---|---|
+| Step 1 trace test | separate agent | 66,967 | 35 s |
+| Step 2 critic, round 0 | separate agent | 68,554 | 36 s |
+| Step 3 reviser, round 1 | separate agent | 70,920 | 36 s |
+| Step 3 critic, round 1 | separate agent | 69,232 | 55 s |
+| Step 3 critic, round 2 | separate agent | 68,799 | 49 s |
+| Step 3 critic, round 3 | separate agent | 67,274 | 38 s |
+
+Dollar cost of these agents was not measured. The student runs in steps 4 and 4b were costed by the harness
+($0.137, $1.201 and $0.962).
 
 ## Observations for the findings note
 
