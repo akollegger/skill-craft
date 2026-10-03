@@ -55,5 +55,5 @@ skill's hash, which equals the last round's `skillSha256` in `loops/loop-demo/lo
 
 - SC-002: the workspace guard tests refuse any id the step did not create.
 - SC-003: the input tests fail if an earlier verdict or a forbidden string is added to a role's prompt.
-- SC-006: `loops/<label>/skill/SKILL.md` has no `run N call N` text; `references/provenance.md` does.
+- SC-006: `loops/<label>/skill/SKILL.md` has no `run N call N` text; `references/provenance.md` does, every cited call exists in a recording, and any change with no source is under `## Uncited changes`.
 - SC-007: the privacy test finds agent-authored text only under `loops/`.

@@ -23,7 +23,7 @@ Single project: `src/loop/` (no SDK import, no engine edits), `src/harness/`, `s
 
 **Purpose**: Record the two decisions in ADRs (Principle VII), know the baseline, and make room for the loop's output. No dependency is added.
 
-- [ ] T001 Amend `design/adr/ADR-003-experiment-protocol.md` and `design/adr/ADR-002-client-otel-trace.md` as drafted in the 2026-10-03 amendments (tool-less schema-answering roles; a designated `loops/` place for model-authored text), so Principle VII is met before any code. Done on this branch; confirm they are merged with the spec
+- [X] T001 Amend `design/adr/ADR-003-experiment-protocol.md` and `design/adr/ADR-002-client-otel-trace.md` as drafted in the 2026-10-03 amendments (tool-less schema-answering roles; a designated `loops/` place for model-authored text), so Principle VII is met before any code. Done: both amendments are written and committed on this branch
 - [ ] T002 Run `pnpm typecheck` and `pnpm test` on the branch and note the passing count, so later phases can show nothing regressed
 - [ ] T003 [P] Add `loops/` to `.gitignore` (one folder per loop, never committed), and confirm `git status` still shows nothing else new
 

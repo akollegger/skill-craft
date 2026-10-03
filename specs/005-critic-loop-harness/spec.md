@@ -192,11 +192,11 @@ its hash. A rejected loop leaves nothing to install and says so.
 
 - **FR-008**: The loop MUST run at most three rounds. Each round is a critic review and, on `revise`, one
   revision. The loop MUST end in exactly one of `accept` (the skill the students receive) or `reject`.
-- **FR-009**: The critic and the reviser MUST each run as a separate agent session through the harness's
-  player interface, never in the same session as each other or as the teacher or the student. The model for
+- **FR-009**: The critic and the reviser MUST each run as a separate agent session through their own seam, with no
+  tools, never in the same session as each other or as the teacher or the student. The model for
   each role MUST be set per loop, pinned by id and recorded in the loop record. It defaults to the model that
   played the teacher in the recordings, and MUST be set explicitly when the recordings come from more than one model.
-- **FR-010**: A round's critic MUST be given only the current skill folder, the recordings and the list of
+- **FR-010**: A round's critic MUST be given only the current skill's text, the recordings and the list of
   goals the recordings cover. It MUST NOT be given an earlier verdict, an earlier round's text, the world
   file, recipes, goals files, the solver's output, a held-out goal or any evaluation result, and it
   MUST NOT have a means to read them.
@@ -276,8 +276,9 @@ its hash. A rejected loop leaves nothing to install and says so.
 - **SC-004**: The loop ends within three rounds in every case, with exactly one outcome and a stated reason.
 - **SC-005**: Every round's record lets the auditor recover the exact skill text (by hash), the verdict and
   the change from the round before, and the hash of the installed skill matches the one named in the student run's score.
-- **SC-006**: The accepted skill's main file contains no run or call citations, and every fact added by the
-  reviser appears in the provenance file with the call it came from.
+- **SC-006**: The accepted skill's main file contains no run or call citations; every source the reviser cites
+  names a call that exists in a recording; and every change with no source is listed under "Uncited changes"
+  in the provenance file.
 - **SC-007**: No agent-authored text appears in any trace, summary, score or bundle in any test; the privacy
   test keeps passing.
 - **SC-008**: On the faithful world's `stone_pickaxe` recordings, a full loop (excluding the distiller's
@@ -292,7 +293,7 @@ its hash. A rejected loop leaves nothing to install and says so.
   recorded and changed without touching the harness. (ADR-003 leaves this open; this is the choice for this feature.)
 - The verdict is small: overall value, six short answers with reasons, an overall reason and proposed revisions
   as plain text. The reviser reads the reasons and revisions as text, not as structured edits.
-- Agent-authored text is kept in the loop's own record folder under the experiment's folder, never under a run
+- Agent-authored text is kept in the loop record, the folder `loops/<label>/`, never under a run
   folder, and the privacy test is extended to cover that folder's boundary. (ADR-003 leaves where open; this is the choice for this feature.)
 - The critic and reviser run through their own narrow seam beside the player's, with no tools: everything a role may
   see is placed in its prompt, and everything it returns is a schema-checked answer; each loop pins the critic's and the reviser's model by id (default: the teacher's model) and records both.

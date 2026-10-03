@@ -33,8 +33,10 @@
 
 - Like specs 002 and 003, this spec uses the project's own vocabulary (run, trace, bundle, player, hash) because the
   audience is the experiment runner and auditor, not a general business reader. It names no language, library or
-  service API; "schema" and "player interface" are the harness's existing concepts (ADR-002, ADR-003).
+  service API; "schema" and "seam" are the harness's own concepts (ADR-002, ADR-003).
 - The two choices ADR-003 left open (where the rubric lives, where agent-authored text may be stored) are decided in
   Assumptions rather than left as clarification markers, because each has a reasonable default. Revisit in `/speckit-clarify` if either is contested.
 - SC-008 reuses the spike's result as a regression check (a student at least 2 of 3 with the accepted skill); it is
   not a transfer claim.
+- Re-validated 2026-10-03 after the analysis fixes (FR-024 to FR-026, new edge cases, FR-009, FR-010, SC-006 and the
+  Assumptions reworded): all 16 items still pass, and no clarification marker was added.
