@@ -42,7 +42,7 @@ The existing live-SDK test pattern (`test/live-sdk.test.ts`, skipped by default)
 **Performance Goals**: a loop on the 13-call stone-pickaxe recordings finishes in under 15 minutes excluding the
 distiller's processing wait (SC-008); the spike's roles took 35 to 55 s each
 
-**Constraints**: no randomness or clock in the engine or the run log (the loop's own timings use the clock, in the
+**Constraints**: size limits (64 KB per package, 32 KB per file, 150,000 characters of recordings per prompt); a spend cap per role call; no randomness or clock in the engine or the run log (the loop's own timings use the clock, in the
 harness, as the run measurement does); agent text and reasoning never reach a trace, summary, score, bundle or
 `reason` (loop folders are the one designated place, R11); a `reason` is `code: fixed message`; keys only from
 `.env` through the environment; the SDK imported in one file
@@ -61,7 +61,7 @@ harness, as the run measurement does); agent text and reasoning never reach a tr
 | IV. Test first | Pass | Every new module has its tests written first (see tasks to come): schemas, blindness of the role inputs, round control with scripted roles, the workspace guard, the zip reader, the diff, the privacy boundary |
 | V. Simplicity | Pass, with two justified in-house utilities | No new mechanic. A minimal zip reader and a line diff are written in place of two dependencies (see Complexity Tracking). The roles have no tools, which removes machinery |
 | VI. Secrets hygiene | Pass | The NAMS key is read from the environment and never printed, logged or put in an argument or a record. Workspace creation needs an explicit flag and prints only ids. Recordings contain run transcripts only |
-| VII. Decisions before specs | Pass | ADR-003 (§2.4, §2.6, amended 2026-10-03) decides this; no new ADR is needed. Two open items it listed are settled in the spec's Assumptions and in research R7 and R11, and the ADR's follow-up list should be updated when this lands |
+| VII. Decisions before specs | Pass | ADR-003 (§2.4, §2.6, amended 2026-10-03) decides the loop. The two choices that change existing rules, tool-less schema-answering roles and a designated `loops/` place for model-authored text, are recorded in the 2026-10-03 amendments to ADR-003 and ADR-002 (task T001), before any code. The two open items ADR-003 listed are settled in the spec's Assumptions and in research R7 and R11, and its follow-up list is updated when this lands |
 
 The check holds after Phase 1 design.
 
@@ -93,12 +93,12 @@ src/
 │   ├── sdk-options.ts       # + roleOptionsFor, roleResultFrom (type-only SDK imports)
 │   └── errors.ts            # + loop error classes (code: fixed message)
 └── loop/                    # no SDK, no src/sim engine edits
-    ├── rubric/skill-review.v1.json   # the versioned questions (R7)
-    ├── rubric.ts            # load, validate, hash, version
+    ├── rubric/skill-review.v1.json   # the versioned questions and the roles' instructions (R7)
+    ├── rubric.ts            # load, validate, hash, version (questions and instructions)
     ├── verdict.ts           # zod schemas: Verdict (built from the rubric), RevisionOutput
     ├── package.ts           # a skill package as path->text; read a folder, write a folder, SKILL.md hash
     ├── transcript.ts        # run folder -> the recording text the agent saw (replay on a fresh game)
-    ├── inputs.ts            # assemble each role's prompt; the blindness boundary lives here
+    ├── inputs.ts            # assemble each role's prompt; the blindness boundary and the size limits live here
     ├── diff.ts              # line-based unified diff
     ├── loop.ts              # the round controller (pure over RoleDriver; no I/O beyond the record writer)
     ├── record.ts            # loops/<label>/ writer, hashes, measurements, the privacy boundary

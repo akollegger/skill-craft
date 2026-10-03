@@ -34,13 +34,13 @@ A loop that ends in `reject` has no `skill/` folder.
 ## 4. A loop from the runs alone (needs `--allow-workspace`)
 
 ```bash
-set -a; source ./.env; set +a
-pnpm dev scripts/critic-loop.ts --runs runs/faithful-1-t0-stone/001 runs/faithful-1-t0-stone/002 runs/faithful-1-t0-stone/003 --allow-workspace --label loop-nams
+( set -a; source ./.env; set +a; unset NAMS_WORKSPACE_ID; pnpm dev scripts/critic-loop.ts --runs runs/faithful-1-t0-stone/001 runs/faithful-1-t0-stone/002 runs/faithful-1-t0-stone/003 --allow-workspace --label loop-nams )
 ```
+
+The subshell keeps `NAMS_WORKSPACE_ID` out of the shell where you start Claude sessions.
 
 Expected: the workspace id printed when created and again when deleted, a candidate downloaded under
 `loops/loop-nams/candidate/`, then the rounds as in step 3. Afterward the account lists no workspace the step created.
-Do not export `NAMS_WORKSPACE_ID` in the shell that runs this.
 
 ## 5. Use the accepted skill
 

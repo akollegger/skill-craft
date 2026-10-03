@@ -7,7 +7,7 @@ call write endpoints).
 
 ## R1. Critic and reviser sessions have no tools
 
-**Decision**: each role is one session with no tools, no MCP servers and no settings. The harness puts the
+**Decision** (recorded in the 2026-10-03 amendment to ADR-003): each role is one session with no tools, no MCP servers and no settings. The harness puts the
 recordings and the skill text into the prompt. The critic answers with a schema-checked object, and the reviser returns
 the revised files as text in a schema-checked object, which the harness writes.
 
@@ -40,7 +40,7 @@ and the export depend on, to serve a call that shares almost none of its fields.
 Set `tools: []`, `settingSources: []`, a small `maxTurns`, and `maxBudgetUsd` as the per-role spend cap (default
 $1.00, a flag to change it). The role's free-form final text is discarded, never stored.
 
-**Rationale**: FR-012 and FR-013 want a typed answer validated before the loop uses it; the SDK supports it, and zod 4 is
+**Rationale**: FR-012, FR-013 and FR-024 want a typed answer validated before the loop uses it and a spend cap; the SDK supports it, and zod 4 is
 already a dependency. The spend cap answers the one outstanding item from clarification (a runaway role).
 
 **Alternatives**: ask for JSON in prose and parse it. Rejected: brittle, and a parse failure would carry the agent's own
@@ -89,10 +89,16 @@ generation the step stops and reports the distiller's reasons with no retry (FR-
 like, and the zip's file list. The OpenAPI response is an untyped object, so the first task is one real generation on a throwaway
 workspace, recorded as a fixture for the stand-in.
 
-## R7. The rubric is a versioned file
+## R7. The rubric and the roles' instructions are one versioned file
 
-**Decision**: `src/loop/rubric/skill-review.v1.json` holds a version string and the six questions of ADR-003 §2.6, each
-with an id and the text the critic sees. The loop loads it, validates it, and records its version and SHA-256 with every
+**Decision**: `src/loop/rubric/skill-review.v1.json` holds a version string, the six questions of ADR-003 §2.6 (each
+with an id and the text the critic sees), and `criticInstructions` and `reviserInstructions`. The reviser's instructions
+state seven rules: add only facts the recordings show, each cited as `run NNN call N`; state what the recordings do not
+show as not known, with a cheap way to find out; lead `SKILL.md` with the discovered fact, then what the skill gives, when
+to use it and how; keep citations out of `SKILL.md` and in the provenance file; drop generic advice a capable model
+already follows; scope the description to the goal the body serves; add no knowledge from outside the recordings. The
+critic's instructions state that the common-knowledge question is answered `cannot_determine` when the recordings do
+not show what the teacher knew beforehand, and that a fact the recordings do not show is to be flagged. The loop loads it, validates it, and records its version and SHA-256 with every
 verdict. The verdict schema is built from the question ids, so adding a question is a data change plus a version bump.
 The "differs from common knowledge" question is worded to allow the answer `cannot_determine` (FR-014).
 
@@ -110,12 +116,16 @@ The "differs from common knowledge" question is worded to allow the answer `cann
 - **Revision**: `skillMd` (the whole main file), `provenanceMd` (the whole provenance file) and `changes` (a list of
   `{ what, why, sourceCalls }`, where `sourceCalls` is a list of strings like `run 001 call 12`).
 
-**Rationale**: FR-012, FR-015, FR-016, FR-017. Caps keep a role from returning a second skill inside a reason.
+Citations are checked mechanically: every `sourceCalls` entry must name a run in the loop and a call number that exists in
+its recording, and the harness appends an `## Uncited changes` section for entries with no source (FR-026).
+
+**Rationale**: FR-012, FR-015, FR-016, FR-017, FR-026. Caps keep a role from returning a second skill inside a reason.
 
 ## R9. A skill package is a map of path to text
 
-**Decision**: `package.ts` reads a folder or a zip into `Record<path, string>`, keeping only UTF-8 text files under a size
-cap, and writes one back. The critic sees every text file in the package. A revised package is exactly two files:
+**Decision**: `package.ts` reads a folder or a zip into `Record<path, string>`, keeping only UTF-8 text files (at most 64 KB
+in all and 32 KB for one file; recordings in one prompt at most 150,000 characters, checked in `inputs.ts`; either limit
+refuses the loop at start with `LoopRefused`), and writes one back. The critic sees every text file in the package. A revised package is exactly two files:
 `SKILL.md` and `references/provenance.md`. The distiller's other files (domain model, procedures, schema) are not carried
 forward, as in the spike, and the loop record says so.
 
@@ -132,7 +142,7 @@ does not matter. Tests cover add, remove, move, empty and identical inputs.
 
 ## R11. Where agent-authored text may live
 
-**Decision**: only under `loops/<label>/`: verdicts, change lists, reviser output and the round texts. Never in a run folder,
+**Decision** (recorded in the 2026-10-03 amendments to ADR-002 and ADR-003): only under `loops/<label>/`: verdicts, change lists, reviser output and the round texts. Never in a run folder,
 trace, summary, score, replay bundle or `reason`. A role's free-form text and any reasoning are never kept, only the
 schema's fields. The privacy test is extended: a scripted role puts a marker in every free-text field; the marker must appear
 under `loops/` and nowhere in the run folders the loop read, and a failed role leaves no marker in any `reason`.

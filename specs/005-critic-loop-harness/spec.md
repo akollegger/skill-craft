@@ -153,11 +153,14 @@ its hash. A rejected loop leaves nothing to install and says so.
 - Processing of the recording does not finish within the allowed wait: the step ends as a timeout, not as an empty skill.
 - The run is interrupted (Ctrl-C) during the loop: the current round ends, the record is written for the rounds that finished, and the workspace is retired.
 - The reviser's edit leaves the skill invalid (no description, no body): the round ends as an error, not as `revise`.
-- The reviser adds a fact it cannot cite to a recorded call: the provenance file marks it uncited, and the next critic is asked to judge it.
+- The reviser adds a fact it cannot cite to a recorded call: the harness lists it under "Uncited changes" in the provenance file, and the next critic is asked to judge it.
 - The critic, asked how the world differs from common knowledge, cannot tell from the recordings: it says so, and the verdict does not penalise the skill for it.
 - The candidate is already accepted in round 1: no revision is made and the skill is passed on unchanged.
 - A recording holds refused calls: they are written with a failure status, and the critic sees them.
 - The recordings come from more than one teacher model and no critic or reviser model is set: the loop refuses to start and asks for one.
+- The recordings, or a package, exceed the size the roles can be given: the loop refuses to start and names the limit (FR-025).
+- The reviser cites a call that is not in the recordings: the revision is invalid and the round ends as an error (FR-026).
+- A role call reaches its spend cap: the loop stops with a typed error and records the rounds finished so far (FR-024).
 - The same step is run twice on the same runs: each makes a new workspace and neither reuses nor deletes the other's.
 
 ## Requirements *(mandatory)*
@@ -205,11 +208,12 @@ its hash. A rejected loop leaves nothing to install and says so.
   rubric question, an overall reason and a list of proposed revisions. The loop MUST branch only on the overall value.
 - **FR-013**: A verdict that does not match the schema MUST stop the loop with an error of the form
   `code: fixed message`, never including the agent's own text.
-- **FR-014**: The rubric MUST be versioned and its version recorded with every verdict. Its questions are the
+- **FR-014**: The rubric, together with the instructions given to the critic and the reviser, MUST be versioned in
+  one file, and its version and hash recorded with every verdict. Its questions are the
   six in ADR-003 §2.6, with the one about difference from common knowledge answered "cannot be determined"
   when the recordings do not show what the teacher knew beforehand.
 - **FR-015**: Every fact the reviser adds MUST be one the recordings show, MUST be cited to the recorded call
-  it came from, and MUST be stated as fact only if shown. What the recordings do not show MUST be stated as
+  it came from (FR-026), and MUST be stated as fact only if shown. What the recordings do not show MUST be stated as
   not known, with a way to find out.
 
 **The skill and the record**
@@ -218,7 +222,8 @@ its hash. A rejected loop leaves nothing to install and says so.
   use it and how, and MUST NOT contain run or call citations. Citations and the list of what the recordings
   do not show MUST be kept in a separate provenance file in the same skill folder.
 - **FR-017**: Each round MUST record the hash of the skill text it reviewed, the critic's verdict with the
-  rubric version, and for revised rounds, the diff to the previous round and the reviser's change list.
+  rubric version, and for a revised round, the diff from the text the critic reviewed to the text the reviser
+  produced, and the reviser's change list.
 - **FR-018**: Agent-authored text (verdicts, change lists, revised skills) MUST be stored only in the loop's
   own record folder, and MUST NOT be written to a run's trace, summary, score, replay bundle or a run's `reason`.
 - **FR-019**: The loop MUST NOT write into a run folder it reads, and MUST NOT write into the folder of any
@@ -234,6 +239,14 @@ its hash. A rejected loop leaves nothing to install and says so.
   service, so that no test calls a model or the network.
 - **FR-023**: The harness MUST remove the spike's manual steps from the path from finished runs to an
   installable skill: no step needs a person except choosing the run and starting the loop.
+- **FR-024**: Each role call MUST have a spend cap (default $1.00, settable by the runner), and a call that reaches
+  it MUST stop the loop with a typed error of the form `code: fixed message`.
+- **FR-025**: The loop MUST refuse to start, naming the limit, when the recordings or the skill package exceed the
+  size the roles can be given (150,000 characters of recordings in one prompt; 64 KB for a package and 32 KB for a
+  file in it).
+- **FR-026**: Every source the reviser cites MUST name a run in the loop and a call number that exists in that run's
+  recording. A change with no source MUST be listed under an "Uncited changes" heading, added by the harness to the
+  provenance file, so the next critic sees it.
 
 ### Key Entities
 
@@ -246,7 +259,7 @@ its hash. A rejected loop leaves nothing to install and says so.
   revisions, and the rubric version.
 - **Rubric**: the versioned list of review questions (ADR-003 §2.6).
 - **Skill package**: the skill's main file, its provenance file and any reference files.
-- **Loop record**: the ordered rounds, the outcome (`accept` or `reject`) and its reason, and the measurements.
+- **Loop record**: the folder `loops/<label>/` holding the ordered rounds, the outcome (`accept` or `reject`) and its reason, and the measurements.
 
 ## Success Criteria *(mandatory)*
 
@@ -281,8 +294,8 @@ its hash. A rejected loop leaves nothing to install and says so.
   as plain text. The reviser reads the reasons and revisions as text, not as structured edits.
 - Agent-authored text is kept in the loop's own record folder under the experiment's folder, never under a run
   folder, and the privacy test is extended to cover that folder's boundary. (ADR-003 leaves where open; this is the choice for this feature.)
-- The critic and reviser use the same player the harness already runs, through the existing player interface, with
-  no built-in tools beyond reading the files they are given; each loop pins the critic's and the reviser's model by id (default: the teacher's model) and records both.
+- The critic and reviser run through their own narrow seam beside the player's, with no tools: everything a role may
+  see is placed in its prompt, and everything it returns is a schema-checked answer; each loop pins the critic's and the reviser's model by id (default: the teacher's model) and records both.
 - The distiller's own approve and publish steps are not part of the loop: a skill is local to the run and the
   workspace is disposable.
 - A person audits the first accepted skills after the fact (ADR-003 §2.6, as amended). That audit is not a gate

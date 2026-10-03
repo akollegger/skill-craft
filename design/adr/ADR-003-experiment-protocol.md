@@ -278,3 +278,11 @@ Early on, a human also reads the first skills the critic accepts, as a post-hoc 
     description. Results: `design/notes/critic-loop-findings.md`.
   - **Still to do.** A person audits the first accepted skills after the fact, as 2.6 says (it is not a gate); none has yet. The critic's
     rubric location and output schema remain open (see "Not decided" and the follow-up specs).
+- **2026-10-03, the critic loop's roles have no tools and answer in a schema.** The critic and the reviser run as
+  sessions with no tools, no MCP servers and no user settings. The harness puts the recordings and the skill text in
+  the prompt and reads back a schema-checked object: for the critic, a verdict; for the reviser, the revised files as
+  text, which the harness writes. A role therefore cannot read the world, the goals, the solver's output or an earlier
+  verdict, so the blindness §2.6 asks for holds by construction. They run through their own seam (`RoleDriver`), next
+  to `AgentDriver`, implemented in the one file that imports the SDK. The rubric lives in a versioned file together
+  with the roles' instructions, and its version and hash are recorded with every verdict. Where model-authored text may
+  be stored is settled in the matching amendment to ADR-002. Spec 005 implements this.

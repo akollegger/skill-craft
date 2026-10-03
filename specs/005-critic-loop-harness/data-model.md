@@ -12,6 +12,7 @@ One finished run as the agent saw it.
 - `world`: the world path as recorded in `mcp.json`
 - `model`: the model that ran, from `score.json`
 - `prompt`, `calls[]` (`seq`, `tool`, `args`, `ok`, `output`), `finalAnswer`
+- `callCount`, used to check a cited call number exists
 
 Rules: the run log replays on a fresh game with each call's `ok`, `crafted` and `error` equal to the logged
 values; the trace matches the log one to one. Recordings in one loop share `goal` and `world`.
@@ -32,14 +33,16 @@ Or, when started with `--candidate <folder>`, only `package` and a note that no 
 A map of relative path to UTF-8 text.
 
 Rules: has `SKILL.md` with a front matter `name` (lowercase letters, digits, hyphens) and a `description`; text files
-only; total size under a cap; no absolute paths or `..`. `sha256` is the hash of `SKILL.md` (the same fingerprint the
+only; at most 64 KB in all and 32 KB for any one file; no absolute paths or `..`. `sha256` is the hash of `SKILL.md` (the same fingerprint the
 installer uses). A *revised* package is exactly `SKILL.md` and `references/provenance.md`; `SKILL.md` must not match
 the citation pattern (`run <digits> call <digits>` or `call <digits>`).
 
 ## Rubric
 
-`version`, `sha256` of the file, and `questions[]` (`id`, `text`). Ids are unique, lowercase, and become the keys of
-the verdict. Six questions at version 1.
+`version`, `sha256` of the file, `questions[]` (`id`, `text`), `criticInstructions` and `reviserInstructions`. Ids are
+unique, lowercase, and become the keys of the verdict. Six questions at version 1. One file, one version and one hash
+cover the questions and the instructions to both roles. The reviser's instructions state the rules in FR-015, FR-016 and
+FR-026; the critic's state the `cannot_determine` rule (FR-014).
 
 ## Verdict
 
@@ -57,13 +60,16 @@ Rules: the `questions` keys equal the rubric ids exactly; a value for the common
 - `changes[]`: `{ what, why, sourceCalls[] }`
 
 Rules: `skillMd` passes the package rules above and keeps the candidate's `name`; `provenanceMd` is non-empty; every
-`sourceCalls` entry looks like `run NNN call N` and names a run in the loop (a fact with no source is allowed and is
-listed as uncited in the provenance file for the next critic to judge). Invalid output is `RevisionInvalid`.
+`sourceCalls` entry looks like `run NNN call N`, names a run in the loop, and names a call number that exists in that
+run's recording. A change with an empty `sourceCalls` is allowed: the harness appends an `## Uncited changes` section
+listing it to the provenance file, below the reviser's own text, for the next critic to judge (FR-026). Invalid output
+is `RevisionInvalid`.
 
 ## Round
 
-- `n` (1 to 3), `skillSha256` (what the critic reviewed), `verdict`, and, if revised, `revision`, `diff` (unified, to the
-  previous round's text), `revisedSha256`
+- `n` (1 to 3), `skillSha256` (what the critic reviewed), `verdict`, and, if revised, `revision`, `diff` (unified, from
+  the text this round's critic reviewed to the text the reviser produced), `revisedSha256` (the next round's
+  `skillSha256`)
 - `critic`, `reviser`: stage measurements (see below)
 
 ## Stage measurement
@@ -73,7 +79,7 @@ cache read, cache creation, each possibly null), `costUsd` (possibly null). Null
 
 ## Loop record
 
-`label`, `rubric` (`version`, `sha256`), `models` (`critic`, `reviser`, each requested and resolved), `mode`
+The folder `loops/<label>/` (see `contracts/loop-record.md`); its `loop.json` holds: `label`, `rubric` (`version`, `sha256`), `models` (`critic`, `reviser`, each requested and resolved), `mode`
 (`runs` or `candidate`), `candidate` summary, `rounds[]`, `outcome` (`accept` | `reject`), `reason`
 (`code: fixed message` for a failed loop; a fixed phrase for a normal reject such as `round limit reached`),
 `stages[]`, `cancelled`.

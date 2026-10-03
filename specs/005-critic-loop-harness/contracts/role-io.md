@@ -33,7 +33,7 @@ export type RoleDriver = (options: RoleOptions) => Promise<RoleResult>;
 
 ## Critic prompt (assembled by `inputs.ts`)
 
-Contains, in order: the rubric (version and questions), the goals the recordings covered, the recordings as text, and the
+Contains, in order: the rubric (version, questions and the critic's instructions), the goals the recordings covered, the recordings as text, and the
 current package's files. Contains nothing else. Never contains: an earlier verdict, an earlier round's text, a path, the
 world, recipes, goals files, solver output, a held-out goal or an evaluation result.
 
@@ -54,7 +54,8 @@ world, recipes, goals files, solver output, a held-out goal or an evaluation res
 
 ## Reviser prompt
 
-The critic's inputs plus the current verdict (and no earlier one). It asks for the whole revised files.
+The critic's inputs (with the reviser's instructions in place of the critic's) plus the current verdict, and no earlier one.
+It asks for the whole revised files.
 
 ## Revision (reviser answer)
 
@@ -70,5 +71,7 @@ The critic's inputs plus the current verdict (and no earlier one). It asks for t
 
 - zod parses the answer; failure is `VerdictInvalid` or `RevisionInvalid` with a fixed message
 - `skillMd`: front matter with the candidate's `name` and a `description`; non-empty body; no citation pattern
-- `provenanceMd`: non-empty
+- `provenanceMd`: non-empty; the harness appends `## Uncited changes` for any change with empty `sourceCalls`
+- every `sourceCalls` entry names a run in the loop and a call number that exists in that run's recording
+- `maxUsd` reached: the role result is `ok: false` with a fixed reason, and the loop stops (FR-024)
 - a role result with `ok: false` stops the loop with its `reason`; the agent's text is never part of any error
