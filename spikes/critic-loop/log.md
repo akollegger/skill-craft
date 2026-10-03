@@ -27,3 +27,21 @@ replays a run log through the craft server.
   revised skill's "Not known" section is long. That is honest, and also what a distiller could have said.
 - Three rounds ended in accept, but the accept is the critic's, not a measure of usefulness. Step 4, the
   install check, is what tests that.
+
+## Step 4: install check (2026-10-03)
+
+Haiku (`claude-haiku-4-5-20251001`), faithful world, goal `stone_pickaxe`, 80-turn budget, round-3 skill installed
+(`--skill spikes/critic-loop/rounds/round3/craft-stone-pickaxe`), neutral prompt (no pointer to the skill), 3 trials,
+not recorded to NAMS. Output: `runs/critic-loop-s1/` (gitignored).
+
+| Run | Reached | Calls (best 11) | Skill loaded after | Cost | Time |
+|---|---|---|---|---|---|
+| 001 | yes | 11 (+0) | 3 calls | $0.047 | 28.1 s |
+| 002 | yes | 11 (+0) | 3 calls | $0.047 | 25.5 s |
+| 003 | yes | 11 (+0) | 2 calls | $0.043 | 24.8 s |
+
+3 of 3 at the best run's call count, for $0.137. For comparison, unaided Haiku on the same goal in calibration
+reached it 0 of 5 times (166 to 223 calls in the runs read; $2.00 for the 5). Caveats: 3 trials, and the
+comparison is to calibration trials, not a fresh baseline (ADR-003's S0 uses fresh trials because a goal chosen
+for failing can improve by chance). The skill is also the faithful-world stone recipe, so this shows the skill
+repairs the gap it was written from; it says nothing about transfer.
