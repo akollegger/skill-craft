@@ -1,0 +1,44 @@
+{
+  "critic": "claude-sonnet-5-5",
+  "rubric": {
+    "generalOrSpecific": "specific, and honestly so. 'Recorded in 3 identical runs... These are facts about this table's world; another world's recipes may differ.' The name and description are scoped to one goal at one table. Appropriate given recordings cover only one goal.",
+    "oneTaskOrSeveral": "one. The skill is titled 'Holding a stone_pickaxe' and every section serves that goal. It does contain three crafts, but they form a single chain.",
+    "decomposable": "partly. The table has one row per craft with its own placement and source, so a reader can lift out 'oak_planks from one oak_log at (0,0)'. But the skill is framed as one chain and the sub-products (oak_planks, stick) are not offered as separately findable facts; a weaker model wanting sticks for another goal would not find this skill from its description.",
+    "leadsWithDiscoveredFact": "yes. The first line under the title is 'In short: craft oak_log into oak_planks, two oak_planks into sticks, then three cobblestone over two sticks into the pickaxe.' Provenance follows immediately.",
+    "recordsDifferenceFromCommonKnowledge": "no, and it never says whether there is one. The recorded recipes (1 log -> 4 planks, 2 stacked planks -> 4 sticks, 3 cobblestone over 2 sticks -> pickaxe) are the standard Minecraft ones. The skill does not say this, so a reader cannot tell whether the skill is correcting a prior or only supplying coordinates. The actual value is the grid layout and the craftable-preview habit, and the skill should say so.",
+    "descriptionWillBeFound": "yes for this goal. It contains 'hold a stone_pickaxe', '3x3 crafting table', the item names and 'craftable', matching the recorded prompt's wording 'end up holding one stone_pickaxe'. It would not be found for a sub-goal like sticks or planks, or for 'make a pickaxe'."
+  },
+  "factCheck": [
+    {"claim": "Three runs identical, same calls and outputs; runs 002/003 match 001 call for call", "status": "SHOWN", "source": "stone-001/002/003: calls 1-13 identical in tool, args and output"},
+    {"claim": "Grid is 3x3, zero-based, row 0 top, col 0 left", "status": "SHOWN", "source": "run 001 call 1 (grid rows 3 cols 3; coordinates string)"},
+    {"claim": "Starting inventory cobblestone 6, iron_ingot 6, oak_log 3", "status": "SHOWN", "source": "run 001 call 2"},
+    {"claim": "iron_ingot was never used", "status": "SHOWN", "source": "no place of iron_ingot in any run"},
+    {"claim": "Craft 1: oak_log at (0,0) -> craftable oak_planks -> oak_planks x4", "status": "SHOWN", "source": "run 001 calls 3, 4"},
+    {"claim": "Craft 2: oak_planks at (0,0) and (1,0) -> craftable stick -> stick x4", "status": "SHOWN", "source": "run 001 calls 5-7"},
+    {"claim": "Craft 3: cobblestone (0,0),(0,1),(0,2) plus stick (1,1),(2,1) -> craftable stone_pickaxe -> stone_pickaxe x1", "status": "SHOWN", "source": "run 001 calls 8-13"},
+    {"claim": "Each craft was done with the table otherwise empty", "status": "SHOWN", "source": "grids at calls 3, 6, 12 contain only the listed items (craft says it consumes everything on the table, call 1)"},
+    {"claim": "'Each crafted item (oak_planks, stick) was placed on the very next step with nothing in between (run 001 calls 4-5, 7, 11)'", "status": "WRONG", "source": "Planks: call 4 craft then call 5 place planks, true. Sticks: call 7 craft, then calls 8-10 place cobblestone, sticks first placed at call 11. Not 'the very next step'. The citation '7, 11' itself shows a gap."},
+    {"claim": "Crafted items go to the inventory (hedged: 'suggests', 'not confirmed')", "status": "INFERRED", "source": "Hedge is honest. Actually somewhat better supported than stated: place 'moves one unit of an item you hold' (call 1) and sticks were placed at call 11, three placements after the craft, so they were held. Still no inventory call after a craft."},
+    {"claim": "place returns `craftable`: item craft would make now, or null; present in every place result", "status": "SHOWN", "source": "run 001 call 1 preview text; every place result in calls 3, 5, 6, 8-12"},
+    {"claim": "In every recorded craft, craftable named the output beforehand", "status": "SHOWN", "source": "calls 3->4, 6->7, 12->13 in all runs"},
+    {"claim": "craftable null for: one oak_planks (call 5); 1, 2, 3 cobblestone in row 0 (calls 8-10); 3 cobblestone + 1 stick at (1,1) (call 11)", "status": "SHOWN", "source": "run 001 calls 5, 8, 9, 10, 11"},
+    {"claim": "No null that stayed null was observed", "status": "SHOWN", "source": "every null was followed by another placement; no run ended on a null state"},
+    {"claim": "craft 'consumes everything on the table'", "status": "SHOWN", "source": "run 001 call 1, craft purpose"},
+    {"claim": "place, remove, clear only move items between inventory and table; craft the only irreversible tool", "status": "INFERRED", "source": "call 1 describes place/remove/clear as moves and craft as 'Irreversible'; 'only' is not stated but follows from the descriptions. Tools were not exercised."},
+    {"claim": "`look` changes nothing", "status": "SHOWN", "source": "run 001 call 1 (description only; never called)"},
+    {"claim": "Quantities: how many of each item was consumed, and what is left afterward, was never checked", "status": "SHOWN", "source": "No inventory call after call 2 in any run. Honest, but over-hedged: since craft consumes everything on the table, the amounts consumed equal what was placed (1 log, 2 planks, 3 cobblestone + 2 sticks), which is shown."},
+    {"claim": "Other arrangements, wrong crafts, errors, remove, clear: not known / never called", "status": "SHOWN", "source": "no run called remove, clear or look, and none had an error"},
+    {"claim": "stone_pickaxe ends up held (finish condition 'inventory or craft result shows stone_pickaxe x1')", "status": "INFERRED", "source": "craft result shows crafted stone_pickaxe qty 1 (call 13); never confirmed in inventory. The skill allows either as evidence, which is reasonable but slightly stronger than shown for 'holding'."},
+    {"claim": "Description: 'three-craft chain that worked'", "status": "SHOWN", "source": "3 of 3 runs succeeded at call 13"}
+  ],
+  "overall": "revise",
+  "reasons": "The skill is accurate against the recordings, honest about scope (one world, one goal, 3 identical runs) and its 'not known' list is mostly useful. One factual error remains (sticks were not placed on the very next step). Its main weakness is that it never says how the finding relates to common knowledge: the recipes are the standard Minecraft ones, so the real information is the 3x3 coordinates, the vertical plank pair, the single log yielding 4, and the craftable preview, and the skill should say that plainly. The quantities hedge is stronger than needed and hides facts that are shown. The description is findable for this goal but not for the sub-products.",
+  "proposedRevisions": [
+    "Fix the placement sentence: replace 'Each crafted item (oak_planks, stick) was placed on the very next step with nothing in between (run 001 calls 4-5, 7, 11)' with 'Planks were placed right after the craft that made them (run 001 calls 4-5); sticks were placed at calls 11-12, three placements after they were crafted (call 7), so crafted items are held in your inventory until you place them (not confirmed by an inventory call).'",
+    "Add one line after the opening summary: 'These three recipes match the usual Minecraft ones; what the recordings add is the 3x3 positions and that craftable confirms a layout before craft. The recordings show no case where this world differed from common knowledge.' Mark as INFERRED that the recipes are standard, since the recordings do not say it.",
+    "Replace the quantities bullet with what is shown: 'Placed amounts that worked: 1 oak_log (gave 4 planks), 2 oak_planks (gave 4 sticks), 3 cobblestone + 2 sticks (gave 1 pickaxe). Not known: whether fewer or more also work, and what remains in inventory afterward (never checked).'",
+    "Widen the description a little for decomposition: mention that it also covers getting oak_planks from oak_log and stick from oak_planks at this table, while keeping the stone_pickaxe goal first.",
+    "Soften 'craft the only irreversible tool' to 'the tool description marks craft as irreversible; the others are described as moves'.",
+    "Optionally note that the recorded order of placements (planks vertical in col 0, cobblestone row 0 then sticks) was the order tried, and that the skill does not claim it is required."
+  ]
+}
