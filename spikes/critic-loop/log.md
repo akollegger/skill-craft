@@ -45,3 +45,20 @@ reached it 0 of 5 times (166 to 223 calls in the runs read; $2.00 for the 5). Ca
 comparison is to calibration trials, not a fresh baseline (ADR-003's S0 uses fresh trials because a goal chosen
 for failing can improve by chance). The skill is also the faithful-world stone recipe, so this shows the skill
 repairs the gap it was written from; it says nothing about transfer.
+
+## Step 4b: the original NAMS skills, same conditions
+
+Same setup as step 4 (Haiku, faithful world, `stone_pickaxe`, 80 turns, neutral prompt, 3 trials, unrecorded), with
+the skills as NAMS distilled them. Output: `runs/critic-loop-orig-<skill>/` (gitignored).
+
+| Skill | Reached | Calls to goal | Skill loaded after (calls) | Cost |
+|---|---|---|---|---|
+| prose-combined (critic: reject) | 0 of 3 | none; 143 to 194 calls, budget hit | 30, 72, 20 | $1.20 |
+| graph-single-001 (critic: revise) | 1 of 3 | 81 (+70 over best 11) | 3, 38, 92 | $0.96 |
+| round 3 (critic: accept) | 3 of 3 | 11, 11, 11 (+0) | 3, 3, 2 | $0.14 |
+
+The critic's verdicts ordered the skills the way the install check did. Two things changed between the original
+and round 3: the content (the recipe chain) and the description. The originals were loaded late or not at the
+start in 5 of 6 runs; round 3 was loaded within 3 calls every time. A skill that is found late is a skill
+that has not yet helped, so the description rewrite may account for part of the gain. This spike did not
+separate the two (that would need round 3's body under the old description, or the reverse).
