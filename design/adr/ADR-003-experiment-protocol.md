@@ -3,7 +3,7 @@ id: ADR-003
 title: Experiment protocol: arms, models, isolation and skill review
 status: accepted
 created: 2026-10-01
-specs: [specs/003-faithful-minecraft-world]
+specs: [specs/003-faithful-minecraft-world, specs/005-critic-loop-harness]
 ---
 
 # ADR-003: Experiment protocol: arms, models, isolation and skill review
