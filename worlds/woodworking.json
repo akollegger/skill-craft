@@ -1,0 +1,43 @@
+{
+  "name": "workbench",
+  "description": "A small workbench in a woodshop.",
+  "grid": { "rows": 3, "cols": 3 },
+  "hints": "exact",
+  "stock": { "log": 3 },
+  "items": [
+    { "id": "log", "description": "A raw material." },
+    { "id": "plank", "description": "A made item." },
+    { "id": "rod", "description": "A made item." },
+    { "id": "seat", "description": "A made item." },
+    { "id": "wooden_stool", "description": "A made item." }
+  ],
+  "recipes": [
+    {
+      "id": "r-planks",
+      "kind": "shapeless",
+      "inputs": [{ "item": "log", "qty": 1 }],
+      "output": { "item": "plank", "qty": 4 }
+    },
+    {
+      "id": "r-rods",
+      "kind": "shaped",
+      "pattern": [["plank"], ["plank"]],
+      "output": { "item": "rod", "qty": 2 }
+    },
+    {
+      "id": "r-seat",
+      "kind": "shaped",
+      "pattern": [["plank", "plank", "plank"]],
+      "output": { "item": "seat", "qty": 1 }
+    },
+    {
+      "id": "r-wooden_stool",
+      "kind": "shaped",
+      "pattern": [
+        [null, "seat", null],
+        ["rod", "rod", "rod"]
+      ],
+      "output": { "item": "wooden_stool", "qty": 1 }
+    }
+  ]
+}
