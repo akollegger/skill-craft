@@ -9,7 +9,7 @@
   import Empty from "./shell/Empty.svelte";
   import OpenRun from "./shell/OpenRun.svelte";
   import Picker from "./shell/Picker.svelte";
-  import Sidebar from "./shell/Sidebar.svelte";
+  import RunCount from "./shell/RunCount.svelte";
   import Toolbar from "./shell/Toolbar.svelte";
   import Unsupported from "./shell/Unsupported.svelte";
   import { describeAttributes } from "./state/attributes.ts";
@@ -71,33 +71,38 @@
     {:else}
       <Picker {groups} presentation={view.presentation} showHeaders={view.group !== null} onOpen={open} ticked={selection.ticked} onTick={(e) => (selection = tickRun(selection, e.id))} />
     {/if}
+    <RunCount runs={catalog?.runs ?? []} {shown} />
   </div>
 {/snippet}
 
-<div class="grid min-h-screen grid-cols-[16rem_1fr] bg-black text-light-gray">
-  {#if catalog}
-    <Sidebar runs={catalog.runs} {shown} />
-    <main class="overflow-auto p-4">
-      {#if opened.length > 0}
-        <div class={`grid gap-4 ${opened.length === 2 || beside ? "lg:grid-cols-2" : ""}`}>
-          {#each opened as entry (entry.id)}
-            <OpenRun {entry} {client} createScene={pool.factory} onClose={() => close(entry.id)} />
-          {/each}
-          {#if opened.length === 1 && !beside}
-            <div><button class="rounded-sm border border-mid-baltic px-2 py-1 font-mono text-sm hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={() => (beside = true)}>Open beside…</button></div>
-          {:else if opened.length === 1 && beside}
-            <div>{@render browse()}</div>
+<div class="page text-light-gray">
+  <header class="page-title"><h1 class="font-pixel text-xl text-highlight-yellow">Skillcraft</h1></header>
+  <div class="stage">
+    <div class="frame">
+      {#if catalog}
+        <main class="frame-body p-4">
+          {#if opened.length > 0}
+            <div class={`grid gap-4 ${opened.length === 2 || beside ? "grid-cols-2" : ""}`}>
+              {#each opened as entry (entry.id)}
+                <OpenRun {entry} {client} createScene={pool.factory} onClose={() => close(entry.id)} />
+              {/each}
+              {#if opened.length === 1 && !beside}
+                <div><button class="rounded-sm border border-mid-baltic px-2 py-1 font-mono text-sm hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={() => (beside = true)}>Open beside…</button></div>
+              {:else if opened.length === 1 && beside}
+                <div>{@render browse()}</div>
+              {/if}
+            </div>
+          {:else if catalog.runs.length === 0}
+            <Empty />
+          {:else}
+            {@render browse()}
           {/if}
-        </div>
-      {:else if catalog.runs.length === 0}
-        <Empty />
+        </main>
+      {:else if error}
+        <main class="frame-body"><Unsupported {error} /></main>
       {:else}
-        {@render browse()}
+        <main class="frame-body p-6 font-mono text-sm text-baltic" role="status">Loading runs…</main>
       {/if}
-    </main>
-  {:else if error}
-    <main class="col-span-2"><Unsupported {error} /></main>
-  {:else}
-    <main class="col-span-2 p-6 font-mono text-sm text-baltic" role="status">Loading runs…</main>
-  {/if}
+    </div>
+  </div>
 </div>

@@ -22,7 +22,7 @@ describe("the page", () => {
     expect(screen.getByRole("status").textContent).toContain("Loading");
     await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(3));
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([expect.stringContaining("forge"), expect.stringContaining("workshop")]);
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Skillcraft visualizer");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Skillcraft");
   });
 
   it("says when the folder has no runs", async () => {
@@ -92,5 +92,46 @@ describe("the page", () => {
       await fireEvent.click(screen.getByRole("button", { name: /back to the runs/i }));
       expect(await screen.findAllByRole("listitem")).toHaveLength(1);
     });
+  });
+});
+
+describe("the run count", () => {
+  const entries = (n: number, status: "ready" | "unfinished" = "ready") =>
+    Array.from({ length: n }, (_, i) => {
+      const id = `${status === "ready" ? "a" : "b"}${i}`.padEnd(16, "0");
+      return status === "ready"
+        ? { id, kind: "run", status, attributes: { label: "lab", run: `r${i}`, outcome: "reached" }, preview: { strip: "", table: [] }, bundle: `bundles/${id}/` }
+        : { id, kind: "run", status, reason: "Unfinished: the run has no score.json yet", attributes: { label: "lab", run: `u${i}` } };
+    });
+  const serve = (runs: unknown[]) => vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ format: 1, runs }))));
+
+  it("sits at the foot of the list and counts the runs", async () => {
+    serve(entries(3));
+    render(App);
+    const footer = await screen.findByRole("contentinfo", { name: /run count/i });
+    expect(footer.textContent?.trim()).toBe("3 runs");
+    expect(document.body.textContent).not.toMatch(/can be opened/);
+  });
+
+  it("says how many are shown when a filter or search narrows the list", async () => {
+    serve(entries(3));
+    render(App);
+    await fireEvent.input(await screen.findByLabelText("Search"), { target: { value: "r1" } });
+    expect(screen.getByRole("contentinfo", { name: /run count/i }).textContent?.trim()).toBe("Showing 1 of 3 runs");
+  });
+
+  it("explains the runs that cannot be opened as a table", async () => {
+    serve([...entries(2), ...entries(1, "unfinished")]);
+    render(App);
+    const text = (await screen.findByRole("contentinfo", { name: /run count/i })).textContent ?? "";
+    expect(text).toContain("3 runs");
+    expect(text).toContain("1 can't be opened as a table");
+    expect(text).toMatch(/unfinished/);
+  });
+
+  it("says 1 run, not 1 runs", async () => {
+    serve(entries(1));
+    render(App);
+    expect((await screen.findByRole("contentinfo", { name: /run count/i })).textContent?.trim()).toBe("1 run");
   });
 });
