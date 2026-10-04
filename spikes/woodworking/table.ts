@@ -32,7 +32,8 @@ const median = (xs: number[]): number | undefined => {
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1]! + s[m]!) / 2;
 };
-const fmt = (n: number | undefined, d = 0) => (n === undefined ? "-" : n.toFixed(d));
+// Whole numbers print whole, a half-integer median prints with one decimal, as src/harness/report.ts does.
+const fmt = (n: number | undefined) => (n === undefined ? "-" : Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 interface Cell { reached: number; n: number; ci: [number, number]; extra: number[]; cost: number; loaded: number }
 const cells = new Map<string, Cell>();

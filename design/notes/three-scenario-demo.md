@@ -43,7 +43,7 @@ best run, for runs that reached the goal.
 | 3. wooden_stool (perturbed) | sonnet | unaided | 5/5 | [0.57, 1.00] | 36 / 49 / 64 | $0.93 | - |
 | 3. wooden_stool (perturbed) | sonnet | skill | 5/5 | [0.57, 1.00] | 0 / 0 / 0 | $0.24 | 5/5 |
 | 3. wooden_stool (perturbed) | haiku | unaided | 1/5 | [0.04, 0.62] | 82 / 82 / 82 | $1.16 | - |
-| 3. wooden_stool (perturbed) | haiku | skill | 4/5 | [0.38, 0.96] | 0 / 12 / 67 | $0.60 | 4/5 |
+| 3. wooden_stool (perturbed) | haiku | skill | 4/5 | [0.38, 0.96] | 0 / 11.5 / 67 | $0.60 | 4/5 |
 
 Skill against unaided, reach (a difference is supported only when the two intervals do not overlap):
 
