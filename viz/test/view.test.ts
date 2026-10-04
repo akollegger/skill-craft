@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arrange, defaultView, filterRuns, opsFor, sortRuns, type Filter } from "../src/state/view.ts";
+import { arrange, defaultView, searchRuns, sortRuns } from "../src/state/view.ts";
 import type { CatalogEntry } from "../../src/viz/contract.ts";
 
 let n = 0;
@@ -16,47 +16,25 @@ const c = run({ label: "beta", run: "001", world: "workshop", outcome: "reached"
 const d = run({ label: "beta", run: "002", outcome: "unfinished", actionCalls: 9 }, "unfinished");
 const runs = [a, b, c, d];
 const ids = (list: CatalogEntry[]) => list.map((e) => `${e.attributes["label"]}/${e.attributes["run"]}`);
-const f = (attr: string, op: Filter["op"], value?: string | number | boolean): Filter => (value === undefined ? { attr, op } : { attr, op, value });
 
-describe("filterRuns", () => {
-  it("filters text with is, is not and contains", () => {
-    expect(ids(filterRuns(runs, [f("outcome", "is", "reached")]))).toEqual(["alpha/001", "beta/001"]);
-    expect(ids(filterRuns(runs, [f("outcome", "is not", "reached")]))).toEqual(["alpha/002", "beta/002"]);
-    expect(ids(filterRuns(runs, [f("modelRan", "contains", "AIK")]))).toEqual(["alpha/001", "alpha/002"]);
+describe("searchRuns", () => {
+  it("searches the text attributes, ignoring case: world, goal, outcome, model, name", () => {
+    expect(ids(searchRuns(runs, "SONNET"))).toEqual(["beta/001"]);
+    expect(ids(searchRuns(runs, "alpha"))).toEqual(["alpha/001", "alpha/002"]);
+    expect(ids(searchRuns(runs, "forge"))).toEqual(["alpha/001", "alpha/002"]);
+    expect(ids(searchRuns(runs, "gave up"))).toEqual(["alpha/002"]);
+    expect(ids(searchRuns(runs, "unfinished"))).toEqual(["beta/002"]);
   });
 
-  it("filters numbers with =, ≥ and ≤", () => {
-    expect(ids(filterRuns(runs, [f("actionCalls", "=", 11)]))).toEqual(["alpha/001"]);
-    expect(ids(filterRuns(runs, [f("actionCalls", ">=", 11)]))).toEqual(["alpha/001", "alpha/002"]);
-    expect(ids(filterRuns(runs, [f("actionCalls", "<=", 9)]))).toEqual(["beta/001", "beta/002"]);
+  it("finds a goal item by name", () => {
+    const g = run({ label: "x", run: "1", goalItem: "pickaxe" });
+    expect(ids(searchRuns([a, g], "pick"))).toEqual(["x/1"]);
   });
 
-  it("filters flags with is", () => {
-    expect(ids(filterRuns(runs, [f("skillLoaded", "is", true)]))).toEqual(["alpha/001"]);
-    expect(ids(filterRuns(runs, [f("skillLoaded", "is", false)]))).toEqual(["alpha/002"]);
-  });
-
-  it("makes a run that lacks the attribute fail every test except is-missing", () => {
-    for (const op of ["is", "is not", "contains"] as const) expect(ids(filterRuns([d], [f("world", op, "forge")])), op).toEqual([]);
-    expect(ids(filterRuns([d], [f("actionCalls", ">=", 0), f("world", "is not", "x")]))).toEqual([]);
-    expect(ids(filterRuns(runs, [f("world", "missing")]))).toEqual(["beta/002"]);
-    expect(ids(filterRuns(runs, [f("skillLoaded", "missing")]))).toEqual(["beta/001", "beta/002"]);
-  });
-
-  it("combines filters with and", () => {
-    expect(ids(filterRuns(runs, [f("outcome", "is", "reached"), f("actionCalls", ">=", 5)]))).toEqual(["alpha/001"]);
-  });
-
-  it("ignores a filter whose value does not fit the attribute, and treats no filters as all runs", () => {
-    expect(filterRuns(runs, [])).toEqual(runs);
-    expect(ids(filterRuns(runs, [f("actionCalls", ">=", "many")]))).toEqual([]);
-  });
-
-  it("searches the text attributes, ignoring case", () => {
-    expect(ids(filterRuns(runs, [], "SONNET"))).toEqual(["beta/001"]);
-    expect(ids(filterRuns(runs, [], "alpha"))).toEqual(["alpha/001", "alpha/002"]);
-    expect(ids(filterRuns(runs, [], "  "))).toEqual(ids(runs));
-    expect(ids(filterRuns(runs, [], "11"))).toEqual([]); // numbers are not text
+  it("treats blank search as all runs, and does not match numbers", () => {
+    expect(ids(searchRuns(runs, "  "))).toEqual(ids(runs));
+    expect(ids(searchRuns(runs, ""))).toEqual(ids(runs));
+    expect(ids(searchRuns(runs, "11"))).toEqual([]);
   });
 });
 
@@ -89,15 +67,16 @@ describe("sortRuns", () => {
 });
 
 describe("arrange", () => {
-  it("filters, then sorts, then groups, and keeps the labelled none group last", () => {
-    const groups = arrange(runs, { ...defaultView(), group: "world", sort: { attr: "actionCalls", dir: "asc" }, filters: [f("actionCalls", ">=", 5)] });
-    expect(groups.map((g) => g.label)).toEqual(["forge", "no world"]);
+  it("searches, then sorts, then groups, and keeps the labelled none group last", () => {
+    const groups = arrange(runs, { ...defaultView(), group: "world", sort: { attr: "actionCalls", dir: "asc" }, search: "a" });
+    expect(groups.map((g) => g.label)).toEqual(["forge", "workshop", "no world"]);
     expect(ids(groups[0]!.runs)).toEqual(["alpha/001", "alpha/002"]);
-    expect(ids(groups[1]!.runs)).toEqual(["beta/002"]);
+    expect(ids(groups[1]!.runs)).toEqual(["beta/001"]);
+    expect(ids(groups[2]!.runs)).toEqual(["beta/002"]);
   });
 
   it("is one unlabelled group when nothing is grouped", () => {
-    const groups = arrange(runs, defaultView());
+    const groups = arrange(runs, { ...defaultView(), sort: null });
     expect(groups).toHaveLength(1);
     expect(groups[0]!.label).toBe("");
     expect(ids(groups[0]!.runs)).toEqual(ids(runs));
@@ -105,19 +84,11 @@ describe("arrange", () => {
 
   it("works with an attribute that was added after the page was built", () => {
     const fresh = [run({ brandNew: "x", n: 1 }), run({ brandNew: "y", n: 2 }), run({ brandNew: "x", n: 3 })];
-    const groups = arrange(fresh, { ...defaultView(), group: "brandNew", sort: { attr: "n", dir: "desc" }, filters: [f("n", ">=", 2)] });
-    expect(groups.map((g) => [g.label, g.runs.map((r) => r.attributes["n"])])).toEqual([["x", [3]], ["y", [2]]]);
+    const groups = arrange(fresh, { ...defaultView(), group: "brandNew", sort: { attr: "n", dir: "desc" } });
+    expect(groups.map((g) => [g.label, g.runs.map((r) => r.attributes["n"])])).toEqual([["x", [3, 1]], ["y", [2]]]);
   });
 
-  it("defaults to a list ungrouped, unsorted and unfiltered", () => {
-    expect(defaultView()).toEqual({ group: null, sort: null, filters: [], search: "", presentation: "list" });
-  });
-});
-
-describe("opsFor", () => {
-  it("offers each kind its own operators, and every kind is-missing", () => {
-    expect(opsFor("text")).toEqual(["is", "is not", "contains", "missing"]);
-    expect(opsFor("number")).toEqual(["=", ">=", "<=", "missing"]);
-    expect(opsFor("flag")).toEqual(["is", "missing"]);
+  it("defaults to a list ungrouped, with the fewest calls first, and no search", () => {
+    expect(defaultView()).toEqual({ group: null, sort: { attr: "actionCalls", dir: "asc" }, search: "", presentation: "list" });
   });
 });

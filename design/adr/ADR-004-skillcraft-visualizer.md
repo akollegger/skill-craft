@@ -316,3 +316,17 @@ run could be opened to the point it reached; and how a view could be saved or sh
   to the ideal, yellow after, and a failed run's last call red. A failed run's score is red whatever its count. Call kind is no
   longer a color: it is in the tape's label and in the open view's call list, in neutral text styles, so no traffic-light color
   ever says what a call was. This replaces the earlier rule that giving up was yellow and only running out of turns was red.
+
+- **2026-10-04, the view controls are a short fixed set, with no filters.** This narrows the "group, sort and filter on any attribute"
+  navigation of section 3 and the spec's FR-007 and SC-005, which no longer hold for the page. The page has one slim bar, full width
+  in the list and in the grid, that stays at the top of the frame with the list's column header below it, and no native selects:
+  List or Grid; Sort by Calls or Time (the lit one carries the sorted triangle, and choosing it again turns the order round; fewest
+  calls first by default); Group by World or Goal (the lit one carries the square, and choosing it again ungroups); and one search box
+  over every text attribute (name, world, goal, outcome, model, skill). There are no filter controls, so the filter code, the
+  attribute menus and the attribute-kind discovery are removed. The view functions still take any attribute, so a later control (a skill
+  or model group, say) is one more button. The cost is that a run cannot be narrowed by a number or a flag; search by outcome ("gave up")
+  stands in for the most useful filter.
+  The list has a Time column beside Calls (the run's measured clock, `4.2s` or `1:05`, blank when not measured), which carries the sort
+  triangle when the sort is Time. A tile shows the time, small, under its score: the score sits at the top of the thumbnail's height
+  and the time at its bottom, and the score is a step smaller than before to make room.
+

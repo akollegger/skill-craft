@@ -5,7 +5,7 @@
  * and both are in the row's tooltip.
  */
 export const LIST_GRID =
-  "grid grid-cols-[3.5rem_minmax(5rem,1fr)_minmax(8rem,1.4fr)_5rem_14rem_minmax(8rem,1.4fr)_3rem] gap-x-4";
+  "grid grid-cols-[3.5rem_minmax(5rem,1fr)_minmax(8rem,1.4fr)_5rem_4.5rem_14rem_minmax(8rem,1.4fr)_3rem] gap-x-4";
 
 /** A column's heading and the attributes it shows, so the header can mark the column the runs are grouped or sorted by. */
 export interface ListColumn {
@@ -19,6 +19,7 @@ export const LIST_COLUMNS: readonly ListColumn[] = [
   { label: "World", attrs: ["world"] },
   { label: "Goal", attrs: ["goalItem", "goalQty"] },
   { label: "Calls", attrs: ["actionCalls", "bestCalls", "extraCalls", "outcome"] },
+  { label: "Time", attrs: ["durationMs"] },
   { label: "Tape", attrs: [] },
   { label: "Model", attrs: ["modelRan", "modelRequested"] },
   { label: "Skill", attrs: ["skill", "skillLoaded", "skillLoadedAfter"] },

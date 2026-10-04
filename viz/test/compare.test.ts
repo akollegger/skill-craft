@@ -109,7 +109,7 @@ describe("comparing in the page", () => {
     live.n = 0;
     render(App, { createScene: scene });
     await waitFor(() => expect(screen.getAllByRole("listitem").length).toBeGreaterThan(2));
-    await fireEvent.change(screen.getByLabelText("Group by"), { target: { value: "" } });
+    await fireEvent.click(within(screen.getByRole("group", { name: "Group" })).getByRole("button", { name: /^World/ })); // off: one flat list
   };
 
   it("offers Open both tables only when exactly two runs are selected, and Clear selection once any is", async () => {

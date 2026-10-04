@@ -1,7 +1,7 @@
 import { cleanup, render } from "@testing-library/svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Picker from "../src/shell/Picker.svelte";
-import { arrange, defaultView, type Filter } from "../src/state/view.ts";
+import { arrange, defaultView } from "../src/state/view.ts";
 import type { CatalogEntry } from "../../src/viz/contract.ts";
 
 afterEach(() => {
@@ -22,10 +22,9 @@ const many = (count: number): CatalogEntry[] =>
 describe("a folder of hundreds of runs", () => {
   const runs = many(500);
 
-  it("groups, sorts and filters 500 runs in well under 200 ms", () => {
-    const filters: Filter[] = [{ attr: "actionCalls", op: ">=", value: 20 }, { attr: "outcome", op: "is not", value: "error" }];
+  it("groups, sorts and searches 500 runs in well under 200 ms", () => {
     const t = performance.now();
-    const groups = arrange(runs, { ...defaultView(), group: "world", sort: { attr: "actionCalls", dir: "desc" }, filters, search: "exp" });
+    const groups = arrange(runs, { ...defaultView(), group: "world", sort: { attr: "actionCalls", dir: "desc" }, search: "exp" });
     const ms = performance.now() - t;
     expect(groups.reduce((n, g) => n + g.runs.length, 0)).toBeGreaterThan(400);
     expect(ms).toBeLessThan(200);

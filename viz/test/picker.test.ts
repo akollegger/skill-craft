@@ -17,7 +17,7 @@ const notReady = (status: "unfinished" | "unreadable", reason: string, attribute
 });
 
 const runs: CatalogEntry[] = [
-  ready({ label: "alpha", run: "001", world: "forge", goalItem: "glirol", goalQty: 1, outcome: "reached", actionCalls: 3, bestCalls: 3, modelRan: "claude-haiku" }),
+  ready({ label: "alpha", run: "001", world: "forge", goalItem: "glirol", goalQty: 1, outcome: "reached", actionCalls: 3, bestCalls: 3, modelRan: "claude-haiku", durationMs: 4200 }),
   ready({ label: "alpha", run: "002", world: "forge", goalItem: "glirol", goalQty: 1, outcome: "gave up", actionCalls: 40, bestCalls: 3, modelRan: "claude-haiku" }),
   ready({ label: "beta", run: "001", world: "workshop", goalItem: "pickaxe", goalQty: 2, outcome: "out of turns", actionCalls: 90, modelRan: "claude-sonnet" }),
   notReady("unfinished", "Unfinished: the run has no score.json yet", { label: "beta", run: "002", world: "workshop", outcome: "unfinished" }),
@@ -112,7 +112,19 @@ describe("the list's column headers", () => {
   it("label the columns once, at the top, even when the runs are grouped", () => {
     render(Picker, props("world"));
     expect(document.querySelectorAll("[data-list-header]")).toHaveLength(1);
-    expect([...headers()!.querySelectorAll("[data-column]")].map((c) => c.textContent?.trim())).toEqual(["", "World", "Goal", "Calls", "Tape", "Model", "Skill"]);
+    expect([...headers()!.querySelectorAll("[data-column]")].map((c) => c.textContent?.trim())).toEqual(["", "World", "Goal", "Calls", "Time", "Tape", "Model", "Skill"]);
+  });
+
+  it("show a run's time beside its calls, as a clock, and nothing when it was not measured", () => {
+    render(Picker, props(null));
+    const [first, , third] = screen.getAllByRole("listitem");
+    expect(first!.textContent).toContain("4.2s");
+    expect(third!.textContent).not.toMatch(/\d+s\b|:\d\d/);
+  });
+
+  it("put a triangle on the Time column when the runs are sorted by time", () => {
+    render(Picker, withView(null, { attr: "durationMs", dir: "desc" }));
+    expect(column("Time").querySelector("[data-sort-pip]")!.getAttribute("data-dir")).toBe("desc");
   });
 
   it("are not shown in the grid", () => {

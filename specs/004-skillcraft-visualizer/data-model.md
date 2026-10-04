@@ -82,12 +82,12 @@ lack the matching attributes.
 ## View (page only, not persisted)
 
 ```text
-View   { group: string | null, sort: { attr: string, dir: "asc" | "desc" }, filters: Filter[], search: string,
+View   { group: string | null, sort: { attr: string, dir: "asc" | "desc" } | null, search: string,
          presentation: "grid" | "list" }
-Filter { attr: string, op: Op, value: string | number | boolean }
 ```
 
-`Op` by attribute kind: text `is | is not | contains`; number `= | ≥ | ≤`; flag `is`. The page also holds the
+The bar offers sort by `actionCalls` or `durationMs` and group by `world` or `goalItem`; search matches any text attribute. There are no
+filters (ADR-004 amendment, 2026-10-04). The page also holds the
 selected runs (shift-click; at most two for comparison) and the open tables (at most two). None of this is written
 anywhere; a saved or shareable view is an extension left out for now.
 

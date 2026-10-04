@@ -3,6 +3,7 @@
   import CallStrip from "./CallStrip.svelte";
   import Score from "./Score.svelte";
   import SkillIcon from "./SkillIcon.svelte";
+  import { formatClock } from "./clock.ts";
   import { failed, scoreTone } from "./tone.ts";
   import Thumbnail from "./Thumbnail.svelte";
 
@@ -23,6 +24,7 @@
     } else onOpen(entry);
   }
   const calls = $derived(typeof a["actionCalls"] === "number" ? a["actionCalls"] : undefined);
+  const ms = $derived(typeof a["durationMs"] === "number" ? a["durationMs"] : undefined);
   const best = $derived(typeof a["bestCalls"] === "number" ? a["bestCalls"] : undefined);
 </script>
 
@@ -36,9 +38,13 @@
     onclick={ready ? activate : undefined}
   >
     <span class="sr-only">{name}{#if outcome !== ""}, {outcome}{/if}</span>
-    <span class="flex items-center justify-between gap-2">
+    <span class="flex items-start justify-between gap-2">
       <Thumbnail goal={goalItem} reached={outcome === "reached"} />
-      <Score large calls={calls} tone={scoreTone(outcome, calls, best)} />
+      <!-- The score at the top of the thumbnail's height and the time at its bottom. -->
+      <span class="flex flex-col items-end justify-between self-stretch">
+        <Score large calls={calls} tone={scoreTone(outcome, calls, best)} />
+        {#if ms !== undefined}<span class="text-xs leading-none text-light-baltic">{formatClock(ms)}</span>{/if}
+      </span>
     </span>
     {#if a["modelRan"] !== undefined}<span class="truncate text-light-baltic">{a["modelRan"]}</span>{/if}
     {#if entry.preview}<CallStrip strip={entry.preview.strip} {best} failed={failed(outcome)} />{/if}

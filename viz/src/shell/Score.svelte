@@ -4,5 +4,5 @@
 </script>
 
 {#if calls !== undefined}
-  <span class={`font-score whitespace-nowrap leading-none ${large ? "text-6xl" : "text-3xl"} ${tone}`}>{calls}<span class="sr-only">{" "}calls</span></span>
+  <span class={`font-score whitespace-nowrap leading-none ${large ? "text-4xl" : "text-3xl"} ${tone}`}>{calls}<span class="sr-only">{" "}calls</span></span>
 {/if}

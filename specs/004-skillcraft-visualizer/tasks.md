@@ -310,3 +310,6 @@ Task: "Implement src/viz/preview.ts"
 - [X] T084 Stepped sort triangle, no "best N" text, tape cut to three rows of thirty-two (`ListHeader.svelte`, `Score.svelte`, `CallStrip.svelte`).
 - [X] T085 All help moves to `Hints.svelte` under the frame; the frame's size leaves room for it (`theme.css`, `App.svelte`, `RunCount.svelte`).
 - [X] T086 One color language (`viz/src/shell/tone.ts`): green within the ideal, yellow past it, red for a failed run (its score and its last call); the tape and the playback pips use it, and call kinds lose their colors (`CallStrip.svelte`, `RunView.svelte`, `test/tone.test.ts`).
+- [X] T087 Simplify the view controls (ADR-004 amendment): one sticky bar of segmented buttons (List/Grid, Sort Calls/Time, Group World/Goal) and a search box over all text attributes; no filters, no native selects; the list header sticks under the bar (`viz/src/shell/Toolbar.svelte`, `Segmented.svelte`, `SortPip.svelte`, `viz/src/state/view.ts`, `attributes.ts` reduced to `attributeLabel`).
+- [X] T088 A Time column beside Calls in the list, and the time under the score on a tile, aligned to the thumbnail's top and bottom (`viz/src/shell/columns.ts`, `Row.svelte`, `Tile.svelte`, `Score.svelte`).
+

@@ -4,6 +4,7 @@
   import SkillIcon from "./SkillIcon.svelte";
   import Score from "./Score.svelte";
   import Thumbnail from "./Thumbnail.svelte";
+  import { formatClock } from "./clock.ts";
   import { LIST_GRID } from "./columns.ts";
   import { failed, scoreTone } from "./tone.ts";
 
@@ -24,6 +25,7 @@
   const goalItem = $derived(a["goalItem"] === undefined ? undefined : String(a["goalItem"]));
   const calls = $derived(typeof a["actionCalls"] === "number" ? a["actionCalls"] : undefined);
   const best = $derived(typeof a["bestCalls"] === "number" ? a["bestCalls"] : undefined);
+  const ms = $derived(typeof a["durationMs"] === "number" ? a["durationMs"] : undefined);
   // A goal of one is just the item; a goal of more says how many.
   const goal = $derived(goalItem === undefined ? "" : Number(a["goalQty"] ?? 1) > 1 ? `${a["goalQty"]} ${goalItem}` : goalItem);
   // A plain click opens the run. Shift-click selects it for comparison; Shift+Enter and Shift+Space do too, since a keyboard
@@ -52,6 +54,7 @@
     <span class="truncate text-light-baltic">{a["world"] ?? ""}</span>
     <span class="truncate">{#if goal !== ""}<span class="sr-only">Goal:{" "}</span>{goal}{/if}</span>
     <span><Score {calls} tone={scoreTone(outcome, calls, best)} />{#if outcome !== ""}<span class="sr-only">, {outcome}</span>{/if}</span>
+    <span class="whitespace-nowrap text-light-baltic">{ms === undefined ? "" : formatClock(ms)}</span>
     {#if entry.preview}<CallStrip strip={entry.preview.strip} {best} failed={failed(outcome)} />{:else}<span></span>{/if}
     <span class="truncate text-baltic">{a["modelRan"] ?? ""}</span>
     <span class="flex items-center"><SkillIcon attributes={a} dash /></span>

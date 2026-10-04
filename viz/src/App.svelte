@@ -12,7 +12,6 @@
   import RunCount from "./shell/RunCount.svelte";
   import Toolbar from "./shell/Toolbar.svelte";
   import Unsupported from "./shell/Unsupported.svelte";
-  import { describeAttributes } from "./state/attributes.ts";
   import { closeRun, initialSelection, openRun, toggleSelected } from "./state/selection.ts";
   import { arrange, defaultView, type View } from "./state/view.ts";
 
@@ -29,7 +28,6 @@
   let selection = $state(initialSelection());
   let beside = $state(false);
 
-  const attributes = $derived(describeAttributes(catalog?.runs ?? []));
   const groups = $derived(catalog ? arrange(catalog.runs, view) : []);
   const shown = $derived(groups.reduce((n, g) => n + g.runs.length, 0));
   const byId = $derived(new Map((catalog?.runs ?? []).map((r) => [r.id, r])));
@@ -60,10 +58,10 @@
 
 {#snippet browse()}
   <div class="flex flex-col gap-3">
-    <Toolbar {attributes} {view} onChange={(v) => (view = v)} />
+    <Toolbar {view} onChange={(v) => (view = v)} />
     <CompareBar selected={selection.selected.length} onOpenBoth={openBoth} onClear={() => (selection = { ...selection, selected: [] })} />
     {#if shown === 0}
-      <p role="status" class="p-4 font-mono text-sm text-baltic">No run matches these filters.</p>
+      <p role="status" class="p-4 font-mono text-sm text-baltic">No run matches this search.</p>
     {:else}
       <Picker {groups} presentation={view.presentation} group={view.group} sort={view.sort} onOpen={open} selected={selection.selected} onSelect={(e) => (selection = toggleSelected(selection, e.id))} />
     {/if}

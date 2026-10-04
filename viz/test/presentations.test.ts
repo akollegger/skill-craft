@@ -12,7 +12,7 @@ const run = (attributes: CatalogEntry["attributes"], strip = "pcrt.", table = gr
   return { id, kind: "run", status: "ready", attributes, preview: { strip, table }, bundle: `bundles/${id}/` };
 };
 const runs = [
-  run({ label: "alpha", run: "001", world: "forge", outcome: "reached", actionCalls: 5, bestCalls: 3, modelRan: "claude-haiku" }),
+  run({ label: "alpha", run: "001", world: "forge", outcome: "reached", actionCalls: 5, bestCalls: 3, modelRan: "claude-haiku", durationMs: 65_000 }),
   run({ label: "alpha", run: "002", world: "forge", outcome: "gave up", actionCalls: 90, modelRan: "claude-sonnet" }, "p".repeat(200)),
   run({ label: "beta", run: "001", world: "workshop", outcome: "out of turns", actionCalls: 40 }, "rrrr", grid(6)),
 ];
@@ -174,15 +174,29 @@ describe("a tile's layout", () => {
     const tile = document.querySelector(`[data-run-id="${runs[0]!.id}"]`) as HTMLElement;
     const canvas = tile.querySelector("canvas")!;
     const score = tile.querySelector(".font-score") as HTMLElement;
-    expect(canvas.parentElement).toBe(score.parentElement); // the same row
+    expect(canvas.parentElement).toBe(score.parentElement!.parentElement); // the same row
     const row = canvas.parentElement!;
     expect(row.firstElementChild).toBe(canvas); // thumbnail first (left)
-    expect(row.lastElementChild).toBe(score); // score last (right)
-    expect(score.className).toMatch(/text-6xl/); // larger than a list row's numeral
+    expect(row.lastElementChild!.contains(score)).toBe(true); // score last (right)
+    expect(score.className).toMatch(/text-4xl/); // larger than a list row's numeral
     expect(row.className).toMatch(/justify-between/);
     // The name is not drawn; it is the tile's tooltip and what a screen reader says first.
     expect(tile.querySelector("bdi")).toBeNull();
     expect(tile.querySelector("button")!.getAttribute("title")).toBe("alpha / 001");
+  });
+
+  it("puts the time under the score, smaller, in the right column beside the thumbnail, and nothing when it was not measured", () => {
+    render(Picker, picker("grid"));
+    const tile = document.querySelector(`[data-run-id="${runs[0]!.id}"]`) as HTMLElement;
+    const score = tile.querySelector(".font-score") as HTMLElement;
+    const time = [...score.parentElement!.children].find((c) => c.textContent === "1:05") as HTMLElement;
+    expect(time).toBeTruthy();
+    expect(score.compareDocumentPosition(time) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(time.className).toMatch(/text-xs/);
+    expect(score.parentElement!.className).toMatch(/justify-between/); // score at the top, time at the bottom
+    expect(score.parentElement!.className).toMatch(/self-stretch/); // as tall as the thumbnail
+    const bare = document.querySelector(`[data-run-id="${runs[2]!.id}"]`) as HTMLElement;
+    expect(bare.querySelector(".font-score")!.parentElement!.children).toHaveLength(1);
   });
 
   it("colors the score like a list row's, and says nothing but the number", () => {
