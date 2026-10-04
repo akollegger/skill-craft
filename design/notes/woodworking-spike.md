@@ -86,7 +86,7 @@ the same turn budget (80), no hooks.
 | A. Unaided | 3 scenarios x 2 models x 5 trials = 30 runs | The baseline. Rough cost from earlier tables: cents per easy run, up to about $0.50 for a failed invented run; a few dollars to about $10 in total |
 | B. Distil | 1 critic loop per scenario, from Sonnet's *reaching* runs | `scripts/critic-loop.ts --allow-workspace`, which creates and deletes a throwaway NAMS workspace: **a NAMS write, needs a go-ahead**, run in a subshell with `NAMS_WORKSPACE_ID` unset. A scenario where Sonnet never reaches the goal ends here and is reported |
 | C1. Student skill arm | 3 scenarios x Haiku x 5 trials with `--skill loops/<label>/skill` | Compare to stage A |
-| C2. Teacher skill arm | 3 scenarios x Sonnet x 5 trials with the same skills | Self-distillation: separates the skill's effect from the model's. Same goal and world as the skill came from, so it measures memory of the task, not transfer |
+| C2. Teacher skill arm | 3 scenarios x Sonnet x 5 trials with the same skills | Self-distillation: separates the skill's effect from the model's. The skill was built from this same goal and world, so it shows a repeat of the task getting cheaper, not generalisation to a new goal |
 | D. Report | `scripts/report.ts`, then a short note in `design/notes/` | Reach, extra calls, cost, time, skill loaded or not |
 
 Since scenarios need not succeed, nothing here is gated on a gap: a scenario with Haiku already at the
