@@ -21,7 +21,8 @@ export interface NamsApi {
 }
 ```
 
-Every data call sends `Authorization: Bearer <NAMS_API_KEY>` and `X-Workspace-Id: <ws>`; the key is read from the
+Every REST request carries the loop's abort signal, so a stalled call cannot hold up a cancellation; listing and deleting a workspace, which
+must still run after an abort, get their own signal with a time limit (60 s by default). Every data call sends `Authorization: Bearer <NAMS_API_KEY>` and `X-Workspace-Id: <ws>`; the key is read from the
 environment at construction and is not a field of anything returned, logged or recorded.
 
 ## The guard (`WorkspaceGuard`)

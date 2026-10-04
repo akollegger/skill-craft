@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RevisionInvalid, VerdictInvalid } from "../src/harness/errors.js";
 import { loadRubric } from "../src/loop/rubric.js";
-import { parseRevision, parseVerdict, revisionSchema, toJsonSchema, verdictSchema, withUncitedSection, type RevisionContext } from "../src/loop/verdict.js";
+import { parseRevision, parseVerdict, revisionSchema, toJsonSchema, verdictSchema, withChangeRecord, withUncitedSection, type RevisionContext } from "../src/loop/verdict.js";
 
 const rubric = loadRubric();
 const answers = () => Object.fromEntries(rubric.questions.map((q) => [q.id, { value: "no", reason: "because" }]));
@@ -72,6 +72,7 @@ describe("Revision", () => {
     ["a source beyond the run's last call", () => rev({ changes: [{ what: "w", why: "y", sourceCalls: ["run 001 call 14"] }] })],
     ["a source at call 0", () => rev({ changes: [{ what: "w", why: "y", sourceCalls: ["run 001 call 0"] }] })],
     ["a malformed source", () => rev({ changes: [{ what: "w", why: "y", sourceCalls: ["the thirteenth call"] }] })],
+    ["no changes at all", () => rev({ changes: [] })],
     ["too many changes", () => rev({ changes: Array.from({ length: 31 }, () => ({ what: "w", why: "y", sourceCalls: [] })) })],
     ["an extra field", () => rev({ extra: true })],
   ])("rejects %s with a fixed message", (_why, make) => {
@@ -104,5 +105,18 @@ describe("withUncitedSection", () => {
     expect(out).toContain("## Uncited changes");
     expect(out).toContain("Added step three");
     expect(out).not.toContain("Sourced");
+  });
+});
+
+describe("withChangeRecord", () => {
+  it("appends a record of every change with the sources the harness checked, below the reviser's own text", () => {
+    const out = withChangeRecord("# P\n\nThe reviser says anything here.\n", [
+      { what: "Added the chain", why: "y", sourceCalls: ["run 001 call 2", "run 002 call 3"] },
+      { what: "Tidied", why: "z", sourceCalls: [] },
+    ]);
+    expect(out.startsWith("# P\n\nThe reviser says anything here.\n")).toBe(true);
+    expect(out).toContain("## Change record");
+    expect(out).toContain("- Added the chain: run 001 call 2, run 002 call 3");
+    expect(out).toContain("- Tidied: no source");
   });
 });

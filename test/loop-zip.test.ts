@@ -54,3 +54,18 @@ describe("readZip", () => {
     expect(() => readZip(new Uint8Array(zip))).toThrow(CandidateFailed);
   });
 });
+
+describe("readZip's limits on what an archive may expand to", () => {
+  it("refuses an entry that inflates past its declared size, without expanding it first", () => {
+    // 8 MB of zeros deflates to a few KB, but the header claims 10 bytes.
+    const bomb = makeZip([{ name: "a.md", data: Buffer.alloc(8 * 1024 * 1024), method: 8, declaredSize: 10 }]);
+    expect(bomb.length).toBeLessThan(64 * 1024);
+    expect(() => readZip(bomb)).toThrow(CandidateFailed);
+  });
+
+  it("refuses an entry that declares more than the per-entry limit, and a set that adds up to more than the total", () => {
+    expect(() => readZip(makeZip([{ name: "big.md", data: "x", declaredSize: 2 * 1024 * 1024 }]))).toThrow(/too large/);
+    const many = Array.from({ length: 5 }, (_, i) => ({ name: `f${i}.md`, data: "x", declaredSize: 900 * 1024 }));
+    expect(() => readZip(makeZip(many))).toThrow(/too large/);
+  });
+});

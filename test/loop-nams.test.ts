@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CandidateFailed, WorkspaceRefused } from "../src/harness/errors.js";
+import { CandidateFailed, LoopCancelled, WorkspaceRefused } from "../src/harness/errors.js";
 import { createNamsClient, guarded, WorkspaceGuard, type WorkspaceTools } from "../src/loop/nams.js";
 import { FakeNams, FAKE_SECRET } from "./helpers/fake-nams.js";
 
@@ -197,5 +197,61 @@ describe("against the shapes the live probe observed (test/fixtures/nams)", () =
   it("accepts the capabilities answer unchanged", async () => {
     const nams = make({ "GET /v1/skills/capabilities": fixture("capabilities") });
     expect(await nams.capabilities("ws-1")).toMatchObject({ coverageThreshold: 0.6, groundingThreshold: 0.9 });
+  });
+});
+
+describe("aborting reaches every request", () => {
+  /** A fetch that never answers until its signal aborts, as a stalled service would. */
+  const stalled = (): { fetch: typeof globalThis.fetch; seen: (AbortSignal | undefined)[] } => {
+    const seen: (AbortSignal | undefined)[] = [];
+    const fetch = ((_url: string, init: RequestInit = {}) => {
+      seen.push(init.signal ?? undefined);
+      return new Promise<Response>((_resolve, reject) => init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true }));
+    }) as unknown as typeof globalThis.fetch;
+    return { fetch, seen };
+  };
+
+  it("ends a stalled request when the loop's signal aborts, as a cancellation", async () => {
+    const ctl = new AbortController();
+    const { fetch, seen } = stalled();
+    const nams = createNamsClient({ key: KEY, baseUrl: "https://nams.test", fetch, tools, signal: ctl.signal });
+    const p = nams.addConversation("ws-1", {});
+    setTimeout(() => ctl.abort(), 10);
+    await expect(p).rejects.toBeInstanceOf(LoopCancelled);
+    expect(seen[0]).toBe(ctl.signal);
+  });
+
+  it("passes the signal to every REST request", async () => {
+    const ctl = new AbortController();
+    const s = stub({ "POST /v1/conversations": { id: "c1" }, "POST /v1/conversations/*": {}, "POST /v1/reasoning/steps": { id: "s" }, "POST /v1/reasoning/tool-calls": {}, "POST /v1/skills/generate": { runId: "r" }, "GET /v1/skills/runs/*": { status: "queued" }, "GET /v1/skills/capabilities": {} });
+    const signals: (AbortSignal | undefined)[] = [];
+    const wrapped = ((url: string, init: RequestInit = {}) => { signals.push(init.signal ?? undefined); return s.fetch(url, init); }) as unknown as typeof globalThis.fetch;
+    const nams = createNamsClient({ key: KEY, baseUrl: "https://nams.test", fetch: wrapped, tools, signal: ctl.signal });
+    await nams.addConversation("ws-1", {});
+    await nams.addMessage("ws-1", "c1", "user", "x");
+    await nams.addStep("ws-1", "c1", "t");
+    await nams.addToolCall("ws-1", { tool: "t", input: "{}", output: "{}", status: "success", durationMs: 1 } as never, "s");
+    await nams.generateSkill("ws-1", { conversationIds: ["c1"], procedureFormat: "prose" });
+    await nams.getRun("ws-1", "r");
+    await nams.capabilities("ws-1");
+    expect(signals.length).toBeGreaterThanOrEqual(7);
+    expect(signals.every((x) => x === ctl.signal)).toBe(true);
+  });
+
+  it("does not hold back listing and deleting after an abort: they get their own, live signal", async () => {
+    const ctl = new AbortController();
+    ctl.abort();
+    const got: { op: string; aborted: boolean | undefined }[] = [];
+    const watching: WorkspaceTools = {
+      create: async (_n, sig) => { got.push({ op: "create", aborted: sig?.aborted }); return { id: "ws-1" }; },
+      isActive: async () => true,
+      list: async (sig) => { got.push({ op: "list", aborted: sig?.aborted }); return ["ws-1"]; },
+      delete: async (_id, sig) => { got.push({ op: "delete", aborted: sig?.aborted }); },
+    };
+    const nams = createNamsClient({ key: KEY, baseUrl: "https://nams.test", fetch: stub({}).fetch, tools: watching, signal: ctl.signal });
+    await nams.createWorkspace("x");
+    await nams.listWorkspaceIds();
+    await nams.deleteWorkspace("ws-1");
+    expect(got).toEqual([{ op: "create", aborted: true }, { op: "list", aborted: false }, { op: "delete", aborted: false }]);
   });
 });

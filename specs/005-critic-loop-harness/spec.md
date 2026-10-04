@@ -246,7 +246,9 @@ its hash. A rejected loop leaves nothing to install and says so.
   file in it).
 - **FR-026**: Every source the reviser cites MUST name a run in the loop and a call number that exists in that run's
   recording. A change with no source MUST be listed under an "Uncited changes" heading, added by the harness to the
-  provenance file, so the next critic sees it.
+  provenance file, so the next critic sees it. A revision MUST list at least one change, and the harness MUST append a
+  "Change record" to the provenance file listing every change with the sources it checked. The accepted skill's main
+  file MUST meet the rule in FR-016 whichever round it came from, including a candidate accepted in round 1.
 
 ### Key Entities
 

@@ -43,7 +43,7 @@ export interface AgentRunOptions {
   /** One fixed sentence added to the end of the base prompt, for an arm that points at the skill. */
   promptNote?: string | undefined;
   /**
-   * Replace the base prompt with this text, in which `{what}` (one item, or n of it), `{item}` and `{turns}` are filled in.
+   * Replace the base prompt with this text, in which `{what}` (one item, or n of it; required by the command, since it carries the quantity), `{item}` and `{turns}` are filled in.
    * For testing a reworded prompt: every arm of an experiment must use the same base prompt (ADR-003), so a run with a
    * template is only comparable with runs that used the same one. `prompt.txt` records the text actually sent.
    */

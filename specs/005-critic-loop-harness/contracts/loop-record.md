@@ -4,8 +4,10 @@
 loops/<label>/
 ├── loop.json                  # the record (below)
 ├── workspace.json             # runs mode only: { id, name, createdBy: "loop", retired }
-├── candidate/                 # runs mode: the package as downloaded, plus generation.json
-│   └── ...                    #   (generation.json: runId, skillId, format, capabilities as returned)
+├── generation.json            # runs mode only: runId, skillId, format, status, failure, gates, capabilities as returned.
+│                              #   Beside the package folder, not in it: the archive is untrusted and may hold a file of that name
+├── candidate/                 # runs mode: the package exactly as downloaded (its own files, whatever they are called)
+│   └── ...
 ├── rounds/
 │   └── 01/
 │       ├── reviewed-skill.txt # the SKILL.md text the critic reviewed (no case variant of SKILL.md: not installable)
@@ -52,5 +54,7 @@ loops/<label>/
 - The loop reads run folders and never writes into them or into any other loop's folder.
 - Agent-authored text appears only in `rounds/*` and `skill/`, and only as the schema's fields.
 - A rejected loop has no `skill/`; round snapshots use `reviewed-skill.txt` (not any case variant of `SKILL.md`, since macOS ignores case), so none of them installs through `--skill`.
-- `references/provenance.md` ends with a harness-generated `## Uncited changes` section when any change had no source.
+- `references/provenance.md` ends with harness-generated sections after the reviser's own text: `## Change record` (every change with the
+  sources the harness checked) and, when any change had no source, `## Uncited changes`.
+- A run folder outside the repository is recorded as `(outside the repository)/<name>`, never as an absolute path.
 - The accepted `skill/SKILL.md` hash equals the last round's `skillSha256` and the hash a student run's `score.json` records.

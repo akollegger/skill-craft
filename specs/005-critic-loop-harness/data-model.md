@@ -61,7 +61,7 @@ Rules: the `questions` keys equal the rubric ids exactly; a value for the common
 
 Rules: `skillMd` passes the package rules above and keeps the candidate's `name`; `provenanceMd` is non-empty; every
 `sourceCalls` entry looks like `run NNN call N`, names a run in the loop, and names a call number that exists in that
-run's recording. A change with an empty `sourceCalls` is allowed: the harness appends an `## Uncited changes` section
+run's recording. At least one change is required. The harness appends a `## Change record` section to the provenance file (every change and its checked sources). A change with an empty `sourceCalls` is allowed: the harness appends an `## Uncited changes` section
 listing it to the provenance file, below the reviser's own text, for the next critic to judge (FR-026). Invalid output
 is `RevisionInvalid`.
 

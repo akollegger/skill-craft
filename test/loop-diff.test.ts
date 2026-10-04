@@ -66,3 +66,25 @@ describe("unifiedDiff", () => {
     expect(d.match(/^@@/gm)).toHaveLength(2);
   });
 });
+
+describe("unifiedDiff on large inputs", () => {
+  it("does not allocate a quadratic table for two long texts with nothing in common, and still gives a correct diff", () => {
+    const a = Array.from({ length: 8000 }, (_, i) => `old line ${i}`).join("\n") + "\n";
+    const b = Array.from({ length: 8000 }, (_, i) => `new line ${i}`).join("\n") + "\n";
+    const before = process.memoryUsage().heapUsed;
+    const d = unifiedDiff(a, b);
+    expect(process.memoryUsage().heapUsed - before).toBeLessThan(200 * 1024 * 1024);
+    expect(apply(a, d)).toBe(b);
+  });
+
+  it("keeps a small edit in a long text small and exact", () => {
+    const lines = Array.from({ length: 6000 }, (_, i) => `line ${i}`);
+    const b = [...lines];
+    b[3000] = "changed";
+    const a = `${lines.join("\n")}\n`;
+    const out = `${b.join("\n")}\n`;
+    const d = unifiedDiff(a, out);
+    expect(d.match(/^[-+]/gm)!.length).toBeLessThan(10);
+    expect(apply(a, d)).toBe(out);
+  });
+});

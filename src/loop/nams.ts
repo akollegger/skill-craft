@@ -90,10 +90,10 @@ export function guarded(inner: NamsApi, guard: WorkspaceGuard): NamsApi {
 
 /** The workspace lifecycle, through the service's MCP tools. Injected so tests need no network. */
 export interface WorkspaceTools {
-  create(name: string): Promise<{ id: string }>;
-  isActive(id: string): Promise<boolean>;
-  list(): Promise<string[]>;
-  delete(id: string): Promise<void>;
+  create(name: string, signal?: AbortSignal): Promise<{ id: string }>;
+  isActive(id: string, signal?: AbortSignal): Promise<boolean>;
+  list(signal?: AbortSignal): Promise<string[]>;
+  delete(id: string, signal?: AbortSignal): Promise<void>;
   close?(): Promise<void>;
 }
 
@@ -106,6 +106,13 @@ export interface NamsClientOptions {
   pollMs?: number | undefined;
   /** The longest any wait may take. Default 15 minutes. */
   maxWaitMs?: number | undefined;
+  /**
+   * Ends every request the loop makes when it aborts, so a stalled call cannot hold up the cancellation. Listing and deleting a
+   * workspace do not use it: they must still run after an abort, under their own time limit.
+   */
+  signal?: AbortSignal | undefined;
+  /** The time limit for listing and deleting, which run after an abort. Default 60 s. */
+  cleanupTimeoutMs?: number | undefined;
 }
 
 const str = (v: unknown): string | undefined => (typeof v === "string" && v !== "" ? v : undefined);
@@ -137,6 +144,7 @@ export function createNamsClient(o: NamsClientOptions): NamsApi {
   const doFetch = o.fetch ?? globalThis.fetch;
   const pollMs = o.pollMs ?? 5000;
   const maxWaitMs = o.maxWaitMs ?? 15 * 60_000;
+  const cleanup = () => AbortSignal.timeout(o.cleanupTimeoutMs ?? 60_000);
 
   // The key is closed over here and is never a property of anything this function returns.
   async function request(method: string, path: string, ws: string, body?: unknown): Promise<Response> {
@@ -146,8 +154,10 @@ export function createNamsClient(o: NamsClientOptions): NamsApi {
         method,
         headers: { Authorization: `Bearer ${o.key}`, "X-Workspace-Id": ws, "Content-Type": "application/json" },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        ...(o.signal ? { signal: o.signal } : {}),
       });
     } catch (e) {
+      if (o.signal?.aborted) throw new LoopCancelled();
       throw new CandidateFailed(`the service could not be reached for ${method} ${path}`, e);
     }
     // The route and the status only: the body can carry anything the service said.
@@ -168,13 +178,19 @@ export function createNamsClient(o: NamsClientOptions): NamsApi {
   return {
     capabilities: (ws) => json("GET", "/v1/skills/capabilities", ws),
     async createWorkspace(name) {
-      return o.tools.create(name);
+      return o.tools.create(name, o.signal);
     },
     async waitActive(id, signal) {
-      await until(async () => (await o.tools.isActive(id)) && (await doFetch(`${base}/v1/entities/count`, { headers: { Authorization: `Bearer ${o.key}`, "X-Workspace-Id": id } }).then((r) => r.ok, () => false)), "the workspace's database", signal);
+      await until(
+        async () =>
+          (await o.tools.isActive(id, o.signal)) &&
+          (await doFetch(`${base}/v1/entities/count`, { headers: { Authorization: `Bearer ${o.key}`, "X-Workspace-Id": id }, ...(o.signal ? { signal: o.signal } : {}) }).then((r) => r.ok, () => false)),
+        "the workspace's database",
+        signal,
+      );
     },
-    listWorkspaceIds: () => o.tools.list(),
-    deleteWorkspace: (id) => o.tools.delete(id),
+    listWorkspaceIds: () => o.tools.list(cleanup()),
+    deleteWorkspace: (id) => o.tools.delete(id, cleanup()),
     async addConversation(ws, metadata) {
       const id = str((await json("POST", "/v1/conversations", ws, { metadata }))["id"]);
       if (!id) throw new CandidateFailed("the service gave no conversation id");
@@ -246,9 +262,9 @@ export function createMcpWorkspaceTools(key: string, baseUrl = "https://memory.n
     client = c;
     return c;
   }
-  async function call(tool: string, args: Record<string, unknown>): Promise<unknown> {
+  async function call(tool: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
     const c = await connect();
-    const res = (await c.callTool({ name: tool, arguments: args })) as { content: { text?: string }[]; isError?: boolean };
+    const res = (await c.callTool({ name: tool, arguments: args }, undefined, signal ? { signal } : undefined)) as { content: { text?: string }[]; isError?: boolean };
     const text = res.content.map((x) => x.text ?? "").join("");
     if (res.isError) throw new CandidateFailed(`the service refused ${tool}`);
     // The tools may put a line of prose before the JSON ("Listed 3 workspaces"), so parse from the first brace.
@@ -259,12 +275,12 @@ export function createMcpWorkspaceTools(key: string, baseUrl = "https://memory.n
     return { text };
   }
   return {
-    async create(name) {
-      const r = obj(await call("workspace_create", { name, db_mode: "managed" }));
+    async create(name, signal) {
+      const r = obj(await call("workspace_create", { name, db_mode: "managed" }, signal));
       let id = str(r["id"]) ?? str(r["workspace_id"]) ?? str(obj(r["workspace"])["id"]);
       if (!id) {
         // The reply may not carry the id in a shape we expect; the workspace exists by now, so find it by name.
-        const list = obj(await call("workspace_list", {}))["workspaces"];
+        const list = obj(await call("workspace_list", {}, signal))["workspaces"];
         const mine = (Array.isArray(list) ? list : []).map(obj).filter((w) => w["name"] === name);
         if (mine.length !== 1) throw new CandidateFailed("the service gave no workspace id");
         id = str(mine[0]!["id"]);
@@ -272,16 +288,16 @@ export function createMcpWorkspaceTools(key: string, baseUrl = "https://memory.n
       if (!id) throw new CandidateFailed("the service gave no workspace id");
       return { id };
     },
-    async isActive(id) {
-      return /"status":\s*"active"/.test(JSON.stringify(await call("workspace_get", { workspace_id: id })));
+    async isActive(id, signal) {
+      return /"status":\s*"active"/.test(JSON.stringify(await call("workspace_get", { workspace_id: id }, signal)));
     },
-    async list() {
-      const r = await call("workspace_list", {});
+    async list(signal) {
+      const r = await call("workspace_list", {}, signal);
       const list = Array.isArray(r) ? r : obj(r)["workspaces"];
       return (Array.isArray(list) ? list : []).map((w) => str(obj(w)["id"]) ?? str(obj(w)["workspace_id"])).filter((x): x is string => x !== undefined);
     },
-    async delete(id) {
-      await call("workspace_delete", { workspace_id: id });
+    async delete(id, signal) {
+      await call("workspace_delete", { workspace_id: id }, signal);
     },
     async close() {
       await client?.close().catch(() => {});

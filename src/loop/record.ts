@@ -5,7 +5,7 @@
  * `skill/` folder can be installed.
  */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
+import { basename, isAbsolute, join, resolve, sep } from "node:path";
 import { LoopRefused } from "../harness/errors.js";
 import { toRepoPath } from "../harness/paths.js";
 import type { NamsStage } from "./candidate.js";
@@ -26,6 +26,12 @@ export interface RecordOptions {
   /** What the candidate step produced: run ids, the format, the service's thresholds. Runs mode only. */
   candidate?: unknown;
 }
+
+/** A run folder as recorded: repository-relative inside the repository, and only its name outside it (an absolute path holds a user name). */
+const runPath = (path: string): string => {
+  const p = toRepoPath(path);
+  return isAbsolute(p) ? `(outside the repository)/${basename(path)}` : p;
+};
 
 const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -68,7 +74,7 @@ export function writeLoopRecord(result: LoopResult, o: RecordOptions): void {
     json({
       label: o.label,
       mode: o.mode,
-      runs: o.runs.map(toRepoPath),
+      runs: o.runs.map(runPath),
       rubric: result.rubric,
       models: {
         critic: { requested: o.models.critic, resolved: resolved("critic") },

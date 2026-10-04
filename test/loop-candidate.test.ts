@@ -56,7 +56,7 @@ describe("obtainCandidate", () => {
     expect(Object.keys(r.pkg).sort()).toEqual(["SKILL.md", "references/notes.md"]);
     // The candidate's files and the generation record are saved.
     expect(readFileSync(join(loopDir, "candidate/SKILL.md"), "utf8")).toBe(SKILL);
-    const gen = JSON.parse(readFileSync(join(loopDir, "candidate/generation.json"), "utf8"));
+    const gen = JSON.parse(readFileSync(join(loopDir, "generation.json"), "utf8"));
     expect(gen).toMatchObject({ runId: "run-1", skillId: "skill-1", format: "prose" });
     expect(gen.capabilities).toBeDefined();
     expect(r.info).toMatchObject({ workspace: { id: fake.created[0] }, generation: { runId: "run-1", skillId: "skill-1", format: "prose" } });
@@ -91,7 +91,7 @@ describe("obtainCandidate", () => {
     await expect(obtainCandidate(x)).rejects.toThrow(/the distiller reported failed \(low_coverage\)/);
     expect(fake.deleted).toEqual(fake.created);
     expect(fake.calls.filter((k) => k.method === "generateSkill")).toHaveLength(1);
-    const gen = JSON.parse(readFileSync(join(loopDir, "candidate/generation.json"), "utf8"));
+    const gen = JSON.parse(readFileSync(join(loopDir, "generation.json"), "utf8"));
     expect(gen).toMatchObject({ status: "failed", failure: "low_coverage", gates: { coverage: 0.5 } });
   });
 
@@ -167,5 +167,17 @@ describe("obtainCandidate", () => {
     expect(new Set(fake.created).size).toBe(2);
     expect(fake.deleted.sort()).toEqual([...fake.created].sort());
     expect(existsSync(join(tmpdir()))).toBe(true);
+  });
+});
+
+describe("an archive that holds a file named like the harness's own", () => {
+  it("cannot overwrite the generation record: the harness writes it beside the package folder, and the package keeps its own file", async () => {
+    const c = await run(MIRROR, { item: "c", qty: 1 }, "solve", "a");
+    const zip = makeZip([{ name: "SKILL.md", data: SKILL }, { name: "generation.json", data: '{"runId":"FORGED"}' }]);
+    const x = args(new FakeNams({ zip }), [c]);
+    const r = await obtainCandidate(x.a);
+    expect(r.pkg["generation.json"]).toBe('{"runId":"FORGED"}');
+    expect(readFileSync(join(x.loopDir, "candidate/generation.json"), "utf8")).toBe('{"runId":"FORGED"}');
+    expect(JSON.parse(readFileSync(join(x.loopDir, "generation.json"), "utf8"))).toMatchObject({ runId: "run-1", skillId: "skill-1" });
   });
 });

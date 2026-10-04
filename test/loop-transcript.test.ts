@@ -91,3 +91,25 @@ describe("assertSameTask", () => {
     expect(() => assertSameTask([a, { ...b, world: "worlds/forge.json" }])).toThrow(LoopRefused);
   });
 });
+
+describe("the trace's arguments", () => {
+  it("must pair with the log's, not only the tool names: a trace from another run is refused", async () => {
+    const run = await made("solve", "args");
+    const path = join(run, "trace.jsonl");
+    const lines = readFileSync(path, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const i = lines.findIndex((l) => l.kind === "tool" && l.tool === "place");
+    expect(i).toBeGreaterThan(-1);
+    lines[i].args = { ...lines[i].args, row: 2 };
+    writeFileSync(path, `${lines.map((l) => JSON.stringify(l)).join("\n")}\n`);
+    await expect(replayRun(run, "001")).rejects.toBeInstanceOf(ReplayFailed);
+  });
+
+  it("accepts the same arguments written in another key order", async () => {
+    const run = await made("solve", "order");
+    const path = join(run, "trace.jsonl");
+    const lines = readFileSync(path, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    for (const l of lines) if (l.kind === "tool" && l.args) l.args = Object.fromEntries(Object.entries(l.args).reverse());
+    writeFileSync(path, `${lines.map((l) => JSON.stringify(l)).join("\n")}\n`);
+    await expect(replayRun(run, "001")).resolves.toBeDefined();
+  });
+});

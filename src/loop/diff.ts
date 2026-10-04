@@ -7,7 +7,26 @@ const toLines = (text: string): string[] => (text === "" ? [] : text.replace(/\n
 
 type Op = { kind: " " | "-" | "+"; text: string };
 
-function edits(a: string[], b: string[]): Op[] {
+/** The most cells the longest-common-subsequence table may have (16 MB as 32-bit counts). Beyond it the middle is replaced whole. */
+const MAX_CELLS = 4_000_000;
+
+function edits(all: string[], allB: string[]): Op[] {
+  // Lines the two texts share at the start and the end need no table, which also keeps the table small for a small edit.
+  let start = 0;
+  while (start < all.length && start < allB.length && all[start] === allB[start]) start++;
+  let endA = all.length;
+  let endB = allB.length;
+  while (endA > start && endB > start && all[endA - 1] === allB[endB - 1]) { endA--; endB--; }
+  const head: Op[] = all.slice(0, start).map((text) => ({ kind: " ", text }));
+  const tail: Op[] = all.slice(endA).map((text) => ({ kind: " ", text }));
+  const a = all.slice(start, endA);
+  const b = allB.slice(start, endB);
+  // A coarse diff (every old line out, every new line in) is still a correct one, and cannot exhaust memory.
+  const middle: Op[] = (a.length + 1) * (b.length + 1) > MAX_CELLS ? [...a.map((text): Op => ({ kind: "-", text })), ...b.map((text): Op => ({ kind: "+", text }))] : lcsOps(a, b);
+  return [...head, ...middle, ...tail];
+}
+
+function lcsOps(a: string[], b: string[]): Op[] {
   const n = a.length;
   const m = b.length;
   // lcs[i][j] is the length of the longest common subsequence of a[i..] and b[j..].

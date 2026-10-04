@@ -71,7 +71,9 @@ It asks for the whole revised files.
 
 - zod parses the answer; failure is `VerdictInvalid` or `RevisionInvalid` with a fixed message
 - `skillMd`: front matter with the candidate's `name` and a `description`; non-empty body; no citation pattern
-- `provenanceMd`: non-empty; the harness appends `## Uncited changes` for any change with empty `sourceCalls`
+- `changes`: at least one, so a rewrite cannot leave no record of what it changed
+- `provenanceMd`: non-empty; the harness appends `## Change record` (every change and its checked sources) and, for any change with empty
+  `sourceCalls`, `## Uncited changes`
 - every `sourceCalls` entry names a run in the loop and a call number that exists in that run's recording
 - `maxUsd` reached: the role result is `ok: false` with a fixed reason, and the loop stops (FR-024)
 - a role result with `ok: false` stops the loop with its `reason`; the agent's text is never part of any error

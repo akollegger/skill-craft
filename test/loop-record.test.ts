@@ -163,3 +163,15 @@ describe("the loop record", () => {
     expect(loopJson.rounds).toHaveLength(1);
   });
 });
+
+describe("run paths outside the repository", () => {
+  it("are recorded by name only, never as an absolute path", async () => {
+    const outside = join(mkdtempSync(join(tmpdir(), "skill-craft-ext-")), "my-run-001");
+    const r = await loop([verdict("accept", "A")]);
+    const dir = createLoopFolder(tmp(), "ext", []);
+    writeLoopRecord(r, opts(dir, { runs: [outside, join(REPO, "runs/faithful-1-t0-stone/001")] }));
+    const loopJson = JSON.parse(readFileSync(join(dir, "loop.json"), "utf8"));
+    expect(loopJson.runs).toEqual(["(outside the repository)/my-run-001", "runs/faithful-1-t0-stone/001"]);
+    expect(readFileSync(join(dir, "loop.json"), "utf8")).not.toContain(tmpdir());
+  });
+});

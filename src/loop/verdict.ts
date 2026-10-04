@@ -61,6 +61,7 @@ export function revisionSchema(ctx: RevisionContext) {
       provenanceMd: z.string().min(1).max(FILE_CHARS),
       changes: z
         .array(z.strictObject({ what: z.string().min(1).max(400), why: z.string().min(1).max(400), sourceCalls: z.array(z.string().max(40)).max(20) }))
+        .min(1)
         .max(30),
     })
     .superRefine((rev, issue) => {
@@ -95,6 +96,17 @@ export function toJsonSchema(schema: z.ZodType): Record<string, unknown> {
   // The SDK refuses a schema that carries the `$schema` meta key (found by the live role check), so it is dropped.
   const { $schema: _meta, ...rest } = z.toJSONSchema(schema) as Record<string, unknown>;
   return rest;
+}
+
+/**
+ * The harness's own record of what changed, below the reviser's provenance text: every change with the sources the harness
+ * checked against the recordings. The reviser's text can say anything; this section cannot, so a rewrite always leaves a
+ * checked record of what it changed and where each change came from.
+ */
+export function withChangeRecord(provenanceMd: string, changes: readonly Change[]): string {
+  const base = provenanceMd.endsWith("\n") ? provenanceMd : `${provenanceMd}\n`;
+  const rows = changes.map((c) => `- ${c.what}: ${c.sourceCalls.length === 0 ? "no source" : c.sourceCalls.join(", ")}`);
+  return `${base}\n## Change record\n\nEvery change, with the sources the harness checked against the recordings.\n\n${rows.join("\n")}\n`;
 }
 
 /**

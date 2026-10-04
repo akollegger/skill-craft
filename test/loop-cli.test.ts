@@ -241,3 +241,43 @@ describe("a loop from the runs alone (scripted memory service)", () => {
     expect(JSON.parse(readFileSync(join(r.loops, "abort/loop.json"), "utf8"))).toMatchObject({ cancelled: true });
   });
 });
+
+describe("the candidate step's typed errors and a call-free plan", () => {
+  const base = { namsWait: { pollMs: 1, maxWaitMs: 2000 } };
+
+  it("plans a runs-only loop without a key and without any call", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    const nams = new FakeNams();
+    const r = await run(["--runs", a, "--allow-workspace", "--dry-run", "--label", "plan2"], [], { ...base, nams, env: {} });
+    expect(r.code).toBe(0);
+    expect(r.out.join("\n")).toMatch(/create a workspace/);
+    expect(nams.calls).toHaveLength(0);
+    expect(existsSync(join(r.loops, "plan2"))).toBe(false);
+  });
+
+  it("still refuses a real runs-only loop without a key, naming the variable", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    const r = await run(["--runs", a, "--allow-workspace"], [], { ...base, nams: new FakeNams(), env: {} });
+    expect(r.code).toBe(1);
+    expect(r.err.join("\n")).toContain("NAMS_API_KEY");
+  });
+
+  it("writes a failure record, and deletes the workspace, when the downloaded package is unusable (no SKILL.md)", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    const nams = new FakeNams({ zip: makeZip([{ name: "references/only.md", data: "no main file" }]) });
+    const r = await run(["--runs", a, "--allow-workspace", "--label", "nomain"], [], { ...base, nams, env: { NAMS_API_KEY: "k" } });
+    expect(r.code).toBe(1);
+    expect(r.err.join("\n")).toMatch(/SkillNotFound/);
+    expect(nams.deleted).toEqual(nams.created);
+    expect(JSON.parse(readFileSync(join(r.loops, "nomain/loop.json"), "utf8"))).toMatchObject({ outcome: "reject", failed: true, rounds: [] });
+  });
+
+  it("writes a failure record when the service hands back a workspace this step must not use", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    const nams = new FakeNams({ createdId: "experiment-ws", existing: ["experiment-ws"] });
+    const r = await run(["--runs", a, "--allow-workspace", "--label", "refused"], [], { ...base, nams, env: { NAMS_API_KEY: "k", NAMS_WORKSPACE_ID: "experiment-ws" } });
+    expect(r.code).toBe(1);
+    expect(JSON.parse(readFileSync(join(r.loops, "refused/loop.json"), "utf8"))).toMatchObject({ outcome: "reject", failed: true });
+  });
+});
+

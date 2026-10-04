@@ -158,7 +158,8 @@ zebra-space project with the RFC requirement removed.
 
 - The critic and the reviser have no tools: a role's prompt is built in `src/loop/inputs.ts` from named parts
   only (rubric, goals, recordings, the current skill, and for the reviser the current verdict), so they cannot read
-  the world, the goals, the solver's output or an earlier verdict. Keep it that way; `test/loop-inputs.test.ts` checks it.
+  the world, the goals file, the solver's output, a held-out goal or an earlier verdict (they are given only the goals the
+  recordings cover). Keep it that way; `test/loop-inputs.test.ts` checks it.
 - Roles run through `RoleDriver`; the SDK is still imported only in `src/harness/sdk-driver.ts`, and tests use the
   scripted role in `test/helpers/fake-role.ts` and the scripted service in `test/helpers/fake-nams.ts`.
 - Model-authored review text (verdicts, change lists, revised skills) lives only under `loops/<label>/`, as the

@@ -10,6 +10,10 @@ const refuse = (why: string): never => {
   throw new CandidateFailed(`the skill download is not a usable zip (${why})`);
 };
 
+/** A skill is a few small text files; anything larger is not one, and an archive may not expand beyond these. */
+const MAX_ENTRY_BYTES = 1 << 20;
+const MAX_TOTAL_BYTES = 4 << 20;
+
 const EOCD = 0x06054b50;
 const CENTRAL = 0x02014b50;
 const LOCAL = 0x04034b50;
@@ -37,7 +41,9 @@ function read(buf: Buffer): Record<string, Uint8Array> {
   if (count === 0xffff || cdSize === 0xffffffff || cdOffset === 0xffffffff) return refuse("zip64 is not supported");
   if (cdOffset + cdSize > buf.length) return refuse("truncated");
 
-  const files: Record<string, Uint8Array> = {};
+  // First pass: read the directory and refuse anything unusable or oversized before a single byte is inflated.
+  const entries: { name: string; method: number; crc: number; compSize: number; size: number; local: number }[] = [];
+  let total = 0;
   let p = cdOffset;
   for (let n = 0; n < count; n++) {
     if (buf.readUInt32LE(p) !== CENTRAL) return refuse("bad directory");
@@ -58,14 +64,22 @@ function read(buf: Buffer): Record<string, Uint8Array> {
     if (name.startsWith("/") || name.includes("\\") || name.split("/").includes("..")) return refuse("an entry name leaves the folder");
     if (name.endsWith("/")) continue; // a directory
     if (method !== 0 && method !== 8) return refuse("an entry uses an unsupported method");
-    if (buf.readUInt32LE(local) !== LOCAL) return refuse("bad entry");
-    const start = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
-    if (start + compSize > buf.length) return refuse("truncated");
-    const body = buf.subarray(start, start + compSize);
-    const data = method === 0 ? Buffer.from(body) : inflateRawSync(body);
-    if (data.length !== size || crc32(data) !== crc) return refuse("an entry does not match its checksum");
-    if (name in files) return refuse("a name appears twice");
-    files[name] = new Uint8Array(data);
+    if (size > MAX_ENTRY_BYTES || (total += size) > MAX_TOTAL_BYTES) return refuse("an entry is too large");
+    entries.push({ name, method, crc, compSize, size, local });
+  }
+
+  // Second pass: inflate each entry, capped at the size its header declares.
+  const files: Record<string, Uint8Array> = {};
+  for (const e of entries) {
+    if (buf.readUInt32LE(e.local) !== LOCAL) return refuse("bad entry");
+    const start = e.local + 30 + buf.readUInt16LE(e.local + 26) + buf.readUInt16LE(e.local + 28);
+    if (start + e.compSize > buf.length) return refuse("truncated");
+    const body = buf.subarray(start, start + e.compSize);
+    // The output is capped at the declared size, so a small archive cannot expand without limit before the check below.
+    const data = e.method === 0 ? Buffer.from(body) : inflateRawSync(body, { maxOutputLength: Math.max(e.size, 1) });
+    if (data.length !== e.size || crc32(data) !== e.crc) return refuse("an entry does not match its checksum");
+    if (e.name in files) return refuse("a name appears twice");
+    files[e.name] = new Uint8Array(data);
   }
   return files;
 }

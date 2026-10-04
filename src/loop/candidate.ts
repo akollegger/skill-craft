@@ -137,9 +137,9 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
       }
     });
 
-    mkdirSync(join(a.loopDir, "candidate"), { recursive: true });
     const generation = { runId, skillId: run.skillId ?? null, format: a.format, status: run.status, failure: run.failure ?? null, gates: run.gates ?? null, capabilities };
-    writeFileSync(join(a.loopDir, "candidate/generation.json"), `${JSON.stringify(generation, null, 2)}\n`);
+    // Beside the package folder, not in it: the archive is untrusted and may hold a file of the same name.
+    writeFileSync(join(a.loopDir, "generation.json"), `${JSON.stringify(generation, null, 2)}\n`);
     if (classify(run) === "failed") {
       // The distiller's own reasons, as a code when it gave one; no retry (FR-007).
       const code = run.failure && /^[a-z][a-z_]*$/.test(run.failure) ? ` (${run.failure})` : "";

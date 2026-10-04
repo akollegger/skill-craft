@@ -153,3 +153,21 @@ describe("failures", () => {
     expect(r.stages[0]!.durationMs).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe("what an accepted skill must meet", () => {
+  it("does not accept a candidate whose SKILL.md holds a citation, even if the critic does", async () => {
+    const cited = { ...candidate(), "SKILL.md": `${candidate()["SKILL.md"]}\nSource: run 001 call 3.\n` };
+    const { base } = input([verdict("accept", "A")], { candidate: cited });
+    const r = await runLoop(base);
+    expect(r).toMatchObject({ outcome: "reject", failed: false });
+    expect(r.reason).toBe("the accepted skill breaks a rule: SKILL.md holds a run or call citation");
+    expect(r.final).toBeUndefined();
+  });
+
+  it("always leaves a harness-built change record in the revised provenance", async () => {
+    const { base } = input([verdict("revise", "V1"), revision("T1"), verdict("accept", "V2")]);
+    const r = await runLoop(base);
+    expect(r.final?.["references/provenance.md"]).toContain("## Change record");
+    expect(r.final?.["references/provenance.md"]).toContain("run 001 call 2");
+  });
+});

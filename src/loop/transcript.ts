@@ -7,6 +7,7 @@ import { readLog } from "../harness/read-log.js";
 import { fromRepoPath } from "../harness/paths.js";
 import { createCraftServer } from "../mcp/server.js";
 import { loadWorld } from "../sim/loader.js";
+import { canonical } from "../trace/measure.js";
 
 export interface RecordedCall {
   seq: number;
@@ -71,7 +72,7 @@ async function replay(runDir: string, label: string): Promise<Recording> {
   const toolLines = readFileSync(join(runDir, "trace.jsonl"), "utf8")
     .split("\n")
     .filter(Boolean)
-    .map((l) => JSON.parse(l) as { kind: string; tool: string; startMs: number; endMs: number })
+    .map((l) => JSON.parse(l) as { kind: string; tool: string; args?: unknown; startMs: number; endMs: number })
     .filter((l) => l.kind === "tool");
   if (toolLines.length !== entries.length) throw new ReplayFailed("the trace does not pair with the log");
 
@@ -86,7 +87,8 @@ async function replay(runDir: string, label: string): Promise<Recording> {
     for (const [i, entry] of entries.entries()) {
       const line = toolLines[i]!;
       const duration = line.endMs - line.startMs;
-      if (line.tool !== entry.tool || !Number.isFinite(duration) || duration < 0) throw new ReplayFailed(`trace line ${i + 1} does not match the logged call`);
+      // As the run's own measurement does: the tool and its arguments must both pair up, or the trace is another run's.
+      if (line.tool !== entry.tool || canonical(line.args) !== canonical(entry.args) || !Number.isFinite(duration) || duration < 0) throw new ReplayFailed(`trace line ${i + 1} does not match the logged call`);
       const r = (await client.callTool({ name: entry.tool, arguments: entry.args })) as { content: { text: string }[]; isError?: boolean };
       const output = r.content[0]?.text ?? "";
       const body = JSON.parse(output) as { crafted?: { item: string; qty: number }; error?: unknown };

@@ -21,7 +21,7 @@ const USAGE =
 
 class UsageError extends Error {}
 
-/** The base prompt from a file, for testing a reworded one. Must be non-empty and name the goal. */
+/** The base prompt from a file, for testing a reworded one. Must be non-empty and state the whole goal, quantity included, with {what}. */
 function readTemplate(path: string): string {
   let text: string;
   try {
@@ -29,7 +29,7 @@ function readTemplate(path: string): string {
   } catch {
     throw new UsageError(`--prompt-file ${path} cannot be read`);
   }
-  if (text.trim() === "" || !/\{(what|item)\}/.test(text)) throw new UsageError("--prompt-file must be non-empty and name the goal with {what} or {item}");
+  if (text.trim() === "" || !text.includes("{what}")) throw new UsageError("--prompt-file must be non-empty and name the whole goal with {what} ({item} alone leaves out the quantity)");
   return text;
 }
 

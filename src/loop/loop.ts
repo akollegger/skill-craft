@@ -3,10 +3,10 @@ import { skillName } from "../harness/skill.js";
 import type { RoleDriver, RoleResult, RoleTokens } from "../harness/role-driver.js";
 import { unifiedDiff } from "./diff.js";
 import { checkSizes, criticPrompt, reviserPrompt, type RolePrompt } from "./inputs.js";
-import { packageFromFiles, skillSha256, type SkillPackage } from "./package.js";
+import { hasCitation, packageFromFiles, skillSha256, type SkillPackage } from "./package.js";
 import type { Rubric } from "./rubric.js";
 import type { Recording } from "./transcript.js";
-import { parseRevision, parseVerdict, revisionSchema, toJsonSchema, verdictSchema, withUncitedSection, type Change, type Verdict } from "./verdict.js";
+import { parseRevision, parseVerdict, revisionSchema, toJsonSchema, verdictSchema, withChangeRecord, withUncitedSection, type Change, type Verdict } from "./verdict.js";
 
 export interface LoopInput {
   candidate: SkillPackage;
@@ -60,6 +60,11 @@ export interface LoopResult {
 /** A loop that ended before any round, such as one whose candidate could not be obtained. */
 export function endedLoopResult(rubric: Rubric, reason: string, extra: { failed: boolean; cancelled: boolean }): LoopResult {
   return { outcome: "reject", reason, failed: extra.failed, cancelled: extra.cancelled, rounds: [], stages: [], rubric: { version: rubric.version, sha256: rubric.sha256 } };
+}
+
+/** What the main file of an accepted skill must not hold (FR-016): the audit trail belongs in the provenance file. */
+function acceptedSkillProblem(pkg: SkillPackage): string | undefined {
+  return hasCitation(pkg["SKILL.md"] ?? "") ? "SKILL.md holds a run or call citation" : undefined;
 }
 
 const MAIN = "SKILL.md";
@@ -122,7 +127,12 @@ export async function runLoop(input: LoopInput): Promise<LoopResult> {
       const round: RoundResult = { n, pkg, skillSha256: skillSha256(pkg), verdict };
       rounds.push(round);
 
-      if (verdict.overall === "accept") return result("accept", "the critic accepted the skill", { final: pkg });
+      if (verdict.overall === "accept") {
+        // The first round reviews a candidate no revision schema has checked, so the rules an accepted skill must meet are checked here.
+        const broken = acceptedSkillProblem(pkg);
+        if (broken) return result("reject", `the accepted skill breaks a rule: ${broken}`);
+        return result("accept", "the critic accepted the skill", { final: pkg });
+      }
       if (verdict.overall === "reject") return result("reject", "the critic rejected the skill");
       if (n === input.maxRounds) return result("reject", "round limit reached");
       if (signal.aborted) throw new LoopCancelled();
@@ -130,7 +140,7 @@ export async function runLoop(input: LoopInput): Promise<LoopResult> {
       const revision = parseRevision((await call(`reviser-${n}`, input.reviserModel, reviserPrompt({ ...parts, verdict }), reviserSchema)).answer, ctx);
       let next: SkillPackage;
       try {
-        next = packageFromFiles({ [MAIN]: revision.skillMd, [PROVENANCE]: withUncitedSection(revision.provenanceMd, revision.changes) });
+        next = packageFromFiles({ [MAIN]: revision.skillMd, [PROVENANCE]: withUncitedSection(withChangeRecord(revision.provenanceMd, revision.changes), revision.changes) });
       } catch (e) {
         // A revision that parsed but cannot be packaged (for example, over a size limit) is an invalid revision.
         throw new RevisionInvalid(e);

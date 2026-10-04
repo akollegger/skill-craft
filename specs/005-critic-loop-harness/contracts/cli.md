@@ -28,6 +28,8 @@
 - neither `--candidate` nor `--allow-workspace`
 - the recordings exceed 150,000 characters, or the candidate package exceeds 64 KB (32 KB for a file); the message names the limit
 - `--label` already exists
+
+A `--dry-run` makes no call and needs no `NAMS_API_KEY`, even in runs-only mode; a real runs-only loop is refused without it.
 - `NAMS_API_KEY` missing when a workspace is needed (the message names the variable, never a value)
 
 ## Output lines

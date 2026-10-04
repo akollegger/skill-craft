@@ -7,6 +7,8 @@ export interface ZipEntry {
   method?: 0 | 8;
   /** Set the encrypted bit. */
   encrypted?: boolean;
+  /** Record this uncompressed size instead of the true one (a lying header). */
+  declaredSize?: number;
 }
 
 const u16 = (n: number) => { const b = Buffer.alloc(2); b.writeUInt16LE(n); return b; };
@@ -23,8 +25,8 @@ export function makeZip(entries: ZipEntry[], opts: { zip64?: boolean; truncate?:
     const name = Buffer.from(e.name);
     const flags = e.encrypted ? 1 : 0;
     const crc = crc32(raw);
-    const local = Buffer.concat([u32(0x04034b50), u16(20), u16(flags), u16(method), u16(0), u16(0), u32(crc), u32(body.length), u32(raw.length), u16(name.length), u16(0), name, body]);
-    central.push(Buffer.concat([u32(0x02014b50), u16(20), u16(20), u16(flags), u16(method), u16(0), u16(0), u32(crc), u32(body.length), u32(raw.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]));
+    const local = Buffer.concat([u32(0x04034b50), u16(20), u16(flags), u16(method), u16(0), u16(0), u32(crc), u32(body.length), u32(e.declaredSize ?? raw.length), u16(name.length), u16(0), name, body]);
+    central.push(Buffer.concat([u32(0x02014b50), u16(20), u16(20), u16(flags), u16(method), u16(0), u16(0), u32(crc), u32(body.length), u32(e.declaredSize ?? raw.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]));
     parts.push(local);
     offset += local.length;
   }

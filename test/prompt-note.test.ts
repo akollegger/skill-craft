@@ -130,9 +130,11 @@ describe("a base-prompt template (--prompt-file)", () => {
     const good = join(dir, "good.txt");
     const empty = join(dir, "empty.txt");
     const nogoal = join(dir, "nogoal.txt");
+    const itemOnly = join(dir, "item-only.txt");
     writeFileSync(good, TEMPLATE);
     writeFileSync(empty, "  \n");
     writeFileSync(nogoal, "Do the thing.");
+    writeFileSync(itemOnly, "Hold the {item}. You have {turns} turns.");
     const { driver, prompts } = spy();
     const out = mkdtempSync(join(tmpdir(), "skill-craft-tmplrun-"));
     const run = (args: string[]) => {
@@ -141,7 +143,7 @@ describe("a base-prompt template (--prompt-file)", () => {
     };
     expect((await run(["--label", "a", "--prompt-file", good])).code).toBe(0);
     expect(prompts[0]).toBe("Your goal: end up holding one c. The item is c. You have 12 turns.");
-    for (const [label, file] of [["b", empty], ["c", nogoal], ["d", join(dir, "missing.txt")]] as const) {
+    for (const [label, file] of [["b", empty], ["c", nogoal], ["d", join(dir, "missing.txt")], ["e", itemOnly]] as const) {
       const r = await run(["--label", label, "--prompt-file", file]);
       expect(r.code).toBe(1);
       expect(r.err).toMatch(/--prompt-file/);

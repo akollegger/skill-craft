@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { CandidateFailed, HarnessError, isUserError, LoopCancelled, LoopRefused, reasonOf, RunTimedOut } from "../harness/errors.js";
+import { HarnessError, isUserError, LoopCancelled, LoopRefused, reasonOf, RunTimedOut } from "../harness/errors.js";
 import { toRepoPath } from "../harness/paths.js";
 import type { RoleDriver } from "../harness/role-driver.js";
 import { checkSizes } from "./inputs.js";
@@ -96,7 +96,6 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
 
     if (candidateFolder === undefined && !allowWorkspace) throw new LoopRefused("one of --candidate or --allow-workspace is required: --candidate starts from a skill folder, --allow-workspace distills one from the runs");
     const key = env["NAMS_API_KEY"];
-    if (candidateFolder === undefined && !key) throw new LoopRefused("NAMS_API_KEY is not set (it is read from the environment, never from an argument)");
 
     // The runs: finished, replaying, one goal in one world.
     const recordings: Recording[] = [];
@@ -129,6 +128,8 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
       deps.out(`loop folder: ${toRepoPath(resolve(out, label))}`);
       return 0;
     }
+    // A dry run makes no call, so only a real run needs the key.
+    if (candidateFolder === undefined && !key) throw new LoopRefused("NAMS_API_KEY is not set (it is read from the environment, never from an argument)");
 
     const stop = new AbortController();
     let timedOut = false;
@@ -145,7 +146,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
       if (pkg === undefined) {
         const baseUrl = env["NAMS_BASE_URL"] || undefined;
         const tools = deps.nams ? undefined : createMcpWorkspaceTools(key!, baseUrl);
-        const nams = deps.nams ?? createNamsClient({ key: key!, baseUrl, tools: tools! });
+        const nams = deps.nams ?? createNamsClient({ key: key!, baseUrl, tools: tools!, signal: stop.signal });
         try {
           const got = await obtainCandidate({
             runs: recordings, format, allowWorkspace, nams, loopDir: dir, signal: stop.signal, out: deps.out, now: deps.now,
@@ -155,7 +156,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
           checkSizes(recordings, pkg);
         } catch (e) {
           // The step has already deleted its workspace. The loop ends with nothing to review, and says why.
-          if (!(e instanceof CandidateFailed || e instanceof LoopCancelled || e instanceof LoopRefused)) throw e;
+          if (!(e instanceof HarnessError)) throw e; // every typed error from this step ends the loop with a record
           const cancelled = e instanceof LoopCancelled || stop.signal.aborted;
           writeLoopRecord(endedLoopResult(rubric, reasonOf(e), { failed: !cancelled, cancelled }), { dir, label, mode: "runs", runs: runDirs, models });
           if (timedOut) deps.err(reasonOf(new RunTimedOut(timeoutMs)));
