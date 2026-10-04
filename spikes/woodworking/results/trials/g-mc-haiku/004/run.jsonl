@@ -1,0 +1,17 @@
+{"seq":1,"tool":"help","args":{},"ok":true}
+{"seq":2,"tool":"inventory","args":{},"ok":true}
+{"seq":3,"tool":"look","args":{},"ok":true}
+{"seq":4,"tool":"place","args":{"item":"oak_log","row":0,"col":0},"ok":true}
+{"seq":5,"tool":"craft","args":{},"ok":true,"crafted":{"item":"oak_planks","qty":4}}
+{"seq":6,"tool":"place","args":{"item":"oak_planks","row":0,"col":0},"ok":true}
+{"seq":7,"tool":"place","args":{"item":"oak_planks","row":1,"col":0},"ok":true}
+{"seq":8,"tool":"craft","args":{},"ok":true,"crafted":{"item":"stick","qty":4}}
+{"seq":9,"tool":"place","args":{"item":"oak_log","row":0,"col":0},"ok":true}
+{"seq":10,"tool":"craft","args":{},"ok":true,"crafted":{"item":"oak_planks","qty":4}}
+{"seq":11,"tool":"place","args":{"item":"oak_planks","row":0,"col":0},"ok":true}
+{"seq":12,"tool":"place","args":{"item":"oak_planks","row":0,"col":1},"ok":true}
+{"seq":13,"tool":"place","args":{"item":"oak_planks","row":0,"col":2},"ok":true}
+{"seq":14,"tool":"place","args":{"item":"stick","row":1,"col":1},"ok":true}
+{"seq":15,"tool":"place","args":{"item":"stick","row":2,"col":1},"ok":true}
+{"seq":16,"tool":"craft","args":{},"ok":true,"crafted":{"item":"wooden_pickaxe","qty":1}}
+{"seq":17,"tool":"inventory","args":{},"ok":true}

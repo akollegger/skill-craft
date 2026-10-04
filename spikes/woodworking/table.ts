@@ -3,11 +3,13 @@
  * (src/harness/report.ts) is built for one experiment on one world and needs a hand-written experiment summary;
  * this reads each label's summary.json directly and prints markdown. A difference is supported only when the
  * two Wilson 95% intervals do not overlap, the same rule the report uses.
- * Usage: pnpm dev spikes/woodworking/table.ts
+ * Usage: pnpm dev spikes/woodworking/table.ts   (reads spikes/woodworking/results/trials/)
  */
 import { readFileSync } from "node:fs";
 import { wilson } from "../../src/harness/report.js";
 
+// The committed copies of the run folders. Both arms were run under runs/, which is gitignored.
+const RESULTS = "spikes/woodworking/results/trials";
 const SCENARIOS = [
   { key: "mc", name: "1. wooden_pickaxe (faithful)" },
   { key: "forge", name: "2. glirol (invented)" },
@@ -45,7 +47,7 @@ const lines = [
 for (const s of SCENARIOS) {
   for (const model of MODELS) {
     for (const { arm, prefix } of ARMS) {
-      const summary = JSON.parse(readFileSync(`runs/${prefix}-${s.key}-${model}/summary.json`, "utf8")) as { runs: RunRow[] };
+      const summary = JSON.parse(readFileSync(`${RESULTS}/${prefix}-${s.key}-${model}/summary.json`, "utf8")) as { runs: RunRow[] };
       const runs = summary.runs;
       const reachedRuns = runs.filter((r) => r.score.reached);
       const extra = reachedRuns.map((r) => r.score.extraCalls ?? 0);

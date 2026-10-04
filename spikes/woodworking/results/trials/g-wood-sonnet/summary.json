@@ -1,0 +1,398 @@
+{
+  "world": "worlds/woodworking.json",
+  "priorFit": "perturbed",
+  "goal": {
+    "item": "wooden_stool",
+    "qty": 1
+  },
+  "maxTurns": 80,
+  "record": false,
+  "timeoutMs": 1800000,
+  "cancelled": false,
+  "aggregate": {
+    "runs": 5,
+    "reached": 5,
+    "successRate": 1,
+    "gaveUp": 0,
+    "outOfBudget": 0,
+    "errors": 0,
+    "medianCallsToGoal": 19,
+    "meanExtraCalls": 0,
+    "totalCostUsd": 0.24472120000000003,
+    "models": [
+      "claude-sonnet-5-5"
+    ],
+    "mixedModels": false
+  },
+  "models": [
+    "claude-sonnet-5-5"
+  ],
+  "mixedModels": false,
+  "runs": [
+    {
+      "ended": "stopped",
+      "turns": 23,
+      "costUsd": 0.0540636,
+      "durationMs": 18540,
+      "usage": {
+        "inputTokens": 18,
+        "outputTokens": 1509,
+        "cacheReadTokens": 41268,
+        "cacheCreationTokens": 7671
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 1,
+      "index": 1,
+      "dir": "runs/g-wood-sonnet/001",
+      "score": {
+        "goal": {
+          "item": "wooden_stool",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 20,
+        "actionCalls": 19,
+        "callsToGoal": 19,
+        "craftsMade": 6,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 6,
+          "minCalls": 19,
+          "slack": 5
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 20
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 18540,
+          "inputTokens": 18,
+          "outputTokens": 1509,
+          "cacheReadTokens": 41268,
+          "cacheCreationTokens": 7671,
+          "costUsd": 0.0540636
+        },
+        "toGoal": {
+          "durationMs": 16422,
+          "inputTokens": 14,
+          "outputTokens": 1463,
+          "cacheReadTokens": 27118,
+          "cacheCreationTokens": 6583
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "perturbed",
+      "skill": {
+        "name": "wooden-stool-chain",
+        "sha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+        "invoked": true,
+        "loadedAfterCalls": 1
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 23,
+      "costUsd": 0.047635800000000006,
+      "durationMs": 17803,
+      "usage": {
+        "inputTokens": 18,
+        "outputTokens": 1509,
+        "cacheReadTokens": 42969,
+        "cacheCreationTokens": 5979
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 0,
+      "index": 2,
+      "dir": "runs/g-wood-sonnet/002",
+      "score": {
+        "goal": {
+          "item": "wooden_stool",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 20,
+        "actionCalls": 19,
+        "callsToGoal": 19,
+        "craftsMade": 6,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 6,
+          "minCalls": 19,
+          "slack": 5
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 20
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 17803,
+          "inputTokens": 18,
+          "outputTokens": 1509,
+          "cacheReadTokens": 42969,
+          "cacheCreationTokens": 5979,
+          "costUsd": 0.047635800000000006
+        },
+        "toGoal": {
+          "durationMs": 15774,
+          "inputTokens": 14,
+          "outputTokens": 1463,
+          "cacheReadTokens": 28817,
+          "cacheCreationTokens": 4891
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "perturbed",
+      "skill": {
+        "name": "wooden-stool-chain",
+        "sha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+        "invoked": true,
+        "loadedAfterCalls": 0
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 23,
+      "costUsd": 0.04766139999999999,
+      "durationMs": 18146,
+      "usage": {
+        "inputTokens": 18,
+        "outputTokens": 1510,
+        "cacheReadTokens": 42987,
+        "cacheCreationTokens": 5982
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 0,
+      "index": 3,
+      "dir": "runs/g-wood-sonnet/003",
+      "score": {
+        "goal": {
+          "item": "wooden_stool",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 20,
+        "actionCalls": 19,
+        "callsToGoal": 19,
+        "craftsMade": 6,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 6,
+          "minCalls": 19,
+          "slack": 5
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 20
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 18146,
+          "inputTokens": 18,
+          "outputTokens": 1510,
+          "cacheReadTokens": 42987,
+          "cacheCreationTokens": 5982,
+          "costUsd": 0.04766139999999999
+        },
+        "toGoal": {
+          "durationMs": 15894,
+          "inputTokens": 14,
+          "outputTokens": 1464,
+          "cacheReadTokens": 28829,
+          "cacheCreationTokens": 4894
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "perturbed",
+      "skill": {
+        "name": "wooden-stool-chain",
+        "sha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+        "invoked": true,
+        "loadedAfterCalls": 0
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 23,
+      "costUsd": 0.047647,
+      "durationMs": 18261,
+      "usage": {
+        "inputTokens": 18,
+        "outputTokens": 1509,
+        "cacheReadTokens": 42985,
+        "cacheCreationTokens": 5981
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 0,
+      "index": 4,
+      "dir": "runs/g-wood-sonnet/004",
+      "score": {
+        "goal": {
+          "item": "wooden_stool",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 20,
+        "actionCalls": 19,
+        "callsToGoal": 19,
+        "craftsMade": 6,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 6,
+          "minCalls": 19,
+          "slack": 5
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 20
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 18261,
+          "inputTokens": 18,
+          "outputTokens": 1509,
+          "cacheReadTokens": 42985,
+          "cacheCreationTokens": 5981,
+          "costUsd": 0.047647
+        },
+        "toGoal": {
+          "durationMs": 16147,
+          "inputTokens": 14,
+          "outputTokens": 1463,
+          "cacheReadTokens": 28829,
+          "cacheCreationTokens": 4893
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "perturbed",
+      "skill": {
+        "name": "wooden-stool-chain",
+        "sha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+        "invoked": true,
+        "loadedAfterCalls": 0
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 23,
+      "costUsd": 0.0477134,
+      "durationMs": 18163,
+      "usage": {
+        "inputTokens": 18,
+        "outputTokens": 1514,
+        "cacheReadTokens": 42987,
+        "cacheCreationTokens": 5985
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 0,
+      "index": 5,
+      "dir": "runs/g-wood-sonnet/005",
+      "score": {
+        "goal": {
+          "item": "wooden_stool",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 20,
+        "actionCalls": 19,
+        "callsToGoal": 19,
+        "craftsMade": 6,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 6,
+          "minCalls": 19,
+          "slack": 5
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 20
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 18163,
+          "inputTokens": 18,
+          "outputTokens": 1514,
+          "cacheReadTokens": 42987,
+          "cacheCreationTokens": 5985,
+          "costUsd": 0.0477134
+        },
+        "toGoal": {
+          "durationMs": 16028,
+          "inputTokens": 14,
+          "outputTokens": 1468,
+          "cacheReadTokens": 28823,
+          "cacheCreationTokens": 4897
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "perturbed",
+      "skill": {
+        "name": "wooden-stool-chain",
+        "sha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+        "invoked": true,
+        "loadedAfterCalls": 0
+      }
+    }
+  ]
+}

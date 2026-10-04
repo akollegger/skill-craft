@@ -1,0 +1,398 @@
+{
+  "world": "worlds/minecraft-inspired.json",
+  "priorFit": "faithful",
+  "goal": {
+    "item": "wooden_pickaxe",
+    "qty": 1
+  },
+  "maxTurns": 80,
+  "record": false,
+  "timeoutMs": 1800000,
+  "cancelled": false,
+  "aggregate": {
+    "runs": 5,
+    "reached": 5,
+    "successRate": 1,
+    "gaveUp": 0,
+    "outOfBudget": 0,
+    "errors": 0,
+    "medianCallsToGoal": 13,
+    "meanExtraCalls": 0,
+    "totalCostUsd": 0.18689640000000002,
+    "models": [
+      "claude-sonnet-5-5"
+    ],
+    "mixedModels": false
+  },
+  "models": [
+    "claude-sonnet-5-5"
+  ],
+  "mixedModels": false,
+  "runs": [
+    {
+      "ended": "stopped",
+      "turns": 17,
+      "costUsd": 0.042889000000000004,
+      "durationMs": 13189,
+      "usage": {
+        "inputTokens": 14,
+        "outputTokens": 1113,
+        "cacheReadTokens": 27255,
+        "cacheCreationTokens": 6570
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 1,
+      "index": 1,
+      "dir": "runs/g-mc-sonnet/001",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 14,
+        "actionCalls": 13,
+        "callsToGoal": 13,
+        "craftsMade": 4,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 14
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 13189,
+          "inputTokens": 14,
+          "outputTokens": 1113,
+          "cacheReadTokens": 27255,
+          "cacheCreationTokens": 6570,
+          "costUsd": 0.042889000000000004
+        },
+        "toGoal": {
+          "durationMs": 11299,
+          "inputTokens": 10,
+          "outputTokens": 1039,
+          "cacheReadTokens": 15668,
+          "cacheCreationTokens": 5149
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "faithful",
+      "skill": {
+        "name": "wooden-pickaxe-crafting",
+        "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+        "invoked": true,
+        "loadedAfterCalls": 1
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 16,
+      "costUsd": 0.0362276,
+      "durationMs": 16536,
+      "usage": {
+        "inputTokens": 20,
+        "outputTokens": 1147,
+        "cacheReadTokens": 38688,
+        "cacheCreationTokens": 4245
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "skillInvoked": false,
+      "skillLoadedAfterCalls": null,
+      "index": 2,
+      "dir": "runs/g-mc-sonnet/002",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 15,
+        "actionCalls": 13,
+        "callsToGoal": 13,
+        "craftsMade": 4,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 15
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 16536,
+          "inputTokens": 20,
+          "outputTokens": 1147,
+          "cacheReadTokens": 38688,
+          "cacheCreationTokens": 4245,
+          "costUsd": 0.0362276
+        },
+        "toGoal": {
+          "durationMs": 14514,
+          "inputTokens": 16,
+          "outputTokens": 1097,
+          "cacheReadTokens": 28183,
+          "cacheCreationTokens": 2981
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "faithful",
+      "skill": {
+        "name": "wooden-pickaxe-crafting",
+        "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+        "invoked": false,
+        "loadedAfterCalls": null
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 17,
+      "costUsd": 0.03515019999999999,
+      "durationMs": 14520,
+      "usage": {
+        "inputTokens": 16,
+        "outputTokens": 1159,
+        "cacheReadTokens": 30021,
+        "cacheCreationTokens": 4381
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "skillInvoked": false,
+      "skillLoadedAfterCalls": null,
+      "index": 3,
+      "dir": "runs/g-mc-sonnet/003",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 16,
+        "actionCalls": 13,
+        "callsToGoal": 13,
+        "craftsMade": 4,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 16
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 14520,
+          "inputTokens": 16,
+          "outputTokens": 1159,
+          "cacheReadTokens": 30021,
+          "cacheCreationTokens": 4381,
+          "costUsd": 0.03515019999999999
+        },
+        "toGoal": {
+          "durationMs": 12615,
+          "inputTokens": 12,
+          "outputTokens": 1109,
+          "cacheReadTokens": 19343,
+          "cacheCreationTokens": 3018
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "faithful",
+      "skill": {
+        "name": "wooden-pickaxe-crafting",
+        "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+        "invoked": false,
+        "loadedAfterCalls": null
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 16,
+      "costUsd": 0.0363282,
+      "durationMs": 17450,
+      "usage": {
+        "inputTokens": 20,
+        "outputTokens": 1154,
+        "cacheReadTokens": 38721,
+        "cacheCreationTokens": 4251
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "skillInvoked": false,
+      "skillLoadedAfterCalls": null,
+      "index": 4,
+      "dir": "runs/g-mc-sonnet/004",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 15,
+        "actionCalls": 13,
+        "callsToGoal": 13,
+        "craftsMade": 4,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 15
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 17450,
+          "inputTokens": 20,
+          "outputTokens": 1154,
+          "cacheReadTokens": 38721,
+          "cacheCreationTokens": 4251,
+          "costUsd": 0.0363282
+        },
+        "toGoal": {
+          "durationMs": 15109,
+          "inputTokens": 16,
+          "outputTokens": 1105,
+          "cacheReadTokens": 28204,
+          "cacheCreationTokens": 2987
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "faithful",
+      "skill": {
+        "name": "wooden-pickaxe-crafting",
+        "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+        "invoked": false,
+        "loadedAfterCalls": null
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 16,
+      "costUsd": 0.036301400000000004,
+      "durationMs": 15933,
+      "usage": {
+        "inputTokens": 20,
+        "outputTokens": 1153,
+        "cacheReadTokens": 38697,
+        "cacheCreationTokens": 4248
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "skillInvoked": false,
+      "skillLoadedAfterCalls": null,
+      "index": 5,
+      "dir": "runs/g-mc-sonnet/005",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 15,
+        "actionCalls": 13,
+        "callsToGoal": 13,
+        "craftsMade": 4,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 15
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 15933,
+          "inputTokens": 20,
+          "outputTokens": 1153,
+          "cacheReadTokens": 38697,
+          "cacheCreationTokens": 4248,
+          "costUsd": 0.036301400000000004
+        },
+        "toGoal": {
+          "durationMs": 13927,
+          "inputTokens": 18,
+          "outputTokens": 1136,
+          "cacheReadTokens": 32863,
+          "cacheCreationTokens": 4141
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "faithful",
+      "skill": {
+        "name": "wooden-pickaxe-crafting",
+        "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+        "invoked": false,
+        "loadedAfterCalls": null
+      }
+    }
+  ]
+}

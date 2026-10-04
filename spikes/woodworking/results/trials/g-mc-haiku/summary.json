@@ -1,0 +1,398 @@
+{
+  "world": "worlds/minecraft-inspired.json",
+  "priorFit": "faithful",
+  "goal": {
+    "item": "wooden_pickaxe",
+    "qty": 1
+  },
+  "maxTurns": 80,
+  "record": false,
+  "timeoutMs": 1800000,
+  "cancelled": false,
+  "aggregate": {
+    "runs": 5,
+    "reached": 5,
+    "successRate": 1,
+    "gaveUp": 0,
+    "outOfBudget": 0,
+    "errors": 0,
+    "medianCallsToGoal": 13,
+    "meanExtraCalls": 0,
+    "totalCostUsd": 0.2357495,
+    "models": [
+      "claude-haiku-4-5-20251001"
+    ],
+    "mixedModels": false
+  },
+  "models": [
+    "claude-haiku-4-5-20251001"
+  ],
+  "mixedModels": false,
+  "runs": [
+    {
+      "ended": "stopped",
+      "turns": 20,
+      "costUsd": 0.047274899999999995,
+      "durationMs": 28815,
+      "usage": {
+        "inputTokens": 9363,
+        "outputTokens": 2635,
+        "cacheReadTokens": 86769,
+        "cacheCreationTokens": 8030
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 3,
+      "index": 1,
+      "dir": "runs/g-mc-haiku/001",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 17,
+        "actionCalls": 13,
+        "callsToGoal": 13,
+        "craftsMade": 4,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 16
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 28815,
+          "inputTokens": 9363,
+          "outputTokens": 2635,
+          "cacheReadTokens": 86769,
+          "cacheCreationTokens": 8030,
+          "costUsd": 0.047274899999999995
+        },
+        "toGoal": {
+          "durationMs": 25680,
+          "inputTokens": 9339,
+          "outputTokens": 2438,
+          "cacheReadTokens": 63837,
+          "cacheCreationTokens": 7419
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "faithful",
+      "skill": {
+        "name": "wooden-pickaxe-crafting",
+        "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+        "invoked": true,
+        "loadedAfterCalls": 3
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 20,
+      "costUsd": 0.0494546,
+      "durationMs": 30437,
+      "usage": {
+        "inputTokens": 12813,
+        "outputTokens": 2476,
+        "cacheReadTokens": 85456,
+        "cacheCreationTokens": 7858
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 3,
+      "index": 2,
+      "dir": "runs/g-mc-haiku/002",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 17,
+        "actionCalls": 13,
+        "callsToGoal": 13,
+        "craftsMade": 4,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 16
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 30437,
+          "inputTokens": 12813,
+          "outputTokens": 2476,
+          "cacheReadTokens": 85456,
+          "cacheCreationTokens": 7858,
+          "costUsd": 0.0494546
+        },
+        "toGoal": {
+          "durationMs": 27403,
+          "inputTokens": 12789,
+          "outputTokens": 2291,
+          "cacheReadTokens": 63018,
+          "cacheCreationTokens": 7258
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "faithful",
+      "skill": {
+        "name": "wooden-pickaxe-crafting",
+        "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+        "invoked": true,
+        "loadedAfterCalls": 3
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 20,
+      "costUsd": 0.0481818,
+      "durationMs": 31121,
+      "usage": {
+        "inputTokens": 9462,
+        "outputTokens": 2734,
+        "cacheReadTokens": 87878,
+        "cacheCreationTokens": 8131
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 3,
+      "index": 3,
+      "dir": "runs/g-mc-haiku/003",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 17,
+        "actionCalls": 13,
+        "callsToGoal": 13,
+        "craftsMade": 4,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 16
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 31121,
+          "inputTokens": 9462,
+          "outputTokens": 2734,
+          "cacheReadTokens": 87878,
+          "cacheCreationTokens": 8131,
+          "costUsd": 0.0481818
+        },
+        "toGoal": {
+          "durationMs": 27955,
+          "inputTokens": 9438,
+          "outputTokens": 2524,
+          "cacheReadTokens": 64674,
+          "cacheCreationTokens": 7504
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "faithful",
+      "skill": {
+        "name": "wooden-pickaxe-crafting",
+        "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+        "invoked": true,
+        "loadedAfterCalls": 3
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 20,
+      "costUsd": 0.0452437,
+      "durationMs": 28658,
+      "usage": {
+        "inputTokens": 9275,
+        "outputTokens": 2390,
+        "cacheReadTokens": 84387,
+        "cacheCreationTokens": 7790
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 3,
+      "index": 4,
+      "dir": "runs/g-mc-haiku/004",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 17,
+        "actionCalls": 13,
+        "callsToGoal": 13,
+        "craftsMade": 4,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 16
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 28658,
+          "inputTokens": 9275,
+          "outputTokens": 2390,
+          "cacheReadTokens": 84387,
+          "cacheCreationTokens": 7790,
+          "costUsd": 0.0452437
+        },
+        "toGoal": {
+          "durationMs": 25498,
+          "inputTokens": 9251,
+          "outputTokens": 2194,
+          "cacheReadTokens": 62188,
+          "cacheCreationTokens": 7173
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "faithful",
+      "skill": {
+        "name": "wooden-pickaxe-crafting",
+        "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+        "invoked": true,
+        "loadedAfterCalls": 3
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 20,
+      "costUsd": 0.0455945,
+      "durationMs": 29127,
+      "usage": {
+        "inputTokens": 12687,
+        "outputTokens": 2314,
+        "cacheReadTokens": 58815,
+        "cacheCreationTokens": 7728
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 3,
+      "index": 5,
+      "dir": "runs/g-mc-haiku/005",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 17,
+        "actionCalls": 13,
+        "callsToGoal": 13,
+        "craftsMade": 4,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 16
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 29127,
+          "inputTokens": 12687,
+          "outputTokens": 2314,
+          "cacheReadTokens": 58815,
+          "cacheCreationTokens": 7728,
+          "costUsd": 0.0455945
+        },
+        "toGoal": {
+          "durationMs": 25739,
+          "inputTokens": 12663,
+          "outputTokens": 2133,
+          "cacheReadTokens": 37063,
+          "cacheCreationTokens": 6831
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "faithful",
+      "skill": {
+        "name": "wooden-pickaxe-crafting",
+        "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+        "invoked": true,
+        "loadedAfterCalls": 3
+      }
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "rubric": {
+    "version": "1",
+    "sha256": "a6e33cf720e4b20e8cc767666d49f29375452d86beec3e1e1cf8e8c2cadc5c5e"
+  },
+  "verdict": {
+    "overall": "accept",
+    "questions": {
+      "generality": {
+        "value": "one recipe, right level",
+        "reason": "Facts are specific to wooden_pickaxe (log→planks→sticks→pickaxe layouts). The recordings cover only this goal, so recipe-level detail is appropriate."
+      },
+      "scope": {
+        "value": "single task",
+        "reason": "Covers only getting one wooden_pickaxe."
+      },
+      "decomposable": {
+        "value": "no, already minimal",
+        "reason": "The chain is short and every part serves the one goal. Splitting it would not give pieces worth loading alone."
+      },
+      "leads_with_fact": {
+        "value": "yes",
+        "reason": "It opens with the pickaxe layout and the prerequisite recipes, then lists the steps. It does not replay the exploration."
+      },
+      "common_knowledge": {
+        "value": "cannot_determine",
+        "reason": "The recordings do not show what the teacher knew beforehand. The recipe appears to follow standard Minecraft layouts, but that is not shown."
+      },
+      "description_load": {
+        "value": "good",
+        "reason": "The name and description name the goal, the 3x3 table and the tools. They match the body."
+      }
+    },
+    "reasons": "Every stated fact matches the recordings. The inventory is cobblestone 6, iron_ingot 6, oak_log 3. One log gives 4 planks. Two planks stacked vertically at (0,0) and (1,0) give 4 sticks. A top row of 3 planks previews oak_slab. Adding sticks at (1,1) and (2,1) previews and crafts wooden_pickaxe. The arithmetic (2 planks remain, 6 total) is correct. All three runs are identical. The skill's own claim \"any cell tried: (0,0)\" is accurate, because only (0,0) was tried. The provenance file is honest about what is inferred or unknown.",
+    "proposedRevisions": [
+      "Optional: delete the 'any cell tried: (0,0)' wording, since only (0,0) was tried.",
+      "Optional: say the slab preview appears at step 4 only because the three planks are on the table. The recordings never crafted a slab, so they do not show what it would consume."
+    ]
+  }
+}

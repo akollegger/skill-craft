@@ -1,0 +1,45 @@
+{
+  "ended": "budget",
+  "turns": 81,
+  "costUsd": 0.20284439999999992,
+  "text": "",
+  "score": {
+    "goal": {
+      "item": "wooden_stool",
+      "qty": 1
+    },
+    "reached": false,
+    "totalCalls": 81,
+    "actionCalls": 73,
+    "callsToGoal": 73,
+    "craftsMade": 6,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 6,
+      "minCalls": 19,
+      "slack": 5
+    },
+    "extraCalls": null,
+    "extraCrafts": null,
+    "reachedSeq": null
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 118022,
+      "inputTokens": 22238,
+      "outputTokens": 9729,
+      "cacheReadTokens": 890354,
+      "cacheCreationTokens": 21463,
+      "costUsd": 0.20284439999999992
+    }
+  },
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "resolved": [
+      "claude-haiku-4-5-20251001"
+    ]
+  },
+  "priorFit": "perturbed"
+}

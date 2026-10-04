@@ -1,0 +1,9 @@
+{"seq":0,"kind":"tool","toolUseId":"toolu_01DhhJ79s1r55CkMoCL4LMkJ","tool":"help","args":{},"startMs":1493,"endMs":1501}
+{"seq":1,"kind":"request","requestId":"msg_011Cfh8fE9feXmaRMPjiVL2Q","model":"claude-sonnet-5-5","turn":1,"startMs":13,"endMs":1877,"ttftMs":1320,"inputTokens":2,"outputTokens":89,"cacheReadTokens":1693,"cacheCreationTokens":898}
+{"seq":2,"kind":"tool","toolUseId":"toolu_01XXMN2wsntUL3TNuffmBZQr","tool":"clear","args":{},"startMs":3366,"endMs":3376}
+{"seq":3,"kind":"tool","toolUseId":"toolu_018WtoZksZfKAtMBD2SJfy16","tool":"place","args":{"item":"lugli","row":0,"col":0},"startMs":3865,"endMs":3871}
+{"seq":4,"kind":"tool","toolUseId":"toolu_01R54idxD4WQAyzXVmfTSvpB","tool":"place","args":{"item":"lugli","row":0,"col":1},"startMs":4055,"endMs":4061}
+{"seq":5,"kind":"request","requestId":"msg_011Cfh8fNJoTCp28iJucRsCK","model":"claude-sonnet-5-5","turn":2,"startMs":1896,"endMs":4072,"ttftMs":1336,"inputTokens":2,"outputTokens":218,"cacheReadTokens":2591,"cacheCreationTokens":1391}
+{"seq":6,"kind":"tool","toolUseId":"toolu_016HjjZxiU7wbFkS6M1eNmSs","tool":"craft","args":{},"startMs":5328,"endMs":5335}
+{"seq":7,"kind":"request","requestId":"msg_011Cfh8fXZvYU9JqMUG6zEbz","model":"claude-sonnet-5-5","turn":3,"startMs":4081,"endMs":5345,"ttftMs":1218,"inputTokens":2,"outputTokens":32,"cacheReadTokens":3982,"cacheCreationTokens":611}
+{"seq":8,"kind":"request","requestId":"msg_011Cfh8fdA2nYWsB3VhFEbYQ","model":"claude-sonnet-5-5","turn":4,"startMs":5351,"endMs":6418,"ttftMs":1047,"inputTokens":2,"outputTokens":16,"cacheReadTokens":4593,"cacheCreationTokens":101}

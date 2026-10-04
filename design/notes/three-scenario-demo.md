@@ -27,7 +27,8 @@ a bottom row of three rods makes the stool. Tests and the solver confirm the bes
 
 ## Results
 
-Stage A (unaided, labels `b-*`) and stage C (with the critic-accepted skill, labels `g-*`). "Extra calls" is over the
+Stage A (unaided, labels `b-*`) and stage C (with the critic-accepted skill, labels `g-*`). The run folders and critic
+loops are committed in [spikes/woodworking/results/](../../spikes/woodworking/results/README.md). "Extra calls" is over the
 best run, for runs that reached the goal.
 
 | Scenario | Model | Arm | Reached | 95% interval | Extra calls (min / median / max) | Cost | Skill loaded |

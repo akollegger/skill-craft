@@ -1,0 +1,362 @@
+{
+  "world": "worlds/minecraft-inspired.json",
+  "priorFit": "faithful",
+  "goal": {
+    "item": "wooden_pickaxe",
+    "qty": 1
+  },
+  "maxTurns": 80,
+  "record": false,
+  "timeoutMs": 1800000,
+  "cancelled": false,
+  "aggregate": {
+    "runs": 5,
+    "reached": 5,
+    "successRate": 1,
+    "gaveUp": 0,
+    "outOfBudget": 0,
+    "errors": 0,
+    "medianCallsToGoal": 33,
+    "meanExtraCalls": 27.8,
+    "totalCostUsd": 0.5522313,
+    "models": [
+      "claude-haiku-4-5-20251001"
+    ],
+    "mixedModels": false
+  },
+  "models": [
+    "claude-haiku-4-5-20251001"
+  ],
+  "mixedModels": false,
+  "runs": [
+    {
+      "ended": "stopped",
+      "turns": 41,
+      "costUsd": 0.09362599999999999,
+      "durationMs": 75813,
+      "usage": {
+        "inputTokens": 17998,
+        "outputTokens": 6239,
+        "cacheReadTokens": 179310,
+        "cacheCreationTokens": 13251
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "index": 1,
+      "dir": "runs/b-mc-haiku/001",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 40,
+        "actionCalls": 33,
+        "callsToGoal": 33,
+        "craftsMade": 5,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 20,
+        "extraCrafts": 1,
+        "reachedSeq": 39
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 75813,
+          "inputTokens": 17998,
+          "outputTokens": 6239,
+          "cacheReadTokens": 179310,
+          "cacheCreationTokens": 13251,
+          "costUsd": 0.09362599999999999
+        },
+        "toGoal": {
+          "durationMs": 72332,
+          "inputTokens": 17974,
+          "outputTokens": 5985,
+          "cacheReadTokens": 141684,
+          "cacheCreationTokens": 11712
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "faithful"
+    },
+    {
+      "ended": "stopped",
+      "turns": 69,
+      "costUsd": 0.17132369999999994,
+      "durationMs": 106060,
+      "usage": {
+        "inputTokens": 22222,
+        "outputTokens": 8196,
+        "cacheReadTokens": 702317,
+        "cacheCreationTokens": 18945
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "index": 2,
+      "dir": "runs/b-mc-haiku/002",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 68,
+        "actionCalls": 60,
+        "callsToGoal": 60,
+        "craftsMade": 5,
+        "failedCrafts": 0,
+        "refusals": {
+          "not_in_inventory": 1
+        },
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 47,
+        "extraCrafts": 1,
+        "reachedSeq": 67
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 106060,
+          "inputTokens": 22222,
+          "outputTokens": 8196,
+          "cacheReadTokens": 702317,
+          "cacheCreationTokens": 18945,
+          "costUsd": 0.17132369999999994
+        },
+        "toGoal": {
+          "durationMs": 102888,
+          "inputTokens": 22198,
+          "outputTokens": 7969,
+          "cacheReadTokens": 646666,
+          "cacheCreationTokens": 18317
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "faithful"
+    },
+    {
+      "ended": "stopped",
+      "turns": 30,
+      "costUsd": 0.07535310000000002,
+      "durationMs": 46346,
+      "usage": {
+        "inputTokens": 24871,
+        "outputTokens": 3627,
+        "cacheReadTokens": 137931,
+        "cacheCreationTokens": 9277
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "index": 3,
+      "dir": "runs/b-mc-haiku/003",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 29,
+        "actionCalls": 22,
+        "callsToGoal": 22,
+        "craftsMade": 5,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 9,
+        "extraCrafts": 1,
+        "reachedSeq": 28
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 46346,
+          "inputTokens": 24871,
+          "outputTokens": 3627,
+          "cacheReadTokens": 137931,
+          "cacheCreationTokens": 9277,
+          "costUsd": 0.07535310000000002
+        },
+        "toGoal": {
+          "durationMs": 43001,
+          "inputTokens": 24847,
+          "outputTokens": 3405,
+          "cacheReadTokens": 111285,
+          "cacheCreationTokens": 8648
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "faithful"
+    },
+    {
+      "ended": "stopped",
+      "turns": 75,
+      "costUsd": 0.1400398,
+      "durationMs": 78014,
+      "usage": {
+        "inputTokens": 25328,
+        "outputTokens": 7677,
+        "cacheReadTokens": 391908,
+        "cacheCreationTokens": 18568
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "index": 4,
+      "dir": "runs/b-mc-haiku/004",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 74,
+        "actionCalls": 65,
+        "callsToGoal": 65,
+        "craftsMade": 5,
+        "failedCrafts": 0,
+        "refusals": {
+          "not_in_inventory": 5
+        },
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 52,
+        "extraCrafts": 1,
+        "reachedSeq": 73
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 78014,
+          "inputTokens": 25328,
+          "outputTokens": 7677,
+          "cacheReadTokens": 391908,
+          "cacheCreationTokens": 18568,
+          "costUsd": 0.1400398
+        },
+        "toGoal": {
+          "durationMs": 74965,
+          "inputTokens": 25304,
+          "outputTokens": 7465,
+          "cacheReadTokens": 338264,
+          "cacheCreationTokens": 17058
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "faithful"
+    },
+    {
+      "ended": "stopped",
+      "turns": 32,
+      "costUsd": 0.07188870000000001,
+      "durationMs": 44743,
+      "usage": {
+        "inputTokens": 21169,
+        "outputTokens": 3735,
+        "cacheReadTokens": 128387,
+        "cacheCreationTokens": 9603
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "index": 5,
+      "dir": "runs/b-mc-haiku/005",
+      "score": {
+        "goal": {
+          "item": "wooden_pickaxe",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 31,
+        "actionCalls": 24,
+        "callsToGoal": 24,
+        "craftsMade": 5,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 4,
+          "minCalls": 13,
+          "slack": 3
+        },
+        "extraCalls": 11,
+        "extraCrafts": 1,
+        "reachedSeq": 30
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 44743,
+          "inputTokens": 21169,
+          "outputTokens": 3735,
+          "cacheReadTokens": 128387,
+          "cacheCreationTokens": 9603,
+          "costUsd": 0.07188870000000001
+        },
+        "toGoal": {
+          "durationMs": 41562,
+          "inputTokens": 21145,
+          "outputTokens": 3504,
+          "cacheReadTokens": 101596,
+          "cacheCreationTokens": 8145
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "faithful"
+    }
+  ]
+}

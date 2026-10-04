@@ -1,0 +1,358 @@
+{
+  "world": "worlds/generated/forge-7.json",
+  "priorFit": "invented",
+  "goal": {
+    "item": "glirol",
+    "qty": 1
+  },
+  "maxTurns": 80,
+  "record": false,
+  "timeoutMs": 1800000,
+  "cancelled": false,
+  "aggregate": {
+    "runs": 5,
+    "reached": 5,
+    "successRate": 1,
+    "gaveUp": 0,
+    "outOfBudget": 0,
+    "errors": 0,
+    "medianCallsToGoal": 25,
+    "meanExtraCalls": 18.8,
+    "totalCostUsd": 0.3115899,
+    "models": [
+      "claude-haiku-4-5-20251001"
+    ],
+    "mixedModels": false
+  },
+  "models": [
+    "claude-haiku-4-5-20251001"
+  ],
+  "mixedModels": false,
+  "runs": [
+    {
+      "ended": "stopped",
+      "turns": 23,
+      "costUsd": 0.05858290000000002,
+      "durationMs": 32690,
+      "usage": {
+        "inputTokens": 24684,
+        "outputTokens": 2294,
+        "cacheReadTokens": 78889,
+        "cacheCreationTokens": 7270
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "index": 1,
+      "dir": "runs/b-forge-haiku/001",
+      "score": {
+        "goal": {
+          "item": "glirol",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 22,
+        "actionCalls": 18,
+        "callsToGoal": 18,
+        "craftsMade": 1,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 1,
+          "minCalls": 3,
+          "slack": 2
+        },
+        "extraCalls": 15,
+        "extraCrafts": 0,
+        "reachedSeq": 21
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 32690,
+          "inputTokens": 24684,
+          "outputTokens": 2294,
+          "cacheReadTokens": 78889,
+          "cacheCreationTokens": 7270,
+          "costUsd": 0.05858290000000002
+        },
+        "toGoal": {
+          "durationMs": 29877,
+          "inputTokens": 24668,
+          "outputTokens": 2186,
+          "cacheReadTokens": 64857,
+          "cacheCreationTokens": 6938
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "invented"
+    },
+    {
+      "ended": "stopped",
+      "turns": 30,
+      "costUsd": 0.064443,
+      "durationMs": 36221,
+      "usage": {
+        "inputTokens": 21790,
+        "outputTokens": 2886,
+        "cacheReadTokens": 106070,
+        "cacheCreationTokens": 8808
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "index": 2,
+      "dir": "runs/b-forge-haiku/002",
+      "score": {
+        "goal": {
+          "item": "glirol",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 29,
+        "actionCalls": 25,
+        "callsToGoal": 25,
+        "craftsMade": 1,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 1,
+          "minCalls": 3,
+          "slack": 2
+        },
+        "extraCalls": 22,
+        "extraCrafts": 0,
+        "reachedSeq": 28
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 36221,
+          "inputTokens": 21790,
+          "outputTokens": 2886,
+          "cacheReadTokens": 106070,
+          "cacheCreationTokens": 8808,
+          "costUsd": 0.064443
+        },
+        "toGoal": {
+          "durationMs": 32192,
+          "inputTokens": 21774,
+          "outputTokens": 2786,
+          "cacheReadTokens": 88956,
+          "cacheCreationTokens": 8477
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "invented"
+    },
+    {
+      "ended": "stopped",
+      "turns": 31,
+      "costUsd": 0.07141499999999999,
+      "durationMs": 43796,
+      "usage": {
+        "inputTokens": 24946,
+        "outputTokens": 3394,
+        "cacheReadTokens": 106610,
+        "cacheCreationTokens": 9419
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "index": 3,
+      "dir": "runs/b-forge-haiku/003",
+      "score": {
+        "goal": {
+          "item": "glirol",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 30,
+        "actionCalls": 26,
+        "callsToGoal": 26,
+        "craftsMade": 1,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 1,
+          "minCalls": 3,
+          "slack": 2
+        },
+        "extraCalls": 23,
+        "extraCrafts": 0,
+        "reachedSeq": 29
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 43796,
+          "inputTokens": 24946,
+          "outputTokens": 3394,
+          "cacheReadTokens": 106610,
+          "cacheCreationTokens": 9419,
+          "costUsd": 0.07141499999999999
+        },
+        "toGoal": {
+          "durationMs": 40372,
+          "inputTokens": 24922,
+          "outputTokens": 3181,
+          "cacheReadTokens": 79738,
+          "cacheCreationTokens": 8583
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "invented"
+    },
+    {
+      "ended": "stopped",
+      "turns": 13,
+      "costUsd": 0.0448767,
+      "durationMs": 20159,
+      "usage": {
+        "inputTokens": 25244,
+        "outputTokens": 1478,
+        "cacheReadTokens": 18667,
+        "cacheCreationTokens": 5188
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "index": 4,
+      "dir": "runs/b-forge-haiku/004",
+      "score": {
+        "goal": {
+          "item": "glirol",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 12,
+        "actionCalls": 8,
+        "callsToGoal": 8,
+        "craftsMade": 1,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 1,
+          "minCalls": 3,
+          "slack": 2
+        },
+        "extraCalls": 5,
+        "extraCrafts": 0,
+        "reachedSeq": 11
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 20159,
+          "inputTokens": 25244,
+          "outputTokens": 1478,
+          "cacheReadTokens": 18667,
+          "cacheCreationTokens": 5188,
+          "costUsd": 0.0448767
+        },
+        "toGoal": {
+          "durationMs": 17081,
+          "inputTokens": 25220,
+          "outputTokens": 1253,
+          "cacheReadTokens": 4288,
+          "cacheCreationTokens": 4556
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "invented"
+    },
+    {
+      "ended": "stopped",
+      "turns": 37,
+      "costUsd": 0.07227229999999998,
+      "durationMs": 42423,
+      "usage": {
+        "inputTokens": 21881,
+        "outputTokens": 3246,
+        "cacheReadTokens": 139333,
+        "cacheCreationTokens": 10114
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "index": 5,
+      "dir": "runs/b-forge-haiku/005",
+      "score": {
+        "goal": {
+          "item": "glirol",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 36,
+        "actionCalls": 32,
+        "callsToGoal": 32,
+        "craftsMade": 1,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 1,
+          "minCalls": 3,
+          "slack": 2
+        },
+        "extraCalls": 29,
+        "extraCrafts": 0,
+        "reachedSeq": 35
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 42423,
+          "inputTokens": 21881,
+          "outputTokens": 3246,
+          "cacheReadTokens": 139333,
+          "cacheCreationTokens": 10114,
+          "costUsd": 0.07227229999999998
+        },
+        "toGoal": {
+          "durationMs": 38801,
+          "inputTokens": 21857,
+          "outputTokens": 3064,
+          "cacheReadTokens": 110277,
+          "cacheCreationTokens": 9327
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "invented"
+    }
+  ]
+}

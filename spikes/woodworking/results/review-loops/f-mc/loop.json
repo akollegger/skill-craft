@@ -1,0 +1,97 @@
+{
+  "label": "f-mc",
+  "mode": "candidate",
+  "runs": [
+    "runs/b-mc-sonnet/001",
+    "runs/b-mc-sonnet/002",
+    "runs/b-mc-sonnet/003"
+  ],
+  "rubric": {
+    "version": "1",
+    "sha256": "a6e33cf720e4b20e8cc767666d49f29375452d86beec3e1e1cf8e8c2cadc5c5e"
+  },
+  "models": {
+    "critic": {
+      "requested": "claude-sonnet-5-5",
+      "resolved": [
+        "claude-sonnet-5-5"
+      ]
+    },
+    "reviser": {
+      "requested": "claude-sonnet-5-5",
+      "resolved": [
+        "claude-sonnet-5-5"
+      ]
+    }
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "skillSha256": "45349399b8fe57907d6b06cc5e4725ff26024f2df06ba12a6f476d555be85bc5",
+      "overall": "revise",
+      "revisedSha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021"
+    },
+    {
+      "n": 2,
+      "skillSha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+      "overall": "accept"
+    }
+  ],
+  "outcome": "accept",
+  "reason": "the critic accepted the skill",
+  "failed": false,
+  "stages": [
+    {
+      "stage": "critic-1",
+      "startedAt": 1791113837212,
+      "endedAt": 1791113848026,
+      "durationMs": 10814,
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": "claude-sonnet-5-5"
+      },
+      "tokens": {
+        "input": 2,
+        "output": 1104,
+        "cacheRead": 0,
+        "cacheCreation": 10685
+      },
+      "costUsd": 0.053784
+    },
+    {
+      "stage": "reviser-1",
+      "startedAt": 1791113848028,
+      "endedAt": 1791113861239,
+      "durationMs": 13211,
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": "claude-sonnet-5-5"
+      },
+      "tokens": {
+        "input": 2,
+        "output": 1727,
+        "cacheRead": 0,
+        "cacheCreation": 11101
+      },
+      "costUsd": 0.061678
+    },
+    {
+      "stage": "critic-2",
+      "startedAt": 1791113861241,
+      "endedAt": 1791113868933,
+      "durationMs": 7692,
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": "claude-sonnet-5-5"
+      },
+      "tokens": {
+        "input": 2,
+        "output": 781,
+        "cacheRead": 1551,
+        "cacheCreation": 9550
+      },
+      "costUsd": 0.046324199999999996
+    }
+  ],
+  "cancelled": false
+}

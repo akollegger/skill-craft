@@ -1,0 +1,29 @@
+{
+  "label": "d-wood",
+  "mode": "runs",
+  "runs": [
+    "runs/b-wood-sonnet/001",
+    "runs/b-wood-sonnet/003",
+    "runs/b-wood-sonnet/004"
+  ],
+  "rubric": {
+    "version": "1",
+    "sha256": "a6e33cf720e4b20e8cc767666d49f29375452d86beec3e1e1cf8e8c2cadc5c5e"
+  },
+  "models": {
+    "critic": {
+      "requested": "claude-sonnet-5-5",
+      "resolved": []
+    },
+    "reviser": {
+      "requested": "claude-sonnet-5-5",
+      "resolved": []
+    }
+  },
+  "rounds": [],
+  "outcome": "reject",
+  "reason": "CandidateFailed: no candidate skill: extraction did not finish in time",
+  "failed": true,
+  "stages": [],
+  "cancelled": false
+}

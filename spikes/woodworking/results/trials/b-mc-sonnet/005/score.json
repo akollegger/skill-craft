@@ -1,0 +1,52 @@
+{
+  "ended": "stopped",
+  "turns": 16,
+  "costUsd": 0.0337496,
+  "text": "I crafted a wooden_pickaxe and now hold it.",
+  "score": {
+    "goal": {
+      "item": "wooden_pickaxe",
+      "qty": 1
+    },
+    "reached": true,
+    "totalCalls": 15,
+    "actionCalls": 13,
+    "callsToGoal": 13,
+    "craftsMade": 4,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 4,
+      "minCalls": 13,
+      "slack": 3
+    },
+    "extraCalls": 0,
+    "extraCrafts": 0,
+    "reachedSeq": 15
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 18073,
+      "inputTokens": 20,
+      "outputTokens": 1116,
+      "cacheReadTokens": 31108,
+      "cacheCreationTokens": 4082,
+      "costUsd": 0.0337496
+    },
+    "toGoal": {
+      "durationMs": 15888,
+      "inputTokens": 16,
+      "outputTokens": 1062,
+      "cacheReadTokens": 22175,
+      "cacheCreationTokens": 2818
+    }
+  },
+  "model": {
+    "requested": "claude-sonnet-5-5",
+    "resolved": [
+      "claude-sonnet-5-5"
+    ]
+  },
+  "priorFit": "faithful"
+}

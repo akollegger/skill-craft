@@ -1,0 +1,58 @@
+{
+  "ended": "stopped",
+  "turns": 8,
+  "costUsd": 0.024616000000000002,
+  "text": "I crafted one glirol, and it is now in my inventory.",
+  "score": {
+    "goal": {
+      "item": "glirol",
+      "qty": 1
+    },
+    "reached": true,
+    "totalCalls": 5,
+    "actionCalls": 4,
+    "callsToGoal": 4,
+    "craftsMade": 1,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 1,
+      "minCalls": 3,
+      "slack": 2
+    },
+    "extraCalls": 1,
+    "extraCrafts": 0,
+    "reachedSeq": 5
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 7541,
+      "inputTokens": 8,
+      "outputTokens": 360,
+      "cacheReadTokens": 11160,
+      "cacheCreationTokens": 4692,
+      "costUsd": 0.024616000000000002
+    },
+    "toGoal": {
+      "durationMs": 5382,
+      "inputTokens": 4,
+      "outputTokens": 307,
+      "cacheReadTokens": 2589,
+      "cacheCreationTokens": 3980
+    }
+  },
+  "model": {
+    "requested": "claude-sonnet-5-5",
+    "resolved": [
+      "claude-sonnet-5-5"
+    ]
+  },
+  "priorFit": "invented",
+  "skill": {
+    "name": "glirol-two-lugli",
+    "sha256": "8422490840680498363483799e621ffebd8261eb9452a7552c1fa35330169aa6",
+    "invoked": true,
+    "loadedAfterCalls": 1
+  }
+}
