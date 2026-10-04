@@ -130,3 +130,69 @@ by a reader's note and a review comment, not by the loop, which is capped at thr
 - Would a distiller given the same record and the revision's structure (fact first, unknowns listed) produce
   something like round 3 without a loop?
 - What does the loop do on a task where the teacher has to explore, so the record has failures in it?
+
+## In the harness (2026-10-04)
+
+The loop is now a command (`scripts/critic-loop.ts`, spec 005). It was run live three ways on the same three efficient Sonnet
+recordings of the faithful-world `stone_pickaxe` goal.
+
+| Run | Start | Rounds | Result | Role time and cost |
+|---|---|---|---|---|
+| `live-candidate` | the spike's graph skill | 1 | critic **rejected** it outright | 11.5 s, $0.07 |
+| `live-candidate-2` | the same skill, critic instructions sharpened | revise, revise-and-accept in 2 | accepted | 35 s, $0.19 |
+| `live-nams` | a fresh skill NAMS distilled from the three runs, through a throwaway workspace | revise, revise, accept in 3 | accepted | 59 s, $0.26 |
+
+Students (Haiku, plain prompt, 3 trials each, unrecorded) with the accepted skills: `live-candidate-2` reached the goal 3 of 3 (11, 16 and
+11 calls), and `live-nams` 3 of 3 (11, 11 and 15). Every run's `score.json` records the skill hash the loop recorded for its last round.
+
+What the live runs showed that tests could not:
+
+- **The first critic over-rejected.** Its reasons listed the whole fix (the recipe chain, cited to the recordings) and then said `reject`. The
+  instructions said "reject when it cannot be fixed from the recordings", and the critic read `reject` as "this skill is poor". The
+  instructions now say that a skill that is poor but fixable from the recordings is `revise`, and `reject` is only for recordings that do not
+  hold what a useful skill needs. A verdict word needs a definition that cannot be read as a grade.
+- **The distiller again returned a generic skill with no recipe** (`mcp-craft-workflow` the first time, another name later), from the same
+  efficient runs. The loop turned it into one that leads with the three-craft chain, with citations in a separate provenance file.
+- **Three real bugs only the service found:** a JSON Schema `$schema` key the SDK refuses, workspace-tool replies that put a line of prose
+  before the JSON (a first attempt created a workspace it could not name, which was found and deleted by hand), and a caller that did not create
+  its own folder. All are fixed and have tests.
+- **Cost and speed.** A tool-less critic or reviser call took 8 to 14 seconds and $0.04 to $0.08 on Sonnet. The spike's file-reading agents used about
+  67,000 tokens and 35 to 55 seconds each. Almost all of a full run's time is the service: about 5.5 minutes of extraction in a total of about 7.5.
+- **Students did not always load the skill.** In two of the six student runs the skill was never loaded, and both still reached the goal
+  (16 and 15 calls). Haiku had failed this goal in 0 of 5 unaided calibration trials, so either that baseline overstated the gap or the skill
+  helps even when not loaded (unlikely). Three trials per skill cannot separate these, and the fresh no-skill baseline ADR-003 asks for is
+  still not run.
+
+Open from the spike and still open: description versus body, transfer to a goal the skill was not built from, and a failed-gate run, whose
+shape from the service was not observed.
+
+## The base prompt is an experimental variable (2026-10-04)
+
+The harness's base prompt (`buildPrompt`, `src/harness/run.ts`) tells the agent it is in "an unfamiliar workshop", to "use only the craft
+tools", that "nobody can answer questions or give hints", to "keep trying on your own", and to "explore ... before you commit". "Neutral" in
+ADR-003 meant only that the prompt does not mention the skill. A reader pointed out that the wording discourages anything but thinking hard in
+isolation, which is a poor frame for testing whether help (a skill) works. The check: Haiku on the faithful `stone_pickaxe` goal, 80 turns,
+with a reworded base prompt (`spikes/critic-loop/prompt-reworded.txt`: the task, what `help` and the tools do, that no one is available to
+answer questions, the turn budget, and nothing about isolation or exploring), five trials per arm, through a new `--prompt-file` option.
+
+| Arm | Prompt | Reached | Calls to goal | Skill loaded | Cost |
+|---|---|---|---|---|---|
+| No skill (calibration, earlier) | original | 0 of 5 | none (166 to 223 calls) | - | $2.00 |
+| No skill | reworded | 4 of 5 | 14, 17, 74, 187 | - | $0.94 |
+| Skill from the live NAMS loop | reworded | 5 of 5 | 11, 11, 11, 11, 11 | 5 of 5, after 2 calls | $0.18 |
+
+What it shows, and does not:
+
+- **The unaided baseline moved from 0 of 5 to 4 of 5 on wording alone.** Under ADR-003's rule, 4 of 5 is a *solved* goal, not a gap goal. The two
+  runs of 14 and 17 calls used what the model already knew about crafting. The original prompt's "unfamiliar workshop" and "explore" probably
+  steered it away from that, which would also make a faithful (familiar) world look harder than it is. With five trials the intervals still
+  overlap slightly (about 0.38 to 0.96 against 0.00 to 0.43), so this is a strong hint and not an established effect, and the old and new
+  baselines were measured on different days.
+- **The skill still helped, in speed and reliability.** Five of five at the best run's 11 calls, against 14 to 187 unaided, for a fifth of the
+  cost. It did not rescue a failing goal here, because the goal was no longer failing.
+- **Skill loading.** The skill was loaded in 5 of 5 under the reworded prompt. Under the original prompt, the good skills in this note were
+  loaded in 10 of 12 runs. That is consistent with the original wording discouraging a load, but 0 of 5 against 2 of 12 is too little to say.
+- **For the protocol.** ADR-003 says every arm uses one base prompt. The prompt therefore has to be chosen deliberately before any experiment,
+  and the calibration (which found the gap) has to be repeated under it. The gap may need a harder or less familiar world, not a harsher prompt.
+- **Cost of the check:** $1.13 for ten runs, against the $0.50 I had estimated; unaided runs that wander cost most.
+

@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -101,5 +101,52 @@ describe("--prompt-note on the command line", () => {
     const h = harness();
     for (const bad of ["", "   "]) expect(await h.run(["--label", "b", "--prompt-note", bad, "--dry-run"]), JSON.stringify(bad)).toBe(1);
     expect(h.err.join("\n")).toMatch(/--prompt-note must not be empty/);
+  });
+});
+
+describe("a base-prompt template (--prompt-file)", () => {
+  const TEMPLATE = "Your goal: end up holding {what}. The item is {item}. You have {turns} turns.\n";
+
+  it("fills {what}, {item} and {turns}, keeps a note at the end, and replaces the whole base prompt", () => {
+    expect(buildPrompt(GOAL, 12, undefined, TEMPLATE)).toBe("Your goal: end up holding one c. The item is c. You have 12 turns.");
+    expect(buildPrompt({ item: "c", qty: 3 }, 12, NOTE, TEMPLATE)).toBe(`Your goal: end up holding 3 of c. The item is c. You have 12 turns.\n${NOTE}`);
+    expect(buildPrompt(GOAL, 12, undefined, TEMPLATE)).not.toContain("Nobody can answer");
+  });
+
+  it("sends the template's text to the player and records exactly that text in prompt.txt", async () => {
+    const { driver, prompts } = spy();
+    const o = options({ driver, promptTemplate: TEMPLATE });
+    const { dir } = await runExperiment(o as never);
+    expect(prompts[0]).toBe("Your goal: end up holding one c. The item is c. You have 12 turns.");
+    expect(readFileSync(join(dir, "001", "prompt.txt"), "utf8")).toBe(`${prompts[0]}\n`);
+  });
+
+  it("leaves the default prompt alone when there is no template", () => {
+    expect(buildPrompt(GOAL, 12)).toBe(BASE);
+  });
+
+  it("is read by the command from --prompt-file, and refused when empty, unreadable or without the goal", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "skill-craft-tmpl-"));
+    const good = join(dir, "good.txt");
+    const empty = join(dir, "empty.txt");
+    const nogoal = join(dir, "nogoal.txt");
+    const itemOnly = join(dir, "item-only.txt");
+    writeFileSync(good, TEMPLATE);
+    writeFileSync(empty, "  \n");
+    writeFileSync(nogoal, "Do the thing.");
+    writeFileSync(itemOnly, "Hold the {item}. You have {turns} turns.");
+    const { driver, prompts } = spy();
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-tmplrun-"));
+    const run = (args: string[]) => {
+      const err: string[] = [];
+      return runAgentCli(["--world", WORLD, "--goal", "c", "--out", out, "--max-turns", "12", ...args], { driver, out: () => {}, err: (l) => err.push(l) }).then((code) => ({ code, err: err.join("\n") }));
+    };
+    expect((await run(["--label", "a", "--prompt-file", good])).code).toBe(0);
+    expect(prompts[0]).toBe("Your goal: end up holding one c. The item is c. You have 12 turns.");
+    for (const [label, file] of [["b", empty], ["c", nogoal], ["d", join(dir, "missing.txt")], ["e", itemOnly]] as const) {
+      const r = await run(["--label", label, "--prompt-file", file]);
+      expect(r.code).toBe(1);
+      expect(r.err).toMatch(/--prompt-file/);
+    }
   });
 });

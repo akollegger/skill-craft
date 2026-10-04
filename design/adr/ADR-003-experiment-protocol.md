@@ -3,7 +3,7 @@ id: ADR-003
 title: Experiment protocol: arms, models, isolation and skill review
 status: accepted
 created: 2026-10-01
-specs: [specs/003-faithful-minecraft-world]
+specs: [specs/003-faithful-minecraft-world, specs/005-critic-loop-harness]
 ---
 
 # ADR-003: Experiment protocol: arms, models, isolation and skill review
@@ -173,13 +173,13 @@ Early on, a human also reads the first skills the critic accepts, as a post-hoc 
 - **Comparisons across NAMS versions need records.** Each experiment stores the NAMS capabilities response (thresholds, enabled features) and each run the skill fingerprint, since the service changes.
 - **The critic is a model.** It may share blind spots with the teacher. The first accepted skills are read by a human for that reason.
 - **Follow-up specs:**
-  - recording a finished run to NAMS through the REST API (replay, write, conversation linkage, with the recording guard), and the workspace lifecycle (create, wait until active, delete, with the delete guard);
-  - the critic loop;
+  - recording a finished run to NAMS through the REST API (replay, write, conversation linkage, with the recording guard), and the workspace lifecycle (create, wait until active, delete, with the delete guard): built for the critic loop's candidate step (spec 005), not yet for the experiment runner;
+  - the critic loop: built (spec 005);
   - an experiment runner that runs calibration, assigns goal roles by the rule, runs the arms and trials, writes the pre-run summary (including the declared route and primary measure) and aggregates the results;
   - observer support for arm, model, skill and prior fit;
   - world design and generation: the Minecraft-inspired base subset, keeping names, applying the deviation rules, goal families and stock slack (the generator today only renames and nudges single recipes);
   - a tractable invented world: recipes of one pattern with different parameters (such as `2×A → X` and `3×B → Y`), a smaller table or the `partial` hint level to make discovery a hill-climb, and a calibration that shows the teacher reaching the goals while the student mostly fails (the renamed Minecraft-inspired world is at the floor and cannot do this);
-  - the critic's output schema, and updating `AGENTS.md`, which still describes `NAMS_WORKSPACE_ID` as one dedicated workspace.
+  - the critic's output schema (settled in spec 005), and the remaining `AGENTS.md` description of `NAMS_WORKSPACE_ID` as one dedicated workspace (updated for the critic loop; the experiment runner still has to replace it).
 
 **Not decided here:**
 
@@ -188,7 +188,7 @@ Early on, a human also reads the first skills the critic accepts, as a post-hoc 
 - how a real workflow would detect that the student failed (the simulation reads the game state, a perfect signal), and the cost comparison between routes as a metric;
 - what to do with an ambiguous goal beyond reporting it;
 - the four deviations of the perturbed world, and the subset, goal families and slack of worlds other than the faithful one (the faithful world fixed 13 items, 10 recipes, the pickaxe family and slack 3);
-- whether the critic's rubric lives in a file or in its prompt;
+- whether the critic's rubric lives in a file or in its prompt (decided in spec 005: a versioned file, together with the roles' instructions);
 - the mechanism for the deferred arm S3: harness-performed recall placed in the prompt is the candidate, untested;
 - whether REST-written and hooks-written recordings keep extracting equivalently over more runs, and how NAMS stores a refused call, which the one test run (no refusals) could not show;
 - the wording of the S2 sentence for experiments other than the first (the faithful-world experiment fixed ADR-003's sentence: "A skill for this kind of task is available; load it before exploring.");
@@ -278,3 +278,12 @@ Early on, a human also reads the first skills the critic accepts, as a post-hoc 
     description. Results: `design/notes/critic-loop-findings.md`.
   - **Still to do.** A person audits the first accepted skills after the fact, as 2.6 says (it is not a gate); none has yet. The critic's
     rubric location and output schema remain open (see "Not decided" and the follow-up specs).
+- **2026-10-03, the critic loop's roles have no tools and answer in a schema.** The critic and the reviser run as
+  sessions with no tools, no MCP servers and no user settings. The harness puts the recordings and the skill text in
+  the prompt and reads back a schema-checked object: for the critic, a verdict; for the reviser, the revised files as
+  text, which the harness writes. A role therefore cannot read the world, the goals file, the solver's output, a held-out goal or an
+  earlier verdict. It is given only the list of goals the recordings cover (the critic's and reviser's prompts both carry it, as §2.6 says),
+  so the blindness §2.6 asks for holds by construction. They run through their own seam (`RoleDriver`), next
+  to `AgentDriver`, implemented in the one file that imports the SDK. The rubric lives in a versioned file together
+  with the roles' instructions, and its version and hash are recorded with every verdict. Where model-authored text may
+  be stored is settled in the matching amendment to ADR-002. Spec 005 implements this.

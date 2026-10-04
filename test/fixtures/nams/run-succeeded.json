@@ -1,0 +1,17 @@
+{
+  "batchId": "",
+  "completedAt": "2026-10-04T00:01:00.000Z",
+  "coverageScore": 1,
+  "createdAt": "2026-10-04T00:00:00.000",
+  "error": "",
+  "failCode": "",
+  "groundingScore": 1,
+  "id": "run-00000000-0000-0000-0000-000000000001",
+  "kind": "distill",
+  "progress": 100,
+  "scopeJson": "{\"type\":\"conversations\"}",
+  "skillId": "sk-run-00000000-0000-0000-0000-000000000001",
+  "skillVersionId": "skv-00000000-0000-0000-0000-000000000001",
+  "status": "succeeded",
+  "suggestSplitJson": null
+}

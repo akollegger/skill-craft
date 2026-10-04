@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DriverFailed, ExportRefused, HarnessError, isUserError, ReplayFailed, RunCancelled, RunFailed, RunFolderExists, RunTimedOut, UnknownGoalItem, reasonOf } from "../src/harness/errors.js";
+import { CandidateFailed, LoopCancelled, LoopRefused, RevisionInvalid, RoleFailed, VerdictInvalid, WorkspaceRefused } from "../src/harness/errors.js";
 import { WorldError } from "../src/sim/errors.js";
 import { RunLogInUseError } from "../src/sim/runlog.js";
 
@@ -61,5 +62,36 @@ describe("isUserError", () => {
 
   it("is false for failures of a run and for unknown errors", () => {
     for (const e of [new DriverFailed(new Error("x")), new RunTimedOut(1000), new ReplayFailed("d"), new Error("x"), "x"]) expect(isUserError(e)).toBe(false);
+  });
+});
+
+describe("the critic loop's errors", () => {
+  const loop: [string, HarnessError][] = [
+    ["CandidateFailed", new CandidateFailed("the distiller produced no skill")],
+    ["VerdictInvalid", new VerdictInvalid(new Error("zod issue with agent text"))],
+    ["RevisionInvalid", new RevisionInvalid(new Error("agent text in cause"))],
+    ["RoleFailed", new RoleFailed("DriverFailed: the player reported rate_limit")],
+    ["WorkspaceRefused", new WorkspaceRefused("not created by this step")],
+    ["LoopCancelled", new LoopCancelled()],
+    ["LoopRefused", new LoopRefused("the recordings exceed 150,000 characters")],
+  ];
+
+  it.each(loop)("%s has its code, a fixed message and the cause kept apart", (code, e) => {
+    expect(e).toBeInstanceOf(HarnessError);
+    expect(e.code).toBe(code);
+    expect(e.message.length).toBeGreaterThan(5);
+    expect(e.message).not.toMatch(/agent text/);
+    expect(reasonOf(e)).toBe(`${code}: ${e.message}`);
+  });
+
+  it("keeps the role's own reason text out of anything but the fixed reason it was given", () => {
+    const e = new RoleFailed("DriverFailed: the player reported rate_limit");
+    expect(e.message).toBe("a role call failed: DriverFailed: the player reported rate_limit");
+  });
+
+  it("treats a refusal and a refused workspace as user errors, and the rest as failures", () => {
+    expect(isUserError(new LoopRefused("x"))).toBe(true);
+    expect(isUserError(new WorkspaceRefused("x"))).toBe(true);
+    for (const e of [new CandidateFailed("x"), new VerdictInvalid(), new RevisionInvalid(), new RoleFailed("x"), new LoopCancelled()]) expect(isUserError(e)).toBe(false);
   });
 });

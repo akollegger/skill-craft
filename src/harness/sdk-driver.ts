@@ -1,6 +1,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import type { AgentDriver, PlayerMessage } from "./driver.js";
-import { playerResultFrom, sdkOptionsFor } from "./sdk-options.js";
+import type { RoleDriver } from "./role-driver.js";
+import { playerResultFrom, roleOptionsFor, roleResultFrom, sdkOptionsFor } from "./sdk-options.js";
 
 /**
  * Run the player through the Claude Agent SDK. This is the only file that imports the SDK at run time.
@@ -49,4 +50,33 @@ export const sdkDriver: AgentDriver = async (opts, sink) => {
 
   if (result === null) throw threw ? thrown : new Error("the player ended without a result");
   return playerResultFrom(result, { requestedModel: opts.model ?? null, initModel, threw, assistantError, ...(opts.skill ? { skillLoadedAfterCalls } : {}) });
+};
+
+/**
+ * One critic or reviser call through the SDK. The session has no tools (see `roleOptionsFor`), so it can read nothing
+ * but its prompt. Only the result message is used: the role's own text is never read, so it cannot reach a reason, a
+ * trace or a file.
+ */
+export const sdkRoleDriver: RoleDriver = async (opts) => {
+  let result: Record<string, unknown> | null = null;
+  let initModel: string | null = null;
+  const q = query({ prompt: opts.prompt, options: roleOptionsFor(opts) });
+  const interrupt = () => void Promise.resolve(q.interrupt()).catch(() => {});
+  if (opts.signal.aborted) interrupt();
+  else opts.signal.addEventListener("abort", interrupt, { once: true });
+  try {
+    for await (const message of q) {
+      const m = message as unknown as Record<string, unknown>;
+      if (m["type"] === "system" && m["subtype"] === "init" && typeof m["model"] === "string") initModel = m["model"];
+      if (m["type"] === "result") result = m;
+    }
+  } catch {
+    // The SDK throws after some error results; a delivered result still stands.
+  } finally {
+    opts.signal.removeEventListener("abort", interrupt);
+  }
+  if (result === null) {
+    return { ok: false, reason: "DriverFailed: the role ended without a result", requestedModel: opts.model, resolvedModel: initModel, tokens: { input: null, output: null, cacheRead: null, cacheCreation: null }, costUsd: null, durationMs: null };
+  }
+  return roleResultFrom(result, { requestedModel: opts.model, initModel });
 };

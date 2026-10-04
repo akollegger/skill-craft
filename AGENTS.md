@@ -11,8 +11,9 @@ it are compared. The environment's design is [ADR-001](design/adr/ADR-001-crafti
 
 The simulation implements ADR-001 (feature spec `specs/001-crafting-table-sim`). An interim run
 harness runs Claude Code against it, measures each run and exports replay bundles (ADR-002, feature
-spec `specs/002-client-otel-trace`). The record, distill and compare workflow and the observer are not
-built yet; they wait on the player and experiment-protocol decision
+spec `specs/002-client-otel-trace`). The critic loop, which reviews and revises a distilled skill, is
+built (ADR-003 §2.6, feature spec `specs/005-critic-loop-harness`). The rest of the record, distill and
+compare workflow and the observer are not built yet; they wait on the player and experiment-protocol decision
 (`design/notes/agent-player-options.md`). Do not add mechanics beyond ADR-001 (gathering, tool tiers,
 stations, fuel were deliberately removed).
 
@@ -29,9 +30,11 @@ pnpm dev <file>    # run a TypeScript file with tsx
 Scripts (run with `pnpm dev`): `scripts/solve.ts` (best run for a goal), `scripts/make-world.ts`
 (re-skinned world plus goals), `scripts/smoke.ts` (replay a best run over stdio),
 `scripts/run-agent.ts` (Claude Code runs through the Claude Agent SDK, scored and measured; `--dry-run`
-spends nothing; `--prompt-note` adds one fixed sentence to the prompt), `scripts/report.ts` (run folders to the
+spends nothing; `--prompt-note` adds one fixed sentence to the prompt; `--prompt-file` replaces the base prompt, with `{what}`, `{item}` and `{turns}` filled in, to test a reworded one: every arm of an experiment must use the same base prompt), `scripts/report.ts` (run folders to the
 experiment results table), `scripts/score.ts` (score run logs against the best run) and `scripts/export-run.ts`
-(export a finished run as a replay bundle). The server runs as
+(export a finished run as a replay bundle) and `scripts/critic-loop.ts` (finished runs, or a candidate skill, to
+a reviewed skill: up to three rounds of a critic and a reviser, then a loop record under `loops/`; `--dry-run`
+spends nothing, `--allow-workspace` is needed to distill a candidate through NAMS). The server runs as
 `SIM_WORLD=<world.json> [SIM_RUN_LOG=<fresh file>] pnpm exec tsx src/mcp/server.ts`.
 
 `pnpm typecheck` and `pnpm test` must pass before a change is considered done.
@@ -77,7 +80,10 @@ These are summarized from the constitution; read it for the full text.
   `skills:write` as well as the memory scopes). There is no separate skills key.
 - `NAMS_WORKSPACE_ID` is the experiment workspace, never the one development sessions record to. Today
   it is the "Skill Distillation" workspace from the pilot; ADR-003 has each experiment use a fresh
-  managed workspace that the experiment runner (not built yet) creates and deletes. Experiment runs keep
+  managed workspace that the experiment runner (not built yet) creates and deletes. The critic loop already
+  works that way for its candidate step: it creates a managed workspace, records the runs, generates a skill,
+  downloads it and deletes the workspace, only with `--allow-workspace`, and refuses any id it did not create,
+  including `NAMS_WORKSPACE_ID`. Experiment runs keep
   the hooks off and a finished run is written to NAMS through the REST API. Development sessions
   record to a different workspace on purpose: entities extracted from our own design talk about the
   world and its goals were found in recall, which would leak solutions into an experiment run. Send the
@@ -108,10 +114,12 @@ zebra-space project with the RFC requirement removed.
 | `src/sim/` | Schema, matcher, engine, run log, solver, loader, goals, re-skinner; no MCP dependency |
 | `src/mcp/server.ts` | MCP server exposing a world to an agent (`SIM_WORLD` selects the file, `SIM_RUN_LOG` the log) |
 | `worlds/` | World, goals and notes JSON files (the notes file declares the world's prior fit); `worlds/README.md` explains them and credits the faithful world's inspiration; `worlds/generated/` holds re-skinned examples |
-| `src/harness/` | Interim run harness (prompt, SDK options and driver, errors, the command, export, bundle reader) |
+| `src/harness/` | Interim run harness (prompt, SDK options and driver, errors, the command, export, bundle reader, the `RoleDriver` seam for the critic loop) |
 | `src/trace/` | Run measurement: recorder, trace lines, join of trace to run log; no dependency on the SDK or `src/mcp` |
 | `src/sim/notes.ts` | The world notes file: prior fit, per-recipe notes and omissions; never imported by the engine or server |
-| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `report.ts`, `score.ts`, `export-run.ts` |
+| `src/loop/` | The critic loop: rubric and roles' instructions (one versioned file), the verdict and revision schemas, role prompts, the round controller, the loop record, the NAMS seam with its workspace guard, the candidate step, a small zip reader and diff; no SDK import |
+| `loops/` | One folder per loop (gitignored): rounds, verdicts, diffs, the accepted `skill/`. The only place model-authored review text may be written |
+| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `report.ts`, `score.ts`, `export-run.ts`, `critic-loop.ts` |
 | `spikes/` | Fixtures and helper scripts from exploratory spikes (the pilot's distilled skill, the REST-ingest script, the experiment workspace helpers, the faithful-world skills); not part of the product |
 | `test/` | vitest suites; `fixtures/valid` and `fixtures/invalid` hold the world fixtures |
 | `design/adr/` | ADRs and index |
@@ -145,6 +153,24 @@ zebra-space project with the RFC requirement removed.
 - Scoring replays a run log on a fresh game. A log that does not replay is an error, not a score.
 - `look`, `help`, `inventory` and every refusal must reveal no recipe; `test/tools-orient.test.ts`
   sweeps for leaks.
+
+## Critic loop rules to keep in mind
+
+- The critic and the reviser have no tools: a role's prompt is built in `src/loop/inputs.ts` from named parts
+  only (rubric, goals, recordings, the current skill, and for the reviser the current verdict), so they cannot read
+  the world, the goals file, the solver's output, a held-out goal or an earlier verdict (they are given only the goals the
+  recordings cover). Keep it that way; `test/loop-inputs.test.ts` checks it.
+- Roles run through `RoleDriver`; the SDK is still imported only in `src/harness/sdk-driver.ts`, and tests use the
+  scripted role in `test/helpers/fake-role.ts` and the scripted service in `test/helpers/fake-nams.ts`.
+- Model-authored review text (verdicts, change lists, revised skills) lives only under `loops/<label>/`, as the
+  schema's fields only. It never goes into a run folder, trace, summary, score, bundle or `reason`; the privacy test
+  covers both sides.
+- A loop never writes into a run folder it reads. Round snapshots are named `reviewed-skill.txt`, not any case
+  variant of `SKILL.md` (macOS ignores case), so only an accepted loop's `skill/` folder installs through `--skill`.
+- The loop touches only a NAMS workspace it created, never one named in `NAMS_WORKSPACE_ID`, and the key comes from
+  the environment only. Run the live steps in a subshell that unsets `NAMS_WORKSPACE_ID` (see the spec's quickstart).
+- `critic-loop.ts` costs real Claude usage (and `--allow-workspace` writes to the NAMS account). Use `--dry-run` first,
+  and keep `--max-role-usd` and `--max-rounds` small.
 
 ## Conventions
 

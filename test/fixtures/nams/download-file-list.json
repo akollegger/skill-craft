@@ -1,0 +1,11 @@
+{
+  "contentType": "application/zip",
+  "files": [
+    "SKILL.md",
+    "references/procedures.md",
+    "references/domain-model.md",
+    "references/exemplars.md",
+    "provenance.json"
+  ],
+  "note": "observed: the zip's files sit at its root, with no top-level folder"
+}

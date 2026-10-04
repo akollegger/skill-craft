@@ -202,3 +202,9 @@ mirror could be added later without changing the viewer.
   installed skill's name, whether the agent loaded it and after how many calls. The attributes are additive and
   readers ignore fields they do not know, so earlier bundles stay valid; the bundle still holds no world file, raw
   messages or agent text. The export code and the test that pins a bundle's contents change with it.
+- **2026-10-03**: ADR-003's critic loop gets a designated place for model-authored review text. The rule that agent
+  text and reasoning never reach a trace, summary, score or bundle protects what an agent says while playing a run, and
+  is unchanged. The critic loop produces text written by other models: verdicts, change lists and revised skills. That
+  text may be stored under `loops/<label>/` and nowhere else. A role's free-form text and reasoning are discarded, only
+  the schema's fields are kept, and a role's failure reason is `code: fixed message`. The privacy test is extended to
+  enforce both sides of the boundary.
