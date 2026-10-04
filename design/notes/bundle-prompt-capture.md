@@ -2,9 +2,9 @@
 
 Status: proposed follow-up for the visualizer work (ADR-004, spec `004-skillcraft-visualizer`); not decided, nothing changed
 in code. Date: 2026-10-04.
-Origin: the critic-loop work on branch `005-critic-loop-harness`,
-[PR #12](https://github.com/akollegger/skill-craft/pull/12). Its findings note, `design/notes/critic-loop-findings.md` on that
-branch, section "The base prompt is an experimental variable", has the evidence.
+Origin: the critic-loop work ([PR #12](https://github.com/akollegger/skill-craft/pull/12), merged into `main` and then into
+this branch on 2026-10-04). Its findings note, `design/notes/critic-loop-findings.md`, section "The base prompt is an experimental
+variable", has the evidence.
 
 ## Why this matters now
 
@@ -46,8 +46,11 @@ run folder and is not exported. `promptNote` alone cannot tell a run on the orig
 - Does a comparison need to warn when prompts differ, or is a marker enough? ADR-003 says every arm shares one base prompt, so a difference inside
   an experiment is a mistake worth flagging, and across experiments it is information.
 
-## Things on the other branch to know about
+## Where the two lines of work stand
 
-- PR #12 adds `run-agent.ts --prompt-file` (`run.ts`, `cli.ts`) and a "Critic loop" section in `AGENTS.md`. It does not change `score.json`'s keys
-  or the bundle. Merging the two branches will conflict in `AGENTS.md` (the "observer is not built" sentence, which this branch rewrites).
-- That branch also adds `loops/` (gitignored there): critic-loop records and accepted skills. It sits beside `runs/`, so the folder scan never reads it.
+- The critic-loop work is merged into this branch (merge commit `a995670`), so `run-agent.ts --prompt-file` (`run.ts`, `cli.ts`; `{what}` is
+  required, since it carries the quantity) and the "Critic loop rules" section of `AGENTS.md` are already here. The `AGENTS.md` conflict was
+  resolved by keeping both sides. None of it changes `score.json`'s keys or the bundle.
+- A run made with `--prompt-file` records the prompt actually sent in its `prompt.txt`, so the proposal's `prompt` and `promptSha256` can be
+  read from that file with no change to how runs are written.
+- Critic-loop records live in `loops/` (gitignored), beside `runs/`, so the folder scan never reads them.
