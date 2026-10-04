@@ -16,7 +16,7 @@ const runs = [
   run({ label: "alpha", run: "002", world: "forge", outcome: "gave up", actionCalls: 90, modelRan: "claude-sonnet" }, "p".repeat(200)),
   run({ label: "beta", run: "001", world: "workshop", outcome: "out of turns", actionCalls: 40 }, "rrrr", grid(6)),
 ];
-const picker = (presentation: "grid" | "list", onOpen = () => {}) => ({ groups: groupRuns(runs, null), presentation, showHeaders: false, onOpen });
+const picker = (presentation: "grid" | "list", onOpen = () => {}) => ({ groups: groupRuns(runs, null), presentation, onOpen });
 const order = () => [...document.querySelectorAll("[data-run-id]")].map((e) => e.getAttribute("data-run-id"));
 
 const requested: string[] = [];
@@ -48,27 +48,46 @@ describe("grid and list", () => {
     for (const presentation of ["grid", "list"] as const) {
       render(Picker, picker(presentation));
       const first = document.querySelector(`[data-run-id="${runs[0]!.id}"]`) as HTMLElement;
-      for (const text of ["reached", "5 calls", "best 3", "claude-haiku"]) expect(first.textContent, `${presentation} ${text}`).toContain(text);
+      for (const text of ["reached", "5 calls", "claude-haiku"]) expect(first.textContent, `${presentation} ${text}`).toContain(text);
+      // The best run is never written out: the numeral, in its color, says how the run did.
+      expect(first.textContent).not.toContain("best");
       expect(within(first).getByRole("img", { name: /5 calls: 1 placements, 1 crafts, 1 refusals, 1 take-backs/ })).toBeTruthy();
       expect(first.querySelector("canvas")).not.toBeNull();
       cleanup();
     }
   });
 
-  it("draws one mark per action call, in a color of its own for each kind", () => {
+  it("draws one mark per action call, in the playback pips' colors and not a color for each kind of call", () => {
     render(Picker, picker("grid"));
     const first = document.querySelector(`[data-run-id="${runs[0]!.id}"]`) as HTMLElement;
     const marks = [...first.querySelectorAll("[data-kind]")];
-    expect(marks.map((m) => m.getAttribute("data-kind"))).toEqual(["place", "craft", "refusal", "take-back", "no change"]);
-    expect(new Set(marks.map((m) => m.className)).size).toBe(5);
+    expect(marks.map((m) => m.getAttribute("data-kind"))).toEqual(["place", "craft", "refusal", "take-back", "no change"]); // still known, for the label
+    // The best run is 3 calls and this one reached its goal in 5: green up to 3, then yellow.
+    expect(marks.map((m) => m.getAttribute("data-tone"))).toEqual(["ok", "ok", "ok", "over", "over"]);
   });
 
-  it("cuts a very long strip but still counts every call", () => {
+  it("makes the last mark of a failed run red", () => {
     render(Picker, picker("grid"));
-    const long = document.querySelector(`[data-run-id="${runs[1]!.id}"]`) as HTMLElement;
-    expect(long.querySelectorAll("[data-kind]").length).toBeLessThan(200);
-    expect(long.textContent).toContain("+40");
-    expect(within(long).getByRole("img", { name: /^200 calls/ })).toBeTruthy();
+    const failedRun = document.querySelector(`[data-run-id="${runs[2]!.id}"]`) as HTMLElement; // out of turns; no best run is known
+    expect([...failedRun.querySelectorAll("[data-kind]")].map((m) => m.getAttribute("data-tone"))).toEqual(["ok", "ok", "ok", "fail"]);
+  });
+
+  it("cuts a very long strip to three rows, says how many calls the cut hides, and still counts every call", () => {
+    for (const presentation of ["grid", "list"] as const) {
+      render(Picker, picker(presentation));
+      const long = document.querySelector(`[data-run-id="${runs[1]!.id}"]`) as HTMLElement;
+      const marks = long.querySelectorAll("[data-kind]").length;
+      expect(marks + 6).toBe(96); // three rows of thirty-two, the last six cells given to the "+N"
+      expect(long.textContent).toContain(`+${200 - marks}`);
+      expect(within(long).getByRole("img", { name: /^200 calls/ })).toBeTruthy();
+      cleanup();
+    }
+  });
+
+  it("draws a tape of a short run in the same block as a long one's, so a tile and a row are one size either way", () => {
+    render(Picker, picker("list"));
+    const grids = [...document.querySelectorAll('[role="img"][aria-label*="calls"]')].map((t) => t.className);
+    expect(new Set(grids).size).toBe(1);
   });
 });
 
@@ -90,39 +109,38 @@ describe("thumbnails", () => {
     expect(fills).toBe(drawn);
   });
 
-  it("scale to the grid: a 3×3 and a 6×6 table are both readable, and a large one still has cells of 8 pixels", () => {
-    const size = (rows: number) => {
-      const { container, unmount } = render(Thumbnail, { table: grid(rows) });
-      const c = container.querySelector("canvas")!;
-      const out = [c.width, c.height, c.width / rows];
-      unmount();
-      return out;
-    };
-    expect(size(3)).toEqual([72, 72, 24]);
-    expect(size(6)).toEqual([96, 96, 16]);
-    expect(size(9)).toEqual([72, 72, 8]);
-    for (const rows of [2, 3, 4, 5, 6, 7, 9]) expect(size(rows)[2]).toBeGreaterThanOrEqual(8);
-  });
-
-  it("are smaller in a row, so a table fits its box", () => {
-    const { container } = render(Thumbnail, { table: grid(3), compact: true });
+  it("are one size for every run: a 48-pixel slot in a tile, and 36 pixels in a row", () => {
+    const { container } = render(Thumbnail, { goal: "stick", reached: true });
     const c = container.querySelector("canvas")!;
     expect([c.width, c.height]).toEqual([48, 48]);
-    expect(c.width).toBeLessThanOrEqual(56);
     cleanup();
-    expect((render(Thumbnail, { table: grid(6), compact: true }).container.querySelector("canvas")!).width).toBe(48);
+    const compact = render(Thumbnail, { goal: "stick", reached: true, compact: true }).container.querySelector("canvas")!;
+    expect([compact.width, compact.height]).toEqual([36, 36]);
   });
 
-  it("show the item made, large, for a run that reached its goal, and the table otherwise", () => {
-    const { container } = render(Thumbnail, { table: grid(3), made: "stick" });
-    const c = container.querySelector("canvas")!;
-    expect([c.width, c.height]).toEqual([72, 72]);
-    expect(screen.getByRole("img", { name: /item the run made: stick/i })).toBeTruthy();
+  it("show the goal for every run, reached or not, so runs for one goal look alike", () => {
+    const reached = render(Thumbnail, { goal: "stick", reached: true });
+    expect(screen.getByRole("img", { name: /goal: stick, reached/i })).toBeTruthy();
+    reached.unmount();
+    render(Thumbnail, { goal: "stick", reached: false });
+    expect(screen.getByRole("img", { name: /goal: stick, not reached/i })).toBeTruthy();
   });
 
-  it("have a text label", () => {
-    render(Thumbnail, { table: grid(3) });
-    expect(screen.getByRole("img", { name: /table/i })).toBeTruthy();
+  it("are an empty slot, with a label that says so, when a run does not name its goal", () => {
+    const { container } = render(Thumbnail, {});
+    expect(screen.getByRole("img", { name: /goal is not named/i })).toBeTruthy();
+    expect(container.querySelector("canvas")!.width).toBe(48);
+  });
+
+  it("do not depend on how the run ended: the same goal draws the same slot size and the same pixels' places", () => {
+    const places = (reached: boolean): string[] => {
+      const seen: string[] = [];
+      vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((() => ({ fillStyle: "", clearRect() {}, fillRect(x: number, y: number, w: number, h: number) { seen.push(`${x},${y},${w},${h}`); } })) as never);
+      render(Thumbnail, { goal: "stick", reached });
+      cleanup();
+      return seen;
+    };
+    expect(places(false)).toEqual(places(true));
   });
 });
 
@@ -144,8 +162,33 @@ describe("tiles", () => {
 
   it("show why a run cannot be opened, and have no button", () => {
     const broken: CatalogEntry = { id: "ffffffffffffffff", kind: "run", status: "unreadable", reason: "WorldMissing: the world file the run used is missing or does not load", attributes: { label: "x", run: "9" } };
-    render(Picker, { groups: groupRuns([broken], null), presentation: "grid", showHeaders: false, onOpen: () => {} });
+    render(Picker, { groups: groupRuns([broken], null), presentation: "grid", onOpen: () => {} });
     expect(screen.queryAllByRole("button")).toHaveLength(0);
     expect(document.body.textContent).toContain("the world file the run used is missing");
   });
 });
+
+describe("a tile's layout", () => {
+  it("puts the thumbnail on the left and a large score on the right, in one row, with no name written out", () => {
+    render(Picker, picker("grid"));
+    const tile = document.querySelector(`[data-run-id="${runs[0]!.id}"]`) as HTMLElement;
+    const canvas = tile.querySelector("canvas")!;
+    const score = tile.querySelector(".font-score") as HTMLElement;
+    expect(canvas.parentElement).toBe(score.parentElement); // the same row
+    const row = canvas.parentElement!;
+    expect(row.firstElementChild).toBe(canvas); // thumbnail first (left)
+    expect(row.lastElementChild).toBe(score); // score last (right)
+    expect(score.className).toMatch(/text-6xl/); // larger than a list row's numeral
+    expect(row.className).toMatch(/justify-between/);
+    // The name is not drawn; it is the tile's tooltip and what a screen reader says first.
+    expect(tile.querySelector("bdi")).toBeNull();
+    expect(tile.querySelector("button")!.getAttribute("title")).toBe("alpha / 001");
+  });
+
+  it("colors the score like a list row's, and says nothing but the number", () => {
+    render(Picker, picker("grid"));
+    const tile = document.querySelector(`[data-run-id="${runs[0]!.id}"]`) as HTMLElement;
+    expect(tile.querySelector(".font-score")!.className).toMatch(/text-mid-marigold/); // reached in 5 calls, past the best 3: yellow
+  });
+});
+

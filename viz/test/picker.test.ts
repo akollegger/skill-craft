@@ -26,7 +26,7 @@ const runs: CatalogEntry[] = [
 
 /** What the page hands the picker: runs already arranged into groups. */
 const props = (groupBy: string | null, onOpen: (e: CatalogEntry) => void = () => {}, presentation: "grid" | "list" = "list") => ({
-  groups: groupRuns(runs, groupBy), presentation, showHeaders: groupBy !== null, onOpen,
+  groups: groupRuns(runs, groupBy), presentation, onOpen, group: groupBy,
 });
 
 describe("the picker", () => {
@@ -38,10 +38,9 @@ describe("the picker", () => {
   it("shows what a person needs to tell runs apart", () => {
     render(Picker, props(null));
     const first = screen.getAllByRole("listitem")[0]!;
-    for (const text of ["alpha / 001", "forge", "glirol", "reached", "3 calls", "best 3", "claude-haiku"]) expect(first.textContent, text).toContain(text);
+    for (const text of ["alpha / 001", "forge", "glirol", "reached", "3 calls", "claude-haiku"]) expect(first.textContent, text).toContain(text);
     const third = screen.getAllByRole("listitem")[2]!;
     expect(third.textContent).toContain("2 pickaxe"); // a goal of two
-    expect(third.textContent).not.toContain("best"); // no best run is known
   });
 
   it("opens a ready run when it is activated, and says which", async () => {
@@ -62,24 +61,20 @@ describe("the picker", () => {
     expect(items[3]!.getAttribute("aria-disabled")).toBe("true");
   });
 
-  it("groups by an attribute: each value once, with its runs, and runs that lack it together", () => {
+  it("groups by an attribute with no heading: each value once, its runs together, and runs that lack it together", () => {
     render(Picker, props("world"));
-    const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent ?? "");
-    expect(headings.filter((h) => h.includes("forge"))).toHaveLength(1);
-    expect(headings.filter((h) => h.includes("workshop"))).toHaveLength(1);
-    expect(headings.some((h) => /no world/i.test(h))).toBe(true);
-    expect(headings.find((h) => h.includes("forge"))).toContain("2");
-    expect(headings.find((h) => h.includes("workshop"))).toContain("2");
+    expect(screen.queryAllByRole("heading")).toHaveLength(0);
+    expect(document.querySelectorAll("section")).toHaveLength(3); // forge, workshop, and the run with no world
     expect(screen.getAllByRole("listitem")).toHaveLength(5);
+    const worlds = screen.getAllByRole("listitem").map((li) => li.querySelector("span.truncate")?.textContent?.trim() ?? "");
+    expect(worlds.slice(0, 4)).toEqual(["forge", "forge", "workshop", "workshop"]); // the world's value is read from the rows
   });
 
-  it("collapses and expands a group with its header", async () => {
+  it("has nothing to collapse: no disclosure button, no triangle, every run always shown", () => {
     render(Picker, props("world"));
-    const toggle = screen.getByRole("button", { name: /forge/ });
-    expect(toggle.getAttribute("aria-expanded")).toBe("true");
-    await fireEvent.click(toggle);
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(document.querySelector("[aria-expanded]")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/[▸▾]/);
+    expect(screen.getAllByRole("listitem")).toHaveLength(5);
   });
 
   it("moves between runs with the arrow keys", async () => {
@@ -104,5 +99,92 @@ describe("the empty state", () => {
     expect(screen.getByRole("status").textContent).toMatch(/no runs/i);
     expect(screen.getByRole("status").textContent).toContain("run.jsonl");
     expect(screen.getByRole("status").textContent).toContain("bundle.json");
+  });
+});
+
+describe("the list's column headers", () => {
+  const headers = () => document.querySelector("[data-list-header]") as HTMLElement | null;
+  const column = (label: string) => [...headers()!.querySelectorAll("[data-column]")].find((c) => c.textContent?.trim() === label) as HTMLElement;
+  /** A sort triangle is rectangles of art pixels, one per row, so its edges step: [y, width] from the top. */
+  const rows = (svg: Element) => [...svg.querySelectorAll("rect")].map((r) => [Number(r.getAttribute("y")), Number(r.getAttribute("width"))]).sort((a, b) => a[0]! - b[0]!);
+  const withView = (group: string | null, sort: { attr: string; dir: "asc" | "desc" } | null) => ({ ...props(group), sort });
+
+  it("label the columns once, at the top, even when the runs are grouped", () => {
+    render(Picker, props("world"));
+    expect(document.querySelectorAll("[data-list-header]")).toHaveLength(1);
+    expect([...headers()!.querySelectorAll("[data-column]")].map((c) => c.textContent?.trim())).toEqual(["", "World", "Goal", "Calls", "Tape", "Model", "Skill"]);
+  });
+
+  it("are not shown in the grid", () => {
+    render(Picker, { ...props(null), presentation: "grid" });
+    expect(headers()).toBeNull();
+  });
+
+  it("use the same columns as every row, so the cells line up under them", () => {
+    render(Picker, props(null));
+    const columns = (el: Element) => el.className.split(/\s+/).find((c) => c.startsWith("grid-cols-"));
+    expect(columns(headers()!)).toBeTruthy();
+    for (const row of screen.getAllByRole("listitem")) expect(columns(row.firstElementChild!)).toBe(columns(headers()!));
+  });
+
+  it("carry no pip when the runs are neither grouped nor sorted", () => {
+    render(Picker, props(null));
+    expect(headers()!.querySelector("[data-group-pip], [data-sort-pip]")).toBeNull();
+  });
+
+  it("put a square beside the column the runs are grouped by, and only there", () => {
+    render(Picker, props("world"));
+    expect(column("World").querySelector("[data-group-pip]")).not.toBeNull();
+    expect(headers()!.querySelectorAll("[data-group-pip]")).toHaveLength(1);
+    cleanup();
+    render(Picker, props("modelRan"));
+    expect(column("Model").querySelector("[data-group-pip]")).not.toBeNull();
+    expect(column("World").querySelector("[data-group-pip]")).toBeNull();
+  });
+
+  it("put a triangle beside the column the runs are sorted by: up for ascending and down for descending", () => {
+    render(Picker, withView(null, { attr: "actionCalls", dir: "asc" }));
+    const up = column("Calls").querySelector("[data-sort-pip]") as HTMLElement;
+    expect(up.getAttribute("data-dir")).toBe("asc");
+    expect(rows(up)).toEqual([[0, 1], [1, 3], [2, 5], [3, 7]]); // stepped, apex at the top: [y, width] of each row of art pixels
+    cleanup();
+    render(Picker, withView(null, { attr: "actionCalls", dir: "desc" }));
+    const down = column("Calls").querySelector("[data-sort-pip]") as HTMLElement;
+    expect(down.getAttribute("data-dir")).toBe("desc");
+    expect(rows(down)).toEqual([[0, 7], [1, 5], [2, 3], [3, 1]]); // apex at the bottom
+  });
+
+  it("can mark one column for grouping and another for sorting at the same time", () => {
+    render(Picker, withView("world", { attr: "outcome", dir: "asc" }));
+    expect(column("World").querySelector("[data-group-pip]")).not.toBeNull();
+    expect(column("Calls").querySelector("[data-sort-pip]")).not.toBeNull();
+    expect(column("World").querySelector("[data-sort-pip]")).toBeNull();
+  });
+
+  it("show nothing for an attribute that has no column", () => {
+    render(Picker, withView("priorFit", { attr: "priorFit", dir: "asc" }));
+    expect(headers()!.querySelector("[data-group-pip], [data-sort-pip]")).toBeNull();
+  });
+
+  it("let a row show values only: the goal is the item, with a count only when it is more than one, and no 'make' or '(best …)' wording", () => {
+    render(Picker, props(null));
+    const [first, , third] = screen.getAllByRole("listitem");
+    expect(first!.textContent).not.toMatch(/\bmake\b/i);
+    expect(first!.textContent).not.toContain("(best");
+    expect(first!.textContent).toContain("glirol");
+    expect(first!.textContent).not.toContain("1 glirol");
+    expect(third!.textContent).toContain("2 pickaxe");
+  });
+
+  it("show the calls as a large numeral, with nothing beside it, colored by how the run ended", () => {
+    render(Picker, props(null));
+    const numeral = (row: HTMLElement) => row.querySelector(".font-score") as HTMLElement;
+    const [first, second, third] = screen.getAllByRole("listitem") as HTMLElement[];
+    expect(numeral(first!).textContent).toContain("3");
+    expect(first!.textContent).not.toContain("best");
+    expect(numeral(first!).className).toMatch(/text-light-forest/); // reached, and in the best number of calls
+    expect(numeral(second!).className).toMatch(/text-mid-hibiscus/); // gave up: failed, so red
+    expect(numeral(third!).className).toMatch(/text-mid-hibiscus/); // ran out of turns: failed, so red
+    expect(within(first!).getByText(/calls/, { selector: ".sr-only" })).toBeTruthy(); // and says "calls" to a screen reader
   });
 });

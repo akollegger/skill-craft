@@ -1,31 +1,28 @@
 <script lang="ts">
-  import { cellSizeFor, defaultItemArt, paintTable, tableSize } from "../art/index.ts";
+  import { defaultItemArt, paintGoalSlot, slotSize } from "../art/index.ts";
 
-  let { table, made, label = "The table at the end of the run", compact = false }: { table: (string | null)[][]; made?: string | undefined; label?: string; compact?: boolean } = $props();
+  // A thumbnail is the goal, not where the run ended: the item the run was asked to make, in a dark socket with a one-pixel stroke. A run that
+  // reached it shows the item in full color and any other shows it dimmed, so runs for one goal look alike and a list groups by sight.
+  let { goal, reached = false, compact = false }: { goal?: string | undefined; reached?: boolean; compact?: boolean } = $props();
 
-  // A run that got its goal shows the item it made, large; any other shows where the table was left.
-  const shown = $derived(made === undefined ? table : [[made]]);
-  // A row has less room than a tile: half-size cells for small grids, so a table fits a 56-pixel box.
-  const longest = $derived(Math.max(table.length, ...table.map((r) => r.length)));
-  const cell = $derived(made !== undefined ? (compact ? 48 : 72) : compact ? (longest <= 3 ? 16 : 8) : cellSizeFor(longest));
-  const size = $derived(tableSize(shown, cell));
+  const scale = $derived(compact ? 3 : 4);
+  const size = $derived(slotSize(scale));
   let canvas: HTMLCanvasElement | undefined = $state();
 
-  // Drawn once into a 2D canvas, and again only if the table itself changes: a list of hundreds holds no WebGL context.
+  // Drawn once into a 2D canvas, and again only if the goal or the outcome changes: a list of hundreds holds no WebGL context.
   $effect(() => {
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    paintTable(ctx, shown, defaultItemArt, cell);
+    paintGoalSlot(ctx, goal === undefined ? undefined : defaultItemArt(goal), { scale, reached });
   });
 </script>
 
 <canvas
   bind:this={canvas}
-  width={size.width}
-  height={size.height}
+  width={size}
+  height={size}
   role="img"
-  aria-label={made === undefined ? label : `The item the run made: ${made}`}
-  class="rounded-sm bg-black"
+  aria-label={goal === undefined ? "The goal is not named" : `The goal: ${goal}, ${reached ? "reached" : "not reached"}`}
   style="image-rendering: pixelated"
 ></canvas>

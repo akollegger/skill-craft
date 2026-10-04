@@ -5,15 +5,15 @@
   import { createScenePool } from "./scene/pool.ts";
   import type { SceneFactory } from "./scene/handle.ts";
   import CompareBar from "./shell/CompareBar.svelte";
-  import CompareRows from "./shell/CompareRows.svelte";
   import Empty from "./shell/Empty.svelte";
+  import Hints from "./shell/Hints.svelte";
   import OpenRun from "./shell/OpenRun.svelte";
   import Picker from "./shell/Picker.svelte";
   import RunCount from "./shell/RunCount.svelte";
   import Toolbar from "./shell/Toolbar.svelte";
   import Unsupported from "./shell/Unsupported.svelte";
   import { describeAttributes } from "./state/attributes.ts";
-  import { closeRun, initialSelection, openRun, tickRun } from "./state/selection.ts";
+  import { closeRun, initialSelection, openRun, toggleSelected } from "./state/selection.ts";
   import { arrange, defaultView, type View } from "./state/view.ts";
 
   // PixiJS is loaded only when a table is first opened, so the list stays light.
@@ -34,7 +34,6 @@
   const shown = $derived(groups.reduce((n, g) => n + g.runs.length, 0));
   const byId = $derived(new Map((catalog?.runs ?? []).map((r) => [r.id, r])));
   const opened = $derived(selection.open.map((id) => byId.get(id)).filter((e): e is CatalogEntry => e !== undefined));
-  const tickedEntries = $derived(selection.ticked.map((id) => byId.get(id)).filter((e): e is CatalogEntry => e !== undefined));
 
   onMount(async () => {
     const loaded = await client.catalog();
@@ -55,21 +54,18 @@
   };
   const openBoth = (): void => {
     selection = { ...selection, open: [] };
-    for (const id of selection.ticked) selection = openRun(selection, id);
+    for (const id of selection.selected) selection = openRun(selection, id);
   };
 </script>
 
 {#snippet browse()}
   <div class="flex flex-col gap-3">
     <Toolbar {attributes} {view} onChange={(v) => (view = v)} />
-    <CompareBar ticked={selection.ticked.length} onOpenBoth={openBoth} onClear={() => (selection = { ...selection, ticked: [] })} />
-    {#if view.presentation === "list" && tickedEntries.length === 2}
-      <CompareRows entries={tickedEntries} />
-    {/if}
+    <CompareBar selected={selection.selected.length} onOpenBoth={openBoth} onClear={() => (selection = { ...selection, selected: [] })} />
     {#if shown === 0}
       <p role="status" class="p-4 font-mono text-sm text-baltic">No run matches these filters.</p>
     {:else}
-      <Picker {groups} presentation={view.presentation} showHeaders={view.group !== null} onOpen={open} ticked={selection.ticked} onTick={(e) => (selection = tickRun(selection, e.id))} />
+      <Picker {groups} presentation={view.presentation} group={view.group} sort={view.sort} onOpen={open} selected={selection.selected} onSelect={(e) => (selection = toggleSelected(selection, e.id))} />
     {/if}
     <RunCount runs={catalog?.runs ?? []} {shown} />
   </div>
@@ -87,7 +83,7 @@
                 <OpenRun {entry} {client} createScene={pool.factory} onClose={() => close(entry.id)} />
               {/each}
               {#if opened.length === 1 && !beside}
-                <div><button class="rounded-sm border border-mid-baltic px-2 py-1 font-mono text-sm hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={() => (beside = true)}>Open beside…</button></div>
+                <div><button class="border border-mid-baltic px-2 py-1 font-mono text-sm hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={() => (beside = true)}>Open beside…</button></div>
               {:else if opened.length === 1 && beside}
                 <div>{@render browse()}</div>
               {/if}
@@ -105,4 +101,5 @@
       {/if}
     </div>
   </div>
+  <Hints runs={catalog?.runs ?? []} />
 </div>

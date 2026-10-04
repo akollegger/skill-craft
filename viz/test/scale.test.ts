@@ -38,9 +38,9 @@ describe("a folder of hundreds of runs", () => {
       return { fillStyle: "", clearRect() {}, fillRect() {}, imageSmoothingEnabled: false } as never;
     } as never);
     const groups = arrange(runs.slice(0, 200), defaultView());
-    const view = render(Picker, { groups, presentation: "grid", showHeaders: false, onOpen: () => {} });
-    await view.rerender({ groups, presentation: "list", showHeaders: false, onOpen: () => {} });
-    await view.rerender({ groups, presentation: "grid", showHeaders: false, onOpen: () => {} });
+    const view = render(Picker, { groups, presentation: "grid", onOpen: () => {} });
+    await view.rerender({ groups, presentation: "list", onOpen: () => {} });
+    await view.rerender({ groups, presentation: "grid", onOpen: () => {} });
     expect(asked.length).toBeGreaterThan(0);
     expect(new Set(asked)).toEqual(new Set(["2d"]));
   });

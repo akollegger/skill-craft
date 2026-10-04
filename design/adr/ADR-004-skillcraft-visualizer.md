@@ -255,3 +255,64 @@ run could be opened to the point it reached; and how a view could be saved or sh
 - Extends ADR-002 §2.6: the bundle manifest gains optional attributes (2.3). ADR-002 carries the matching amendment.
 - Design note: `design/notes/pixel-visualizer.md` (the scenarios, the settled scope and the first mock's visual language), with the mock in `design/notes/pixel-visualizer/mock/`.
 - Specs: [specs/004-skillcraft-visualizer](../../specs/004-skillcraft-visualizer/spec.md)
+
+## 6. Amendments
+
+- **2026-10-04, the table is wood, a thumbnail is the goal, and runs are selected by shift-click.** Three decisions made while closing
+  the gap with the mock's pixel style (spec 004, "Table rendering and selection" in the tasks):
+  - *Color.* The brand colors are an anchor, not a constraint. The page adds a wood ramp derived from Marigold (`woodHighlight`, `woodFace`,
+    `woodShade`, `woodFrame`, `woodDeep`, marked `DERIVED` in `viz/src/palette.ts`) and the table, its output slot and the hotbar use it.
+    Items cast a one-pixel shadow so every sprite palette reads on the wood.
+  - *Thumbnails.* A tile or row shows the run's goal, not where the run ended: the goal item in a wooden output slot, in full color when the
+    run reached it and greyed out when it did not. Runs for one goal then look alike, so a list groups by sight, failures included. This
+    supersedes the earlier behavior (the table left at the end, or the item made). The catalog entry's `preview.table` is no longer used by
+    tiles or rows; the frame size and the 2D-canvas, drawn-once rule in 2.x are unchanged.
+  - *Choosing runs to compare.* The tick boxes are gone. Shift-click on a tile or a row selects it (a highlighted border and background mark
+    it, with "Selected for comparison" for a screen reader), and a plain click opens it. Shift+Enter and Shift+Space do the same from the
+    keyboard, since a keyboard click carries the shift key. At most two are selected; a third drops the oldest. The compare bar says how many
+    are selected, with "Open both tables" and "Clear selection". Touch screens have no shift key and open runs only, which a later
+    amendment may address.
+- **2026-10-04, the list has column headers, the score is a numeral, and groups do not collapse.**
+  - *Headers.* The list shows one row of column headings (Run, World, Goal, Outcome, Calls, Tape, Model) above everything, and the
+    comparison panel repeats it. Every row, the header and the panel share one column definition (`LIST_GRID` in
+    `viz/src/shell/columns.ts`, in rem so it scales with the frame), so cells line up. A cell now holds a value, not a label: the goal is
+    the item ("plaevrataei", with a count only when it is more than one), not "make 1 plaevrataei".
+  - *Always a grid.* The list no longer wraps below a viewport width of about 1280 pixels. The frame scales as a whole, so its columns do
+    too. This supersedes the design note's remark that rows wrap on a narrow screen.
+  - *The score.* Calls are a large pixel numeral (Jersey 10) in the color of how the run ended, with "best N" beside it, in rows and on tiles.
+  - *Groups.* Nothing collapses, and the disclosure triangle is gone (the group heading itself is removed in the next entry).
+  - *Names.* A run's name truncates from its start, so the part that tells neighbours apart (the condition and the run number) stays visible.
+- **2026-10-04, decluttering: pips instead of headings, no compare panel, color for the call count, help in the footer.** The aim is a quieter
+  interface, so this removes things and adds no text that is not high value.
+  - *No group heading.* Runs of a group sit together, and the column the list is grouped by carries a square beside its name; the group's
+    value is read from the rows. The column the list is sorted by carries a triangle (up for ascending, down for descending). An attribute
+    with no column shows no pip, and the grid has no headings to carry one, so the Group by and Sort by controls remain the place to read it.
+  - *No comparison panel.* The "Comparing" panel that repeated two selected runs above the list is removed (this drops "two adjacent rows
+    in the list" from the comparison decision in spec 004, research R9). Selected runs stay where they are, highlighted, and "Open both
+    tables" shows them side by side.
+  - *The compare bar is buttons only.* "Open both tables" appears when exactly two runs are selected and "Clear selection" when any is. There
+    is no instruction and no count ("2 runs selected" is gone).
+  - *Help lives in the footer.* How to open and select runs, and what the square and the triangle mean, are in the footer with the run count,
+    and nowhere else.
+  - *Color for the call count.* A run that reached its goal is green when its calls are no more than the best known run and red when they are
+    more (the playback pips' green and red). A run that gave up is yellow. A run that ran out of turns or failed is red. A run that did not
+    reach its goal is never green, whatever its count. The outcome word takes the same colors, except that a goal reached in more than the
+    best number of calls reads green in the word and red in the number.
+  - *Tile layout.* A tile follows the mock: the goal thumbnail on the left and a large score on the right, then the name, the outcome, the
+    model and the tape. The best run is shown in a list row and left off a tile, where the color carries it.
+
+
+- **2026-10-04, a row is a block, a run has no name column, and the skill is an icon.** Further decluttering. A list row has no
+  separator line: each is a flat block with a chunky bevel, like the mock's, with a gap between blocks, and a tile is the same block.
+  The "Run" and "Outcome" columns are gone: each row is a different run, so its name (an experiment label and a trial number) only
+  restated where its files live, and the call count's color already says how it ended. The name stays as the row's tooltip and
+  first words for a screen reader, and in the opened table's title. The skill is a column of its own holding an eight-pixel icon
+  (solid when loaded, an outline when never loaded, a second color when the prompt pointed at it) or a dash for no skill; the words
+  are its label. The sort triangle is drawn in art pixels, and the "best N" text is gone. The tape is cut to three rows of thirty-two,
+  so a tile and a row are one size, with the last cells saying how many calls the cut hides. All help sits under the frame, on the
+  page's dark; only the run count stays inside it.
+  Colors have one meaning: green is within the ideal (the best known run's count), yellow is past it, and red is a failed run, for
+  whatever reason. They color the score, the playback pips and the tape of a row or tile, which is a miniature of the pips: green
+  to the ideal, yellow after, and a failed run's last call red. A failed run's score is red whatever its count. Call kind is no
+  longer a color: it is in the tape's label and in the open view's call list, in neutral text styles, so no traffic-light color
+  ever says what a call was. This replaces the earlier rule that giving up was yellow and only running out of turns was red.

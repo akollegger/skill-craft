@@ -88,7 +88,7 @@ Filter { attr: string, op: Op, value: string | number | boolean }
 ```
 
 `Op` by attribute kind: text `is | is not | contains`; number `= | ≥ | ≤`; flag `is`. The page also holds the
-ticked runs (at most two for comparison) and the open tables (at most two). None of this is written
+selected runs (shift-click; at most two for comparison) and the open tables (at most two). None of this is written
 anywhere; a saved or shareable view is an extension left out for now.
 
 ## State and transitions

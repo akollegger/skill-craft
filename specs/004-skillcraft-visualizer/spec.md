@@ -284,7 +284,7 @@ plain file server, and repeat the acceptance checks for Stories 1, 2 and 4 again
   no world file.
 - **Frame**: the table state after one call: the table, what is held, what `craft` would make, the call, and
   counts.
-- **View**: the group, sort and filter currently applied to the runs, and which presentation (grid or list) shows them. The runs ticked for comparison and the open tables are kept apart from it.
+- **View**: the group, sort and filter currently applied to the runs, and which presentation (grid or list) shows them. The runs selected for comparison (shift-click) and the open tables are kept apart from it.
 - **Skill marker**: the recorded fact that a skill was installed for a run, with whether and when it was loaded.
 
 ## Success Criteria *(mandatory)*

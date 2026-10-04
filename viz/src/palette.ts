@@ -1,6 +1,6 @@
 /**
  * The page's palette: the Neo4j brand colors, transcribed by hand from the brand colors page of the Needle
- * design system. It is a local copy and not the design-system package or its Tailwind preset (GPL-3.0), so it can
+ * design system, plus a few shades derived from them (`DERIVED`) where the page needs a tone the brand does not name. It is a local copy and not the design-system package or its Tailwind preset (GPL-3.0), so it can
  * drift from the brand's; `SOURCE` and `READ_ON` say where and when it was read. The Tailwind theme
  * (`theme.css`) repeats these values and a test keeps the two equal. Which color plays which role is decided
  * with the page, not here.
@@ -33,7 +33,17 @@ export const palette = {
   hibiscus: "#D43300",
   midHibiscus: "#F96746",
   lightHibiscus: "#FF8E6A",
+  // Derived, not brand values: a wood ramp from Marigold (hue about 33 to 41), lightest to darkest. The brand colors are an
+  // anchor, not a constraint (decided 2026-10-04): the crafting table is wood, and the brand has no brown.
+  woodHighlight: "#F6CB6F",
+  woodFace: "#DD992C",
+  woodShade: "#9D6725",
+  woodFrame: "#69401C",
+  woodDeep: "#362112",
 } as const;
+
+/** The names in `palette` that are derived from the brand colors and not transcribed from them. */
+export const DERIVED = ["woodHighlight", "woodFace", "woodShade", "woodFrame", "woodDeep"] as const satisfies readonly (keyof typeof palette)[];
 
 export type PaletteName = keyof typeof palette;
 

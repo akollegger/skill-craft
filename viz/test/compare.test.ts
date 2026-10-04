@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.svelte";
 import { createScenePool } from "../src/scene/pool.ts";
 import type { SceneFactory, SceneHandle } from "../src/scene/handle.ts";
-import { closeRun, initialSelection, openRun, tickRun, type Selection } from "../src/state/selection.ts";
+import { closeRun, initialSelection, openRun, toggleSelected, type Selection } from "../src/state/selection.ts";
 import { sampleBundle } from "./helpers/bundle.ts";
 
 afterEach(() => {
@@ -13,13 +13,13 @@ afterEach(() => {
 
 describe("selection", () => {
   const empty = initialSelection();
-  it("ticks up to two runs, dropping the oldest tick for a third, and unticks", () => {
-    let s: Selection = tickRun(empty, "a");
-    s = tickRun(s, "b");
-    expect(s.ticked).toEqual(["a", "b"]);
-    s = tickRun(s, "c");
-    expect(s.ticked).toEqual(["b", "c"]);
-    expect(tickRun(s, "b").ticked).toEqual(["c"]);
+  it("selects up to two runs, dropping the oldest for a third, and deselects", () => {
+    let s: Selection = toggleSelected(empty, "a");
+    s = toggleSelected(s, "b");
+    expect(s.selected).toEqual(["a", "b"]);
+    s = toggleSelected(s, "c");
+    expect(s.selected).toEqual(["b", "c"]);
+    expect(toggleSelected(s, "b").selected).toEqual(["c"]);
   });
 
   it("opens runs into at most two tables; a third replaces the second", () => {
@@ -38,9 +38,9 @@ describe("selection", () => {
     expect(closeRun(closeRun(s, "a"), "b").open).toEqual([]);
   });
 
-  it("opens exactly the two ticked runs when asked to compare", () => {
-    const s = tickRun(tickRun(empty, "x"), "y");
-    expect(openRun(openRun({ ...s, open: [] }, s.ticked[0]!), s.ticked[1]!).open).toEqual(["x", "y"]);
+  it("opens exactly the two selected runs when asked to compare", () => {
+    const s = toggleSelected(toggleSelected(empty, "x"), "y");
+    expect(openRun(openRun({ ...s, open: [] }, s.selected[0]!), s.selected[1]!).open).toEqual(["x", "y"]);
   });
 });
 
@@ -102,7 +102,8 @@ describe("comparing in the page", () => {
     live.n++;
     return { show() {}, destroy: () => void live.n-- } as SceneHandle;
   };
-  const tick = (name: RegExp) => screen.getByRole("checkbox", { name });
+  /** Shift-click a run, as a person does (and as Shift+Enter or Shift+Space on a focused run does). */
+  const select = (name: string) => fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${name}\\b`) }), { shiftKey: true });
   const start = async () => {
     serve();
     live.n = 0;
@@ -111,32 +112,35 @@ describe("comparing in the page", () => {
     await fireEvent.change(screen.getByLabelText("Group by"), { target: { value: "" } });
   };
 
-  it("enables Compare only when two runs are ticked", async () => {
+  it("offers Open both tables only when exactly two runs are selected, and Clear selection once any is", async () => {
     await start();
-    const compare = screen.getByRole("button", { name: /open both tables/i }) as HTMLButtonElement;
-    expect(compare.disabled).toBe(true);
-    await fireEvent.click(tick(/compare lab \/ 1/i));
-    expect(compare.disabled).toBe(true);
-    await fireEvent.click(tick(/compare lab \/ 2/i));
-    expect(compare.disabled).toBe(false);
+    const open = () => screen.queryByRole("button", { name: /open both tables/i });
+    const clear = () => screen.queryByRole("button", { name: /clear selection/i });
+    expect(open()).toBeNull();
+    expect(clear()).toBeNull(); // nothing selected: no bar at all
+    await select("lab / 1");
+    expect(open()).toBeNull();
+    expect(clear()).not.toBeNull();
+    await select("lab / 2");
+    expect(open()).not.toBeNull();
+    expect((open() as HTMLButtonElement).disabled).toBe(false);
+    await select("lab / 2");
+    expect(open()).toBeNull();
   });
 
-  it("shows two ticked runs together as aligned rows in the list", async () => {
+  it("adds no panel of its own when two runs are selected: they stay where they are in the list, highlighted", async () => {
     await start();
-    await fireEvent.click(tick(/compare lab \/ 1/i));
-    await fireEvent.click(tick(/compare lab \/ 2/i));
-    const panel = screen.getByRole("group", { name: /comparing/i });
-    const rows = within(panel).getAllByRole("listitem");
-    expect(rows).toHaveLength(2);
-    expect(rows[0]!.textContent).toContain("forge");
-    expect(rows[1]!.textContent).toContain("workshop"); // a different world is accepted
-    expect(rows[0]!.className).toBe(rows[1]!.className); // the same columns, so attributes line up
+    await select("lab / 1");
+    await select("lab / 2");
+    expect(screen.queryByRole("group", { name: /comparing/i })).toBeNull();
+    expect(document.querySelectorAll("[data-run-id]")).toHaveLength(3); // no second copy of a run anywhere
+    expect(document.querySelectorAll("[data-selected]")).toHaveLength(2);
   });
 
   it("opens both tables side by side, each with its own playhead", async () => {
     await start();
-    await fireEvent.click(tick(/compare lab \/ 1/i));
-    await fireEvent.click(tick(/compare lab \/ 2/i));
+    await select("lab / 1");
+    await select("lab / 2");
     await fireEvent.click(screen.getByRole("button", { name: /open both tables/i }));
     const regions = await screen.findAllByRole("region", { name: /run/i });
     expect(regions).toHaveLength(2);
@@ -150,14 +154,87 @@ describe("comparing in the page", () => {
 
   it("opens a second table beside the first, and closing one leaves the other", async () => {
     await start();
-    await fireEvent.click(screen.getByRole("button", { name: "lab / 1" }));
+    await fireEvent.click(screen.getByRole("button", { name: /^lab \/ 1\b/ }));
     await screen.findByRole("region", { name: /run/i });
     await fireEvent.click(screen.getByRole("button", { name: /open beside/i }));
-    await fireEvent.click(await screen.findByRole("button", { name: "lab / 3" }));
+    await fireEvent.click(await screen.findByRole("button", { name: /^lab \/ 3\b/ }));
     await waitFor(() => expect(screen.getAllByRole("region", { name: /run/i })).toHaveLength(2));
     expect(live.n).toBe(2);
     await fireEvent.click(within(screen.getAllByRole("region", { name: /run/i })[0]!).getByRole("button", { name: /close table/i }));
     await waitFor(() => expect(screen.getAllByRole("region", { name: /run/i })).toHaveLength(1));
     expect(live.n).toBe(1);
+  });
+
+  // The comparison panel above the list repeats the selected runs' ids, so look in the list itself: the last match.
+  const item = (n: number) => [...document.querySelectorAll(`[data-run-id="${String(n).padStart(16, "0")}"]`)].at(-1) as HTMLElement;
+
+  it("has no checkboxes anywhere, in the list or the grid", async () => {
+    await start();
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    await fireEvent.click(screen.getByRole("button", { name: "Grid" }));
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  });
+
+  it("marks a shift-clicked row as selected, in the document and for a screen reader, and shift-clicking again clears it", async () => {
+    await start();
+    expect(item(1).hasAttribute("data-selected")).toBe(false);
+    await select("lab / 1");
+    expect(item(1).hasAttribute("data-selected")).toBe(true);
+    expect(item(1).querySelector("[data-open]")!.className).toMatch(/ring-highlight-yellow/);
+    expect(within(item(1)).getByText("Selected for comparison")).toBeTruthy();
+    await select("lab / 1");
+    expect(item(1).hasAttribute("data-selected")).toBe(false);
+    expect(within(item(1)).queryByText("Selected for comparison")).toBeNull();
+  });
+
+  it("selects when the shift-click lands anywhere on the row, not only on its name, and opens nothing", async () => {
+    await start();
+    await fireEvent.click(within(item(2)).getByText("workshop"), { shiftKey: true });
+    expect(item(2).hasAttribute("data-selected")).toBe(true);
+    expect(screen.queryByRole("region", { name: /run/i })).toBeNull();
+  });
+
+  it("opens a run on a plain click, and does not select it", async () => {
+    await start();
+    await fireEvent.click(screen.getByRole("button", { name: /^lab \/ 1\b/ }));
+    await screen.findByRole("region", { name: /run/i });
+    expect(document.querySelector("[data-selected]")).toBeNull();
+  });
+
+  it("selects tiles in the grid the same way, with a highlighted border, and a plain click on the tile opens it", async () => {
+    await start();
+    await fireEvent.click(screen.getByRole("button", { name: "Grid" }));
+    const tile = within(item(3)).getByRole("button");
+    await fireEvent.click(tile, { shiftKey: true });
+    expect(item(3).hasAttribute("data-selected")).toBe(true);
+    expect(tile.className).toMatch(/ring-highlight-yellow/);
+    expect(screen.queryByRole("region", { name: /run/i })).toBeNull();
+    await fireEvent.click(tile);
+    await screen.findByRole("region", { name: /run/i });
+  });
+
+  it("keeps only the last two selected, and says nothing about how many are chosen", async () => {
+    await start();
+    await select("lab / 1");
+    await select("lab / 2");
+    await select("lab / 3");
+    expect([1, 2, 3].map((n) => item(n).hasAttribute("data-selected"))).toEqual([false, true, true]);
+    expect(document.body.textContent).not.toMatch(/\d+ runs? selected/i);
+    expect(document.body.textContent).not.toMatch(/shift-click one more/i);
+  });
+
+  it("clears the selection with its own button", async () => {
+    await start();
+    await select("lab / 1");
+    await fireEvent.click(screen.getByRole("button", { name: /clear selection/i }));
+    expect(document.querySelector("[data-selected]")).toBeNull();
+  });
+
+  it("is reachable from the keyboard: every run is a button, and a keyboard click carries the shift key", async () => {
+    await start();
+    const button = screen.getByRole("button", { name: /^lab \/ 2\b/ });
+    expect(button.tagName).toBe("BUTTON");
+    await select("lab / 2"); // what the browser does for Shift+Enter or Shift+Space on a focused button
+    expect(item(2).hasAttribute("data-selected")).toBe(true);
   });
 });

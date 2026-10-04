@@ -7,6 +7,7 @@
   import { callKind, describeCall, type CallKind } from "./calls.ts";
   import { formatClock } from "./clock.ts";
   import SkillMarker from "./SkillMarker.svelte";
+  import { pipTone, TONE_BG, TONE_BORDER, TONE_TEXT, type Tone } from "./tone.ts";
 
   let { entry, bundle, createScene, onClose }: { entry: CatalogEntry; bundle: BundleData; createScene: SceneFactory; onClose: () => void } = $props();
 
@@ -86,10 +87,11 @@
     frames.slice(1, playback.index + 1).map((f, k) => ({ f, i: k + 1 })).slice(-9).reverse(),
   );
   const KIND_CLASS: Record<CallKind, string> = {
-    refusal: "text-mid-hibiscus",
-    craft: "text-light-forest",
-    place: "text-mid-marigold",
-    "take-back": "text-highlight-periwinkle",
+    // Not green, yellow or red: those say how the run is doing against the ideal (tone.ts), never what a call was.
+    refusal: "text-baltic italic",
+    craft: "text-light-gray",
+    place: "text-light-baltic",
+    "take-back": "text-baltic",
     read: "text-baltic opacity-70",
   };
 
@@ -101,12 +103,16 @@
     if (bundle.result.ended === "budget") return `Out of turns after ${score.actionCalls} calls, without the item.`;
     return `Gave up after ${score.actionCalls} calls, without the item.`;
   });
-  const scoreTone = $derived(reachedNow ? "text-light-forest" : atEnd ? (bundle.result.ended === "budget" || bundle.result.ended === "error" ? "text-mid-hibiscus" : "text-mid-marigold") : "text-light-gray");
+  const scoreTone = $derived(
+    reachedNow ? TONE_TEXT[best !== null && frame.actions > best ? "over" : "ok"] : atEnd ? TONE_TEXT.fail : "text-light-gray",
+  );
 
   const PIP_CAP = 40;
   const pips = $derived.by(() => {
     const n = Math.min(PIP_CAP, Math.max(best ?? 0, frame.actions));
-    return Array.from({ length: n }, (_, i) => (i < frame.actions ? (best !== null && i >= best ? "over" : "done") : "to-come"));
+    // At the end of a run that failed, its last call is red; the pips are capped, so the last one drawn stands for it.
+    const lost = atEnd && !reachedNow;
+    return Array.from({ length: n }, (_, i): Tone | "to-come" => (i < frame.actions ? pipTone(i, Math.min(PIP_CAP, frame.actions), best, lost) : "to-come"));
   });
 
   const sceneText = $derived.by(() => {
@@ -125,7 +131,7 @@
   aria-label={`Run ${name}`}
   tabindex="0"
   onkeydown={onKeyDown}
-  class="flex flex-col gap-3 rounded-sm border border-mid-baltic bg-darkest-baltic p-4 font-mono text-sm focus-visible:outline-2 focus-visible:outline-light-baltic"
+  class="flex flex-col gap-3 border border-mid-baltic bg-darkest-baltic p-4 font-mono text-sm focus-visible:outline-2 focus-visible:outline-light-baltic"
 >
   <header class="flex items-start justify-between gap-4">
     <div>
@@ -135,7 +141,7 @@
       </p>
       <SkillMarker attributes={entry.attributes} />
     </div>
-    <button class="rounded-sm border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" aria-label="Close table" onclick={onClose}>✕</button>
+    <button class="border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" aria-label="Close table" onclick={onClose}>✕</button>
   </header>
 
   <div class="flex items-end gap-6">
@@ -146,23 +152,23 @@
       <span aria-label="time of this step" class="font-score text-4xl leading-none text-light-baltic">{formatClock(times[playback.index] ?? 0)}</span>
       <div role="img" aria-label={best === null ? `Calls made: ${frame.actions}` : `Progress against the best possible run: ${frame.actions} of ${best} calls`} class="flex flex-wrap gap-0.5">
         {#each pips as pip, i (i)}
-          <span class={`h-2 w-2 rounded-[1px] border ${pip === "done" ? "border-light-forest bg-light-forest" : pip === "over" ? "border-mid-hibiscus bg-mid-hibiscus" : "border-baltic"}`}></span>
+          <span data-pip={pip} class={`h-2 w-2 border ${pip === "to-come" ? "border-baltic" : `${TONE_BORDER[pip]} ${TONE_BG[pip]}`}`}></span>
         {/each}
       </div>
     </div>
   </div>
 
-  <div bind:this={host} role="img" aria-label="The crafting table" class="min-h-32 w-fit max-w-full overflow-hidden rounded-sm border border-mid-baltic"></div>
+  <div bind:this={host} role="img" aria-label="The crafting table" class="min-h-32 w-fit max-w-full overflow-hidden border border-mid-baltic"></div>
   <p class="sr-only">{sceneText}</p>
   {#if drawError}<p role="alert" class="text-mid-hibiscus">The table could not be drawn ({drawError}). The calls below still show everything the run did.</p>{/if}
 
   <p role="status" class="min-h-5 text-light-gray">{status}</p>
 
   <div class="flex items-center gap-2">
-    <button class="rounded-sm border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={() => dispatch({ type: "restart" })}>Restart</button>
-    <button class="rounded-sm border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={() => dispatch({ type: "step", by: -1 })}>Step back</button>
-    <button class="rounded-sm border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic disabled:opacity-40" disabled={last === 0} onclick={() => dispatch({ type: "toggle" })}>{playback.playing ? "Pause" : "Play"}</button>
-    <button class="rounded-sm border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={() => dispatch({ type: "step", by: 1 })}>Step forward</button>
+    <button class="border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={() => dispatch({ type: "restart" })}>Restart</button>
+    <button class="border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={() => dispatch({ type: "step", by: -1 })}>Step back</button>
+    <button class="border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic disabled:opacity-40" disabled={last === 0} onclick={() => dispatch({ type: "toggle" })}>{playback.playing ? "Pause" : "Play"}</button>
+    <button class="border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={() => dispatch({ type: "step", by: 1 })}>Step forward</button>
     <input
       type="range" min="0" max={last} value={playback.index} disabled={last === 0}
       aria-label="Position in the run"
@@ -171,7 +177,7 @@
     />
   </div>
 
-  <ol aria-label="Calls, newest first" class="flex flex-col rounded-sm bg-black p-2">
+  <ol aria-label="Calls, newest first" class="flex flex-col bg-black p-2">
     {#each tape as { f, i } (i)}
       <li data-kind={callKind(f)} class={`flex gap-3 ${KIND_CLASS[callKind(f)]}`}>
         <span class="w-14 text-baltic">{times[i] == null ? "" : formatClock(times[i]!)}</span>

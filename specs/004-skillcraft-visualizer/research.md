@@ -133,8 +133,8 @@ build is expected to revise them, and the ADR's list is updated when it does.
 
 ## R9. Comparing and the two-table limit
 
-- **Decision**: any run can be ticked on a tile or row; with two ticked, a "Compare" action shows them side
-  by side as two tables, or as two adjacent rows in the list. From an open run, "Open beside…" picks the
+- **Decision**: any run can be selected (shift-click, or Shift+Enter on a focused run) on a tile or row; with two selected, an "Open both tables" action shows them side
+  by side as two tables. (A panel of two adjacent rows in the list was dropped on 2026-10-04: selected runs stay in place.) From an open run, "Open beside…" picks the
   second run from the picker. Tables are independent. Opening a run while two tables are open replaces the
   second one, so there are never more than two live scenes (FR-015) and no dialog is needed. **(held loosely)**.
 - **Alternatives**: a persistent compare mode (the spec says comparison is a presentation); a third table

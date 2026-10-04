@@ -1,19 +1,21 @@
 <script lang="ts">
   import type { CatalogEntry } from "../../../src/viz/contract.ts";
   import type { Group } from "../state/group.ts";
+  import type { Sort } from "../state/view.ts";
+  import ListHeader from "./ListHeader.svelte";
   import Row from "./Row.svelte";
   import Tile from "./Tile.svelte";
 
   let {
     groups,
     presentation,
-    showHeaders,
     onOpen,
-    ticked = [],
-    onTick,
-  }: { groups: Group[]; presentation: "grid" | "list"; showHeaders: boolean; onOpen: (entry: CatalogEntry) => void; ticked?: string[]; onTick?: ((entry: CatalogEntry) => void) | undefined } = $props();
+    selected = [],
+    onSelect,
+    group = null,
+    sort = null,
+  }: { groups: Group[]; presentation: "grid" | "list"; onOpen: (entry: CatalogEntry) => void; selected?: string[]; onSelect?: ((entry: CatalogEntry) => void) | undefined; group?: string | null; sort?: Sort | null } = $props();
 
-  let collapsed = $state<Record<string, boolean>>({});
   let root: HTMLElement | undefined = $state();
 
   // Arrow keys move between the runs that can be opened, in the order shown; Enter and Space act on the focused
@@ -31,32 +33,18 @@
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div bind:this={root} role="presentation" onkeydown={onKeyDown} class="flex flex-col gap-4">
+  {#if presentation === "list"}<ListHeader {group} {sort} />{/if}
   {#each groups as group (group.key)}
     <section>
-      {#if showHeaders}
-        <h3 class="font-pixel text-lg text-light-baltic">
-          <button
-            class="flex w-full items-baseline gap-2 rounded-sm px-3 py-1 text-left hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic"
-            aria-expanded={!collapsed[group.key]}
-            onclick={() => (collapsed[group.key] = !collapsed[group.key])}
-          >
-            <span aria-hidden="true">{collapsed[group.key] ? "▸" : "▾"}</span>
-            <span>{group.label}</span>
-            <span class="font-mono text-sm text-baltic">{group.runs.length}</span>
-          </button>
-        </h3>
-      {/if}
-      {#if !collapsed[group.key]}
-        <ul class={presentation === "grid" ? "flex flex-wrap gap-3 p-2" : ""}>
-          {#each group.runs as entry (entry.id)}
-            {#if presentation === "grid"}
-              <Tile {entry} {onOpen} {onTick} ticked={ticked.includes(entry.id)} />
-            {:else}
-              <Row {entry} {onOpen} {onTick} ticked={ticked.includes(entry.id)} />
-            {/if}
-          {/each}
-        </ul>
-      {/if}
+      <ul class={presentation === "grid" ? "flex flex-wrap gap-3 p-2" : "flex flex-col gap-1"}>
+        {#each group.runs as entry (entry.id)}
+          {#if presentation === "grid"}
+            <Tile {entry} {onOpen} {onSelect} selected={selected.includes(entry.id)} />
+          {:else}
+            <Row {entry} {onOpen} {onSelect} selected={selected.includes(entry.id)} />
+          {/if}
+        {/each}
+      </ul>
     </section>
   {/each}
 </div>

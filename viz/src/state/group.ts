@@ -2,7 +2,7 @@ import type { AttributeValue, CatalogEntry } from "../../../src/viz/contract.ts"
 import { attributeLabel } from "./attributes.ts";
 
 export interface Group {
-  /** Stable for a value, so a component can keep a group's state (collapsed or not) across changes. */
+  /** Stable for a value, so a component can keep a group's identity across changes. */
   key: string;
   label: string;
   runs: CatalogEntry[];

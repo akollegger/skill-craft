@@ -31,7 +31,7 @@
   <div role="alert" class="flex max-w-prose flex-col gap-3 p-6 font-mono text-sm">
     <p class="font-pixel text-xl text-light-gray">Can't open {name}.</p>
     <p class="text-mid-hibiscus">{why}</p>
-    <button class="w-fit rounded-sm border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={onClose}>Back to the runs</button>
+    <button class="w-fit border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={onClose}>Back to the runs</button>
   </div>
 {:else}
   <p role="status" class="p-6 font-mono text-sm text-baltic">Opening {name}…</p>

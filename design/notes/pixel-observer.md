@@ -509,7 +509,8 @@ What the build taught, in the order it was met:
   Highlight Periwinkle. Periwinkle reads at 4.4:1 on the panel, so calls are listed on the backdrop. The roles and a
   contrast test are in `viz/src/roles.ts`.
 - **Rows are wide.** With nine columns a list row needs about 1280 pixels; below that it wraps, and the wrapped layout
-  is plain. The grid reads better on a narrow screen.
+  is plain. The grid reads better on a narrow screen. (Superseded 2026-10-04: the list is always a grid with column headers, in rem so it
+  scales with the frame. See the amendment to ADR-004.)
 - **Speed is not a concern at this size:** 200 runs scan in about 0.3 seconds, a table opens in about 0.1 seconds and 200
   tiles switch in under 20 milliseconds.
 - **`svelte-check` does not support TypeScript 7,** so the TypeScript inside `.svelte` files is not type-checked yet.

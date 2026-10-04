@@ -13,10 +13,15 @@ const HOTBAR_SLOTS = 8;
 
 const COLOR = {
   backdrop: hex("darkestBaltic"),
-  board: hex("darkBaltic"),
-  cell: hex("midBaltic"),
+  // The table is wood: a ramp derived from Marigold (see DERIVED in palette.ts), bevelled light on the top and left.
+  frame: hex("woodFrame"),
+  face: hex("woodFace"),
+  light: hex("woodHighlight"),
+  shade: hex("woodShade"),
+  deep: hex("woodDeep"),
+  arrow: hex("baltic"),
   edge: hex("black"),
-  socket: hex("black"),
+  socket: hex("woodDeep"),
   ghost: hex("lightBaltic"),
   craft: hex("midForest"),
   refuse: hex("midHibiscus"),
@@ -38,6 +43,15 @@ const seeded = (seed: number): (() => number) => {
 
 /** One running effect: advance by `ms`; return false when finished. */
 type Running = (ms: number) => boolean;
+
+/** A wooden square with a one-pixel bevel: light on the top and left, shade on the bottom and right. Returns the Graphics drawn into. */
+function bevelled(into: Container, x: number, y: number, w: number, h: number): Graphics {
+  const g = new Graphics().rect(x, y, w, h).fill(COLOR.face);
+  g.rect(x, y, w, 1).fill(COLOR.light).rect(x, y, 1, h).fill(COLOR.light);
+  g.rect(x, y + h - 1, w, 1).fill(COLOR.shade).rect(x + w - 1, y, 1, h).fill(COLOR.shade);
+  into.addChild(g);
+  return g;
+}
 
 export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
   return async (host, { reducedMotion }): Promise<SceneHandle> => {
@@ -106,7 +120,7 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
     };
 
     let current: ReturnType<typeof layout> | undefined;
-    const cellSprites = new Map<string, Sprite>();
+    const cellSprites = new Map<string, Container>();
 
     function drawStatic(frames: readonly FrameData[], index: number): void {
       const s = sceneAt(frames, index);
@@ -118,27 +132,48 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
       cellSprites.clear();
 
       board.addChild(new Graphics().rect(0, 0, W, H).fill(COLOR.backdrop));
-      board.addChild(new Graphics().rect(L.x0 - 3, L.y0 - 3, L.w + 6, L.h + 6).fill(COLOR.board).stroke({ width: 1, color: COLOR.edge }));
+      board.addChild(new Graphics().rect(L.x0 - 3, L.y0 - 3, L.w + 6, L.h + 6).fill(COLOR.frame).stroke({ width: 1, color: COLOR.deep }));
       for (let r = 0; r < s.rows; r++) {
         for (let c = 0; c < s.cols; c++) {
-          board.addChild(new Graphics().rect(L.x0 + c * L.cell + 1, L.y0 + r * L.cell + 1, L.cell - 2, L.cell - 2).fill(COLOR.cell));
+          bevelled(board, L.x0 + c * L.cell + 1, L.y0 + r * L.cell + 1, L.cell - 2, L.cell - 2);
         }
       }
       s.cells.forEach((row, r) =>
         row.forEach((item, c) => {
           if (item === null) return;
+          // An item and its shadow move together: a dark copy one sprite pixel down and right keeps every palette legible on the wood.
+          const holder = new Container();
+          holder.position.set(L.x0 + c * L.cell, L.y0 + r * L.cell);
+          const shadow = new Sprite(textureFor(item));
+          shadow.tint = COLOR.deep;
+          shadow.alpha = 0.6;
+          shadow.scale.set(L.scale);
+          shadow.position.set(L.scale, L.scale);
           const sp = new Sprite(textureFor(item));
           sp.scale.set(L.scale);
-          sp.position.set(L.x0 + c * L.cell, L.y0 + r * L.cell);
-          items.addChild(sp);
-          cellSprites.set(`${r},${c}`, sp);
+          holder.addChild(shadow, sp);
+          items.addChild(holder);
+          cellSprites.set(`${r},${c}`, holder);
         }),
       );
 
-      // Output slot: an empty socket, or a ghost of what craft would make now.
-      const ox = L.x0 + L.w + 14;
+      // Output slot: an arrow from the table to a riveted wooden frame holding a socket, which is empty or shows a ghost of what
+      // craft would make now.
+      const ox = L.x0 + L.w + 18;
       const oy = L.y0 + Math.floor(L.h / 2) - 14;
-      hud.addChild(new Graphics().rect(ox, oy, 28, 28).fill(COLOR.socket).stroke({ width: 1, color: s.output.state === "ready" ? COLOR.craft : COLOR.edge }));
+      const mid = oy + 14;
+      const arrow = new Graphics();
+      arrow.rect(L.x0 + L.w + 6, mid - 1, 6, 2).fill(COLOR.arrow); // the shaft
+      arrow.rect(L.x0 + L.w + 12, mid - 3, 1, 6).fill(COLOR.arrow); // and a head, one column at a time
+      arrow.rect(L.x0 + L.w + 13, mid - 2, 1, 4).fill(COLOR.arrow);
+      arrow.rect(L.x0 + L.w + 14, mid - 1, 1, 2).fill(COLOR.arrow);
+      hud.addChild(arrow);
+      const frame = bevelled(hud, ox - 2, oy - 2, 32, 32);
+      for (const [rx, ry] of [[ox - 1, oy - 1], [ox + 28, oy - 1], [ox - 1, oy + 28], [ox + 28, oy + 28]] as const) frame.rect(rx, ry, 1, 1).fill(COLOR.shade); // rivets
+      const socket = new Graphics().rect(ox, oy, 28, 28).fill(COLOR.socket);
+      socket.rect(ox, oy, 28, 1).fill(COLOR.frame).rect(ox, oy, 1, 28).fill(COLOR.frame); // inset: dark on the top and left
+      if (s.output.state === "ready") socket.rect(ox, oy, 28, 28).stroke({ width: 1, color: COLOR.craft });
+      hud.addChild(socket);
       if (s.output.state === "ready") {
         const g = new Sprite(textureFor(s.output.item));
         g.scale.set(2);
@@ -151,7 +186,7 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
       s.hotbar.slice(0, HOTBAR_SLOTS).forEach((h, i) => {
         const hx = 8 + i * 19;
         const hy = H - 24;
-        hud.addChild(new Graphics().rect(hx, hy, 18, 18).fill(COLOR.board).stroke({ width: 1, color: COLOR.edge }));
+        hud.addChild(new Graphics().rect(hx, hy, 18, 18).fill(COLOR.frame).stroke({ width: 1, color: COLOR.deep }));
         const sp = new Sprite(textureFor(h.item));
         sp.scale.set(2);
         sp.position.set(hx + 1, hy + 1);

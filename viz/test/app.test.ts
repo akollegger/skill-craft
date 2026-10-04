@@ -21,7 +21,11 @@ describe("the page", () => {
     render(App);
     expect(screen.getByRole("status").textContent).toContain("Loading");
     await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(3));
-    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([expect.stringContaining("forge"), expect.stringContaining("workshop")]);
+    // Grouped by world with no group headings: the runs sit together, and the World column's heading carries the pip.
+    expect(screen.queryAllByRole("heading", { level: 3 })).toHaveLength(0);
+    expect(screen.getAllByRole("listitem").map((li) => li.querySelector("span.truncate")?.textContent?.trim())).toEqual(["forge", "forge", "workshop"]);
+    const world = [...document.querySelectorAll("[data-column]")].find((c) => c.textContent?.trim() === "World")!;
+    expect(world.querySelector("[data-group-pip]")).not.toBeNull();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Skillcraft");
   });
 
@@ -123,8 +127,8 @@ describe("the run count", () => {
   it("explains the runs that cannot be opened as a table", async () => {
     serve([...entries(2), ...entries(1, "unfinished")]);
     render(App);
-    const text = (await screen.findByRole("contentinfo", { name: /run count/i })).textContent ?? "";
-    expect(text).toContain("3 runs");
+    expect((await screen.findByRole("contentinfo", { name: /run count/i })).textContent).toContain("3 runs");
+    const text = screen.getByRole("contentinfo", { name: /hints/i }).textContent ?? "";
     expect(text).toContain("1 can't be opened as a table");
     expect(text).toMatch(/unfinished/);
   });
@@ -133,5 +137,22 @@ describe("the run count", () => {
     serve(entries(1));
     render(App);
     expect((await screen.findByRole("contentinfo", { name: /run count/i })).textContent?.trim()).toBe("1 run");
+  });
+
+  it("holds all the help under the frame, in the dark, and none of it inside the frame", async () => {
+    serve(entries(3));
+    render(App);
+    await screen.findByRole("contentinfo", { name: /run count/i });
+    const hints = screen.getByRole("contentinfo", { name: /hints/i });
+    expect(hints.textContent).toMatch(/click a run to open it/i);
+    expect(hints.textContent).toMatch(/shift-click/i);
+    expect(hints.textContent).toMatch(/shift\+enter/i);
+    expect(hints.textContent).toMatch(/grouped by/i);
+    expect(hints.textContent).toMatch(/sorted by/i);
+    expect(document.querySelector(".frame")!.contains(hints)).toBe(false);
+    const inside = document.querySelector(".frame")!.textContent ?? "";
+    expect(inside).not.toMatch(/shift-click|grouped by|sorted by/i);
+    // The run count stays in the frame and says only the count.
+    expect(screen.getByRole("contentinfo", { name: /run count/i }).textContent?.trim()).toBe("3 runs");
   });
 });

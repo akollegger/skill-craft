@@ -22,6 +22,15 @@
   --color-hibiscus: #d43300;
   --color-mid-hibiscus: #f96746;
   --color-light-hibiscus: #ff8e6a;
+  /* Derived from Marigold, not brand values: see DERIVED in palette.ts. */
+  --color-wood-highlight: #f6cb6f;
+  --color-wood-face: #dd992c;
+  --color-wood-shade: #9d6725;
+  --color-wood-frame: #69401c;
+  --color-wood-deep: #362112;
+
+  /* No curved corners anywhere: the look is 8-bit. Clearing the radius tokens means a corner-radius utility added later draws nothing. */
+  --radius-*: initial;
 
   --font-pixel: "Pixelify Sans", ui-sans-serif, sans-serif;
   --font-score: "Jersey 10", ui-sans-serif, sans-serif;
@@ -34,8 +43,20 @@
  * The title sits on the background at the upper left; its strip and the margins are subtracted from the room the frame
  * may use. Below 10px a rem stops shrinking, and the stage scrolls instead.
  */
+/*
+ * Truncate from the start: a run's name begins with the experiment, which its neighbours share, and ends with the part that tells
+ * them apart (the condition and the run number). Use it on an element with a <bdi> inside, so the text itself still reads left to right.
+ */
+@utility truncate-start {
+  direction: rtl;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 html {
-  font-size: max(10px, calc(min(100vw - 32px, (100vh - 60px) * 4 / 3) / 80));
+  font-size: max(10px, calc(min(100vw - 32px, (100vh - 108px) * 4 / 3) / 80));
 }
 
 .page {
@@ -62,6 +83,19 @@ html {
   justify-content: center;
   padding-bottom: 16px;
   overflow: auto;
+}
+
+/* The help sits under the frame, on the page's dark, and has a strip of its own that the frame's size leaves out. */
+.hints {
+  flex: none;
+  height: 48px;
+  padding: 0 16px;
+  overflow: hidden;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-baltic);
 }
 
 .frame {

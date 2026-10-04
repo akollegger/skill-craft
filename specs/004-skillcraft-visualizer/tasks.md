@@ -221,6 +221,21 @@ Data side: `src/viz/`, `scripts/`, `test/viz/`. Page: `viz/src/`, `viz/test/`. I
 
 ---
 
+## Phase 10: Table rendering and selection (2026-10-04)
+
+**Purpose**: Close the gap with the mock's pixel style. See the 2026-10-04 amendment to ADR-004.
+
+- [X] T074 [P] Add a wood ramp derived from Marigold to `viz/src/palette.ts` (`DERIVED`) and `viz/src/theme.css`, with a test that the ramp is warm, darkens step by step and is repeated in the theme (`viz/test/palette.test.ts`)
+- [X] T075 [P] Write `paintGoalSlot` in `viz/src/art/thumbnail.ts` with tests in `viz/test/art.test.ts`: a wooden slot with bevel, socket and rivets, the goal item's sprite in the middle in full color when reached and greyed out when not, an empty slot with no goal
+- [X] T076 Make `Thumbnail.svelte`, `Tile.svelte` and `Row.svelte` show the goal and update `viz/test/presentations.test.ts`
+- [X] T077 Replace the tick boxes with shift-click selection: `toggleSelected` in `viz/src/state/selection.ts`, a highlighted border and background, a screen-reader label, Shift+Enter and Shift+Space, the compare bar's wording, and the tests in `viz/test/compare.test.ts`
+- [X] T078 Draw the table as bevelled wood cells in a dark frame, with an arrow and a riveted output slot, and a one-pixel shadow under each item, in `viz/src/scene/TableScene.ts` (drawing is checked by hand, per the quickstart)
+- [X] T079 Add column headers to the list and make its rows values only: `viz/src/shell/columns.ts` (the shared grid), `ListHeader.svelte`, `Score.svelte` (the large numeral, also on tiles), plain group headings with no collapsing in `Picker.svelte`, names truncated from the start (`truncate-start` in `theme.css`), and the tests in `viz/test/picker.test.ts`
+- [X] T080 [P] Guard against curved corners: remove every `rounded-*` class, clear the radius tokens in `theme.css`, and add `viz/test/no-curves.test.ts`
+- [X] T081 Declutter the browse screen (see the second 2026-10-04 amendment to ADR-004): remove the group heading and mark the grouped and sorted columns with a square and a triangle in `ListHeader.svelte`; remove `CompareRows.svelte`; make `CompareBar.svelte` buttons only; move all help to the footer in `RunCount.svelte`; color the call count (`scoreTone` in `tone.ts`); lay a tile out as in the mock (`Tile.svelte`, `Score.svelte`); tests in `viz/test/picker.test.ts`, `compare.test.ts`, `presentations.test.ts`, `app.test.ts` and `tone.test.ts`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase dependencies
@@ -287,3 +302,11 @@ Task: "Implement src/viz/preview.ts"
 
 - Choices marked "held loosely" in [research.md](research.md) are expected to change as the build teaches us; keep them behind the seams the plan names (`ItemArt`, the view functions, the scene model, the supplier).
 - Commit after each task or logical group. Do not start an agent run or write to NAMS from any task here; nothing in this feature spends usage.
+
+## Round 4 (2026-10-04): blocks, no name column, skill icon
+
+- [X] T082 List rows are flat bevelled blocks with no separators; columns are thumbnail, World, Goal, Calls, Tape, Model, Skill (`viz/src/shell/Row.svelte`, `columns.ts`); the name is a tooltip and screen-reader text only.
+- [X] T083 `SkillIcon.svelte` (pixel icon, dash for none) beside the text `SkillMarker.svelte` kept for the open view; shared facts in `skill.ts`.
+- [X] T084 Stepped sort triangle, no "best N" text, tape cut to three rows of thirty-two (`ListHeader.svelte`, `Score.svelte`, `CallStrip.svelte`).
+- [X] T085 All help moves to `Hints.svelte` under the frame; the frame's size leaves room for it (`theme.css`, `App.svelte`, `RunCount.svelte`).
+- [X] T086 One color language (`viz/src/shell/tone.ts`): green within the ideal, yellow past it, red for a failed run (its score and its last call); the tape and the playback pips use it, and call kinds lose their colors (`CallStrip.svelte`, `RunView.svelte`, `test/tone.test.ts`).

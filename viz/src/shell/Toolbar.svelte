@@ -38,8 +38,8 @@
   }
 
   const describeFilter = (f: Filter): string => `${attributeLabel(f.attr)} ${f.op === "missing" ? "is missing" : `${f.op} ${typeof f.value === "boolean" ? (f.value ? "yes" : "no") : String(f.value)}`}`;
-  const field = "rounded-sm border border-mid-baltic bg-black px-2 py-1 text-light-gray focus-visible:outline-2 focus-visible:outline-light-baltic";
-  const button = "rounded-sm border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic disabled:opacity-40";
+  const field = "border border-mid-baltic bg-black px-2 py-1 text-light-gray focus-visible:outline-2 focus-visible:outline-light-baltic";
+  const button = "border border-mid-baltic px-2 py-1 hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic disabled:opacity-40";
 </script>
 
 <div class="flex flex-col gap-3 border-b border-dark-baltic pb-3 font-mono text-sm">
@@ -114,7 +114,7 @@
   {#if view.filters.length > 0}
     <ul aria-label="Active filters" class="flex flex-wrap gap-2">
       {#each view.filters as f, i (i)}
-        <li class="flex items-center gap-1 rounded-sm bg-dark-baltic px-2 py-1 text-light-baltic">
+        <li class="flex items-center gap-1 bg-dark-baltic px-2 py-1 text-light-baltic">
           <span>{describeFilter(f)}</span>
           <button class="px-1 hover:text-highlight-yellow focus-visible:outline-2 focus-visible:outline-light-baltic" aria-label={`Remove filter: ${describeFilter(f)}`} onclick={() => set({ filters: view.filters.filter((_, j) => j !== i) })}>✕</button>
         </li>

@@ -1,4 +1,5 @@
-import type { ItemArt } from "./sprite.ts";
+import { palette } from "../palette.ts";
+import type { ItemArt, ItemSprite } from "./sprite.ts";
 
 /** The part of a 2D canvas context the painter uses, so tests can pass a recorder. */
 export interface PaintContext {
@@ -43,3 +44,48 @@ export const tableSize = (table: readonly (readonly (string | null)[])[], cell: 
 
 /** Pixels per cell for a grid with `size` cells on its longest side: a multiple of the 8-pixel sprite, smaller as the grid grows. */
 export const cellSizeFor = (size: number): 24 | 16 | 8 => (size <= 3 ? 24 : size <= 6 ? 16 : 8);
+
+/**
+ * The goal slot is twelve units square: the 8-unit sprite, a unit of padding all round, and a one-unit stroke. A unit is `scale`
+ * pixels and is the same size as one pixel of the art, so the stroke is exactly one art pixel wide, at any whole scale.
+ */
+export const SLOT_UNITS = 12;
+export const slotSize = (scale: number): number => SLOT_UNITS * scale;
+
+const channels = (value: string): [number, number, number] => [1, 3, 5].map((i) => Number.parseInt(value.slice(i, i + 2), 16)) as [number, number, number];
+const toCss = (rgb: number): string => `#${rgb.toString(16).padStart(6, "0")}`;
+/**
+ * A color greyed out: its brightness as a grey, nudged a little toward the socket's so it sits in the slot. Darkening alone would lose
+ * the dark sprites in the dark socket; grey keeps every shape readable, and reads at once as "not lit".
+ */
+function greyedOut(color: number): string {
+  const grey = Math.round(0.299 * ((color >> 16) & 0xff) + 0.587 * ((color >> 8) & 0xff) + 0.114 * (color & 0xff));
+  const [r, g, b] = channels(palette.woodDeep).map((d) => Math.round(grey + (d - grey) * 0.3)) as [number, number, number];
+  return toCss((r << 16) | (g << 8) | b);
+}
+
+/**
+ * The goal as a thumbnail: the item the run was asked to make, in a dark socket with a one-art-pixel stroke. A run that
+ * reached it shows the item in its own colors; any other shows the same item greyed out. Whatever the
+ * outcome, runs for the same goal look alike, so a list groups by sight. Drawn into a 2D canvas once, so a list of hundreds
+ * holds no WebGL context. With no sprite (a run that does not name its goal) it is an empty socket.
+ */
+export function paintGoalSlot(ctx: PaintContext, sprite: ItemSprite | undefined, options: { scale: number; reached: boolean }): void {
+  const k = Math.max(1, Math.floor(options.scale));
+  const rect = (x: number, y: number, w: number, h: number, color: string): void => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x * k, y * k, w * k, h * k);
+  };
+  const U = SLOT_UNITS;
+  rect(0, 0, U, U, palette.woodShade); // the stroke: one art pixel, all round
+  rect(1, 1, U - 2, U - 2, palette.woodDeep); // the socket
+  if (!sprite) return;
+  const at = 2; // past the stroke and one unit of padding
+  for (let py = 0; py < sprite.height; py++) {
+    for (let px = 0; px < sprite.width; px++) {
+      const color = sprite.pixels[py * sprite.width + px];
+      if (color === null || color === undefined) continue;
+      rect(at + px, at + py, 1, 1, options.reached ? toCss(color) : greyedOut(color));
+    }
+  }
+}

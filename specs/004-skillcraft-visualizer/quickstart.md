@@ -28,10 +28,11 @@ Open the printed URL (the Claude desktop browser pane or any browser). Check aga
 | Group by `world` | 1 | each world once, with its runs; an unfinished or unreadable run shows its reason and cannot be opened |
 | Point the process at one experiment folder, then at a single run folder | 1 | the runs inside are listed in each case |
 | Group by `modelRan`, sort by `actionCalls`, filter `outcome is reached` | 3 | the list follows; runs lacking an attribute sit in a labelled group |
-| Toggle grid and list | 3 | the same runs in the same order; the list adds detail |
-| Open a finished run | 2 | start state, paused; step with the arrow keys; refusals look different from crafts; the end shows the outcome |
-| Tick two runs, Compare | 4 | two tables, independent playback; works for different goals or worlds |
-| Open a run with a skill that was loaded late, one never loaded, one with no skill | 5 | three different markers; no skill text anywhere |
+| Toggle grid and list | 3 | the same runs in the same order; the list adds column headers (World, Goal, Calls, Tape, Model, Skill) and each row is a flat bevelled block with no separator and no name column; no group headings: the grouped column's name has a yellow square and the sorted column's a stepped triangle; calls are a large numeral and the tape (at most three rows) uses the same colors as the playback pips: green within the best number of calls, yellow past it, red for a failed run's score and its last call; all help is under the frame |
+| Open a finished run | 2 | start state, paused; step with the arrow keys; pips are green to the best count, yellow after, and a failed run's last is red; refusals look different from crafts (by text style, not color); the end shows the outcome |
+| Shift-click two runs, Open both tables | 4 | selected runs get a yellow border and background and stay where they are (no checkboxes, no panel, no count); "Open both tables" appears with two selected; two tables, independent playback; works for different goals or worlds. Shift+Enter on a focused run selects it too |
+| Look at runs that missed their goal | 3 | the thumbnail is the goal item in a wooden slot, greyed out; runs for one goal look alike |
+| Open a run with a skill that was loaded late, one never loaded, one with no skill | 5 | three different pixel icons (solid, outline, extra corner pixel) and a dash in the list for none; the wording is only in the tooltip and the open view |
 | Turn off the network, reload | all | the page still works (fonts and sprites are bundled) |
 
 ## 3. Static host
