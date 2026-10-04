@@ -42,13 +42,23 @@ export interface AgentRunOptions {
   skill?: string | undefined;
   /** One fixed sentence added to the end of the base prompt, for an arm that points at the skill. */
   promptNote?: string | undefined;
+  /**
+   * Replace the base prompt with this text, in which `{what}` (one item, or n of it; required by the command, since it carries the quantity), `{item}` and `{turns}` are filled in.
+   * For testing a reworded prompt: every arm of an experiment must use the same base prompt (ADR-003), so a run with a
+   * template is only comparable with runs that used the same one. `prompt.txt` records the text actually sent.
+   */
+  promptTemplate?: string | undefined;
   /** How the agent is run. Default: the Claude Agent SDK, loaded only when needed. */
   driver?: AgentDriver | undefined;
 }
 
 /** The goal reaches the agent only through this prompt; the world never states goals. */
-export function buildPrompt(goal: SolverGoal, maxTurns: number, note?: string): string {
+export function buildPrompt(goal: SolverGoal, maxTurns: number, note?: string, template?: string): string {
   const what = goal.qty === 1 ? `one ${goal.item}` : `${goal.qty} of ${goal.item}`;
+  if (template !== undefined) {
+    const text = template.replaceAll("{what}", what).replaceAll("{item}", goal.item).replaceAll("{turns}", String(maxTurns)).trim();
+    return [text, ...(note === undefined ? [] : [note])].join("\n");
+  }
   return [
     `You are at a crafting table in an unfamiliar workshop. Your goal: end up holding ${what}.`,
     "Use only the craft tools, and start with help.",
@@ -144,7 +154,7 @@ const noSink: DriverSink = { onMessage: () => {}, onToolStart: () => {}, onToolE
 /** What a run would do, without running or creating anything (a dry run). */
 export function planExperiment(o: AgentRunOptions) {
   const priorFit = priorFitOf(o.world);
-  const prompt = buildPrompt(o.goal, o.maxTurns, o.promptNote);
+  const prompt = buildPrompt(o.goal, o.maxTurns, o.promptNote, o.promptTemplate);
   return Array.from({ length: o.runs }, (_, i) => {
     const dir = runDir(o, i + 1);
     const runLog = resolve(dir, "run.jsonl");
@@ -194,7 +204,7 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
   mkdirSync(dir, { recursive: true });
   const runLog = resolve(dir, "run.jsonl");
   const tracePath = join(dir, "trace.jsonl");
-  const prompt = buildPrompt(o.goal, o.maxTurns, o.promptNote);
+  const prompt = buildPrompt(o.goal, o.maxTurns, o.promptNote, o.promptTemplate);
   const requested = o.model ?? null;
   writeFileSync(join(dir, "mcp.json"), `${JSON.stringify(mcpConfigFor(resolve(o.world), runLog), null, 2)}\n`);
   writeFileSync(join(dir, "prompt.txt"), `${prompt}\n`);

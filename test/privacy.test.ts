@@ -7,8 +7,12 @@ import { buildBundle } from "../src/harness/export.js";
 import type { AgentDriver, DriverSink } from "../src/harness/driver.js";
 import { runExperiment } from "../src/harness/run.js";
 import { readTrace } from "../src/trace/lines.js";
+import { createLoopFolder, writeLoopRecord } from "../src/loop/record.js";
+import { runLoop } from "../src/loop/loop.js";
 import { fakePlayer, type FakePersonal } from "./helpers/fake-player.js";
 import { finishedRun, stampScore } from "./helpers/finished-run.js";
+import { fakeRole } from "./helpers/fake-role.js";
+import { candidate, recording, revision, rubric, verdict } from "./helpers/loop-fixtures.js";
 
 // Invented values, distinctive enough that finding one anywhere is a leak.
 const PERSONAL: FakePersonal = {
@@ -143,5 +147,57 @@ describe("a bundle's manifest fields for the visualizer", () => {
     expect(Object.keys(bundle.manifest.skill ?? {}).sort()).toEqual(["loaded", "loadedAfter", "name"]);
     const text = JSON.stringify(bundle);
     for (const secret of [...SECRETS, SKILL_TEXT, FINGERPRINT]) expect(text, secret).not.toContain(secret);
+  });
+});
+
+describe("model-authored review text stays in the loop folder (spec 005, FR-018)", () => {
+  const MARK = "MODEL-AUTHORED-MARK-5150";
+  const FREEFORM = "FREEFORM-ROLE-TEXT-9090";
+
+  async function runWith(script: unknown[], runsDir: string) {
+    const r = await runLoop({
+      candidate: candidate(),
+      recordings: [recording("001", 13)],
+      rubric,
+      criticModel: "claude-test-critic",
+      reviserModel: "claude-test-reviser",
+      role: fakeRole(script as never[]).driver,
+      maxRounds: 3,
+      maxUsd: 1,
+      signal: new AbortController().signal,
+    });
+    const dir = createLoopFolder(mkdtempSync(join(tmpdir(), "skill-craft-loops-")), "p", [runsDir]);
+    writeLoopRecord(r, { dir, label: "p", mode: "candidate", runs: [runsDir], models: { critic: "claude-test-critic", reviser: "claude-test-reviser" } });
+    return { r, dir };
+  }
+
+  it("puts review text under rounds/ and skill/ only, and none in the run folders the loop read", async () => {
+    // A run folder the loop read, made by the scripted player.
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "solve", goal: GOAL }) });
+    const runDir = join(out, "p", "001");
+    const before = filesUnder(runDir);
+
+    const { dir } = await runWith([verdict("revise", MARK), revision(MARK), verdict("accept", MARK)], runDir);
+    const files = filesUnder(dir);
+    const holding = Object.keys(files).filter((p) => files[p]!.includes(MARK));
+    expect(holding.length).toBeGreaterThan(0); // positive control: the text really was written somewhere
+    for (const p of holding) expect(p.startsWith("rounds/") || p.startsWith("skill/"), p).toBe(true);
+    expect(files["loop.json"]).not.toContain(MARK);
+
+    expect(filesUnder(runDir)).toEqual(before); // the loop wrote nothing into the run folder
+    for (const text of Object.values(filesUnder(out))) expect(text).not.toContain(MARK);
+  });
+
+  it("keeps a failed role's free-form text, and the agent's own words, out of every file and every reason", async () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
+    const { r, dir } = await runWith([{ overall: "maybe", note: FREEFORM }], out);
+    expect(r.failed).toBe(true);
+    expect(r.reason).toBe("VerdictInvalid: the critic's answer does not match the verdict schema");
+    for (const [p, text] of Object.entries(filesUnder(dir))) expect(text, p).not.toContain(FREEFORM);
+    expect(JSON.stringify(r)).not.toContain(FREEFORM);
+
+    const failed = await runWith([{ fail: `DriverFailed: the role reached its spend cap` }], out);
+    expect(failed.r.reason).toBe("RoleFailed: a role call failed: DriverFailed: the role reached its spend cap");
   });
 });

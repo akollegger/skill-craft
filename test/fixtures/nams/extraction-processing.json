@@ -1,0 +1,24 @@
+{
+  "messages": [
+    {
+      "attempts": 1,
+      "error": null,
+      "id": "m1",
+      "lastRunAt": "2026-10-04T00:00:00.000Z",
+      "role": "user",
+      "status": "processing"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "id": "m2",
+      "lastRunAt": null,
+      "role": "assistant",
+      "status": "pending"
+    }
+  ],
+  "summary": {
+    "pending": 1,
+    "processing": 1
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "critic": "claude-sonnet-5-5",
+  "skills": {
+    "prose-combined": {
+      "rubric": {
+        "generalOrSpecific": {"value": "generic-to-the-point-of-empty", "reason": "Every claim is either a truism about crafting ('craft is irreversible and consumes whatever is on the table', 'check inventory') or a restatement of the goal ('stone_pickaxe is the target object'). No rule about recipes, and no fact about this world's items."},
+        "oneTaskOrSeveral": {"value": "one task in name, none in substance", "reason": "Named for stone_pickaxe and the exemplar covers it, but nothing task-specific (no ingredients or layout) is recorded, so it neither covers the task nor several."},
+        "decomposable": {"value": "no, nothing to split", "reason": "Three procedure bullets (help, prepare, craft+verify) are one generic workflow; there is no substantive content to factor into smaller skills."},
+        "leadsWithDiscoveredFact": {"value": "no, replays routine", "reason": "First procedure line is 'Begin ... by running the craft help operation'; SKILL.md body is only pointers to references. No discovered fact leads or appears anywhere."},
+        "recordsDifferenceFromCommonKnowledge": {"value": "no", "reason": "'Irreversible', 'check inventory before and after', 'report briefly and stop' are what any capable model does. Nothing says how this world's recipes or the grid matching differ from expectation."},
+        "descriptionWillBeFound": {"value": "partly", "reason": "Description names stone_pickaxe and the craft tools, so it would load for that exact goal; but it starts with the odd 'mcp stone-pickaxe crafting', is useless for any other target, and 'When to use' in SKILL.md only says 'See references', so the trigger text is not in the body."}
+      },
+      "overall": "reject",
+      "reasons": "Contains no actionable knowledge. It never states what goes on the table, in what layout, or what the recipe is, which is the only thing a weak model cannot guess. Claims are grounded (score 1.0, evidence ids per claim) but grounded in generic behaviour, so grounding adds no value. Internal issues: 'exploratory state checks should precede the final craft' is advice to inspect, yet nothing says what to inspect for; 'When to use' section contains no conditions; the 'Worked example' is a one-line outcome with no content to imitate; SKILL.md body duplicates the description verbatim. A student following it would do what it would have done unaided.",
+      "proposedRevisions": [
+        "Remove all three procedure bullets and the exemplar sentence: they restate generic tool usage (help, inventory, craft, verify, stop).",
+        "Add the discovered fact the package lacks: the exact stone_pickaxe recipe as used in the successful run (which items, how many, and in which grid cells/layout, and whether position matters). NEEDED FACT: the successful place/craft sequence (items and row/col per place call). The package does not contain it; do not invent it.",
+        "Add what this world does differently from common knowledge, if anything: e.g. whether the recipe differs from the familiar one, whether the matcher is position sensitive, whether the craft refuses on partial grids and how. NEEDED FACT: observed craft refusal messages or divergences from expected recipes.",
+        "Add what the craft/place tools return (the 'craftable' flag on place appears in the graph skill's output schema) and state that it can be used to know a grid is valid before committing, if the recordings support it. NEEDED FACT: confirmation of what 'craftable' means.",
+        "Rewrite description to state the trigger and the payload: 'Exact recipe and grid layout for stone_pickaxe at the 3x3 craft table; use when asked to hold a stone_pickaxe or when crafting a tool needing sticks and stone-like materials' (the latter only if supported).",
+        "Fill the 'When to use' section with an actual condition instead of a pointer to references.",
+        "If no recipe fact can be extracted from the recordings, do not publish this skill."
+      ]
+    },
+    "graph-single-001": {
+      "rubric": {
+        "generalOrSpecific": {"value": "generic procedure with a specific name", "reason": "Steps are 'Read crafting help', 'Inspect inventory', 'Arrange materials', 'Craft the pickaxe'. Step 3 says 'put the required materials into the crafting-table layout' without saying which; this is a template, not a rule or a fact."},
+        "oneTaskOrSeveral": {"value": "one task", "reason": "Frames a single goal (stone_pickaxe) in a four-step chain; the tool steps themselves would apply to any craft."},
+        "decomposable": {"value": "trivially, but not usefully", "reason": "Four tool calls form a linear DAG (all branch 'seq'); each step is one tool call, so decomposition yields nothing reusable beyond the tool names."},
+        "leadsWithDiscoveredFact": {"value": "no, replays routine", "reason": "Leads with 'Call mcp__craft__help' and 'Call mcp__craft__inventory'. This is the teacher's exploration order, not a learned fact."},
+        "recordsDifferenceFromCommonKnowledge": {"value": "no", "reason": "Nothing contrasts this world with expectation. The only non-obvious content is tool names and parameter names (col, item, row), which the tool's own schema and help already give."},
+        "descriptionWillBeFound": {"value": "partly", "reason": "'explore a crafting table and assemble a stone pickaxe ... obtain and hold a stone_pickaxe' matches the goal wording; but it begins with 'Claude Code:' (irrelevant, and wrong for a weaker model) and promises assembly it does not deliver."}
+      },
+      "overall": "revise",
+      "reasons": "Slightly more useful than the prose skill because it gives concrete tool names, parameter names (row, col, item) and output keys (craftable, grid, ok), and structures place before craft. But the decisive content is missing: step 3's inputs are '...' placeholders (`mcp__craft__place(col=..., item=..., row=...)`), so the student is told to place 'the required materials' without being told which. Internal problems: step 1 and 2 'done when' conditions are just 'call returns success'; step 2 'Inspect inventory' is mandated though nothing shows it matters; 'outputs: coordinates, preview, tools, world' for help are field names with no meaning; the 'Tool call templates' and 'Success criteria & anti-patterns' sections appear only in references/procedures.md and not SKILL.md, and the 'anti-patterns' heading has no anti-patterns; procedure.schema.json is generator plumbing that a student does not need and spends context. Claim 'The successful trace uses place operations to prepare the table' is grounded but trivial. The step grounding lists up to 11 evidence ids for 'Arrange materials', suggesting multiple placements were recorded, so the recipe likely exists in the source data and was dropped in distillation.",
+      "proposedRevisions": [
+        "Replace step 3's generic text with the actual placements: a table of (item, row, col) for each place call that preceded the successful craft. NEEDED FACT: the item names and cell coordinates from the successful run (the package's 11 evidence ids for step-003 point at them, but their content is not in the package).",
+        "State the discovered rule explicitly: craft consumes the whole grid contents and matches a recipe, so stray items or wrong layout ruin it. Mark which is a measured fact versus an inference. NEEDED FACT: whether position matters, and whether a mismatched craft consumed items or was refused.",
+        "Lead SKILL.md with the recipe/layout, then the short tool sequence. Delete 'Read crafting help' and 'Inspect inventory' as mandatory steps, or reduce them to one line ('check inventory to see what you hold') if recordings show items had to be gathered.",
+        "Change the description to start with the deliverable: 'Recipe and 3x3 layout for stone_pickaxe at the crafting table (place items with row/col, then craft)'. Drop 'Claude Code:' and 'explore'.",
+        "Delete references/procedure.schema.json, the empty 'anti-patterns' heading and the placeholder call templates (col=..., item=..., row=...), or fill them with real values.",
+        "Add the failure behaviour if known: what `place` returns when craftable is false and what to do next. NEEDED FACT: observed error/refusal outputs; do not invent them.",
+        "Strengthen 'done when' for craft: inventory shows 1 stone_pickaxe (the prose skill states this check; the graph version only checks that craft returned success)."
+      ]
+    }
+  }
+}

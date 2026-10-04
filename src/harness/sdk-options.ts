@@ -1,6 +1,8 @@
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import type { HookCallback, HookCallbackMatcher, HookEvent, Options } from "@anthropic-ai/claude-agent-sdk";
 import type { DriverOptions, DriverSink, PlayerResult } from "./driver.js";
+import type { RoleOptions, RoleResult } from "./role-driver.js";
 import { REPO } from "./paths.js";
 
 // Type-only imports above: loading this file never loads the SDK, so dry runs and tests stay light.
@@ -119,5 +121,62 @@ export function playerResultFrom(
     // For an error result the "result" is the player's error message, not something the agent said.
     text: ended === "error" ? "" : (str(result["result"]) ?? ""),
     ...(ctx.skillLoadedAfterCalls === undefined ? {} : { skillInvoked: ctx.skillLoadedAfterCalls !== null, skillLoadedAfterCalls: ctx.skillLoadedAfterCalls }),
+  };
+}
+
+/**
+ * The options for one critic or reviser call: no tools, no servers, no plugins, no hooks and no settings, so the role
+ * can see only its prompt, and a schema its answer must match under a spend cap. The working folder is an empty
+ * system folder, not the repository.
+ */
+export function roleOptionsFor(opts: RoleOptions): Options {
+  const abortController = new AbortController();
+  if (opts.signal.aborted) abortController.abort();
+  else opts.signal.addEventListener("abort", () => abortController.abort(), { once: true });
+  return {
+    cwd: tmpdir(),
+    tools: [],
+    strictMcpConfig: true,
+    settingSources: [],
+    persistSession: false,
+    maxTurns: 4,
+    maxBudgetUsd: opts.maxUsd,
+    model: opts.model,
+    ...(opts.system === undefined ? {} : { systemPrompt: opts.system }),
+    outputFormat: { type: "json_schema", schema: opts.schema },
+    abortController,
+  };
+}
+
+/**
+ * A role's result from the SDK's result message. Only fixed text and closed codes reach a reason; what the role said
+ * is never read. A figure the player did not report is null.
+ */
+export function roleResultFrom(result: Record<string, unknown>, ctx: { requestedModel: string; initModel: string | null }): RoleResult {
+  const n = (v: unknown): number | null => (typeof v === "number" ? v : null);
+  const usage = isObject(result["usage"]) ? result["usage"] : {};
+  const modelUsage = isObject(result["modelUsage"]) ? Object.keys(result["modelUsage"]) : [];
+  const subtype = str(result["subtype"]);
+  const terminal = code(result["terminal_reason"]);
+  const answer = result["structured_output"];
+  const ok = subtype === "success" && result["is_error"] !== true && answer !== undefined && answer !== null;
+  const reason =
+    subtype === "error_max_budget_usd" ? "DriverFailed: the role reached its spend cap"
+    : subtype === "error_max_structured_output_retries" ? "DriverFailed: the role could not give the requested format"
+    : subtype === "success" && result["is_error"] !== true ? "DriverFailed: the role gave no structured answer"
+    : `DriverFailed: the role ended with an error result${terminal === undefined ? "" : ` (${terminal})`}`;
+  return {
+    ok,
+    ...(ok ? { answer } : { reason }),
+    requestedModel: ctx.requestedModel,
+    resolvedModel: ctx.initModel ?? (modelUsage.length === 1 ? (modelUsage[0] ?? null) : null),
+    tokens: {
+      input: n(usage["input_tokens"]),
+      output: n(usage["output_tokens"]),
+      cacheRead: n(usage["cache_read_input_tokens"]),
+      cacheCreation: n(usage["cache_creation_input_tokens"]),
+    },
+    costUsd: n(result["total_cost_usd"]),
+    durationMs: n(result["duration_ms"]),
   };
 }

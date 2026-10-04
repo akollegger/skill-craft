@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { parseArgs } from "node:util";
 import { loadWorld } from "../sim/loader.js";
@@ -16,9 +17,21 @@ export interface CliDeps {
 
 const USAGE =
   "usage: run-agent.ts --goal <item>[:<qty>] [--world <world.json>] [--runs n] [--max-turns n] [--timeout-minutes n]\n" +
-  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--record] [--dry-run]";
+  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--prompt-file <file>] [--record] [--dry-run]";
 
 class UsageError extends Error {}
+
+/** The base prompt from a file, for testing a reworded one. Must be non-empty and state the whole goal, quantity included, with {what}. */
+function readTemplate(path: string): string {
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch {
+    throw new UsageError(`--prompt-file ${path} cannot be read`);
+  }
+  if (text.trim() === "" || !text.includes("{what}")) throw new UsageError("--prompt-file must be non-empty and name the whole goal with {what} ({item} alone leaves out the quantity)");
+  return text;
+}
 
 const positive = (name: string, text: string | undefined): number => {
   const n = Number(text);
@@ -62,6 +75,7 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
         model: { type: "string" },
         skill: { type: "string" },
         "prompt-note": { type: "string" },
+        "prompt-file": { type: "string" },
         record: { type: "boolean", default: false },
         "dry-run": { type: "boolean", default: false },
       },
@@ -72,6 +86,8 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
     if (!world.items.some((i) => i.id === item)) throw new UnknownGoalItem(item);
     const note = values["prompt-note"];
     if (note !== undefined && note.trim() === "") throw new UsageError("--prompt-note must not be empty");
+    const promptFile = values["prompt-file"];
+    const template = promptFile === undefined ? undefined : readTemplate(promptFile);
     const minutes = Number(values["timeout-minutes"]);
     if (!Number.isFinite(minutes) || minutes <= 0 || minutes * 60_000 > MAX_TIMEOUT_MS) {
       throw new UsageError(`--timeout-minutes must be a number greater than 0 and at most ${Math.floor(MAX_TIMEOUT_MS / 60_000)}`);
@@ -88,6 +104,7 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
       ...(values.model ? { model: values.model } : {}),
       ...(values.skill ? { skill: values.skill } : {}),
       ...(note === undefined ? {} : { promptNote: note }),
+      ...(template === undefined ? {} : { promptTemplate: template }),
       record: values.record ?? false,
       driver: deps.driver,
       signal: deps.signal,

@@ -1,0 +1,39 @@
+{
+ "critic":"claude-sonnet-5-5",
+ "rubric":{
+  "generalOrSpecific":{"value":"specific, appropriately","reason":"Title and body target one goal (stone_pickaxe) and one table; 'These are facts about this table's world; another world's recipes may differ' scopes it honestly. The only general content is the verify-with-craftable habit, which is shown by the recordings."},
+  "oneTaskOrSeveral":{"value":"one task","reason":"'Holding a stone_pickaxe' is a single goal; the description also names oak_planks and sticks, but these are steps of the same chain, not separate tasks."},
+  "decomposable":{"value":"yes","reason":"The table 'The chain that worked (three crafts, in this order)' gives each craft with placement, expected craftable and output, so a weak model can run and check one step at a time."},
+  "leadsWithDiscoveredFact":{"value":"yes, mostly","reason":"'In short: craft oak_log into oak_planks, two oak_planks into sticks, then three cobblestone over two sticks into the pickaxe' opens the body. Quantity multipliers (1 log gives 4 planks, 2 planks give 4 sticks) are only in the table, not in the lead."},
+  "recordsDifferenceFromCommonKnowledge":{"value":"adequately, without outside comparison","reason":"It records only what the recordings show: the exact cell coordinates, the 4x yields, the stick column placement, and that mid-build 'craftable: null' is normal. It correctly refrains from comparing to other games."},
+  "descriptionWillBeFound":{"value":"likely yes","reason":"Description names stone_pickaxe, oak_planks, sticks, 3x3 crafting table, craftable and the chain; it matches the likely task wording. It says 'Use when you need...', which is a trigger phrase."}
+ },
+ "factCheck":[
+  {"claim":"3 identical runs, same calls and outputs; 002 and 003 match 001 call for call","status":"SHOWN","source":"stone-001/002/003 calls 1-13 identical"},
+  {"claim":"Grid 3x3, zero-based, row 0 top, col 0 left","status":"SHOWN","source":"run 001 call 1 (grid 3x3, coordinates)"},
+  {"claim":"Starting inventory cobblestone 6, iron_ingot 6, oak_log 3; iron_ingot never used","status":"SHOWN","source":"run 001 call 2; no iron_ingot in any call"},
+  {"claim":"Craft 1: oak_log at (0,0) shows oak_planks, gives oak_planks x4","status":"SHOWN","source":"run 001 calls 3-4"},
+  {"claim":"Craft 2: oak_planks at (0,0) and (1,0) shows stick, gives stick x4","status":"SHOWN","source":"run 001 calls 5-7"},
+  {"claim":"Craft 3: cobblestone (0,0),(0,1),(0,2) + stick (1,1),(2,1) shows stone_pickaxe, gives x1","status":"SHOWN","source":"run 001 calls 8-13"},
+  {"claim":"Each craft was done with the table otherwise empty","status":"SHOWN","source":"grids in calls 3, 6, 12 contain only the listed items; craft consumes the table (call 1)"},
+  {"claim":"Crafted items were available to place later, which suggests craft puts them in inventory; not confirmed","status":"SHOWN","source":"calls 4->5, 7->11; no inventory call after a craft. Hedge is honest and accurate."},
+  {"claim":"craftable present in every place result","status":"SHOWN","source":"every place output in runs 001-003"},
+  {"claim":"craftable null: one oak_planks alone (call 5); 1-3 cobblestone in row 0 (calls 8-10); three cobblestone plus one stick at (1,1) (call 11)","status":"SHOWN","source":"run 001 calls 5, 8, 9, 10, 11"},
+  {"claim":"In every recorded case more items were added after a null; no null that stayed null observed","status":"SHOWN","source":"all nulls in calls 5, 8-11 followed by further placement; honest and useful hedge"},
+  {"claim":"Every craft was made only after craftable named its output","status":"SHOWN","source":"calls 3->4, 6->7, 12->13"},
+  {"claim":"Tool says craft 'consumes everything on the table' and is irreversible; place/remove/clear only move items between inventory and table","status":"SHOWN","source":"run 001 call 1 purposes"},
+  {"claim":"look changes nothing","status":"SHOWN","source":"run 001 call 1 (look never called)"},
+  {"claim":"remove and clear never called; no refused place or error seen; other arrangements not tried","status":"SHOWN","source":"absent from all three runs"},
+  {"claim":"Start of 3 oak_log and 6 cobblestone limits how many times a step can be repeated","status":"INFERRED","source":"arithmetic on the start inventory; reasonable, mild, and presented as a limit rather than a fact about recipes"},
+  {"claim":"If the chain does not give craftable stone_pickaxe in your world, use place/remove/clear to try a variant","status":"INFERRED","source":"advice; supported by tool descriptions but variants never tried. Labelled as advice, acceptable."},
+  {"claim":"Stopping condition: inventory or craft result shows stone_pickaxe x1","status":"SHOWN","source":"run 001 call 13 craft result"}
+ ],
+ "overall":"accept",
+ "reasons":"Every concrete claim traces to the three identical recordings. Inferences are marked and hedged honestly; the unknowns section is accurate and tells a weak model what not to assume. The chain is stepwise, verifiable by craftable, and scoped to this world. Remaining issues are cosmetic: the yields (1 log gives 4 planks, 2 planks give 4 sticks) and the practical consequence for leftovers are not in the lead; a small wording tightening in the description; the 'one oak_planks alone yields null' point could be made explicit as a warning that mid-build null is expected.",
+ "proposedRevisions":[
+  "Optional: in the 'In short' line add yields: 'one oak_log gives 4 oak_planks; two oak_planks give 4 sticks; the pickaxe takes 3 cobblestone and 2 sticks'.",
+  "Optional: add one sentence under 'Verify before every craft': 'While building, null is expected until the last item is placed; wait for the final placement before concluding anything.' (shown by calls 5, 8-11, and already implied).",
+  "Optional: description says 'Use when you need a stone_pickaxe, oak_planks or sticks at the 3x3 crafting table'; fine, no change required.",
+  "No further changes worth making; the skill is limited honestly to the recordings."
+ ]
+}
