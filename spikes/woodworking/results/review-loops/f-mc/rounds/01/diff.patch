@@ -1,0 +1,95 @@
+--- round-1/SKILL.md
++++ round-2/SKILL.md
+@@ -1,25 +1,32 @@
+ ---
+ name: wooden-pickaxe-crafting
+-description: Load when you must end up holding one wooden_pickaxe using only the craft tools (place, remove, clear, look, craft) at a 3x3 crafting table in a workshop.
++description: Load when you must end up holding one wooden_pickaxe at the 3x3 workshop crafting table using only help, inventory, look, place, remove, clear and craft. Gives the verified recipe chain (log, planks, sticks, pickaxe) and layouts.
+ ---
+ 
+-Start inventory: cobblestone 6, iron_ingot 6, oak_log 3. Only oak_log is needed. Cells are (row, col), zero-based, row 0 at top. Craft consumes everything on the table, so craft only when the preview matches.
+-
+-1. Place oak_log at (0,0). Preview: craftable "oak_planks". Craft: 4 oak_planks.
+-2. Place oak_planks at (0,0) (preview null), then oak_planks at (1,0). Preview: "stick". Craft: 4 sticks. (2 planks are left over.)
+-3. Place oak_log at (0,0). Preview: "oak_planks". Craft: 4 more oak_planks (6 in total).
+-4. Place oak_planks at (0,0), (0,1), (0,2). Preview after the third: "oak_slab". This is a trap: do NOT craft yet, the slab wastes planks.
+-5. Place stick at (1,1) (preview null), then stick at (2,1). Preview: "wooden_pickaxe".
+-6. Craft: 1 wooden_pickaxe. Done; stop.
++Wooden pickaxe layout (3x3 table, cells are (row, col), zero-based, row 0 top):
+ 
+-Layout at the final craft:
+ ```
+ row 0: planks planks planks
+ row 1: -      stick  -
+ row 2: -      stick  -
+ ```
++Crafting this gives 1 wooden_pickaxe.
+ 
+-Hazards:
+-- Craft only crafts what the table matches at that moment; check `craftable` in the preview first.
+-- With three planks across the top row, the preview reads oak_slab until the sticks are placed; keep going.
+-- Only 3 logs exist and 2 are used; do not spend logs on anything else.
++Prerequisite recipes (each verified):
++- 1 oak_log alone on the table (any cell tried: (0,0)) -> craft gives 4 oak_planks.
++- 2 oak_planks stacked vertically at (0,0) and (1,0) -> craft gives 4 sticks.
++
++Start inventory: cobblestone 6, iron_ingot 6, oak_log 3. Cobblestone and iron_ingot are not needed. The chain uses 2 logs.
++
++Craft consumes everything on the table, and crafted items go to your inventory, so after each craft the table is empty and you must place items again.
++
++Steps:
++1. Place oak_log (0,0); craft -> 4 planks.
++2. Place planks at (0,0) and (1,0); craft -> 4 sticks (2 planks remain).
++3. Place oak_log (0,0); craft -> 4 more planks (6 total).
++4. Place planks at (0,0), (0,1), (0,2). The preview says "oak_slab" here; that is only an intermediate match, so do not craft.
++5. Place sticks at (1,1) and (2,1). Preview becomes "wooden_pickaxe". Craft. Done.
++
++Notes:
++- The preview `craftable` is null for partial layouts (e.g. one plank alone); this is normal. Craft only when it names what you want.
++- Placing one unit per call; check `craftable` after each place.
+--- round-1/references/provenance.md
++++ round-2/references/provenance.md
+@@ -4,18 +4,35 @@
+ 
+ - Start inventory cobblestone 6, iron_ingot 6, oak_log 3: run 001 call 2 (same in runs 002, 003).
+ - Grid 3x3, zero-based, row 0 top: run 001 call 1.
+-- oak_log at (0,0) previews oak_planks; craft gives 4: run 001 calls 3-4 (and 8-9).
++- oak_log at (0,0) previews oak_planks; craft gives 4: run 001 calls 3-4 and 8-9.
+ - Planks at (0,0) preview null; plus (1,0) previews stick; craft gives 4 sticks: run 001 calls 5-7.
+ - Top row of three planks previews oak_slab: run 001 call 12.
+ - Sticks at (1,1) (null) and (2,1) previews wooden_pickaxe; craft gives qty 1: run 001 calls 13-15.
+ - Same sequence in run 002 calls 3-15 and run 003 calls 3-15.
++- Table is empty after craft (re-placing is needed): run 001 calls 4-5, 9-10.
+ 
+-## Uncited changes
+-- "Slab wastes planks" and "2 planks left over / 6 in total" are inferred from quantities (4-2+4=6, minus 3), not shown directly. No run crafted the slab.
+-- "Do not spend logs on anything else" is advice inferred from the inventory of 3 logs.
++## Inferred, not directly shown
++- 2 planks remain after sticks, 6 total after second log: arithmetic (4-2+4).
++- Cobblestone and iron_ingot unused: no run used them.
+ 
+ ## Not known
+-- Whether other layouts (e.g. different columns) make a pickaxe; only this one was tried.
+-- What a slab craft consumes or yields; what cobblestone and iron_ingot do.
+-- Whether sticks can be made from fewer planks or by another layout.
+-- Whether using one fewer log is possible (all runs used 2 logs).
++- Whether other layouts or other cells make a pickaxe or planks/sticks; only this one was tried. Cheap check: place and read `craftable` without crafting.
++- What an oak_slab craft consumes or yields (never crafted); whether it wastes planks.
++- What cobblestone and iron_ingot craft into.
++- Whether fewer logs suffice (all runs used 2).
++
++## Change record
++
++Every change, with the sources the harness checked against the recordings.
++
++- Led SKILL.md with the final pickaxe layout and the two prerequisite recipes, then the steps: run 001 call 14, run 001 call 15, run 001 call 4, run 001 call 7
++- Removed the claim that the slab wastes planks; now says slab preview is only an intermediate match, do not craft: run 001 call 12
++- Removed 'do not spend logs' advice; noted cobblestone and iron_ingot unused (inferred, listed in provenance): run 001 call 2
++- Added note that preview null at partial layouts is normal and table is empty after craft so items must be re-placed: run 001 call 5, run 001 call 10, run 001 call 11
++- Provenance: added not-known items with cheap checks and the re-place citation: no source
++
++## Uncited changes
++
++These changes have no recorded source.
++
++- Provenance: added not-known items with cheap checks and the re-place citation (Rules 2 and 4)

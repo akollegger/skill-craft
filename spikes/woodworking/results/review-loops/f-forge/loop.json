@@ -1,0 +1,54 @@
+{
+  "label": "f-forge",
+  "mode": "candidate",
+  "runs": [
+    "runs/b-forge-sonnet/003",
+    "runs/b-forge-sonnet/005"
+  ],
+  "rubric": {
+    "version": "1",
+    "sha256": "a6e33cf720e4b20e8cc767666d49f29375452d86beec3e1e1cf8e8c2cadc5c5e"
+  },
+  "models": {
+    "critic": {
+      "requested": "claude-sonnet-5-5",
+      "resolved": [
+        "claude-sonnet-5-5"
+      ]
+    },
+    "reviser": {
+      "requested": "claude-sonnet-5-5",
+      "resolved": []
+    }
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "skillSha256": "8422490840680498363483799e621ffebd8261eb9452a7552c1fa35330169aa6",
+      "overall": "accept"
+    }
+  ],
+  "outcome": "accept",
+  "reason": "the critic accepted the skill",
+  "failed": false,
+  "stages": [
+    {
+      "stage": "critic-1",
+      "startedAt": 1791113869455,
+      "endedAt": 1791113877555,
+      "durationMs": 8100,
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": "claude-sonnet-5-5"
+      },
+      "tokens": {
+        "input": 2,
+        "output": 757,
+        "cacheRead": 1551,
+        "cacheCreation": 39093
+      },
+      "costUsd": 0.16425620000000002
+    }
+  ],
+  "cancelled": false
+}

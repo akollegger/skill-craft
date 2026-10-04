@@ -1,0 +1,40 @@
+{
+  "rubric": {
+    "version": "1",
+    "sha256": "a6e33cf720e4b20e8cc767666d49f29375452d86beec3e1e1cf8e8c2cadc5c5e"
+  },
+  "verdict": {
+    "overall": "accept",
+    "questions": {
+      "generality": {
+        "value": "one recipe, right level",
+        "reason": "It is specific to glirol (two lugli), which is the only goal the recordings cover. Specific is the right level here."
+      },
+      "scope": {
+        "value": "single task",
+        "reason": "It covers only getting one glirol."
+      },
+      "decomposable": {
+        "value": "no",
+        "reason": "The recipe is a single short procedure. Splitting it would not give pieces worth loading separately."
+      },
+      "leads_with_fact": {
+        "value": "yes",
+        "reason": "The shortest path comes first: two lugli at (0,0) and (0,1), then craft. The failed experiments sit lower down as secondary material."
+      },
+      "common_knowledge": {
+        "value": "cannot_determine",
+        "reason": "The recordings do not show what the teacher knew beforehand. The recipe is clearly world-specific, though."
+      },
+      "description_load": {
+        "value": "good",
+        "reason": "The name and description name the goal, the world (braevin-7) and the table, so they match the body."
+      }
+    },
+    "reasons": "Every stated fact checks out against the recordings. Start stock matches both runs (call 2). One lugli previews naeviozhum. A second lugli at (0,1) previews glirol and crafting gives qty 1 (run 001 calls 172-182, run 002 calls 98-102). A third lugli and each of doudrur, thegen and tepitil added next to the pair preview null. The side-craft quantities are correct: glavruzael 2, naeviozhum 3, drinefoun 2. The skill's own \"uncited\" notes honestly flag the inferences, such as \"intermediates not needed\", and the unknowns. One small point: run 002 placed a third lugli at (1,0), which previewed null, and the skill covers this only indirectly. The skill is short and actionable.",
+    "proposedRevisions": [
+      "Optional: note that a third lugli at (1,0) also previews null (run 002 call 100).",
+      "Optional: state that only the adjacent pair (0,0)+(0,1) was observed to work, so the model should use exactly those cells."
+    ]
+  }
+}

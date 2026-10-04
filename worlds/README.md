@@ -23,3 +23,11 @@ affiliated with or endorsed by it. The world takes the idea of crafting from the
 No game edition or version is named anywhere. The world uses crafting that is the same across the
 versions commonly played, and its notes file lists what it leaves out. This credit lives here and not
 in the world, goals or notes text that an agent could see.
+
+## woodworking
+
+`woodworking.json` is a *perturbed* world (a spike, branch `spike/woodworking-world`; plan in
+`design/notes/woodworking-spike.md`). Its vocabulary is everyday woodworking and its structure is
+familiar: logs make planks, planks make rods and a seat, and a seat over three rods makes a stool.
+The specifics are not what a model would assume: a rod craft makes two rods, and the seat and stool
+shapes must be found. Its notes file names each change. The goal is `wooden_stool`.

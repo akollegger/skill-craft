@@ -1,0 +1,58 @@
+{
+  "ended": "stopped",
+  "turns": 17,
+  "costUsd": 0.03515019999999999,
+  "text": "I'm holding one wooden_pickaxe.",
+  "score": {
+    "goal": {
+      "item": "wooden_pickaxe",
+      "qty": 1
+    },
+    "reached": true,
+    "totalCalls": 16,
+    "actionCalls": 13,
+    "callsToGoal": 13,
+    "craftsMade": 4,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 4,
+      "minCalls": 13,
+      "slack": 3
+    },
+    "extraCalls": 0,
+    "extraCrafts": 0,
+    "reachedSeq": 16
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 14520,
+      "inputTokens": 16,
+      "outputTokens": 1159,
+      "cacheReadTokens": 30021,
+      "cacheCreationTokens": 4381,
+      "costUsd": 0.03515019999999999
+    },
+    "toGoal": {
+      "durationMs": 12615,
+      "inputTokens": 12,
+      "outputTokens": 1109,
+      "cacheReadTokens": 19343,
+      "cacheCreationTokens": 3018
+    }
+  },
+  "model": {
+    "requested": "claude-sonnet-5-5",
+    "resolved": [
+      "claude-sonnet-5-5"
+    ]
+  },
+  "priorFit": "faithful",
+  "skill": {
+    "name": "wooden-pickaxe-crafting",
+    "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+    "invoked": false,
+    "loadedAfterCalls": null
+  }
+}

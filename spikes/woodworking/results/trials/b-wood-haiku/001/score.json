@@ -1,0 +1,55 @@
+{
+  "ended": "stopped",
+  "turns": 115,
+  "costUsd": 0.21830560000000004,
+  "text": "I hold one wooden_stool.",
+  "score": {
+    "goal": {
+      "item": "wooden_stool",
+      "qty": 1
+    },
+    "reached": true,
+    "totalCalls": 114,
+    "actionCalls": 101,
+    "callsToGoal": 101,
+    "craftsMade": 8,
+    "failedCrafts": 0,
+    "refusals": {
+      "not_in_inventory": 2,
+      "cell_occupied": 1
+    },
+    "best": {
+      "minCrafts": 6,
+      "minCalls": 19,
+      "slack": 5
+    },
+    "extraCalls": 82,
+    "extraCrafts": 2,
+    "reachedSeq": 113
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 140914,
+      "inputTokens": 18823,
+      "outputTokens": 12354,
+      "cacheReadTokens": 823206,
+      "cacheCreationTokens": 27696,
+      "costUsd": 0.21830560000000004
+    },
+    "toGoal": {
+      "durationMs": 136536,
+      "inputTokens": 18799,
+      "outputTokens": 12080,
+      "cacheReadTokens": 741865,
+      "cacheCreationTokens": 26449
+    }
+  },
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "resolved": [
+      "claude-haiku-4-5-20251001"
+    ]
+  },
+  "priorFit": "perturbed"
+}

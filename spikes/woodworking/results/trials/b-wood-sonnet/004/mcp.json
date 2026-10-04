@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "craft": {
+      "type": "stdio",
+      "command": "node_modules/.bin/tsx",
+      "args": [
+        "src/mcp/server.ts"
+      ],
+      "env": {
+        "SIM_WORLD": "worlds/woodworking.json",
+        "SIM_RUN_LOG": "runs/b-wood-sonnet/004/run.jsonl"
+      }
+    }
+  }
+}

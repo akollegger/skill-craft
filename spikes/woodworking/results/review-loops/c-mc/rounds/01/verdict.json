@@ -1,0 +1,44 @@
+{
+  "rubric": {
+    "version": "1",
+    "sha256": "a6e33cf720e4b20e8cc767666d49f29375452d86beec3e1e1cf8e8c2cadc5c5e"
+  },
+  "verdict": {
+    "overall": "revise",
+    "questions": {
+      "generality": {
+        "value": "generic procedure, no recipe facts",
+        "reason": "Only says help/inventory/place/craft; contains none of the recipe facts (log->planks, planks->sticks, pickaxe layout). Too generic for the task."
+      },
+      "scope": {
+        "value": "one task (craft an item)",
+        "reason": "Covers a single crafting task, but so vaguely it does not serve wooden_pickaxe specifically."
+      },
+      "decomposable": {
+        "value": "no",
+        "reason": "There is little content to split; the real recipe chain could be one compact skill."
+      },
+      "leads_with_fact": {
+        "value": "no",
+        "reason": "Leads with a generic workflow (help, inventory, place, craft). The discovered recipes are absent."
+      },
+      "common_knowledge": {
+        "value": "cannot_determine",
+        "reason": "The recordings do not show what the teacher knew beforehand. The skill's content (irreversible craft, check inventory) is mostly generic and also stated in the prompt."
+      },
+      "description_load": {
+        "value": "vague but loads on crafting",
+        "reason": "Description is boilerplate about MCP craft tools and does not name wooden_pickaxe or the 3x3 table. The body just points to reference files."
+      }
+    },
+    "reasons": "The skill omits everything the recordings show that is needed. All three runs follow the same 15-call path. 1 oak_log placed alone gives 4 oak_planks. 2 planks stacked vertically (col 0, rows 0-1) give 4 sticks. A second oak_log gives 4 more planks. The pickaxe needs 3 planks across row 0 and sticks at (1,1) and (2,1). The skill states none of this. It also claims inventory is checked at the end, which the recordings do not show; the runs never re-check inventory after crafting. Its procedure is generic and mostly restates the prompt.",
+    "proposedRevisions": [
+      "Lead with the recipe chain, all shown in the recordings: 1 oak_log in any cell -> craft -> 4 oak_planks.",
+      "Add: 2 oak_planks stacked vertically (e.g. (0,0) and (1,0)) -> craft -> 4 sticks.",
+      "Add: a second oak_log -> 4 more oak_planks. Pickaxe layout on the 3x3 grid: oak_planks at (0,0), (0,1), (0,2); stick at (1,1) and (2,1). Craft gives 1 wooden_pickaxe.",
+      "Add the budget: starting inventory is 6 cobblestone, 6 iron_ingot, 3 oak_log. The path uses 2 logs, and the third is spare.",
+      "Note that the 'craftable' field in place/look output previews the match, and craft only when it names the target. Row 0 of planks previews oak_slab, which is the wrong item, so continue to add sticks.",
+      "Remove the unshown claim that inventory is checked at the end, and the generic boilerplate. Rewrite the description to name wooden_pickaxe, the 3x3 crafting table and the planks/sticks chain."
+    ]
+  }
+}

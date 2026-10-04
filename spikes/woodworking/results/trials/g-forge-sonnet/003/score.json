@@ -1,0 +1,58 @@
+{
+  "ended": "stopped",
+  "turns": 9,
+  "costUsd": 0.019922600000000002,
+  "text": "I now hold one glirol, crafted from two lugli placed side by side in the top row.",
+  "score": {
+    "goal": {
+      "item": "glirol",
+      "qty": 1
+    },
+    "reached": true,
+    "totalCalls": 6,
+    "actionCalls": 4,
+    "callsToGoal": 4,
+    "craftsMade": 1,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 1,
+      "minCalls": 3,
+      "slack": 2
+    },
+    "extraCalls": 1,
+    "extraCrafts": 0,
+    "reachedSeq": 6
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 8918,
+      "inputTokens": 10,
+      "outputTokens": 410,
+      "cacheReadTokens": 16453,
+      "cacheCreationTokens": 3128,
+      "costUsd": 0.019922600000000002
+    },
+    "toGoal": {
+      "durationMs": 6703,
+      "inputTokens": 6,
+      "outputTokens": 349,
+      "cacheReadTokens": 7624,
+      "cacheCreationTokens": 2416
+    }
+  },
+  "model": {
+    "requested": "claude-sonnet-5-5",
+    "resolved": [
+      "claude-sonnet-5-5"
+    ]
+  },
+  "priorFit": "invented",
+  "skill": {
+    "name": "glirol-two-lugli",
+    "sha256": "8422490840680498363483799e621ffebd8261eb9452a7552c1fa35330169aa6",
+    "invoked": true,
+    "loadedAfterCalls": 2
+  }
+}

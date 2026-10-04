@@ -1,0 +1,391 @@
+{
+  "world": "worlds/woodworking.json",
+  "priorFit": "perturbed",
+  "goal": {
+    "item": "wooden_stool",
+    "qty": 1
+  },
+  "maxTurns": 80,
+  "record": false,
+  "timeoutMs": 1800000,
+  "cancelled": false,
+  "aggregate": {
+    "runs": 5,
+    "reached": 4,
+    "successRate": 0.8,
+    "gaveUp": 0,
+    "outOfBudget": 1,
+    "errors": 0,
+    "medianCallsToGoal": 30.5,
+    "meanExtraCalls": 22.5,
+    "totalCostUsd": 0.6020923000000001,
+    "models": [
+      "claude-haiku-4-5-20251001"
+    ],
+    "mixedModels": false
+  },
+  "models": [
+    "claude-haiku-4-5-20251001"
+  ],
+  "mixedModels": false,
+  "runs": [
+    {
+      "ended": "budget",
+      "turns": 81,
+      "costUsd": 0.2121630000000001,
+      "durationMs": 119178,
+      "usage": {
+        "inputTokens": 16749,
+        "outputTokens": 10379,
+        "cacheReadTokens": 976130,
+        "cacheCreationTokens": 22953
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "skillInvoked": false,
+      "skillLoadedAfterCalls": null,
+      "index": 1,
+      "dir": "runs/g-wood-haiku/001",
+      "score": {
+        "goal": {
+          "item": "wooden_stool",
+          "qty": 1
+        },
+        "reached": false,
+        "totalCalls": 80,
+        "actionCalls": 75,
+        "callsToGoal": 75,
+        "craftsMade": 2,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 6,
+          "minCalls": 19,
+          "slack": 5
+        },
+        "extraCalls": null,
+        "extraCrafts": null,
+        "reachedSeq": null
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 119178,
+          "inputTokens": 16749,
+          "outputTokens": 10379,
+          "cacheReadTokens": 976130,
+          "cacheCreationTokens": 22953,
+          "costUsd": 0.2121630000000001
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "perturbed",
+      "skill": {
+        "name": "wooden-stool-chain",
+        "sha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+        "invoked": false,
+        "loadedAfterCalls": null
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 102,
+      "costUsd": 0.19676060000000004,
+      "durationMs": 105563,
+      "usage": {
+        "inputTokens": 20584,
+        "outputTokens": 10033,
+        "cacheReadTokens": 755936,
+        "cacheCreationTokens": 25209
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 91,
+      "index": 2,
+      "dir": "runs/g-wood-haiku/002",
+      "score": {
+        "goal": {
+          "item": "wooden_stool",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 99,
+        "actionCalls": 86,
+        "callsToGoal": 86,
+        "craftsMade": 8,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 6,
+          "minCalls": 19,
+          "slack": 5
+        },
+        "extraCalls": 67,
+        "extraCrafts": 2,
+        "reachedSeq": 98
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 105563,
+          "inputTokens": 20584,
+          "outputTokens": 10033,
+          "cacheReadTokens": 755936,
+          "cacheCreationTokens": 25209,
+          "costUsd": 0.19676060000000004
+        },
+        "toGoal": {
+          "durationMs": 102379,
+          "inputTokens": 20560,
+          "outputTokens": 9841,
+          "cacheReadTokens": 682096,
+          "cacheCreationTokens": 23904
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "perturbed",
+      "skill": {
+        "name": "wooden-stool-chain",
+        "sha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+        "invoked": true,
+        "loadedAfterCalls": 91
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 50,
+      "costUsd": 0.0958094,
+      "durationMs": 56595,
+      "usage": {
+        "inputTokens": 16467,
+        "outputTokens": 5508,
+        "cacheReadTokens": 228284,
+        "cacheCreationTokens": 14487
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 29,
+      "index": 3,
+      "dir": "runs/g-wood-haiku/003",
+      "score": {
+        "goal": {
+          "item": "wooden_stool",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 47,
+        "actionCalls": 42,
+        "callsToGoal": 42,
+        "craftsMade": 6,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 6,
+          "minCalls": 19,
+          "slack": 5
+        },
+        "extraCalls": 23,
+        "extraCrafts": 0,
+        "reachedSeq": 46
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 56595,
+          "inputTokens": 16467,
+          "outputTokens": 5508,
+          "cacheReadTokens": 228284,
+          "cacheCreationTokens": 14487,
+          "costUsd": 0.0958094
+        },
+        "toGoal": {
+          "durationMs": 53066,
+          "inputTokens": 16443,
+          "outputTokens": 5310,
+          "cacheReadTokens": 186552,
+          "cacheCreationTokens": 13265
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "perturbed",
+      "skill": {
+        "name": "wooden-stool-chain",
+        "sha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+        "invoked": true,
+        "loadedAfterCalls": 29
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 24,
+      "costUsd": 0.0470202,
+      "durationMs": 28223,
+      "usage": {
+        "inputTokens": 9061,
+        "outputTokens": 2700,
+        "cacheReadTokens": 73752,
+        "cacheCreationTokens": 8542
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 2,
+      "index": 4,
+      "dir": "runs/g-wood-haiku/004",
+      "score": {
+        "goal": {
+          "item": "wooden_stool",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 21,
+        "actionCalls": 19,
+        "callsToGoal": 19,
+        "craftsMade": 6,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 6,
+          "minCalls": 19,
+          "slack": 5
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 21
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 28223,
+          "inputTokens": 9061,
+          "outputTokens": 2700,
+          "cacheReadTokens": 73752,
+          "cacheCreationTokens": 8542,
+          "costUsd": 0.0470202
+        },
+        "toGoal": {
+          "durationMs": 26078,
+          "inputTokens": 9045,
+          "outputTokens": 2571,
+          "cacheReadTokens": 57859,
+          "cacheCreationTokens": 7506
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "perturbed",
+      "skill": {
+        "name": "wooden-stool-chain",
+        "sha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+        "invoked": true,
+        "loadedAfterCalls": 2
+      }
+    },
+    {
+      "ended": "stopped",
+      "turns": 25,
+      "costUsd": 0.05033909999999999,
+      "durationMs": 34627,
+      "usage": {
+        "inputTokens": 9179,
+        "outputTokens": 2918,
+        "cacheReadTokens": 88641,
+        "cacheCreationTokens": 8853
+      },
+      "requestedModel": "claude-haiku-4-5-20251001",
+      "initModel": "claude-haiku-4-5-20251001",
+      "modelsUsed": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "skillInvoked": true,
+      "skillLoadedAfterCalls": 2,
+      "index": 5,
+      "dir": "runs/g-wood-haiku/005",
+      "score": {
+        "goal": {
+          "item": "wooden_stool",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 22,
+        "actionCalls": 19,
+        "callsToGoal": 19,
+        "craftsMade": 6,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 6,
+          "minCalls": 19,
+          "slack": 5
+        },
+        "extraCalls": 0,
+        "extraCrafts": 0,
+        "reachedSeq": 21
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 34627,
+          "inputTokens": 9179,
+          "outputTokens": 2918,
+          "cacheReadTokens": 88641,
+          "cacheCreationTokens": 8853,
+          "costUsd": 0.05033909999999999
+        },
+        "toGoal": {
+          "durationMs": 31214,
+          "inputTokens": 9155,
+          "outputTokens": 2737,
+          "cacheReadTokens": 63783,
+          "cacheCreationTokens": 7628
+        }
+      },
+      "model": {
+        "requested": "claude-haiku-4-5-20251001",
+        "resolved": [
+          "claude-haiku-4-5-20251001"
+        ]
+      },
+      "priorFit": "perturbed",
+      "skill": {
+        "name": "wooden-stool-chain",
+        "sha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+        "invoked": true,
+        "loadedAfterCalls": 2
+      }
+    }
+  ]
+}

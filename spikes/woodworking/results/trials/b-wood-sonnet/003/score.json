@@ -1,0 +1,52 @@
+{
+  "ended": "stopped",
+  "turns": 70,
+  "costUsd": 0.16726520000000003,
+  "text": "I'm holding one wooden_stool.",
+  "score": {
+    "goal": {
+      "item": "wooden_stool",
+      "qty": 1
+    },
+    "reached": true,
+    "totalCalls": 69,
+    "actionCalls": 65,
+    "callsToGoal": 65,
+    "craftsMade": 6,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 6,
+      "minCalls": 19,
+      "slack": 5
+    },
+    "extraCalls": 46,
+    "extraCrafts": 0,
+    "reachedSeq": 69
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 63647,
+      "inputTokens": 44,
+      "outputTokens": 6670,
+      "cacheReadTokens": 177426,
+      "cacheCreationTokens": 16248,
+      "costUsd": 0.16726520000000003
+    },
+    "toGoal": {
+      "durationMs": 61269,
+      "inputTokens": 40,
+      "outputTokens": 6623,
+      "cacheReadTokens": 144302,
+      "cacheCreationTokens": 14840
+    }
+  },
+  "model": {
+    "requested": "claude-sonnet-5-5",
+    "resolved": [
+      "claude-sonnet-5-5"
+    ]
+  },
+  "priorFit": "perturbed"
+}

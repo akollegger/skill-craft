@@ -1,0 +1,41 @@
+{
+  "rubric": {
+    "version": "1",
+    "sha256": "a6e33cf720e4b20e8cc767666d49f29375452d86beec3e1e1cf8e8c2cadc5c5e"
+  },
+  "verdict": {
+    "overall": "accept",
+    "questions": {
+      "generality": {
+        "value": "one recipe chain, right level",
+        "reason": "It is specific to wooden_pickaxe with exact layouts. That suits a single-goal task. It does not generalise to other recipes, but the recordings only cover this goal."
+      },
+      "scope": {
+        "value": "one task",
+        "reason": "It covers only getting the wooden_pickaxe, including the planks and sticks intermediates."
+      },
+      "decomposable": {
+        "value": "no, too small to split",
+        "reason": "The chain is short. Splitting it into planks, sticks and pickaxe would give pieces not worth loading separately."
+      },
+      "leads_with_fact": {
+        "value": "mostly",
+        "reason": "It opens with the shaped-position fact and the inventory. The steps are then a numbered recipe, not a replay of exploration. The opening claim that one log is enough for two intermediate crafts is muddled."
+      },
+      "common_knowledge": {
+        "value": "cannot_determine",
+        "reason": "The recordings do not show what the teacher knew beforehand. The layouts (1 log gives 4 planks, 2 stacked planks give 4 sticks, 3 planks over 2 sticks give a pickaxe) match the recorded results."
+      },
+      "description_load": {
+        "value": "good",
+        "reason": "The name and description name wooden_pickaxe, the 3x3 workshop table, the tools and the recipe chain. This matches the body. The name 'mcp-craft-tool-use' is generic."
+      }
+    },
+    "reasons": "Every stated fact matches the recordings. The starting inventory is 6 cobblestone, 6 iron_ingot and 3 oak_log. A log at (0,0) gives 4 planks. Planks at (0,0) and (1,0) give 4 sticks, and a single plank previews null. A second log gives 4 more planks. Planks across row 0 preview oak_slab. Sticks at (1,1) and (2,1) preview wooden_pickaxe, and craft gives 1. The leftover-plank count is a correct inference. All three runs are identical. The provenance file honestly lists what is unknown. Only minor wording problems remain.",
+    "proposedRevisions": [
+      "Remove or reword the vague claim 'one oak_log is enough for two intermediate crafts'. State instead: 1 log gives 4 planks, and the pickaxe needs 3 planks plus 2 sticks, which is 5 planks in total, so 2 logs are needed.",
+      "Rename the skill to something goal-specific, such as wooden-pickaxe-3x3-workshop.",
+      "Put the final pickaxe layout (planks at (0,0), (0,1), (0,2); sticks at (1,1) and (2,1)) in the first lines of the body."
+    ]
+  }
+}

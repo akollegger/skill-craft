@@ -1,0 +1,14 @@
+{"seq":0,"kind":"tool","toolUseId":"toolu_017w6qVA9QRDVKVz2RbRa3kG","tool":"help","args":{},"startMs":2457,"endMs":2465}
+{"seq":1,"kind":"request","requestId":"msg_011Cfh8dDYQMysqdusJJyPZY","model":"claude-haiku-4-5-20251001","turn":1,"startMs":14,"endMs":2473,"ttftMs":603,"inputTokens":2493,"outputTokens":183,"cacheReadTokens":0,"cacheCreationTokens":0}
+{"seq":2,"kind":"tool","toolUseId":"toolu_01N65iCgZzgm9KnGwYxBJzJM","tool":"inventory","args":{},"startMs":3727,"endMs":3737}
+{"seq":3,"kind":"request","requestId":"msg_011Cfh8dPwUWpmQwdkNzu1pC","model":"claude-haiku-4-5-20251001","turn":2,"startMs":2480,"endMs":3742,"ttftMs":562,"inputTokens":3175,"outputTokens":78,"cacheReadTokens":0,"cacheCreationTokens":0}
+{"seq":4,"kind":"tool","toolUseId":"toolu_01E76XowtRnPjJrek3nuKcSw","tool":"look","args":{},"startMs":5248,"endMs":5252}
+{"seq":5,"kind":"request","requestId":"msg_011Cfh8dVPQYwbLVLmrwGVs2","model":"claude-haiku-4-5-20251001","turn":3,"startMs":3751,"endMs":5267,"ttftMs":564,"inputTokens":3348,"outputTokens":115,"cacheReadTokens":0,"cacheCreationTokens":0}
+{"seq":6,"kind":"request","requestId":"msg_011Cfh8dbxnZ72HWKzPpSZ5P","model":"claude-haiku-4-5-20251001","turn":4,"startMs":5272,"endMs":7971,"ttftMs":587,"inputTokens":3586,"outputTokens":191,"cacheReadTokens":0,"cacheCreationTokens":0}
+{"seq":7,"kind":"tool","toolUseId":"toolu_015FMkUTBKbtQcJbmLeE9rKe","tool":"place","args":{"item":"lugli","row":0,"col":0},"startMs":10694,"endMs":10700}
+{"seq":8,"kind":"request","requestId":"msg_011Cfh8doyM73YtktYDK8pHu","model":"claude-haiku-4-5-20251001","turn":5,"startMs":7975,"endMs":10728,"ttftMs":727,"inputTokens":9,"outputTokens":240,"cacheReadTokens":0,"cacheCreationTokens":4357}
+{"seq":9,"kind":"tool","toolUseId":"toolu_01FVPpv1UCgGVa6v9crFJ2BJ","tool":"place","args":{"item":"lugli","row":0,"col":1},"startMs":12386,"endMs":12392}
+{"seq":10,"kind":"request","requestId":"msg_011Cfh8e1DGrVQpXEkN7hqNH","model":"claude-haiku-4-5-20251001","turn":6,"startMs":10732,"endMs":12403,"ttftMs":571,"inputTokens":8,"outputTokens":155,"cacheReadTokens":4357,"cacheCreationTokens":372}
+{"seq":11,"kind":"tool","toolUseId":"toolu_01W63Czwkn9kXBPtxzDkddKe","tool":"craft","args":{},"startMs":13841,"endMs":13844}
+{"seq":12,"kind":"request","requestId":"msg_011Cfh8e8N8eKQPXMnrtB4J5","model":"claude-haiku-4-5-20251001","turn":7,"startMs":12412,"endMs":13860,"ttftMs":576,"inputTokens":8,"outputTokens":103,"cacheReadTokens":4729,"cacheCreationTokens":286}
+{"seq":13,"kind":"request","requestId":"msg_011Cfh8eEcvTYgv4tzFR7xvk","model":"claude-haiku-4-5-20251001","turn":8,"startMs":13864,"endMs":14792,"ttftMs":629,"inputTokens":8,"outputTokens":37,"cacheReadTokens":5015,"cacheCreationTokens":186}

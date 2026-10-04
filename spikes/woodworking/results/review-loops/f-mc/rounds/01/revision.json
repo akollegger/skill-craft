@@ -1,0 +1,43 @@
+{
+  "changes": [
+    {
+      "what": "Led SKILL.md with the final pickaxe layout and the two prerequisite recipes, then the steps",
+      "why": "Critic: lead with the discovered fact/rules rather than a replay",
+      "sourceCalls": [
+        "run 001 call 14",
+        "run 001 call 15",
+        "run 001 call 4",
+        "run 001 call 7"
+      ]
+    },
+    {
+      "what": "Removed the claim that the slab wastes planks; now says slab preview is only an intermediate match, do not craft",
+      "why": "Never crafted in recordings; unshown claim",
+      "sourceCalls": [
+        "run 001 call 12"
+      ]
+    },
+    {
+      "what": "Removed 'do not spend logs' advice; noted cobblestone and iron_ingot unused (inferred, listed in provenance)",
+      "why": "Inference not shown",
+      "sourceCalls": [
+        "run 001 call 2"
+      ]
+    },
+    {
+      "what": "Added note that preview null at partial layouts is normal and table is empty after craft so items must be re-placed",
+      "why": "Critic points 4 and 5",
+      "sourceCalls": [
+        "run 001 call 5",
+        "run 001 call 10",
+        "run 001 call 11"
+      ]
+    },
+    {
+      "what": "Provenance: added not-known items with cheap checks and the re-place citation",
+      "why": "Rules 2 and 4",
+      "sourceCalls": []
+    }
+  ],
+  "revisedSha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021"
+}

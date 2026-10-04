@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "craft": {
+      "type": "stdio",
+      "command": "node_modules/.bin/tsx",
+      "args": [
+        "src/mcp/server.ts"
+      ],
+      "env": {
+        "SIM_WORLD": "worlds/minecraft-inspired.json",
+        "SIM_RUN_LOG": "runs/g-mc-sonnet/001/run.jsonl"
+      }
+    }
+  }
+}

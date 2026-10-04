@@ -1,0 +1,337 @@
+{
+  "world": "worlds/generated/forge-7.json",
+  "priorFit": "invented",
+  "goal": {
+    "item": "glirol",
+    "qty": 1
+  },
+  "maxTurns": 80,
+  "record": false,
+  "timeoutMs": 1800000,
+  "cancelled": false,
+  "aggregate": {
+    "runs": 5,
+    "reached": 2,
+    "successRate": 0.4,
+    "gaveUp": 3,
+    "outOfBudget": 0,
+    "errors": 0,
+    "medianCallsToGoal": 139,
+    "meanExtraCalls": 136,
+    "totalCostUsd": 1.8478472,
+    "models": [
+      "claude-sonnet-5-5"
+    ],
+    "mixedModels": false
+  },
+  "models": [
+    "claude-sonnet-5-5"
+  ],
+  "mixedModels": false,
+  "runs": [
+    {
+      "ended": "stopped",
+      "turns": 160,
+      "costUsd": 0.40161700000000006,
+      "durationMs": 117755,
+      "usage": {
+        "inputTokens": 60,
+        "outputTokens": 15689,
+        "cacheReadTokens": 461555,
+        "cacheCreationTokens": 38074
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "index": 1,
+      "dir": "runs/b-forge-sonnet/001",
+      "score": {
+        "goal": {
+          "item": "glirol",
+          "qty": 1
+        },
+        "reached": false,
+        "totalCalls": 159,
+        "actionCalls": 156,
+        "callsToGoal": 156,
+        "craftsMade": 2,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 1,
+          "minCalls": 3,
+          "slack": 2
+        },
+        "extraCalls": null,
+        "extraCrafts": null,
+        "reachedSeq": null
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 117755,
+          "inputTokens": 60,
+          "outputTokens": 15689,
+          "cacheReadTokens": 461555,
+          "cacheCreationTokens": 38074,
+          "costUsd": 0.40161700000000006
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "invented"
+    },
+    {
+      "ended": "stopped",
+      "turns": 87,
+      "costUsd": 0.23327820000000002,
+      "durationMs": 85492,
+      "usage": {
+        "inputTokens": 72,
+        "outputTokens": 7988,
+        "cacheReadTokens": 358671,
+        "cacheCreationTokens": 20380
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "index": 2,
+      "dir": "runs/b-forge-sonnet/002",
+      "score": {
+        "goal": {
+          "item": "glirol",
+          "qty": 1
+        },
+        "reached": false,
+        "totalCalls": 86,
+        "actionCalls": 83,
+        "callsToGoal": 83,
+        "craftsMade": 2,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 1,
+          "minCalls": 3,
+          "slack": 2
+        },
+        "extraCalls": null,
+        "extraCrafts": null,
+        "reachedSeq": null
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 85492,
+          "inputTokens": 72,
+          "outputTokens": 7988,
+          "cacheReadTokens": 358671,
+          "cacheCreationTokens": 20380,
+          "costUsd": 0.23327820000000002
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "invented"
+    },
+    {
+      "ended": "stopped",
+      "turns": 183,
+      "costUsd": 0.46469059999999995,
+      "durationMs": 133779,
+      "usage": {
+        "inputTokens": 74,
+        "outputTokens": 17045,
+        "cacheReadTokens": 640963,
+        "cacheCreationTokens": 41475
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "index": 3,
+      "dir": "runs/b-forge-sonnet/003",
+      "score": {
+        "goal": {
+          "item": "glirol",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 182,
+        "actionCalls": 179,
+        "callsToGoal": 179,
+        "craftsMade": 4,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 1,
+          "minCalls": 3,
+          "slack": 2
+        },
+        "extraCalls": 176,
+        "extraCrafts": 3,
+        "reachedSeq": 182
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 133779,
+          "inputTokens": 74,
+          "outputTokens": 17045,
+          "cacheReadTokens": 640963,
+          "cacheCreationTokens": 41475,
+          "costUsd": 0.46469059999999995
+        },
+        "toGoal": {
+          "durationMs": 131364,
+          "inputTokens": 70,
+          "outputTokens": 16911,
+          "cacheReadTokens": 558820,
+          "cacheCreationTokens": 38868
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "invented"
+    },
+    {
+      "ended": "stopped",
+      "turns": 165,
+      "costUsd": 0.5166837999999998,
+      "durationMs": 156995,
+      "usage": {
+        "inputTokens": 122,
+        "outputTokens": 15526,
+        "cacheReadTokens": 1042719,
+        "cacheCreationTokens": 38159
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "index": 4,
+      "dir": "runs/b-forge-sonnet/004",
+      "score": {
+        "goal": {
+          "item": "glirol",
+          "qty": 1
+        },
+        "reached": false,
+        "totalCalls": 164,
+        "actionCalls": 161,
+        "callsToGoal": 161,
+        "craftsMade": 3,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 1,
+          "minCalls": 3,
+          "slack": 2
+        },
+        "extraCalls": null,
+        "extraCrafts": null,
+        "reachedSeq": null
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 156995,
+          "inputTokens": 122,
+          "outputTokens": 15526,
+          "cacheReadTokens": 1042719,
+          "cacheCreationTokens": 38159,
+          "costUsd": 0.5166837999999998
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "invented"
+    },
+    {
+      "ended": "stopped",
+      "turns": 103,
+      "costUsd": 0.23157759999999997,
+      "durationMs": 76931,
+      "usage": {
+        "inputTokens": 44,
+        "outputTokens": 9460,
+        "cacheReadTokens": 214528,
+        "cacheCreationTokens": 23496
+      },
+      "requestedModel": "claude-sonnet-5-5",
+      "initModel": "claude-sonnet-5-5",
+      "modelsUsed": [
+        "claude-sonnet-5-5"
+      ],
+      "index": 5,
+      "dir": "runs/b-forge-sonnet/005",
+      "score": {
+        "goal": {
+          "item": "glirol",
+          "qty": 1
+        },
+        "reached": true,
+        "totalCalls": 102,
+        "actionCalls": 99,
+        "callsToGoal": 99,
+        "craftsMade": 3,
+        "failedCrafts": 0,
+        "refusals": {},
+        "best": {
+          "minCrafts": 1,
+          "minCalls": 3,
+          "slack": 2
+        },
+        "extraCalls": 96,
+        "extraCrafts": 2,
+        "reachedSeq": 102
+      },
+      "measured": {
+        "trace": "matched",
+        "total": {
+          "durationMs": 76931,
+          "inputTokens": 44,
+          "outputTokens": 9460,
+          "cacheReadTokens": 214528,
+          "cacheCreationTokens": 23496,
+          "costUsd": 0.23157759999999997
+        },
+        "toGoal": {
+          "durationMs": 74227,
+          "inputTokens": 40,
+          "outputTokens": 9331,
+          "cacheReadTokens": 168030,
+          "cacheCreationTokens": 21191
+        }
+      },
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": [
+          "claude-sonnet-5-5"
+        ]
+      },
+      "priorFit": "invented"
+    }
+  ]
+}
