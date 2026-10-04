@@ -48,7 +48,7 @@ describe("grid and list", () => {
     for (const presentation of ["grid", "list"] as const) {
       render(Picker, picker(presentation));
       const first = document.querySelector(`[data-run-id="${runs[0]!.id}"]`) as HTMLElement;
-      for (const text of ["reached", "5 calls", "claude-haiku"]) expect(first.textContent, `${presentation} ${text}`).toContain(text);
+      for (const text of ["reached", "5 calls", presentation === "grid" ? "haiku" : "claude-haiku"]) expect(first.textContent, `${presentation} ${text}`).toContain(text);
       // The best run is never written out: the numeral, in its color, says how the run did.
       expect(first.textContent).not.toContain("best");
       expect(within(first).getByRole("img", { name: /5 calls: 1 placements, 1 crafts, 1 refusals, 1 take-backs/ })).toBeTruthy();
@@ -206,3 +206,26 @@ describe("a tile's layout", () => {
   });
 });
 
+
+describe("a tile's lower rows", () => {
+  it("has the tape, then the model in short, with the skill icon at the right of the same row", () => {
+    const withSkill = [run({ label: "s", run: "1", outcome: "reached", actionCalls: 5, modelRan: "claude-haiku-4-5-20251001", skill: "demo", skillLoaded: true, skillLoadedAfter: 1 }, "pcr")];
+    render(Picker, { groups: groupRuns(withSkill, null), presentation: "grid", onOpen: () => {} });
+    const tile = document.querySelector(`[data-run-id="${withSkill[0]!.id}"]`) as HTMLElement;
+    const tape = tile.querySelector('[role="img"][aria-label*="calls"]') as HTMLElement;
+    const model = [...tile.querySelectorAll("span")].find((e) => e.textContent === "haiku-4-5") as HTMLElement;
+    expect(model.getAttribute("title")).toBe("claude-haiku-4-5-20251001");
+    expect(tape.compareDocumentPosition(model) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(model.parentElement!.lastElementChild).toBe(tile.querySelector("svg[data-skill]"));
+    expect(model.parentElement!.className).toMatch(/justify-between/);
+  });
+
+  it("is one height for every run: the tape is always three rows tall, and the model row keeps its height with no skill", () => {
+    render(Picker, picker("grid"));
+    const tapes = [...document.querySelectorAll('[role="img"][aria-label*="calls"]')].map((t) => t.className);
+    expect(new Set(tapes).size).toBe(1);
+    expect(tapes[0]).toMatch(/h-\[calc\(1\.5rem\+2px\)\]/);
+    const rows = [...document.querySelectorAll("li[data-run-id] button .h-6")].map((r) => r.className);
+    expect(rows.length).toBeGreaterThan(1);
+  });
+});

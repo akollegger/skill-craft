@@ -3,6 +3,7 @@
   import CallStrip from "./CallStrip.svelte";
   import Score from "./Score.svelte";
   import SkillIcon from "./SkillIcon.svelte";
+  import { shortModel } from "./model.ts";
   import { formatClock } from "./clock.ts";
   import { failed, scoreTone } from "./tone.ts";
   import Thumbnail from "./Thumbnail.svelte";
@@ -46,9 +47,12 @@
         {#if ms !== undefined}<span class="text-xs leading-none text-light-baltic">{formatClock(ms)}</span>{/if}
       </span>
     </span>
-    {#if a["modelRan"] !== undefined}<span class="truncate text-light-baltic">{a["modelRan"]}</span>{/if}
     {#if entry.preview}<CallStrip strip={entry.preview.strip} {best} failed={failed(outcome)} />{/if}
-    <SkillIcon attributes={a} />
+    <!-- The model, short, and the skill's icon at the right of the same row; the row keeps its height when there is no icon. -->
+    <span class="flex h-6 items-center justify-between gap-2">
+      <span class="min-w-0 truncate text-light-baltic" title={typeof a["modelRan"] === "string" ? a["modelRan"] : undefined}>{typeof a["modelRan"] === "string" ? shortModel(a["modelRan"]) : ""}</span>
+      <SkillIcon attributes={a} />
+    </span>
     {#if selected}<span class="sr-only">Selected for comparison</span>{/if}
     {#if !ready}<span class="text-mid-hibiscus">can't open: {why}</span>{/if}
   </svelte:element>

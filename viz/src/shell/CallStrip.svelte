@@ -5,7 +5,7 @@
   // What kind of call each was is in the label and in the open view, not in a color.
   let { strip, best, failed = false }: { strip: string; best?: number | undefined; failed?: boolean } = $props();
 
-  // One mark per action call, in a block of three rows of thirty-two, so every run's tape is one shape in a tile and in a list row. A
+  // One mark per action call, in a block of three rows of thirty-two, always the height of three rows, so every run's tape is one shape in a tile and in a list row. A
   // longer run is cut and the cut says how many calls it hides, in the last cell; the label still counts them all.
   const COLUMNS = 32;
   const CAP = COLUMNS * 3;
@@ -22,7 +22,7 @@
   const marks = $derived([...strip.slice(0, cut ? CAP - MORE : CAP)]);
 </script>
 
-<span role="img" aria-label={label} class="grid w-max grid-cols-[repeat(32,0.25rem)] content-start gap-px">
+<span role="img" aria-label={label} class="grid h-[calc(1.5rem+2px)] w-max grid-cols-[repeat(32,0.25rem)] content-start gap-px">
   {#each marks as ch, i (i)}
     <span data-kind={KIND[ch] ?? "other"} data-tone={tone(i)} class={`inline-block h-2 w-1 ${TONE_BG[tone(i)]}`}></span>
   {/each}
