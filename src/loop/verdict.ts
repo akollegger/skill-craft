@@ -92,7 +92,9 @@ export function parseRevision(raw: unknown, ctx: RevisionContext): Revision {
 
 /** The JSON Schema the SDK is given to constrain a role's answer. */
 export function toJsonSchema(schema: z.ZodType): Record<string, unknown> {
-  return z.toJSONSchema(schema) as Record<string, unknown>;
+  // The SDK refuses a schema that carries the `$schema` meta key (found by the live role check), so it is dropped.
+  const { $schema: _meta, ...rest } = z.toJSONSchema(schema) as Record<string, unknown>;
+  return rest;
 }
 
 /**

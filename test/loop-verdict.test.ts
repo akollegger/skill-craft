@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RevisionInvalid, VerdictInvalid } from "../src/harness/errors.js";
 import { loadRubric } from "../src/loop/rubric.js";
-import { parseRevision, parseVerdict, toJsonSchema, verdictSchema, withUncitedSection, type RevisionContext } from "../src/loop/verdict.js";
+import { parseRevision, parseVerdict, revisionSchema, toJsonSchema, verdictSchema, withUncitedSection, type RevisionContext } from "../src/loop/verdict.js";
 
 const rubric = loadRubric();
 const answers = () => Object.fromEntries(rubric.questions.map((q) => [q.id, { value: "no", reason: "because" }]));
@@ -43,6 +43,8 @@ describe("Verdict", () => {
     const js = toJsonSchema(verdictSchema(rubric)) as any;
     expect(Object.keys(js.properties.questions.properties).sort()).toEqual(rubric.questions.map((q) => q.id).sort());
     expect(js.properties.overall.enum).toEqual(["accept", "revise", "reject"]);
+    expect(js).not.toHaveProperty("$schema"); // the SDK refuses it
+    expect(toJsonSchema(revisionSchema(ctx))).not.toHaveProperty("$schema");
   });
 });
 

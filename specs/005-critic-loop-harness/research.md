@@ -98,7 +98,7 @@ show as not known, with a cheap way to find out; lead `SKILL.md` with the discov
 to use it and how; keep citations out of `SKILL.md` and in the provenance file; drop generic advice a capable model
 already follows; scope the description to the goal the body serves; add no knowledge from outside the recordings. The
 critic's instructions state that the common-knowledge question is answered `cannot_determine` when the recordings do
-not show what the teacher knew beforehand, and that a fact the recordings do not show is to be flagged. The loop loads it, validates it, and records its version and SHA-256 with every
+not show what the teacher knew beforehand, and that a fact the recordings do not show is to be flagged. Live use found that the critic read `reject` as "this skill is poor" and rejected a fixable skill, so the instructions define the three verdicts: `revise` for a skill that is poor but fixable from the recordings, `reject` only when the recordings do not hold what a useful skill needs. The loop loads it, validates it, and records its version and SHA-256 with every
 verdict. The verdict schema is built from the question ids, so adding a question is a data change plus a version bump.
 The "differs from common knowledge" question is worded to allow the answer `cannot_determine` (FR-014).
 

@@ -30,7 +30,7 @@ pnpm dev <file>    # run a TypeScript file with tsx
 Scripts (run with `pnpm dev`): `scripts/solve.ts` (best run for a goal), `scripts/make-world.ts`
 (re-skinned world plus goals), `scripts/smoke.ts` (replay a best run over stdio),
 `scripts/run-agent.ts` (Claude Code runs through the Claude Agent SDK, scored and measured; `--dry-run`
-spends nothing; `--prompt-note` adds one fixed sentence to the prompt), `scripts/report.ts` (run folders to the
+spends nothing; `--prompt-note` adds one fixed sentence to the prompt; `--prompt-file` replaces the base prompt, with `{what}`, `{item}` and `{turns}` filled in, to test a reworded one: every arm of an experiment must use the same base prompt), `scripts/report.ts` (run folders to the
 experiment results table), `scripts/score.ts` (score run logs against the best run) and `scripts/export-run.ts`
 (export a finished run as a replay bundle) and `scripts/critic-loop.ts` (finished runs, or a candidate skill, to
 a reviewed skill: up to three rounds of a critic and a reviser, then a loop record under `loops/`; `--dry-run`
