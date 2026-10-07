@@ -77,6 +77,7 @@ src/viz/
 ├── catalog.ts           # + per-world art map; cache key gains the art file and library times
 └── art/
     ├── library.json     # the starter set, batch 1
+    ├── CREDITS.md       # sprites that started from a licensed reference: source, licence, modification (R9)
     ├── library.ts       # read, validate, resolve a reference to a sprite
     ├── art-file.ts      # read and validate a world's art file; its path from the world's
     ├── allocate.ts      # glyph allocation over a world's item list
@@ -84,6 +85,7 @@ src/viz/
 src/harness/
 ├── bundle.ts            # BundleManifest gains `art?`
 └── export.ts            # buildBundle fills `art` through world-art.ts
+scripts/art-sheet.ts   # a standalone HTML contact sheet of the library, for checking drawings by eye
 worlds/
 ├── minecraft-inspired.art.json   # names into the library
 └── README.md            # a row for the art file

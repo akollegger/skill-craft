@@ -101,13 +101,35 @@ what lets a bundle without art open.
 *A factory per art* (today's `createTableScene(art)`) works for tests but not for a scene made per run from data that arrives with
 the bundle.
 
-## R9. Authoring the starter set
+## R9. Authoring the starter set: generate the symbols, draw the pictures from references
 
-**Decision**: Library entries are authored by hand as eight-string rows in the JSON file, in the order of ADR-005 2.6. Letters and
-digits are drawn as simple five-by-seven forms centered in the 8 by 8 cell. A test, not a tool, enforces the rules (size, legend,
-unique names, unique pixel patterns). Batch 2 is outside this feature.
+**Decision**: Library entries end up as eight-string rows in `library.json`, whatever made them. Two ways of making them:
 
-**Rationale**: A generator would add a build step for 47 small pictures that a person can read in a diff.
+- **Generated, then committed (47 symbols, plus the simple shapes).** Letters and digits are rendered from a small bitmap font table
+  into 8 by 8 rows; `circle`, `square`, `triangle`, `diamond`, `star`, `cross` and the Greek letters are rasterised from simple
+  definitions. A throwaway script produces the rows, and the rows are pasted into the library. The script is not a build step.
+- **Drawn from a reference (the pictorial items).** A drawing may start from a reference image, drawing or emoji whose licence allows
+  it. The preferred source is Noto Emoji (`googlefonts/noto-emoji`): its images are under Apache 2.0 and its fonts under OFL 1.1, and
+  its companion `emoji-metadata` repository carries the Unicode shortcodes the library's names follow. A reference is a starting point:
+  it is downscaled and mapped to the palette, then redrawn by hand until it reads at 8 by 8 and at 2x. A sprite is the project's own
+  8 by 8 drawing; it is never a downscale used as it came.
+
+A contact sheet (a standalone HTML page that draws every library entry large, beside its name, on the table's colors) is how drawings
+are checked by eye. Reference images, scratch scripts and sheets are not committed; the library file and a credits file are.
+
+**Credits**: `src/viz/art/CREDITS.md` lists each sprite that started from a reference, with the source, its licence and the sentence
+"modified: reduced to 8 by 8 pixels in the project's palette", and carries the Apache 2.0 attribution text Noto Emoji's licence asks
+for. A test checks that every credited sprite exists in the library. Game textures, brands and logos are never a reference
+(ADR-005 2.6); the faithful world's nine drawings start from general concepts (a log, a pickaxe), not from a game's images.
+
+**Rationale**: A rule can make letters, digits and shapes; no rule makes a good 8 by 8 pizza from the word "pizza". Starting a
+drawing from a licensed reference is faster and more recognisable than a blank grid, and the 8 by 8 redraw makes the result the
+project's own work. Most batch 1 and batch 2 concepts have a Noto emoji; a few do not (`crafting-table`, `slab`, `ingot`, `dough`,
+`flour`, `batter`, `first-aid-kit`) and are drawn from general knowledge.
+
+**Alternatives**: *A downscaling pipeline for everything* gives mush at 8 by 8 and ties the library to one vendor's look. *Drawing
+everything from a blank grid* gives up a free, licensed starting point. *A generator for letters in a committed script* adds a tool the
+project must keep; the throwaway script and its pasted rows avoid that.
 
 ## R10. Library entries and the privacy rules
 

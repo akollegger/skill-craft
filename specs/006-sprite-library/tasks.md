@@ -111,13 +111,15 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 
 ### Implementation for User Story 3 (batch 1 drawings; each group is its own file section and can be done in parallel)
 
-- [ ] T032 [P] [US3] Add the tools to `src/viz/art/library.json`: `hammer/`, `axe/`, `shovel/`, `hoe/` (shapes with materials), `saw`, `wrench`, `screwdriver`, `pliers`, `scissors`, `knife`, `paintbrush`, `ruler`, `ladder`, `toolbox`, `nut-and-bolt`, `gear`
-- [ ] T033 [P] [US3] Add containers and basic materials: `box`, `crate`, `barrel`, `chest`, `bag`, `bottle`, `jar`, `bowl`, `cup`, `bucket`, `rope`, `cloth`, `paper`, `scroll`, `book`, `coin`, `gem`, `crystal`, `leaf`, `flame`
-- [ ] T034 [P] [US3] Add food: `wheat`, `egg`, `milk`, `butter`, `cheese`, `salt`, `sugar`, `tomato`, `bell-pepper`, `chili-pepper`, `steak`, `chicken-leg`, `bacon`, `fish`, `flour`, `dough`, `bread`, `pizza`, `omelet`, `pancake`, `cake`, `cookie`, `soup`; check `pizza`, `cake` and `cookie` at 2x so the round dishes do not read alike
-- [ ] T035 [P] [US3] Add the placeholder symbols: `letter-a` to `letter-z` and `digit-0` to `digit-9` as simple five-by-seven forms centered in the cell, `pi`, `sigma`, `delta`, `lambda`, `omega`, `circle`, `square`, `triangle`, `diamond`, `star`, `cross`
-- [ ] T036 [US3] Make T030 and T031 pass: resolve any collision the unique-pixel-pattern test reports by redrawing the later entry (depends on T032, T033, T034, T035)
-- [ ] T037 [US3] Add the art file row to the table in `worlds/README.md` ("`<name>.art.json`: which sprite each item is drawn with; the visualizer's backend only") and a short paragraph that names are symbols a world may read literally or as placeholders
-- [ ] T038 [US3] **(manual)** Check quickstart steps 7 and 8 on a copy of a world with placeholder names and with a bad art file
+- [ ] T032 [US3] Write a test and then `scripts/art-sheet.ts <dest.html>`: it writes a standalone contact sheet of `src/viz/art/library.json` (every sprite, and every shape in each of its materials, at 1x and 4x with its name, on the table's wood and on the dark backdrop) to a path outside the repository; the test checks the sheet names every library entry; the sheet is how drawings are checked by eye (research R9)
+- [ ] T033 [US3] Create `src/viz/art/CREDITS.md` (research R9): a table of the sprites that started from a reference, with source, licence and the statement of modification, and the Apache 2.0 attribution for Noto Emoji; add a test that every credited name exists in the library
+- [ ] T034 [P] [US3] Add the tools to `src/viz/art/library.json`, each started from a Noto emoji where one exists and redrawn by hand at 8 by 8 (record it in `CREDITS.md`): `hammer/`, `axe/`, `shovel/`, `hoe/` (shapes with materials), `saw`, `wrench`, `screwdriver`, `pliers`, `scissors`, `knife`, `paintbrush`, `ruler`, `ladder`, `toolbox`, `nut-and-bolt`, `gear`
+- [ ] T035 [P] [US3] Add containers and basic materials, started from references and redrawn by hand as above: `box`, `crate`, `barrel`, `chest`, `bag`, `bottle`, `jar`, `bowl`, `cup`, `bucket`, `rope`, `cloth`, `paper`, `scroll`, `book`, `coin`, `gem`, `crystal`, `leaf`, `flame`
+- [ ] T036 [P] [US3] Add food, started from references and redrawn by hand as above (no Noto emoji exists for `dough`, `flour` or `batter`; draw those from general knowledge): `wheat`, `egg`, `milk`, `butter`, `cheese`, `salt`, `sugar`, `tomato`, `bell-pepper`, `chili-pepper`, `steak`, `chicken-leg`, `bacon`, `fish`, `flour`, `dough`, `bread`, `pizza`, `omelet`, `pancake`, `cake`, `cookie`, `soup`; check `pizza`, `cake` and `cookie` at 2x so the round dishes do not read alike
+- [ ] T037 [P] [US3] Generate the placeholder symbols with a throwaway script kept outside the repository (research R9) and paste the rows into `library.json`: `letter-a` to `letter-z` and `digit-0` to `digit-9` from a five-by-seven bitmap font table centered in the cell, and `pi`, `sigma`, `delta`, `lambda`, `omega`, `circle`, `square`, `triangle`, `diamond`, `star` and `cross` from simple definitions; view them on the contact sheet
+- [ ] T038 [US3] Make T030 and T031 pass and review the whole library on the contact sheet from T032: resolve any collision the unique-pixel-pattern test reports by redrawing the later entry (depends on T034, T035, T036, T037)
+- [ ] T039 [US3] Add the art file row to the table in `worlds/README.md` ("`<name>.art.json`: which sprite each item is drawn with; the visualizer's backend only") and a short paragraph that names are symbols a world may read literally or as placeholders
+- [ ] T040 [US3] **(manual)** Check quickstart steps 7 and 8 on a copy of a world with placeholder names and with a bad art file
 
 **Checkpoint**: Stories 1 to 3 work; batch 1 is in the library.
 
@@ -131,16 +133,16 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 
 ### Tests for User Story 4
 
-- [ ] T039 [P] [US4] Extend `test/viz/export-folder.test.ts`: the static export's `catalog.json` carries `art` and every bundle's `bundle.json` carries its own `art`; after the library and art files are removed or edited, reading the export gives the same sprites; the export holds no library name
-- [ ] T040 [P] [US4] Extend `test/viz/catalog.test.ts` for folder bundles: a bundle with `art` in its manifest contributes its items to the catalog's `art` for its world; a bundle without `art` is listed and opens, and the catalog has no entry for it; a malformed `art` in a manifest makes that bundle `BundleInvalid`
-- [ ] T041 [P] [US4] Extend `viz/test/runview.test.ts` and `viz/test/picker.test.ts`: a bundle with no `art` opens, and every item uses the name-only sprite; a catalog with no `art` lists runs with name-only thumbnails
-- [ ] T042 [P] [US4] Extend `test/export.test.ts` (or `test/scripts.test.ts`): `scripts/export-run.ts` writes a bundle whose manifest carries `art`, so a bundle exported outside the visualizer opens offline too
+- [ ] T041 [P] [US4] Extend `test/viz/export-folder.test.ts`: the static export's `catalog.json` carries `art` and every bundle's `bundle.json` carries its own `art`; after the library and art files are removed or edited, reading the export gives the same sprites; the export holds no library name
+- [ ] T042 [P] [US4] Extend `test/viz/catalog.test.ts` for folder bundles: a bundle with `art` in its manifest contributes its items to the catalog's `art` for its world; a bundle without `art` is listed and opens, and the catalog has no entry for it; a malformed `art` in a manifest makes that bundle `BundleInvalid`
+- [ ] T043 [P] [US4] Extend `viz/test/runview.test.ts` and `viz/test/picker.test.ts`: a bundle with no `art` opens, and every item uses the name-only sprite; a catalog with no `art` lists runs with name-only thumbnails
+- [ ] T044 [P] [US4] Extend `test/export.test.ts` (or `test/scripts.test.ts`): `scripts/export-run.ts` writes a bundle whose manifest carries `art`, so a bundle exported outside the visualizer opens offline too
 
 ### Implementation for User Story 4
 
-- [ ] T043 [US4] In `src/viz/catalog.ts` merge a folder bundle's manifest `art` into the catalog's per-world map (the same first-in-order rule) and keep it out of the entry's cache key beyond the bundle's own files; make T039, T040 and T042 pass
-- [ ] T044 [US4] Make T041 pass: check that the page's fallbacks in `viz/src/art/world-art.ts`, `RunView.svelte` and `Thumbnail.svelte` handle absent `art` at every level (absent catalog map, absent world, absent item); fix any that do not
-- [ ] T045 [US4] **(manual)** Check quickstart steps 4, 5 and 6: export, delete the art file and the library, open the export; open a pre-feature bundle; edit a library sprite and confirm the thumbnail changes and the exported table does not
+- [ ] T045 [US4] In `src/viz/catalog.ts` merge a folder bundle's manifest `art` into the catalog's per-world map (the same first-in-order rule) and keep it out of the entry's cache key beyond the bundle's own files; make T041, T042 and T044 pass
+- [ ] T046 [US4] Make T043 pass: check that the page's fallbacks in `viz/src/art/world-art.ts`, `RunView.svelte` and `Thumbnail.svelte` handle absent `art` at every level (absent catalog map, absent world, absent item); fix any that do not
+- [ ] T047 [US4] **(manual)** Check quickstart steps 4, 5 and 6: export, delete the art file and the library, open the export; open a pre-feature bundle; edit a library sprite and confirm the thumbnail changes and the exported table does not
 
 **Checkpoint**: all four stories work.
 
@@ -148,13 +150,13 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 
 ## Phase 7: Polish and cross-cutting
 
-- [ ] T046 [P] Apply the ADR-005 touch-ups in `design/adr/ADR-005-per-world-item-art.md`: 2.2's last sentence (the shared glyph file replaces counts plus a pinning test), 2.1's schema location (the wire shape in `src/viz/contract.ts`; the library and art file schemas in `src/viz/art/`), and the allocation's fixed order (+9 modulo 64, research R5)
-- [ ] T047 [P] Add the matching notes to `design/adr/ADR-001-crafting-table-world.md`, `design/adr/ADR-002-client-otel-trace.md` and `design/adr/ADR-004-skillcraft-visualizer.md` (the library and `art`), and use "backend" for the data side in the sentences they touch
-- [ ] T048 [P] Update `AGENTS.md`: the layout row for `src/viz/` (library, art file, allocator, shared glyph tables), the visualizer rules (a sprite reveals no recipe; the library and art file are read only by the backend; `art` holds only items a run shows) and the scripts description of export
-- [ ] T049 [P] Update `specs/004-skillcraft-visualizer/contracts/catalog-and-bundles.md` with a pointer to `contracts/art.md` for the `art` fields
-- [ ] T050 Run `pnpm typecheck`, `pnpm test`, `pnpm build:viz` and `pnpm build`; compare the passing count with T001's; fix anything that regressed
-- [ ] T051 Run the whole [quickstart.md](quickstart.md) once more on a fresh checkout of the branch and tick off each step
-- [ ] T052 Mark the follow-up in ADR-005 and the spec when done: batch 2 (technology, furniture and household, medical, scientific) remains as sprite-only work; open a PR for the branch
+- [ ] T048 [P] Apply the ADR-005 touch-ups in `design/adr/ADR-005-per-world-item-art.md`: 2.2's last sentence (the shared glyph file replaces counts plus a pinning test), 2.1's schema location (the wire shape in `src/viz/contract.ts`; the library and art file schemas in `src/viz/art/`), and the allocation's fixed order (+9 modulo 64, research R5)
+- [ ] T049 [P] Add the matching notes to `design/adr/ADR-001-crafting-table-world.md`, `design/adr/ADR-002-client-otel-trace.md` and `design/adr/ADR-004-skillcraft-visualizer.md` (the library and `art`), and use "backend" for the data side in the sentences they touch
+- [ ] T050 [P] Update `AGENTS.md`: the layout row for `src/viz/` (library, art file, allocator, shared glyph tables), the visualizer rules (a sprite reveals no recipe; the library and art file are read only by the backend; `art` holds only items a run shows) and the scripts description of export
+- [ ] T051 [P] Update `specs/004-skillcraft-visualizer/contracts/catalog-and-bundles.md` with a pointer to `contracts/art.md` for the `art` fields
+- [ ] T052 Run `pnpm typecheck`, `pnpm test`, `pnpm build:viz` and `pnpm build`; compare the passing count with T001's; fix anything that regressed
+- [ ] T053 Run the whole [quickstart.md](quickstart.md) once more on a fresh checkout of the branch and tick off each step
+- [ ] T054 Mark the follow-up in ADR-005 and the spec when done: batch 2 (technology, furniture and household, medical, scientific) remains as sprite-only work; open a PR for the branch
 
 ---
 
@@ -164,16 +166,16 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 - Within Phase 2: T004 follows T003; T006 follows T004 and T005; T009 follows T004, T006, T007 and T008.
 - **US1** is the MVP and the others build on it: T016 to T021 are the backend chain (library, drawings, art file, world art, catalog); T022 to T024 are the page chain and need only T006 and T009 to start, so they can run beside the backend chain.
 - **US2** needs US1's backend (T020, T021) and page (T022).
-- **US3** needs the library mechanism of US1 (T016); the four drawing groups T032 to T035 are independent of each other and of US2.
+- **US3** needs the library mechanism of US1 (T016); the four drawing groups T034 to T037 are independent of each other and of US2.
 - **US4** needs US1 (T020, T021) and is independent of US2 and US3.
-- **Polish** follows the stories it documents; T046 to T049 can run as soon as their stories are done.
+- **Polish** follows the stories it documents; T048 to T051 can run as soon as their stories are done.
 
 ## Parallel opportunities
 
 - Phase 2 tests T003, T005, T007 and T008 are four different files.
 - US1 tests T010 to T015 are six different files; T022 (page lookup) runs beside T016 to T021 (backend).
-- The four drawing groups T032, T033, T034 and T035 all edit `library.json`: draw each in its own branch of the file section and merge, or do them in turn if conflicts are a concern.
-- US4's tests T039 to T042 are four different files.
+- The four drawing groups T034, T035, T036 and T037 all edit `library.json`: draw each in its own branch of the file section and merge, or do them in turn if conflicts are a concern.
+- US4's tests T041 to T044 are four different files.
 
 ## Implementation strategy
 

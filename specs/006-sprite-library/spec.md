@@ -136,7 +136,7 @@ Open a bundle made before this feature and check that it opens.
 - **FR-003**: The library MUST ship a starter set in two batches, as ADR-005 section 2.6 lists them. Batch 1, delivered by this
   feature: the faithful world's 13 items (9 drawings), tools, containers and basic materials, food, and placeholder symbols (letters,
   digits, a few Greek letters and simple shapes). Batch 2 (technology, furniture and household, medical, scientific) is later,
-  sprite-only work. Every drawing MUST be original and copy no game's textures, vendor's emoji art, brand or logo. The faithful world's
+  sprite-only work. Every drawing MUST be the project's own 8 by 8 work: it may start from a licensed reference (a source and licence recorded in a credits file) but is redrawn for the size and the palette, and none copies a game's textures, a brand or a logo. The faithful world's
   art file MUST name its library sprites.
 - **FR-004**: An item with no drawn sprite MUST get a generated shape allocated across the world's whole item list, so that no two such
   items share a shape family and colour palette while the list is 64 items or fewer, and the allocation MUST be deterministic, the same

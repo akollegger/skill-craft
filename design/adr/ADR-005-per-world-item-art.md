@@ -60,8 +60,8 @@ reaches the catalog.
 
 The faithful world, `minecraft-inspired`, gets drawn art for its 13 items: a log, cobblestone, an ingot, planks, a stick, a crafting
 table and a slab, and one shape per tool kind (pickaxe, sword) in three materials. Its art file is a name map into the library, and
-the drawings live there (2.5). The drawings are original and do not copy any
-game's textures; the README's credit that the world is inspired by a game whose name is a trademark stays as it is.
+the drawings live there (2.5). Each drawing is the project's own 8 by 8 work. It may start from a reference whose licence allows it, such as Noto Emoji
+(Apache 2.0), but copies no game's textures; the README's credit that the world is inspired by a game whose name is a trademark stays as it is.
 
 ### 2.2 Allocated glyphs for everything else
 
@@ -153,8 +153,10 @@ in `/` are shapes recoloured per material. It lands in two batches; the second i
 - Scientific (14): `flask`, `beaker`, `test-tube`, `petri-dish`, `microscope`, `telescope`, `atom`, `dna`, `magnet`, `magnifier`,
   `globe`, `compass`, `balance-scale`, `hourglass`.
 
-Names follow familiar emoji concepts so a designer can guess them, and every drawing is original: none copies a vendor's emoji art, a
-game's textures or a brand or logo (so no protected emblem). Pictures that read alike at 8 by 8 are drawn once and recoloured, not
+Names follow familiar emoji concepts (the Unicode shortcodes) so a designer can guess them. Each drawing is the project's own 8 by 8
+work: it may start from a licensed reference, with the source and licence recorded in a credits file beside the library, and it is
+redrawn to read at that size and in the palette, never used as a plain downscale. A game's textures, a brand or a logo (so no protected
+emblem) is never a reference. Letters, digits and simple shapes are generated once and committed as rows. Pictures that read alike at 8 by 8 are drawn once and recoloured, not
 twice. Faces, people, animals and flags are out of the starter set.
 
 ## 3. Alternatives Considered
