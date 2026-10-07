@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, setContext } from "svelte";
   import type { Catalog, CatalogEntry } from "../../src/viz/contract.ts";
+  import { WORLD_ART, type WorldArtLookup } from "./art/context.ts";
   import { createClient, type LoadError } from "./contract/client.ts";
   import { createScenePool } from "./scene/pool.ts";
   import type { SceneFactory } from "./scene/handle.ts";
@@ -26,6 +27,10 @@
   let error = $state<LoadError | undefined>();
   let view = $state<View>(defaultView());
   let selection = $state(initialSelection());
+
+  // A thumbnail draws its goal the way the catalog says its world's items are drawn, so a list and a table show the same sprite.
+  const worldArt: WorldArtLookup = (world) => catalog?.art?.[world];
+  setContext(WORLD_ART, worldArt);
 
   const groups = $derived(catalog ? arrange(catalog.runs, view) : []);
   const shown = $derived(groups.reduce((n, g) => n + g.runs.length, 0));

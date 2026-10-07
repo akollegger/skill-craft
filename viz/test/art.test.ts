@@ -9,7 +9,7 @@ const itemNames = (): Map<string, string[]> => {
   const out = new Map<string, string[]>();
   for (const dir of ["worlds", "worlds/generated", "test/fixtures/valid"]) {
     for (const f of readdirSync(join(process.cwd(), dir))) {
-      if (!f.endsWith(".json") || f.includes(".goals.") || f.includes(".notes.")) continue;
+      if (!f.endsWith(".json") || f.includes(".goals.") || f.includes(".notes.") || f.includes(".art.")) continue;
       const world = JSON.parse(readFileSync(join(process.cwd(), dir, f), "utf8")) as { items?: { id: string }[] };
       if (world.items) out.set(`${dir}/${f}`, world.items.map((i) => i.id));
     }

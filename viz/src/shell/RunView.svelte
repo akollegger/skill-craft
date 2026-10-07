@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import type { BundleData, CatalogEntry } from "../../../src/viz/contract.ts";
+  import { artFromWorld } from "../art/index.ts";
   import { effectsForStep, sceneAt } from "../scene/model.ts";
   import type { SceneFactory, SceneHandle } from "../scene/handle.ts";
   import { delayBefore, initial, keyAction, reduce, stepTimes, type PlaybackAction } from "../state/playback.ts";
@@ -62,7 +63,7 @@
     // the controls still work, and the view says what is missing.
     const failed = (e: unknown): void => void (drawError = e instanceof Error ? e.message : "the scene failed");
     try {
-      const made = createScene(host!, { reducedMotion });
+      const made = createScene(host!, { reducedMotion, art: artFromWorld(bundle.manifest.art) });
       if (made instanceof Promise) made.then(attach).catch(failed);
       else attach(made);
     } catch (e) {

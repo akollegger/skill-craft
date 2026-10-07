@@ -86,7 +86,9 @@ function bevelled(into: Container, x: number, y: number, w: number, h: number): 
 }
 
 export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
-  return async (host, { reducedMotion }): Promise<SceneHandle> => {
+  return async (host, { reducedMotion, art: runArt }): Promise<SceneHandle> => {
+    // The run's own art (its bundle's) wins over the factory's, which is what a scene draws when none is given.
+    const draw = runArt ?? art;
     // The canvas is as tall as its content needs, whatever the grid: a start value until the first frame says what is on the table.
     let H = 118;
     const app = new Application();
@@ -112,7 +114,7 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
     const textureFor = (item: string): Texture => {
       let t = textures.get(item);
       if (!t) {
-        const s = art(item);
+        const s = draw(item);
         const c = document.createElement("canvas");
         c.width = s.width;
         c.height = s.height;

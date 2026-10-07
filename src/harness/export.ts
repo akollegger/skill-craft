@@ -4,6 +4,7 @@ import { deriveFrames } from "../sim/frames.js";
 import { loadWorld } from "../sim/loader.js";
 import { ReplayError } from "../sim/score.js";
 import { readTrace } from "../trace/lines.js";
+import { usedItems, worldArtFor } from "../viz/art/world-art.js";
 import type { Bundle, BundleManifest, BundleResult } from "./bundle.js";
 import { ExportRefused } from "./errors.js";
 import { fromRepoPath } from "./paths.js";
@@ -31,7 +32,7 @@ export function recordedWorldPath(runDir: string): string | undefined {
 /**
  * Build a finished run's replay bundle in memory: its frames, its trace if the trace matched, and its result
  * without the agent's text. Nothing in it names the world file, a recipe, an item description or an item the
- * run never met. The export writes it and the visualizer's server supplies it, so both carry the same bytes.
+ * run never met; its art covers the items the run shows and no others. The export writes it and the visualizer's server supplies it, so both carry the same bytes.
  */
 export function buildBundle(runDir: string): Bundle {
   const scorePath = join(runDir, "score.json");
@@ -62,6 +63,8 @@ export function buildBundle(runDir: string): Bundle {
     ...(saved.priorFit === undefined ? {} : { priorFit: saved.priorFit }),
     ...(saved.promptNote === undefined ? {} : { promptNote: saved.promptNote }),
     ...(saved.skill === undefined ? {} : { skill: { name: saved.skill.name, loaded: saved.skill.invoked, loadedAfter: saved.skill.loadedAfterCalls } }),
+    // How the items the run shows are drawn, so the bundle opens with its look and without the world, the art file or the library.
+    art: worldArtFor(world, worldPath, usedItems(frames, saved.score.goal.item)),
   };
   const result: BundleResult = {
     ended: saved.ended,

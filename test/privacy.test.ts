@@ -143,7 +143,7 @@ describe("a bundle's manifest fields for the visualizer", () => {
       skill: { name: "demo-skill", sha256: FINGERPRINT, invoked: true, loadedAfterCalls: 3 },
     });
     const bundle = buildBundle(runDir);
-    expect(Object.keys(bundle.manifest).sort()).toEqual(["best", "format", "frames", "goal", "label", "model", "priorFit", "promptNote", "skill", "trace", "world"].sort());
+    expect(Object.keys(bundle.manifest).sort()).toEqual(["art", "best", "format", "frames", "goal", "label", "model", "priorFit", "promptNote", "skill", "trace", "world"].sort());
     expect(Object.keys(bundle.manifest.skill ?? {}).sort()).toEqual(["loaded", "loadedAfter", "name"]);
     const text = JSON.stringify(bundle);
     for (const secret of [...SECRETS, SKILL_TEXT, FINGERPRINT]) expect(text, secret).not.toContain(secret);

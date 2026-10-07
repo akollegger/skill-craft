@@ -1,5 +1,10 @@
+import type { Frame } from "../../sim/frames.js";
+import type { World } from "../../sim/schema.js";
 import type { WorldArt } from "../contract.js";
 import type { Glyph } from "../glyphs.js";
+import { allocate } from "./allocate.js";
+import { artFilePath, readArtFile } from "./art-file.js";
+import { readLibrary, type Library } from "./library.js";
 
 /**
  * The internal form of a sprite: eight rows of eight cells, each a palette name or null for transparent. Every sprite, whether it came from the
@@ -78,5 +83,37 @@ export function mergeArt(list: readonly WorldArt[]): WorldArt | undefined {
   if (list.length === 0) return undefined;
   const entries: Record<string, ArtEntry> = {};
   for (const art of list) for (const [name, e] of Object.entries(fromWire(art))) if (!(name in entries)) entries[name] = e;
+  return toWire(entries);
+}
+
+/** The items a run's frames show (the grid, the held items, the crafted outputs and the previewed craft) and its goal. */
+export function usedItems(frames: readonly Frame[], goal: string): string[] {
+  const used = new Set<string>([goal]);
+  for (const f of frames) {
+    for (const row of f.grid) for (const c of row) if (c !== null) used.add(c);
+    for (const h of Object.keys(f.held)) used.add(h);
+    if (f.crafted) used.add(f.crafted.item);
+    if (f.craftable !== null) used.add(f.craftable);
+  }
+  return [...used].sort();
+}
+
+/**
+ * How the given items of a world are drawn: the sprite its art file gives an item (by library name or inline rows), and for every other
+ * item of the world a glyph allocated across the world's whole item list, so the items look the same wherever they appear and no two share a
+ * shape and color. Only the items asked for are included (those a run shows), and an item the world does not have is left for the page's
+ * name-only fallback. Deterministic: no clock, no randomness.
+ */
+export function worldArtFor(world: World, worldPath: string, used: Iterable<string>, library: Library = readLibrary()): WorldArt {
+  const ids = world.items.map((i) => i.id);
+  const drawn = readArtFile(artFilePath(worldPath), ids, library);
+  const glyphs = allocate(ids.filter((id) => !drawn.has(id)));
+  const entries: Record<string, ArtEntry> = {};
+  for (const name of new Set(used)) {
+    const sprite = drawn.get(name);
+    const glyph = glyphs.get(name);
+    if (sprite) entries[name] = { sprite };
+    else if (glyph) entries[name] = { glyph };
+  }
   return toWire(entries);
 }

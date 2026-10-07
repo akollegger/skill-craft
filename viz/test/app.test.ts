@@ -29,6 +29,21 @@ describe("the page", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Skillcraft");
   });
 
+  it("draws a goal thumbnail with the art the catalog gives its world", async () => {
+    const fills: string[] = [];
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((() => {
+      let style = "";
+      return { set fillStyle(v: string) { style = v; }, get fillStyle() { return style; }, fillRect() { fills.push(style.toLowerCase()); }, clearRect() {} };
+    }) as never);
+    const solid = { legend: { a: "woodFace" }, items: { d: { rows: Array(8).fill("aaaaaaaa") } } };
+    const withGoal = (world: string) => ({ ...entry("1", world), attributes: { ...entry("1", world).attributes, goalItem: "d" } });
+    serve({ format: 1, runs: [withGoal("forge")], art: { forge: solid } });
+    render(App);
+    await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(1));
+    await waitFor(() => expect(fills.filter((c) => c === "#dd992c").length).toBe(64));
+    vi.restoreAllMocks();
+  });
+
   it("says when the folder has no runs", async () => {
     serve({ format: 1, runs: [] });
     render(App);
