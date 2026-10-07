@@ -178,7 +178,7 @@ redone. The 8 by 8 tasks above stay as the record of what was built; these repla
 - [X] T063 [P] Redraw the sixteen tools (`hammer/`, `axe/`, `shovel/`, `hoe/`, `saw`, `wrench`, `screwdriver`, `pliers`, `scissors`, `knife`, `paintbrush`, `ruler`, `ladder`, `toolbox`, `nut-and-bolt`, `gear`) at 16 by 16 without an outline
 - [X] T064 [P] Redraw the twenty containers and materials at 16 by 16 without an outline
 - [X] T065 [P] Redraw the twenty-three foods at 16 by 16 without an outline
-- [ ] T066 Review every drawing on the contact sheet and in the visualizer at its real size, with the contrast column, and revise
+- [X] T066 Review every drawing on the contact sheet and in the visualizer at its real size, with the contrast column, and revise
 - [X] T067 Update `AGENTS.md`, `worlds/README.md`, `src/viz/art/CREDITS.md`, `specs/006-sprite-library/quickstart.md` and the notes in ADR-001, ADR-002 and ADR-004 where they say 8 by 8
 - [X] T068 Run `pnpm typecheck`, `pnpm test`, `pnpm build:viz` and `pnpm build`, then the quickstart by eye
 
