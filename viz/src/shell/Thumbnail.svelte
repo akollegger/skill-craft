@@ -9,7 +9,7 @@
   // How this world's items are drawn comes from the catalog, so the goal looks the way it does on the table; without it, from the name alone.
   const worldArt = getContext<WorldArtLookup | undefined>(WORLD_ART);
 
-  const scale = $derived(compact ? 3 : 4);
+  const scale = $derived(compact ? 2 : 3);
   const size = $derived(slotSize(scale));
   let canvas: HTMLCanvasElement | undefined = $state();
 

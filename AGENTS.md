@@ -181,7 +181,7 @@ zebra-space project with the RFC requirement removed.
 - Item art: a world's optional `<world>.art.json` and the sprite library (`src/viz/art/library.json`) are read only by the backend, at scan
   time. A library name says what is drawn, never an item's meaning, and the visualizer never interprets an item's name. A bundle's manifest and
   the catalog carry finished sprites and generated glyphs for the items a run shows, never library names, paths or other items of the world.
-  Every library drawing is the project's own 8 by 8 work; one that started from a licensed reference is listed in `src/viz/art/CREDITS.md`.
+  Every library drawing is the project's own 16 by 16 work, with no black outline (a test measures each against the dark slot and the grid cell); one that started from a licensed reference is listed in `src/viz/art/CREDITS.md`.
 
 ## Critic loop rules to keep in mind
 

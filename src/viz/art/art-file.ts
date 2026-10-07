@@ -1,4 +1,5 @@
 import { readFileSync, statSync } from "node:fs";
+import { SPRITE_SIZE } from "../glyphs.js";
 import { resolveReference, type Library } from "./library.js";
 import type { Sprite } from "./world-art.js";
 
@@ -8,11 +9,11 @@ export const artFilePath = (worldPath: string): string => worldPath.replace(/\.j
 /** The art file's modification time, for a run's cache key; 0 when it is missing. */
 export const artFileStamp = (worldPath: string): number => statSync(artFilePath(worldPath), { throwIfNoEntry: false })?.mtimeMs ?? 0;
 
-const SIZE = 8;
+const SIZE = SPRITE_SIZE;
 const isRecord = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
 
 /**
- * The sprites a world's art file draws for the items the world has. An item's value is a library reference, or eight rows of eight characters
+ * The sprites a world's art file draws for the items the world has. An item's value is a library reference, or sixteen rows of sixteen characters
  * over the file's own `legend`. A file that cannot be read or has the wrong format gives nothing, and an entry for an item the world lacks, an
  * unknown reference or rows that do not fit gives nothing for that item, so the rest of the run is never refused over art. Nothing from the file
  * is kept except the sprites.

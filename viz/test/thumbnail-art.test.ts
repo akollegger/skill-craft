@@ -6,7 +6,7 @@ import { artFromWorld, defaultItemArt } from "../src/art/index.ts";
 import { palette } from "../src/palette.ts";
 import Thumbnail from "../src/shell/Thumbnail.svelte";
 
-const solid: WorldArt = { legend: { a: "woodFace" }, items: { d: { rows: Array(8).fill("aaaaaaaa") } } };
+const solid: WorldArt = { legend: { a: "woodFace" }, items: { d: { rows: Array(16).fill("a".repeat(16)) } } };
 const face = palette.woodFace.toLowerCase();
 
 let fills: string[] = [];
@@ -33,7 +33,7 @@ const draw = (props: { goal?: string; world?: string }, lookup?: WorldArtLookup)
 describe("a goal thumbnail's art", () => {
   it("draws the goal with its world's art from the catalog when there is any", () => {
     draw({ goal: "d", world: "w" }, (world) => (world === "w" ? solid : undefined));
-    expect(fills.filter((c) => c === face).length).toBe(64);
+    expect(fills.filter((c) => c === face).length).toBe(256);
   });
 
   it("falls back to the name-only sprite when the catalog has no art for the world, or the page has none at all", () => {
@@ -43,7 +43,7 @@ describe("a goal thumbnail's art", () => {
     cleanup();
     draw({ goal: "d", world: "w" });
     expect(fills).toEqual(withLookup);
-    expect(fills.filter((c) => c === face).length).not.toBe(64);
+    expect(fills.filter((c) => c === face).length).not.toBe(256);
   });
 
   it("draws the same sprite the table's art gives for the same item", () => {

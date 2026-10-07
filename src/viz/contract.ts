@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FAMILIES, MARKS, PALETTE_COUNT } from "./glyphs.js";
+import { FAMILIES, HALF, MARKS, PALETTE_COUNT, SPRITE_SIZE } from "./glyphs.js";
 
 /**
  * The catalog the visualizer's page reads, and its parts. This file is shared with the page, so it imports
@@ -60,13 +60,13 @@ export type CatalogEntry = z.infer<typeof entrySchema>;
 // manifest (the items of that run) and in the catalog (the items of any ready run of a world), so the page draws the same sprite everywhere
 // without the world, the library or the art file. Library names never appear in it. See specs/006-sprite-library/contracts/art.md.
 
-const drawnEntry = z.object({ rows: z.array(z.string().length(8)).length(8) });
+const drawnEntry = z.object({ rows: z.array(z.string().length(SPRITE_SIZE)).length(SPRITE_SIZE) });
 const glyphEntry = z
   .object({
     family: z.number().int().min(0).max(FAMILIES.length - 1),
     variant: z.number().int().min(0),
     palette: z.number().int().min(0).max(PALETTE_COUNT - 1),
-    marks: z.array(z.number().int().min(0).max(31)).length(MARKS),
+    marks: z.array(z.number().int().min(0).max(HALF * SPRITE_SIZE - 1)).length(MARKS),
   })
   .refine((g) => g.variant < (FAMILIES[g.family]?.variants.length ?? 0), { message: "variant out of range for its family" })
   .refine((g) => new Set(g.marks).size === g.marks.length, { message: "marks must be distinct" });

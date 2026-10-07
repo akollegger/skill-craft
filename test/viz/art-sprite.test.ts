@@ -5,7 +5,8 @@ import { fromWire, isSprite, mergeArt, toWire, type ArtEntry, type Sprite } from
 
 /** An 8 by 8 sprite from rows of letters: `.` is transparent, `f` woodFace, `s` woodShade, `b` baltic. */
 const NAMES: Record<string, string | null> = { ".": null, f: "woodFace", s: "woodShade", b: "baltic" };
-const sprite = (...rows: string[]): Sprite => rows.map((r) => [...r].map((c) => NAMES[c] ?? null));
+/** A 16 by 16 sprite from eight rows of eight letters, each pixel doubled both ways. */
+const sprite = (...rows: string[]): Sprite => rows.flatMap((r) => { const row = [...r].flatMap((c) => [NAMES[c] ?? null, NAMES[c] ?? null]); return [row, row]; });
 const full = (ch: string): Sprite => sprite(...Array<string>(8).fill(ch.repeat(8)));
 const stick = sprite("......fs", ".....fs.", "....fs..", "...fs...", "..fs....", ".fs.....", "fs......", "s.......");
 

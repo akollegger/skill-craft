@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { FAMILIES, glyphOf, hashName, MARKS, ownPair, PALETTE_COUNT } from "../../src/viz/glyphs.js";
+import { FAMILIES, glyphOf, hashName, MARKS, ownPair, PALETTE_COUNT, SPRITE_SIZE } from "../../src/viz/glyphs.js";
 
 describe("the shared glyph tables", () => {
   it("has no Node import, so the page can share it", () => {
@@ -12,7 +12,15 @@ describe("the shared glyph tables", () => {
   it("counts eight palettes and at least eight families of three variants", () => {
     expect(PALETTE_COUNT).toBe(8);
     expect(FAMILIES.length).toBeGreaterThanOrEqual(8);
-    for (const f of FAMILIES) expect(f.variants).toHaveLength(3);
+    for (const f of FAMILIES) {
+      expect(f.variants).toHaveLength(3);
+      // Each variant is the left half of a 16 by 16 sprite: sixteen rows of eight cells.
+      for (const v of f.variants) {
+        expect(v).toHaveLength(SPRITE_SIZE);
+        for (const r of v) expect(r).toMatch(/^[ba.]{8}$/);
+      }
+    }
+    expect(SPRITE_SIZE).toBe(16);
   });
 
   it("hashes a name the same way every time", () => {
@@ -31,7 +39,7 @@ describe("the shared glyph tables", () => {
       expect(g.marks).toHaveLength(MARKS);
       expect(new Set(g.marks).size).toBe(MARKS);
       const rows = FAMILIES[g.family]!.variants[g.variant]!;
-      for (const m of g.marks) expect(rows[Math.floor(m / 4)]![m % 4], `${name} mark ${m}`).toBe("b");
+      for (const m of g.marks) expect(rows[Math.floor(m / 8)]![m % 8], `${name} mark ${m}`).toBe("b");
     }
   });
 
@@ -53,6 +61,6 @@ describe("the shared glyph tables", () => {
     expect(glyphOf(name, ownPair(name))).toEqual(own);
     // Marks sit on body pixels of the moved glyph's own variant.
     const rows = FAMILIES[moved.family]!.variants[moved.variant]!;
-    for (const m of moved.marks) expect(rows[Math.floor(m / 4)]![m % 4]).toBe("b");
+    for (const m of moved.marks) expect(rows[Math.floor(m / 8)]![m % 8]).toBe("b");
   });
 });

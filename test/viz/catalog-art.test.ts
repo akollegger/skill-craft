@@ -7,7 +7,7 @@ import { libraryPath } from "../../src/viz/art/library.js";
 import { RunCatalog } from "../../src/viz/catalog.js";
 import { finishedRun } from "../helpers/finished-run.js";
 
-const DRAW_E = { format: 1, legend: { ".": null, f: "woodFace" }, items: { e: Array(8).fill(".ffffff.") } };
+const DRAW_E = { format: 1, legend: { ".": null, f: "woodFace" }, items: { e: Array(16).fill(`.${"f".repeat(14)}.`) } };
 const touch = (path: string, ms: number) => utimesSync(path, new Date(ms), new Date(ms));
 
 describe("the catalog's art", () => {

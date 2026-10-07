@@ -42,11 +42,11 @@ describe("a world of placeholder names", () => {
   });
 
   it("resolves a mix of references, inline rows and omitted items, each as written", () => {
-    const rows = Array(8).fill("..ffff..");
+    const rows = Array(16).fill(`..${"f".repeat(12)}..`);
     const path = worldWith({ format: 1, legend: { ".": null, f: "woodFace" }, items: { A: "letter-a", B: rows } });
     const art = worldArtFor(placeholders(["A", "B", "C"]), path, ["A", "B", "C"]);
     expect(sprite(art, "A")).toEqual(resolveReference(library, "letter-a"));
-    expect(sprite(art, "B")[0]).toEqual([null, null, "woodFace", "woodFace", "woodFace", "woodFace", null, null]);
+    expect(sprite(art, "B")[0]).toEqual([null, null, ...Array(12).fill("woodFace"), null, null]);
     expect("glyph" in fromWire(art)["C"]!).toBe(true); // omitted: a generated glyph
   });
 

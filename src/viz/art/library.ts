@@ -1,9 +1,10 @@
 import { readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { SPRITE_SIZE } from "../glyphs.js";
 import type { Sprite } from "./world-art.js";
 
 /**
- * The shared library of named 8 by 8 sprites that worlds reference by name (ADR-005 2.5). A name says what is drawn, never what an item is or
+ * The shared library of named 16 by 16 sprites that worlds reference by name (ADR-005 2.5). A name says what is drawn, never what an item is or
  * how it is made. A *sprite* is eight rows of eight characters over `legend`; a *shape* is a sprite whose `m` and `M` stand for the body and
  * the shade of a material, so one drawing serves a pickaxe in every material. A reference is a sprite name (`log`) or `shape/material`
  * (`pickaxe/iron`). Read only by this backend, at scan time, so an edit shows at the next scan.
@@ -24,7 +25,7 @@ export const libraryPath = (): string => fileURLToPath(new URL("./library.json",
 export const libraryStamp = (path: string = libraryPath()): number => statSync(path, { throwIfNoEntry: false })?.mtimeMs ?? 0;
 
 const NAME = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const SIZE = 8;
+const SIZE = SPRITE_SIZE;
 /** The characters a shape uses for its material's body and shade; a legend may not use them. */
 const BODY = "m";
 const SHADE = "M";
@@ -59,7 +60,7 @@ export function parseLibrary(json: unknown): { library: Library } | { problems: 
     for (const [name, rows] of Object.entries(table)) {
       if (!NAME.test(name)) problems.push(`${kind} ${JSON.stringify(name)} is not a lowercase kebab-case name`);
       if (!Array.isArray(rows) || rows.length !== SIZE || !rows.every((r) => typeof r === "string" && [...r].length === SIZE)) {
-        problems.push(`${kind} ${name} is not eight rows of eight characters`);
+        problems.push(`${kind} ${name} is not sixteen rows of sixteen characters`);
         continue;
       }
       for (const ch of (rows as string[]).join("")) {

@@ -1,4 +1,5 @@
 import type { WorldArt } from "../../../src/viz/contract.ts";
+import { SPRITE_SIZE } from "../../../src/viz/glyphs.ts";
 import { hex, palette, type PaletteName } from "../palette.ts";
 import { defaultItemArt, spriteOfGlyph, type ItemArt, type ItemSprite } from "./sprite.ts";
 
@@ -29,7 +30,7 @@ export function artFromWorld(art: WorldArt | undefined): ItemArt {
           return color !== null && color !== undefined && isPaletteName(color) ? hex(color) : null;
         }),
       );
-      sprite = { width: 8, height: 8, palette: DRAWN, pixels };
+      sprite = { width: SPRITE_SIZE, height: SPRITE_SIZE, palette: DRAWN, pixels };
     } else sprite = spriteOfGlyph(entry);
     made.set(name, sprite);
     return sprite;

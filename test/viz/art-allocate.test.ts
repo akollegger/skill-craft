@@ -86,16 +86,16 @@ describe("allocating glyphs across a world", () => {
     const rows = [...got.entries()].map(([n, g]) => `${n}:${g.family}.${g.variant}.${g.palette}.${g.marks.join("+")}`);
     expect(rows).toMatchInlineSnapshot(`
       [
-        "a:4.1.2.21+26",
-        "b:2.0.2.17+7",
-        "c:1.0.2.31+16",
-        "d:6.1.0.28+26",
-        "e:3.0.3.28+25",
-        "f:4.1.0.10+26",
-        "glirol:3.0.1.30+28",
-        "oak_log:3.2.2.28+26",
-        "pluzhouvio:4.1.3.22+5",
-        "stick:4.1.7.9+26",
+        "a:4.1.2.81+116",
+        "b:2.0.2.69+31",
+        "c:1.0.2.124+81",
+        "d:6.1.0.112+106",
+        "e:3.0.3.115+107",
+        "f:4.1.0.43+114",
+        "glirol:3.0.1.123+117",
+        "oak_log:3.2.2.114+109",
+        "pluzhouvio:4.1.3.96+9",
+        "stick:4.1.7.31+113",
       ]
     `);
   });

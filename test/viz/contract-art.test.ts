@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { catalogSchema, manifestSchema, parseCatalog, worldArtSchema } from "../../src/viz/contract.js";
 
-const rows = ["........", "..aabb..", ".aabbbb.", ".abbbbb.", ".abbbbb.", ".aabbbb.", "..aabb..", "........"];
+const eight = ["........", "..aabb..", ".aabbbb.", ".abbbbb.", ".abbbbb.", ".aabbbb.", "..aabb..", "........"];
+/** Each pixel doubled both ways: sixteen rows of sixteen. */
+const rows = eight.flatMap((r) => { const d = [...r].map((c) => c + c).join(""); return [d, d]; });
 const art = {
   legend: { ".": null, a: "woodFace", b: "woodShade" },
   items: {
@@ -26,7 +28,7 @@ describe("the world art shape", () => {
   });
 
   it("accepts a legend value the page may not know, and null for transparent", () => {
-    expect(worldArtSchema.safeParse({ legend: { ".": null, a: "noSuchColor" }, items: { x: { rows: Array(8).fill("a.a.a.a.") } } }).success).toBe(true);
+    expect(worldArtSchema.safeParse({ legend: { ".": null, a: "noSuchColor" }, items: { x: { rows: Array(16).fill("a.".repeat(8)) } } }).success).toBe(true);
   });
 
   it("rejects rows that are not eight strings of eight characters", () => {
@@ -38,9 +40,9 @@ describe("the world art shape", () => {
     expect(worldArtSchema.safeParse({ ...art, items: { stick: { rows: rows.map((r) => r.replace("a", "z")) } } }).success).toBe(false);
   });
 
-  it("rejects a glyph with family, variant or palette out of range, or marks that are not two distinct integers 0 to 31", () => {
+  it("rejects a glyph with family, variant or palette out of range, or marks that are not two distinct integers 0 to 127", () => {
     const glyph = { family: 2, variant: 1, palette: 5, marks: [3, 17] };
-    const bad = [{ family: 99 }, { family: -1 }, { variant: 3 }, { palette: 8 }, { marks: [3] }, { marks: [3, 3] }, { marks: [3, 32] }, { marks: [1.5, 2] }];
+    const bad = [{ family: 99 }, { family: -1 }, { variant: 3 }, { palette: 8 }, { marks: [3] }, { marks: [3, 3] }, { marks: [3, 128] }, { marks: [1.5, 2] }];
     for (const change of bad) expect(worldArtSchema.safeParse({ legend: {}, items: { x: { ...glyph, ...change } } }).success, JSON.stringify(change)).toBe(false);
   });
 

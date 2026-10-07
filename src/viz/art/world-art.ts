@@ -1,13 +1,13 @@
 import type { Frame } from "../../sim/frames.js";
 import type { World } from "../../sim/schema.js";
 import type { WorldArt } from "../contract.js";
-import type { Glyph } from "../glyphs.js";
+import { SPRITE_SIZE, type Glyph } from "../glyphs.js";
 import { allocate } from "./allocate.js";
 import { artFilePath, readArtFile } from "./art-file.js";
 import { readLibrary, type Library } from "./library.js";
 
 /**
- * The internal form of a sprite: eight rows of eight cells, each a palette name or null for transparent. Every sprite, whether it came from the
+ * The internal form of a sprite: sixteen rows of sixteen cells, each a palette name or null for transparent. Every sprite, whether it came from the
  * library, a world's art file or a shape with a material applied, is reduced to this before it is written to the wire form, so two sources never
  * need to agree on characters.
  */
@@ -16,7 +16,7 @@ export type Sprite = readonly (readonly (string | null)[])[];
 /** How one item is drawn: a finished sprite, or a generated glyph. */
 export type ArtEntry = { sprite: Sprite } | { glyph: Glyph };
 
-const SIZE = 8;
+const SIZE = SPRITE_SIZE;
 
 export function isSprite(x: unknown): x is Sprite {
   return (
@@ -39,7 +39,7 @@ export function toWire(entries: Readonly<Record<string, ArtEntry>>): WorldArt {
   let transparent = false;
   for (const e of Object.values(entries)) {
     if (!("sprite" in e)) continue;
-    if (!isSprite(e.sprite)) throw new Error("a sprite must be eight rows of eight cells");
+    if (!isSprite(e.sprite)) throw new Error("a sprite must be sixteen rows of sixteen cells");
     for (const row of e.sprite) for (const c of row) (c === null ? (transparent = true) : names.add(c));
   }
   const sorted = [...names].sort();

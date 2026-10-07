@@ -1,7 +1,7 @@
 import { hex, type PaletteName } from "../palette.ts";
-import { FAMILIES, glyphOf, type Glyph } from "../../../src/viz/glyphs.ts";
+import { FAMILIES, glyphOf, HALF, SPRITE_SIZE, type Glyph } from "../../../src/viz/glyphs.ts";
 
-/** An 8 by 8 picture: one color per pixel as 0xRRGGBB, or null for transparent. Row by row, top to bottom. */
+/** A 16 by 16 picture: one color per pixel as 0xRRGGBB, or null for transparent. Row by row, top to bottom. */
 export interface ItemSprite {
   width: number;
   height: number;
@@ -13,37 +13,47 @@ export interface ItemSprite {
 /** How an item is drawn: a function of its name alone, so a world's own art can replace it without a scene change. */
 export type ItemArt = (name: string) => ItemSprite;
 
-const OUTLINE = hex("black");
-const pair = (body: PaletteName, accent: PaletteName) => ({ colors: [hex(body), hex(accent)] as const });
+const tri = (body: PaletteName, accent: PaletteName, edge: PaletteName) => ({ colors: [hex(body), hex(accent), hex(edge)] as const });
 
-/** Eight palettes, drawn from the brand palette. Which colors mean what in the rest of the page is separate. */
+/**
+ * Eight palettes, drawn from the brand palette: a body, a lighter accent and a darker edge of the same hue. A glyph has no black outline;
+ * its edge pixels take the darker color, so it reads on the dark slot and on the lighter grid cell. Which colors mean what in the rest of
+ * the page is separate.
+ */
 export const PALETTES = [
-  pair("midBaltic", "lightBaltic"),
-  pair("forest", "lightForest"),
-  pair("marigold", "lightMarigold"),
-  pair("hibiscus", "lightHibiscus"),
-  pair("highlightPeriwinkle", "lightBaltic"),
-  pair("midForest", "midMarigold"),
-  pair("midHibiscus", "cream"),
-  pair("baltic", "highlightYellow"),
+  tri("baltic", "lightBaltic", "darkBaltic"),
+  tri("midForest", "lightForest", "forest"),
+  tri("marigold", "lightMarigold", "woodShade"),
+  tri("midHibiscus", "lightHibiscus", "hibiscus"),
+  tri("highlightPeriwinkle", "lightBaltic", "midBaltic"),
+  tri("slateFace", "slateHighlight", "slateShade"),
+  tri("lightHibiscus", "cream", "hibiscus"),
+  tri("cream", "lightMarigold", "woodShade"),
 ] as const;
 
 export { glyphOf, hashName } from "../../../src/viz/glyphs.ts";
 
-const SIZE = 8;
-const HALF = SIZE / 2;
+const SIZE = SPRITE_SIZE;
 
-/** A glyph drawn: its family's variant mirrored left to right in its palette, with the glyph's marks in the accent color. */
+/** A glyph drawn: its family's variant mirrored left to right in its palette, the glyph's marks in the accent color, and its edge in the darker one. */
 export function spriteOfGlyph({ family, variant, palette, marks }: Glyph): ItemSprite {
-  const { colors } = PALETTES[palette]!;
+  const [body, accent, edge] = PALETTES[palette]!.colors;
   const rows = FAMILIES[family]!.variants[variant]!;
   const marked = new Set(marks);
   const pixels: (number | null)[] = [];
   for (let y = 0; y < SIZE; y++) {
-    const half = [...rows[y]!].map((c, x) => (c === "." ? null : c === "d" ? OUTLINE : c === "a" || marked.has(y * 4 + x) ? colors[1] : colors[0]));
+    const half = [...rows[y]!].map((c, x) => (c === "." ? null : c === "a" || marked.has(y * HALF + x) ? accent : body));
     for (let x = 0; x < SIZE; x++) pixels.push(x < HALF ? half[x]! : half[SIZE - 1 - x]!);
   }
-  return { width: SIZE, height: SIZE, palette, pixels };
+  // The edge: an opaque pixel with a transparent one next to it is drawn in the darker color, so the shape is outlined from within and no
+  // pixel is spent on a black border.
+  const at = (x: number, y: number): number | null | undefined => (x < 0 || y < 0 || x >= SIZE || y >= SIZE ? undefined : pixels[y * SIZE + x]);
+  const shaded = pixels.map((p, i) => {
+    if (p === null) return null;
+    const x = i % SIZE, y = Math.floor(i / SIZE);
+    return at(x - 1, y) === null || at(x + 1, y) === null || at(x, y - 1) === null || at(x, y + 1) === null ? edge : p;
+  });
+  return { width: SIZE, height: SIZE, palette, pixels: shaded };
 }
 
 /**

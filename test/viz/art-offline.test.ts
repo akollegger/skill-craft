@@ -7,7 +7,7 @@ import { RunCatalog } from "../../src/viz/catalog.js";
 import { exportFolder } from "../../src/viz/export-folder.js";
 import { finishedRun } from "../helpers/finished-run.js";
 
-const DRAW_E = { format: 1, legend: { ".": null, f: "woodFace" }, items: { e: Array(8).fill(".ffffff.") } };
+const DRAW_E = { format: 1, legend: { ".": null, f: "woodFace" }, items: { e: Array(16).fill(`.${"f".repeat(14)}.`) } };
 const read = (path: string) => JSON.parse(readFileSync(path, "utf8")) as Record<string, any>;
 
 describe("a static export's art", () => {
@@ -45,7 +45,7 @@ describe("a static export's art", () => {
     const dest = join(dir, "site");
     exportFolder(out, dest);
     const exported = readFileSync(join(dest, "catalog.json"), "utf8");
-    writeFileSync(artFilePath(world), JSON.stringify({ format: 1, legend: { f: "baltic" }, items: { e: Array(8).fill("ffffffff") } }));
+    writeFileSync(artFilePath(world), JSON.stringify({ format: 1, legend: { f: "baltic" }, items: { e: Array(16).fill("f".repeat(16)) } }));
     expect(readFileSync(join(dest, "catalog.json"), "utf8")).toBe(exported);
   });
 });

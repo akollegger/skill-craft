@@ -4,7 +4,9 @@ import { glyphOf, ownPair } from "../../src/viz/glyphs.ts";
 import { artFromWorld, defaultItemArt, spriteOfGlyph } from "../src/art/index.ts";
 import { hex } from "../src/palette.ts";
 
-const rows = ["........", "..aaaa..", ".abbbba.", ".abbbba.", ".abbbba.", ".abbbba.", "..aaaa..", "........"];
+const eight = ["........", "..aaaa..", ".abbbba.", ".abbbba.", ".abbbba.", ".abbbba.", "..aaaa..", "........"];
+/** Each pixel doubled both ways: sixteen rows of sixteen. */
+const rows = eight.flatMap((r) => { const d = [...r].map((c) => c + c).join(""); return [d, d]; });
 const art: WorldArt = {
   legend: { ".": null, a: "woodFace", b: "noSuchColor" },
   items: {
@@ -19,18 +21,18 @@ const art: WorldArt = {
 describe("expanding a world's art", () => {
   const draw = artFromWorld(art);
 
-  it("draws a drawn entry through the palette, eight by eight", () => {
+  it("draws a drawn entry through the palette, sixteen by sixteen", () => {
     const s = draw("stick");
-    expect(s.width).toBe(8);
-    expect(s.height).toBe(8);
-    expect(s.pixels).toHaveLength(64);
+    expect(s.width).toBe(16);
+    expect(s.height).toBe(16);
+    expect(s.pixels).toHaveLength(256);
     expect(s.pixels[0]).toBeNull();
-    expect(s.pixels[1 * 8 + 2]).toBe(hex("woodFace"));
+    expect(s.pixels[2 * 16 + 4]).toBe(hex("woodFace"));
   });
 
   it("draws a name the page does not know as transparent", () => {
     const s = draw("stick");
-    expect(s.pixels[2 * 8 + 2]).toBeNull(); // `b` stands for a color the page lacks
+    expect(s.pixels[4 * 16 + 6]).toBeNull(); // `b` stands for a color the page lacks
   });
 
   it("draws a glyph entry whose pair is the name's own exactly as the name-only art does", () => {

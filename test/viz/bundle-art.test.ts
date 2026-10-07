@@ -34,7 +34,7 @@ describe("a bundle's art", () => {
 
   it("draws an item the art file draws, and gives glyphs to the rest", async () => {
     const { runDir, world } = await finishedRun();
-    writeFileSync(artFilePath(world), JSON.stringify({ format: 1, legend: { ".": null, f: "woodFace" }, items: { e: Array(8).fill(".ffffff.") } }));
+    writeFileSync(artFilePath(world), JSON.stringify({ format: 1, legend: { ".": null, f: "woodFace" }, items: { e: Array(16).fill(`.${"f".repeat(14)}.`) } }));
     const art = buildBundle(runDir).manifest.art!;
     expect("rows" in art.items["e"]!).toBe(true);
     expect(art.legend).toEqual({ ".": null, a: "woodFace" });

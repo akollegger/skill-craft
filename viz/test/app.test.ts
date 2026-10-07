@@ -35,12 +35,12 @@ describe("the page", () => {
       let style = "";
       return { set fillStyle(v: string) { style = v; }, get fillStyle() { return style; }, fillRect() { fills.push(style.toLowerCase()); }, clearRect() {} };
     }) as never);
-    const solid = { legend: { a: "woodFace" }, items: { d: { rows: Array(8).fill("aaaaaaaa") } } };
+    const solid = { legend: { a: "woodFace" }, items: { d: { rows: Array(16).fill("a".repeat(16)) } } };
     const withGoal = (world: string) => ({ ...entry("1", world), attributes: { ...entry("1", world).attributes, goalItem: "d" } });
     serve({ format: 1, runs: [withGoal("forge")], art: { forge: solid } });
     render(App);
     await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(1));
-    await waitFor(() => expect(fills.filter((c) => c === "#dd992c").length).toBe(64));
+    await waitFor(() => expect(fills.filter((c) => c === "#dd992c").length).toBe(256));
     vi.restoreAllMocks();
   });
 
@@ -55,7 +55,7 @@ describe("the page", () => {
     render(App);
     await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(1));
     await waitFor(() => expect(fills.length).toBeGreaterThan(0));
-    expect(fills.filter((c) => c === "#dd992c").length).not.toBe(64); // not the solid drawn sprite another test gives its world
+    expect(fills.filter((c) => c === "#dd992c").length).not.toBe(256); // not the solid drawn sprite another test gives its world
     vi.restoreAllMocks();
   });
 

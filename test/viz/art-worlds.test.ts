@@ -24,7 +24,7 @@ const picture = (art: WorldArt, e: Entry): string => {
   if (!isGlyph(e)) return JSON.stringify(e.rows.map((r) => [...r].map((c) => art.legend[c])));
   const rows = FAMILIES[e.family]!.variants[e.variant]!;
   const marked = new Set(e.marks);
-  return `${e.palette}|${rows.map((r, y) => [...r].map((c, x) => (c === "b" && marked.has(y * 4 + x) ? "a" : c)).join("")).join("/")}`;
+  return `${e.palette}|${rows.map((r, y) => [...r].map((c, x) => (c === "b" && marked.has(y * 8 + x) ? "a" : c)).join("")).join("/")}`;
 };
 
 describe("the art of every committed world", () => {
@@ -72,7 +72,7 @@ describe("the art of every committed world", () => {
     const world = loadWorld(copy);
     const ids = world.items.map((i) => i.id);
     const [first, second] = ids as [string, string];
-    writeFileSync(artFilePath(copy), JSON.stringify({ format: 1, legend: { f: "woodFace" }, items: { [first]: Array(8).fill("ffffffff"), [second]: Array(8).fill("ffffffff") } }));
+    writeFileSync(artFilePath(copy), JSON.stringify({ format: 1, legend: { f: "woodFace" }, items: { [first]: Array(16).fill("f".repeat(16)), [second]: Array(16).fill("f".repeat(16)) } }));
     const art = worldArtFor(world, copy, ids);
     expect(isGlyph(art.items[first]!)).toBe(false);
     expect(isGlyph(art.items[second]!)).toBe(false);

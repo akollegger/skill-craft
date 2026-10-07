@@ -5,13 +5,13 @@ import { describe, expect, it } from "vitest";
 import { artFilePath, readArtFile } from "../../src/viz/art/art-file.js";
 import { parseLibrary, type Library } from "../../src/viz/art/library.js";
 
-const row = (c: string) => c.repeat(8);
+const row = (c: string) => c.repeat(16);
 const library = (() => {
   const r = parseLibrary({
     format: 1,
     legend: { ".": null, f: "woodFace", s: "woodShade" },
-    sprites: { stick: Array(8).fill(row("f")), log: Array(8).fill(row("s")) },
-    shapes: { pick: Array(8).fill(row("m")) },
+    sprites: { stick: Array(16).fill(row("f")), log: Array(16).fill(row("s")) },
+    shapes: { pick: Array(16).fill(row("m")) },
     materials: { iron: ["lightGray", "slateFace"] },
   });
   if (!("library" in r)) throw new Error(r.problems.join("; "));
@@ -41,13 +41,13 @@ describe("an art file", () => {
   });
 
   it("draws inline rows through the file's own legend", () => {
-    const rows = Array(8).fill(".fffffs.".replace(/./g, (c) => c));
+    const rows = Array(16).fill(`.${"f".repeat(13)}s.`);
     const got = readArtFile(write({ format: 1, legend: { ".": null, f: "woodFace", s: "woodShade" }, items: { stick: rows } }), ["stick"], library);
-    expect(got.get("stick")![0]).toEqual([null, "woodFace", "woodFace", "woodFace", "woodFace", "woodFace", "woodShade", null]);
+    expect(got.get("stick")![0]).toEqual([null, ...Array(13).fill("woodFace"), "woodShade", null]);
   });
 
   it("takes some items from the library and some inline, and leaves the rest out", () => {
-    const got = readArtFile(write({ format: 1, legend: { f: "woodFace" }, items: { a: "log", b: Array(8).fill(row("f")) } }), ["a", "b", "c"], library);
+    const got = readArtFile(write({ format: 1, legend: { f: "woodFace" }, items: { a: "log", b: Array(16).fill(row("f")) } }), ["a", "b", "c"], library);
     expect(names(got)).toEqual(["a", "b"]);
   });
 
@@ -62,7 +62,7 @@ describe("an art file", () => {
     const art = {
       format: 1,
       legend: { f: "woodFace" },
-      items: { ghost: "log", a: "no-such-sprite", b: Array(7).fill(row("f")), c: Array(8).fill("fff"), d: Array(8).fill(row("z")), e: "log" },
+      items: { ghost: "log", a: "no-such-sprite", b: Array(15).fill(row("f")), c: Array(16).fill("fff"), d: Array(16).fill(row("z")), e: "log" },
     };
     expect(names(readArtFile(write(art), ["a", "b", "c", "d", "e"], library))).toEqual(["e"]);
   });

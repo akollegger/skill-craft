@@ -368,3 +368,9 @@ run could be opened to the point it reached; and how a view could be saved or sh
     outcome, the calls, the best known count) and its preview come from the frames, and keeps the result until that run's files, or the world
     file it recorded, change. This replaces "derives frames on demand" in 2.3 and spec FR-020; what stays on demand is serving a bundle's
     files. A bundle folder is checked against the contract when it is scanned, and one that does not match is listed as unreadable.
+- **2026-10-07, sprites are 16 by 16 and the grid cell is lighter.** [ADR-005](ADR-005-per-world-item-art.md) 2.7 makes item sprites 16 by 16
+  pixels with no outline, so the table draws them at their own size (1x) where an 8 by 8 sprite was drawn at 2x, in a 24-pixel cell up to a
+  3 by 3 grid and a 16-pixel cell above it (the 8-pixel cell is gone). The grid cells take a new, lighter step of the wood ramp (`woodLight`,
+  with a cream bevel above and left), so wood-colored items stand out from them; the goal thumbnail's slot is 20 sprite pixels. This supersedes
+  the "twice the sprite's size in a 24-pixel cell" in the 2026-10-07 entry above.
+

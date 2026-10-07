@@ -11,12 +11,14 @@ const paletteNames = (): Set<string> => {
   return new Set([...block.matchAll(/^\s+(\w+): "#[0-9A-Fa-f]{6}"/gm)].map((m) => m[1]!));
 };
 
-const row = (c: string) => c.repeat(8);
+const row = (c: string) => c.repeat(16);
+/** Eight rows, each doubled: sixteen rows. */
+const tall = (eight: string[]) => eight.flatMap((r) => [r, r]);
 const small = {
   format: 1,
   legend: { ".": null, f: "woodFace", s: "woodShade" },
-  sprites: { stick: [row("."), row("f"), row("."), row("s"), row("."), row("f"), row("."), row("s")] },
-  shapes: { pick: [row("."), row("m"), row("M"), row("."), row("m"), row("M"), row("."), row("f")] },
+  sprites: { stick: tall([row("."), row("f"), row("."), row("s"), row("."), row("f"), row("."), row("s")]) },
+  shapes: { pick: tall([row("."), row("m"), row("M"), row("."), row("m"), row("M"), row("."), row("f")]) },
   materials: { wooden: ["woodFace", "woodShade"], iron: ["lightGray", "slateFace"] },
 };
 const parsed = (json: unknown): Library => {
@@ -64,8 +66,8 @@ describe("the committed library", () => {
     for (const ref of refs) {
       const s = resolveReference(lib, ref);
       expect(s, ref).toBeDefined();
-      expect(s!).toHaveLength(8);
-      for (const r of s!) expect(r).toHaveLength(8);
+      expect(s!).toHaveLength(16);
+      for (const r of s!) expect(r).toHaveLength(16);
       const key = JSON.stringify(s);
       expect(seen.get(key), `${ref} repeats ${seen.get(key)}`).toBeUndefined();
       seen.set(key, ref);
@@ -112,9 +114,10 @@ describe("parsing a library", () => {
   it("reports a row of the wrong size, a row character the legend lacks, and a shape character that is neither", () => {
     const bad = (sprites: unknown) => parseLibrary({ ...small, sprites });
     expect("problems" in bad({ x: [row("f")] })).toBe(true);
-    expect("problems" in bad({ x: Array(8).fill("fffffff") })).toBe(true);
-    expect("problems" in bad({ x: Array(8).fill(row("z")) })).toBe(true);
-    expect("problems" in bad({ x: Array(8).fill(row("m")) })).toBe(true); // m is for shapes only
+    expect("problems" in bad({ x: Array(8).fill("f".repeat(8)) })).toBe(true); // an 8 by 8 sprite is no longer a sprite
+    expect("problems" in bad({ x: Array(16).fill("f".repeat(15)) })).toBe(true);
+    expect("problems" in bad({ x: Array(16).fill(row("z")) })).toBe(true);
+    expect("problems" in bad({ x: Array(16).fill(row("m")) })).toBe(true); // m is for shapes only
   });
 
   it("reports a name that is not kebab-case or is used twice", () => {
@@ -133,19 +136,19 @@ describe("resolving a reference", () => {
   it("turns a sprite name into rows of palette names", () => {
     const s = resolveReference(lib, "stick")!;
     expect(s[0]!.every((c) => c === null)).toBe(true);
-    expect(s[1]!.every((c) => c === "woodFace")).toBe(true);
-    expect(s[3]!.every((c) => c === "woodShade")).toBe(true);
+    expect(s[2]!.every((c) => c === "woodFace")).toBe(true);
+    expect(s[6]!.every((c) => c === "woodShade")).toBe(true);
   });
 
   it("applies a material's two colors to a shape's m and M", () => {
     const wooden = resolveReference(lib, "pick/wooden")!;
     const iron = resolveReference(lib, "pick/iron")!;
-    expect(wooden[1]![0]).toBe("woodFace");
-    expect(wooden[2]![0]).toBe("woodShade");
-    expect(iron[1]![0]).toBe("lightGray");
-    expect(iron[2]![0]).toBe("slateFace");
-    expect(wooden[7]).toEqual(iron[7]); // the shape's fixed color is the same in every material
-    expect(wooden[1]).not.toEqual(iron[1]);
+    expect(wooden[2]![0]).toBe("woodFace");
+    expect(wooden[4]![0]).toBe("woodShade");
+    expect(iron[2]![0]).toBe("lightGray");
+    expect(iron[4]![0]).toBe("slateFace");
+    expect(wooden[14]).toEqual(iron[14]); // the shape's fixed color is the same in every material
+    expect(wooden[2]).not.toEqual(iron[2]);
   });
 
   it("gives nothing for an unknown name, an unknown material, a shape without a material, or a sprite with one", () => {

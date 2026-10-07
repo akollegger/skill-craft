@@ -24,20 +24,20 @@ describe("the default item art", () => {
     expect(defaultItemArt("glirol")).toEqual(defaultItemArt("glirol"));
   });
 
-  it("is 8 by 8 and mirrors left to right", () => {
+  it("is 16 by 16 and mirrors left to right", () => {
     const s = defaultItemArt("iron_pickaxe");
-    expect(s.width).toBe(8);
-    expect(s.height).toBe(8);
-    expect(s.pixels).toHaveLength(64);
-    for (let y = 0; y < 8; y++) for (let x = 0; x < 4; x++) expect(s.pixels[y * 8 + x]).toBe(s.pixels[y * 8 + (7 - x)]);
+    expect(s.width).toBe(16);
+    expect(s.height).toBe(16);
+    expect(s.pixels).toHaveLength(256);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 8; x++) expect(s.pixels[y * 16 + x]).toBe(s.pixels[y * 16 + (15 - x)]);
   });
 
-  it("uses only colors of one of eight palettes", () => {
+  it("uses only the colors of one of eight palettes, and no black outline", () => {
     expect(PALETTES).toHaveLength(8);
     expect(PALETTES).toHaveLength(PALETTE_COUNT); // the backend allocates across the shared count
     for (const name of ["a", "oak_log", "diamond", "stick", "glirol", "pluzhouvio"]) {
       const s = defaultItemArt(name);
-      const allowed = new Set([...PALETTES[s.palette]!.colors, 0x181414]);
+      const allowed = new Set(PALETTES[s.palette]!.colors);
       for (const c of s.pixels) if (c !== null) expect(allowed.has(c), `${name} ${c}`).toBe(true);
     }
   });
@@ -47,9 +47,9 @@ describe("the default item art", () => {
     for (const f of FAMILIES) {
       expect(f.variants.length, f.name).toBeGreaterThanOrEqual(3);
       for (const rows of f.variants) {
-        // The left half only, four columns by eight rows; the right half is its mirror image.
-        expect(rows, f.name).toHaveLength(8);
-        for (const row of rows) expect(row, f.name).toMatch(/^[bad.]{4}$/);
+        // The left half only, eight columns by sixteen rows; the right half is its mirror image.
+        expect(rows, f.name).toHaveLength(16);
+        for (const row of rows) expect(row, f.name).toMatch(/^[ba.]{8}$/);
       }
     }
     // Every family and every palette turns up across a spread of names, so a world's items differ in shape and in color.
@@ -58,19 +58,15 @@ describe("the default item art", () => {
     expect(new Set(seen.map((g) => g.palette)).size).toBe(PALETTES.length);
   });
 
-  it("has no eyes: no sprite carries the creature's dark pair of pixels in its fourth row", () => {
-    // The old creatures always had a dark pixel at column 2 of row 3 and its mirror; a glyph may have dark pixels only where its family draws them.
-    for (const name of ["glirol", "stick", "oak_log"]) {
-      const g = glyphOf(name);
-      const dark = FAMILIES[g.family]!.variants[g.variant]!.some((row) => row.includes("d"));
+  it("has no black outline: a glyph's edge is a darker shade of its own palette, never the outline black", () => {
+    for (const name of ["glirol", "stick", "oak_log", "a", "b"]) {
       const s = defaultItemArt(name);
-      const hasDark = s.pixels.some((p) => p === 0x181414);
-      expect(hasDark, name).toBe(dark);
+      expect(s.pixels.some((p) => p === 0x181414), name).toBe(false);
     }
   });
 
   it("draws enough of a shape to see", () => {
-    for (const name of ["a", "b", "c", "x", "stick"]) expect(defaultItemArt(name).pixels.filter((p) => p !== null).length, name).toBeGreaterThanOrEqual(16);
+    for (const name of ["a", "b", "c", "x", "stick"]) expect(defaultItemArt(name).pixels.filter((p) => p !== null).length, name).toBeGreaterThanOrEqual(64);
   });
 
   it("tells apart the items of every committed world", () => {
@@ -84,7 +80,7 @@ describe("the default item art", () => {
 
   it("becomes RGBA bytes with a transparent background", () => {
     const rgba = spriteToRGBA(defaultItemArt("stick"));
-    expect(rgba).toHaveLength(8 * 8 * 4);
+    expect(rgba).toHaveLength(16 * 16 * 4);
     const s = defaultItemArt("stick");
     s.pixels.forEach((p, i) => expect(rgba[i * 4 + 3]).toBe(p === null ? 0 : 255));
   });
@@ -142,17 +138,17 @@ describe("painting the goal slot", () => {
   const two: ItemSprite = { width: 8, height: 8, palette: 0, pixels: Array.from({ length: 64 }, (_, i) => (i === 0 ? 0xff0000 : i === 63 ? 0x0000ff : null)) };
   const wood = (name: keyof typeof palette) => palette[name].toLowerCase();
 
-  it("is twelve units square, so any whole scale stays crisp: the sprite, a unit of padding and a one-unit stroke", () => {
-    expect(slotSize(1)).toBe(12);
-    expect(slotSize(4)).toBe(48);
+  it("is twenty units square, so any whole scale stays crisp: the 16-unit sprite, a unit of padding and a one-unit stroke", () => {
+    expect(slotSize(1)).toBe(20);
+    expect(slotSize(4)).toBe(80);
   });
 
   it("is a one-unit stroke round a dark socket, from the derived wood ramp, even with no sprite: two rectangles and nothing else", () => {
     const { ctx, calls } = recorder();
     paintGoalSlot(ctx, undefined, { scale: 2, reached: true });
     expect(calls).toEqual([
-      { x: 0, y: 0, w: 24, h: 24, color: wood("woodShade") }, // the stroke
-      { x: 2, y: 2, w: 20, h: 20, color: wood("woodDeep") }, // the socket, one unit in on every side
+      { x: 0, y: 0, w: 40, h: 40, color: wood("woodShade") }, // the stroke
+      { x: 2, y: 2, w: 36, h: 36, color: wood("woodDeep") }, // the socket, one unit in on every side
     ]);
   });
 
@@ -173,7 +169,7 @@ describe("painting the goal slot", () => {
     paintGoalSlot(ctx, two, { scale: 4, reached: true });
     const red = calls.find((c) => c.color === "#ff0000")!;
     const blue = calls.find((c) => c.color === "#0000ff")!;
-    expect(red).toMatchObject({ x: 8, y: 8, w: 4, h: 4 }); // unit 2 of 12: past the stroke and a unit of padding, scaled by 4
+    expect(red).toMatchObject({ x: 8, y: 8, w: 4, h: 4 }); // unit 2 of 20: past the stroke and a unit of padding, scaled by 4
     expect(blue).toMatchObject({ x: 8 + 7 * 4, y: 8 + 7 * 4, w: 4, h: 4 });
   });
 

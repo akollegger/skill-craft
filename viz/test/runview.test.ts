@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 describe("the open run's item art", () => {
-  const drawn = { legend: { ".": null, a: "woodFace" }, items: { d: { rows: Array(8).fill("aaaaaaaa") } } };
+  const drawn = { legend: { ".": null, a: "woodFace" }, items: { d: { rows: Array(16).fill("a".repeat(16)) } } };
 
   it("gives its scene the art its bundle carries, so the table draws what the thumbnail draws", () => {
     const seen: { art?: (n: string) => { pixels: (number | null)[]; palette: number } }[] = [];

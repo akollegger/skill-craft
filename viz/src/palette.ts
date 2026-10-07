@@ -35,6 +35,8 @@ export const palette = {
   lightHibiscus: "#FF8E6A",
   // Derived, not brand values: a wood ramp from Marigold (hue about 33 to 41), lightest to darkest. The brand colors are an
   // anchor, not a constraint (decided 2026-10-04): the crafting table is wood, and the brand has no brown.
+  // The lightest step, a step above woodHighlight, is the table's grid cells, so the wood-colored items stand out from them (ADR-005 2.7).
+  woodLight: "#F7DCA1",
   woodHighlight: "#F6CB6F",
   woodFace: "#DD992C",
   woodShade: "#9D6725",
@@ -59,7 +61,7 @@ export const palette = {
 } as const;
 
 /** The wood names in `palette`, derived from Marigold (the retro blues are in `RETRO`). */
-export const DERIVED = ["woodHighlight", "woodFace", "woodShade", "woodFrame", "woodDeep"] as const satisfies readonly (keyof typeof palette)[];
+export const DERIVED = ["woodLight", "woodHighlight", "woodFace", "woodShade", "woodFrame", "woodDeep"] as const satisfies readonly (keyof typeof palette)[];
 
 /** The blue-grays of the playback controls, deepest to lightest. */
 export const SLATE = ["slateDeep", "slateShade", "slateFace", "slateHighlight"] as const satisfies readonly (keyof typeof palette)[];
