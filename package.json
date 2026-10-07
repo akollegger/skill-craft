@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Demo of skill distillation with Neo4j Agent Memory (NAMS)",
   "engines": {
-    "node": ">=22.12"
+    "node": ">=22.13"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
