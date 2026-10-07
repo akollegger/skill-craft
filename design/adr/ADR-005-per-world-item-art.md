@@ -3,7 +3,7 @@ id: ADR-005
 title: Per-world item art: drawn icons where a world has them, allocated glyphs where it does not
 status: accepted
 created: 2026-10-06
-specs: []
+specs: [specs/006-sprite-library]
 ---
 
 # ADR-005: Per-world item art: drawn icons where a world has them, allocated glyphs where it does not
@@ -22,8 +22,9 @@ name-chosen accent pixels). That works for any name and needs no data, and it ha
   thumbnail knows only its goal item, and a bundle carries frames, not the world file.
 - **A glyph says nothing about what an item is.** In the faithful world (item names from familiar crafting: a log, planks, a
   pickaxe in three materials) the glyphs hide the identity that the names make plain, and a reader of the table has to look the name
-  up in the call list. In an invented world there is no identity to show, so a glyph is the right drawing; in a faithful one it
-  wastes what the vocabulary offers.
+  up in the call list. An item's name and its picture are both symbols, and a world decides how literally to read
+  them: in a faithful world they are literal, and in an invented one a name may be a pure placeholder such as `A`, `B` or `π`, for
+  which an abstract glyph is the right drawing.
 
 Three constraints shape the answer. The page has no network and a replay bundle must open on its own, so whatever decides how an
 item looks has to arrive with the data. A thumbnail in a list and the table of the same run must draw the same sprite. And frames
@@ -111,8 +112,9 @@ The backend owns one file of named 8 by 8 sprites, `src/viz/art/library.json`: `
 `legend` maps a character to a palette name or `null`, as in 2.1. A `sprites` entry is eight rows of eight characters. A `shapes` entry
 is eight rows that also use `m` and `M` for a material's body and shade; these two characters are reserved and may not be keys of
 `legend`. `materials` maps a material name to its two palette names. A reference is a sprite name (`log`) or a shape and material
-(`pickaxe/iron`). Names are lowercase kebab-case and name a kind of item, never a recipe or a world. The library starts with the
-faithful world's 13 items and grows when a second world needs a concept, not before.
+(`pickaxe/iron`). Names are lowercase kebab-case and name a picture (a wrench, a letter A), never a recipe or a world. A library name says what is
+drawn, not what an item is: a world may map an item called `A` to `letter-a`, or to `wrench`, and the world's designer decides whether
+its names and pictures are read literally or as placeholders. The starter set is in 2.6.
 
 The backend resolves a reference to rows when it builds the world art of 2.3, so the catalog and the bundle manifest carry finished
 drawn entries and never library names. A bundle must open offline and keep its look, and names would let a redrawn library sprite
@@ -121,8 +123,39 @@ drawn, so no glyph is allocated there and no pinned assignment changes. A refere
 entry of the wrong size in 2.1, and the item falls back to an allocated glyph. A malformed library fails a test, and at run time it is
 treated as empty. A run's cache key includes the library file's modification time, so an edit shows at the next scan.
 
-Re-skinned worlds still get allocated glyphs and no mapping: an invented item with its base item's icon would put back the prior
-knowledge that invented names exist to remove (3). A perturbed world, which keeps familiar names, writes an art file of references.
+Re-skinned worlds still get allocated glyphs and no mapping, because the renamer never chooses a picture: an invented item carrying
+its base item's icon would put back the prior knowledge that invented names exist to remove (3). A designer who wants a world with no
+literal reading maps its items to the placeholder symbols of 2.6, or leaves them to generated shapes; a perturbed world, which keeps
+familiar names, writes an art file of references.
+
+### 2.6 The starter set
+
+The library ships with a starter set so that a designer composes a world from common pictures and does not draw its own. Entries ending
+in `/` are shapes recoloured per material. It lands in two batches; the second is sprite-only changes to the library file.
+
+**Batch 1**
+- Faithful world (9 drawings for 13 items): `log`, `cobblestone`, `ingot`, `planks`, `stick`, `crafting-table`, `slab`, `pickaxe/`, `sword/`.
+- Tools (16): `hammer/`, `axe/`, `shovel/`, `hoe/`, `saw`, `wrench`, `screwdriver`, `pliers`, `scissors`, `knife`, `paintbrush`, `ruler`,
+  `ladder`, `toolbox`, `nut-and-bolt`, `gear`.
+- Containers and basic materials (20): `box`, `crate`, `barrel`, `chest`, `bag`, `bottle`, `jar`, `bowl`, `cup`, `bucket`, `rope`,
+  `cloth`, `paper`, `scroll`, `book`, `coin`, `gem`, `crystal`, `leaf`, `flame`.
+- Food (23): raw `wheat`, `egg`, `milk`, `butter`, `cheese`, `salt`, `sugar`, `tomato`, `bell-pepper`, `chili-pepper`; meats `steak`,
+  `chicken-leg`, `bacon`, `fish`; intermediates `flour`, `dough`; dishes `bread`, `pizza`, `omelet`, `pancake`, `cake`, `cookie`, `soup`.
+- Placeholder symbols (47), for worlds whose names carry no meaning: `letter-a` to `letter-z`, `digit-0` to `digit-9`, `pi`, `sigma`,
+  `delta`, `lambda`, `omega`, `circle`, `square`, `triangle`, `diamond`, `star`, `cross`.
+
+**Batch 2**
+- Technology (16): `computer`, `laptop`, `monitor`, `keyboard`, `mouse`, `phone`, `battery`, `plug`, `lightbulb`, `flashlight`, `camera`,
+  `radio`, `satellite-dish`, `chip`, `cable`, `floppy-disk`.
+- Furniture and household (14): `chair`, `table`, `bed`, `couch`, `bookshelf`, `door`, `window`, `lamp`, `mirror`, `clock`, `lock`, `key`,
+  `candle`, `picture-frame`.
+- Medical (10): `syringe`, `pill`, `bandage`, `stethoscope`, `thermometer`, `medicine-bottle`, `bone`, `tooth`, `heart`, `first-aid-kit`.
+- Scientific (14): `flask`, `beaker`, `test-tube`, `petri-dish`, `microscope`, `telescope`, `atom`, `dna`, `magnet`, `magnifier`,
+  `globe`, `compass`, `balance-scale`, `hourglass`.
+
+Names follow familiar emoji concepts so a designer can guess them, and every drawing is original: none copies a vendor's emoji art, a
+game's textures or a brand or logo (so no protected emblem). Pictures that read alike at 8 by 8 are drawn once and recoloured, not
+twice. Faces, people, animals and flags are out of the starter set.
 
 ## 3. Alternatives Considered
 
@@ -157,7 +190,9 @@ knowledge that invented names exist to remove (3). A perturbed world, which keep
   assignments so a change is deliberate.
 - The backend learns the shape of the art (the legend and the entry kinds) and the glyph-space constants, and the catalog and
   bundle manifest each grow an optional field. ADR-002's manifest description needs the matching amendment, as ADR-004's did.
-- Drawn art is hand work: 13 items in the library now, and a later world pays only for concepts the library lacks. The library is one
+- Drawn art is hand work: about 115 drawings in batch 1 (47 of them letters, digits and simple shapes) and 54 in batch 2, and a later
+  world pays only for concepts the library lacks. A word-like name in the library invites a literal reading that a placeholder world
+  does not intend; the placeholder symbols and the designer's choice of mapping (2.5) are the answer, and nothing enforces it. The library is one
   more artifact with its own format and tests, and names are added and redrawn only on purpose. A redraw reaches old runs' thumbnails
   (the catalog is rebuilt at scan) but not their tables (a bundle keeps its own drawings), so the two can differ until the run is
   exported again.
@@ -187,3 +222,6 @@ knowledge that invented names exist to remove (3). A perturbed world, which keep
 - **2026-10-07, a shared sprite library that worlds reference by name.** Worlds no longer each carry their own drawings. The change is
   folded into 2.1 (an item's value is a reference or inline rows), 2.5 (the library, its format and resolution), 3 (two new rejected
   alternatives) and 4 (the cost and the tests). Wire formats, the allocation in 2.2 and the page are unchanged.
+- **2026-10-07, a starter set, and names and pictures are symbols.** Replaces "the library grows when a second world needs a concept"
+  with the starter set in 2.6. An item's name and its picture are symbols that a world may read literally (a log, a pickaxe) or as
+  placeholders (`A`, `B`, `π`), and the art file is where the designer chooses; the changes are in 1, 2.5, 2.6 and 4.
