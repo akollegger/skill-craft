@@ -45,7 +45,7 @@ A world may have a sibling file `worlds/<name>.art.json`, next to `<name>.goals.
 }
 ```
 
-An item's value is either a *library reference*, a string naming a sprite in the shared library of 2.5, or inline rows: eight strings
+An item's value is either a *library reference*, a string naming a sprite in the shared library of 2.5, or inline rows: sixteen strings
 of sixteen characters, each a key of the file's `legend`, whose values are names from the frontend's palette module (`viz/src/palette.ts`) or
 `null` for a transparent pixel. Sprites therefore use only palette colors, and the palette stays defined in one place. The `legend` is
 needed only when the file has inline rows. The file lists the items that have drawn art and may leave others out. Only the visualizer's backend reads it.
