@@ -10,7 +10,8 @@ specs: []
 
 ## 1. Context
 
-The visualizer, a read-only page that replays recorded runs, draws every item as an 8 by 8 pixel sprite: on the crafting table (the
+The visualizer replays recorded runs. Its frontend is a read-only page (`viz/`) and its backend is the Node code that scans a folder of runs and
+builds the catalog and replay bundles the page loads (`src/viz/`). The page draws every item as an 8 by 8 pixel sprite: on the crafting table (the
 grid where the agent places items), in the output slot, in the hotbar (the row of held items) and, for a run's goal, in the thumbnail of a list row or grid tile. Today a sprite is a pure function of the item's
 name: the name hashes to a geometric glyph (one of 8 shape families with 3 variants each, in one of 8 palettes, plus two
 name-chosen accent pixels). That works for any name and needs no data, and it has two limits.
@@ -43,20 +44,22 @@ A world may have a sibling file `worlds/<name>.art.json`, next to `<name>.goals.
 }
 ```
 
-Each item is eight strings of eight characters; a character is a key of `legend`, whose values are names from the page's palette
-module (`viz/src/palette.ts`) or `null` for a transparent pixel. Sprites therefore use only palette colors, and the palette stays
-defined in one place. The file lists the items that have drawn art and may leave others out. Only the visualizer's data side reads it.
+An item's value is either a *library reference*, a string naming a sprite in the shared library of 2.5, or inline rows: eight strings
+of eight characters, each a key of the file's `legend`, whose values are names from the frontend's palette module (`viz/src/palette.ts`) or
+`null` for a transparent pixel. Sprites therefore use only palette colors, and the palette stays defined in one place. The `legend` is
+needed only when the file has inline rows. The file lists the items that have drawn art and may leave others out. Only the visualizer's backend reads it.
 The engine, the server and the agent never do, as with the notes file (the file that records a world's prior fit and notes on its
 recipes), and the worlds README gains a row for it.
 
-The art file has a schema in `src/viz/contract.ts`, and the data side checks the file against it. A malformed art file does not make a
+The art file has a schema in `src/viz/contract.ts`, and the backend checks the file against it. A malformed art file does not make a
 run unreadable: the whole file is ignored for that world and every item of the world is drawn as an allocated glyph. A valid file with
 an item the world does not have, or a row of the wrong size, drops that entry only. A legend value that is not a palette name is
-passed through, and the page draws that pixel as transparent, so the data side needs no copy of the palette. No text from the file
+passed through, and the page draws that pixel as transparent, so the backend needs no copy of the palette. No text from the file
 reaches the catalog.
 
 The faithful world, `minecraft-inspired`, gets drawn art for its 13 items: a log, cobblestone, an ingot, planks, a stick, a crafting
-table and a slab, and one shape per tool kind (pickaxe, sword) in three materials. The drawings are original and do not copy any
+table and a slab, and one shape per tool kind (pickaxe, sword) in three materials. Its art file is a name map into the library, and
+the drawings live there (2.5). The drawings are original and do not copy any
 game's textures; the README's credit that the world is inspired by a game whose name is a trademark stays as it is.
 
 ### 2.2 Allocated glyphs for everything else
@@ -68,7 +71,7 @@ An item with no drawn art gets a glyph. A pure function of the world's full item
 3. if that family-and-palette pair is taken by an earlier item, step to the next pair in a fixed order until a free one is found;
 4. past 64 items, pairs repeat and the variant and the accent pixels are all that separate them.
 
-The assignment is deterministic and has no clock or randomness. It is computed on the data side, where the world file is loaded
+The assignment is deterministic and has no clock or randomness. It is computed on the backend, where the world file is loaded
 for replay (the world file is already loaded to derive frames), so the page needs the family, variant, palette and accent pixels of
 each item and nothing else. A glyph recolors two of its body pixels to the accent color, which two being chosen by the name's hash,
 and ships them as `marks`; they keep two glyphs of the same family, variant and palette apart. Step 3 picks its order and the spec
@@ -102,15 +105,39 @@ drawn entry through the palette and a glyph entry through the glyph tables. The 
 from the open bundle's art or the run's world in the catalog, and draw the name-only glyph when there is none. Sprites stay
 8 by 8 and the table draws them at 2x.
 
+### 2.5 A shared sprite library
+
+The backend owns one file of named 8 by 8 sprites, `src/viz/art/library.json`: `{ format, legend, sprites, shapes, materials }`.
+`legend` maps a character to a palette name or `null`, as in 2.1. A `sprites` entry is eight rows of eight characters. A `shapes` entry
+is eight rows that also use `m` and `M` for a material's body and shade; these two characters are reserved and may not be keys of
+`legend`. `materials` maps a material name to its two palette names. A reference is a sprite name (`log`) or a shape and material
+(`pickaxe/iron`). Names are lowercase kebab-case and name a kind of item, never a recipe or a world. The library starts with the
+faithful world's 13 items and grows when a second world needs a concept, not before.
+
+The backend resolves a reference to rows when it builds the world art of 2.3, so the catalog and the bundle manifest carry finished
+drawn entries and never library names. A bundle must open offline and keep its look, and names would let a redrawn library sprite
+change every exported bundle. A referenced item counts as drawn and is left out of the allocation in 2.2; every faithful-world item is
+drawn, so no glyph is allocated there and no pinned assignment changes. A reference the library does not know drops that entry, like an
+entry of the wrong size in 2.1, and the item falls back to an allocated glyph. A malformed library fails a test, and at run time it is
+treated as empty. A run's cache key includes the library file's modification time, so an edit shows at the next scan.
+
+Re-skinned worlds still get allocated glyphs and no mapping: an invented item with its base item's icon would put back the prior
+knowledge that invented names exist to remove (3). A perturbed world, which keeps familiar names, writes an art file of references.
+
 ## 3. Alternatives Considered
 
 - **Ship each world's item list and allocate in the page.** Rejected: a bundle would name every item of the world, including ones the
-  run never used, and the allocation logic and the page's palette knowledge would be needed in two places once a catalog is built
+  run never used, and the allocation logic and the frontend's palette knowledge would be needed in two places once a catalog is built
   from bundles.
 - **Ship finished pixels for every item, glyphs included.** Rejected: 64 pixel values per item per world in the catalog, where four
   small integers say the same thing, and the glyph tables would exist on both sides.
 - **A table in the page from item name to icon, with no per-world file.** Rejected: the page would hold a vocabulary, so a world with
-  the same names and different recipes inherits art by accident, and a new faithful world needs a page change.
+  the same names and different recipes inherits art by accident, and a new faithful world needs a page change. The library of 2.5
+  differs on both counts: a world opts in by writing a reference.
+- **Keep the library in the page and resolve names there.** Rejected: bundles must carry finished pixels, so the backend has to resolve
+  names to build them, and a page-side library would need a second copy of the lookup.
+- **Drawings inside each world's art file only, with no shared library.** Rejected: a shape used by several worlds, such as a pickaxe
+  recoloured per material, would be drawn again for each, and each new world pays full drawing cost.
 - **Art inside `<name>.json`.** Rejected: the world file is read by the engine and the server, and viewer-only data would sit in a file
   whose consumers never use it.
 - **Generate art files for invented worlds with a script and commit them.** Rejected: the renamer produces a new world per
@@ -128,16 +155,23 @@ from the open bundle's art or the run's world in the catalog, and draw the name-
 - An item's allocated glyph depends on the other items of its world. Adding or renaming an item can change the glyphs of items that
   sort after it. A committed world is not edited in place, so this costs nothing today, and a test pins the current worlds'
   assignments so a change is deliberate.
-- The data side learns the shape of the art (the legend and the entry kinds) and the glyph-space constants, and the catalog and
+- The backend learns the shape of the art (the legend and the entry kinds) and the glyph-space constants, and the catalog and
   bundle manifest each grow an optional field. ADR-002's manifest description needs the matching amendment, as ADR-004's did.
-- Drawn art is hand work: 13 items for the faithful world now, and each future faithful or perturbed world pays the same.
+- Drawn art is hand work: 13 items in the library now, and a later world pays only for concepts the library lacks. The library is one
+  more artifact with its own format and tests, and names are added and redrawn only on purpose. A redraw reaches old runs' thumbnails
+  (the catalog is rebuilt at scan) but not their tables (a bundle keeps its own drawings), so the two can differ until the run is
+  exported again.
 - Tests, written first: every item of every committed world resolves to a sprite; drawn sprites are 8 by 8, and in every committed art file each legend
   value is a palette name or null (the page tolerates an unknown name by drawing it transparent, and the tests for committed files do
-  not); no two items of one world share a pixel pattern, and the allocator keeps family-and-palette pairs
+  not); no two items of one world share a pixel pattern (the library's pickaxes share a shape and differ by material, so their pixels
+  differ); every library sprite is 8 by 8 and no two share a pixel pattern; library names are unique and kebab-case; every library
+  legend value is a name exported by `viz/src/palette.ts` or `null`; every reference in a committed art file resolves, including a
+  shape for each material it is used with; a bundle's manifest holds rows and no library names; and the allocator keeps family-and-palette pairs
   distinct for up to 64 items; the allocation is the same however the item list is ordered; a bundle's art covers exactly the items its
-  frames and goal use; and the catalog's sprite for a goal item equals the one in the same run's bundle.
-- Follow-up work before the spec is accepted: the matching amendments to ADR-004, ADR-002 and ADR-001 are recorded (2026-10-07), and the
-  page's name-only glyphs are already the fallback. The worlds README table gains a row for the art file with the first art file.
+  frames and goal use; and the catalog's sprite for a goal item equals the one in the same run's bundle (for a freshly exported bundle).
+- Follow-up work before the spec is accepted: the matching amendments to ADR-004, ADR-002 and ADR-001 are recorded (2026-10-07) and
+  describe the art file; they still call the backend "the data side" and need a line on the library. The page's name-only glyphs are
+  already the fallback. The worlds README table gains a row for the art file with the first art file.
 - Out of scope, and unchanged: a hover label or legend naming the item under the cursor, 16 by 16 sprites, and any frame or badge
   that shows whether an item is raw or crafted.
 
@@ -147,3 +181,9 @@ from the open bundle's art or the run's world in the catalog, and draw the name-
   [ADR-002](ADR-002-client-otel-trace.md) (the replay bundle and its manifest), [ADR-001](ADR-001-crafting-table-world.md) (the world
   file and its sibling files), [ADR-003](ADR-003-experiment-protocol.md) (the faithful, perturbed and invented worlds).
 - Specs: _(populated automatically by the speckit ADR-link hook once `/speckit-specify` references this ADR)_
+
+## 6. Amendments
+
+- **2026-10-07, a shared sprite library that worlds reference by name.** Worlds no longer each carry their own drawings. The change is
+  folded into 2.1 (an item's value is a reference or inline rows), 2.5 (the library, its format and resolution), 3 (two new rejected
+  alternatives) and 4 (the cost and the tests). Wire formats, the allocation in 2.2 and the page are unchanged.
