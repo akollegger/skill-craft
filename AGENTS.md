@@ -11,9 +11,10 @@ it are compared. The environment's design is [ADR-001](design/adr/ADR-001-crafti
 
 The simulation implements ADR-001 (feature spec `specs/001-crafting-table-sim`). An interim run
 harness runs Claude Code against it, measures each run and exports replay bundles (ADR-002, feature
-spec `specs/002-client-otel-trace`). The critic loop, which reviews and revises a distilled skill, is
-built (ADR-003 §2.6, feature spec `specs/005-critic-loop-harness`). The rest of the record, distill and
-compare workflow and the observer are not built yet; they wait on the player and experiment-protocol decision
+spec `specs/002-client-otel-trace`). The skillcraft visualizer, a read-only page over a folder of runs, implements
+ADR-004 (feature spec `specs/004-skillcraft-visualizer`). The critic loop, which reviews and revises a distilled skill, is
+built (ADR-003 §2.6, feature spec `specs/005-critic-loop-harness`). The rest of the record, distill and compare workflow
+is not built yet; it waits on the player and experiment-protocol decision
 (`design/notes/agent-player-options.md`). Do not add mechanics beyond ADR-001 (gathering, tool tiers,
 stations, fuel were deliberately removed).
 
@@ -24,6 +25,8 @@ pnpm install
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest run
 pnpm build         # emit to dist/
+pnpm build:viz     # build the visualizer's page to dist-viz/
+pnpm dev:viz <folder>   # the page with hot reload over a folder of runs
 pnpm dev <file>    # run a TypeScript file with tsx
 ```
 
@@ -32,18 +35,27 @@ Scripts (run with `pnpm dev`): `scripts/solve.ts` (best run for a goal), `script
 `scripts/run-agent.ts` (Claude Code runs through the Claude Agent SDK, scored and measured; `--dry-run`
 spends nothing; `--prompt-note` adds one fixed sentence to the prompt; `--prompt-file` replaces the base prompt, with `{what}`, `{item}` and `{turns}` filled in, to test a reworded one: every arm of an experiment must use the same base prompt), `scripts/report.ts` (run folders to the
 experiment results table), `scripts/score.ts` (score run logs against the best run) and `scripts/export-run.ts`
-(export a finished run as a replay bundle) and `scripts/critic-loop.ts` (finished runs, or a candidate skill, to
+(export a finished run as a replay bundle), `scripts/critic-loop.ts` (finished runs, or a candidate skill, to
 a reviewed skill: up to three rounds of a critic and a reviser, then a loop record under `loops/`; `--dry-run`
-spends nothing, `--allow-workspace` is needed to distill a candidate through NAMS). The server runs as
+spends nothing, `--allow-workspace` is needed to distill a candidate through NAMS), `scripts/viz.ts <folder>` (serve a
+folder of runs and the built page on 127.0.0.1) and `scripts/viz-export.ts <folder> <dest>` (a static copy of the same).
+The server runs as
 `SIM_WORLD=<world.json> [SIM_RUN_LOG=<fresh file>] pnpm exec tsx src/mcp/server.ts`.
 
-`pnpm typecheck` and `pnpm test` must pass before a change is considered done.
+`pnpm typecheck` and `pnpm test` must pass before a change is considered done. `pnpm typecheck` checks the page's
+TypeScript too; the TypeScript inside `.svelte` files is not type-checked yet (`svelte-check` does not support
+TypeScript 7; see `specs/004-skillcraft-visualizer/research.md` R2).
 
 ## Stack
 
-TypeScript (strict, ES modules) on Node 22+, pnpm, vitest, zod, and the official MCP SDK. Import
+TypeScript (strict, ES modules) on Node 22.12+ (Vite 8 needs it), pnpm, vitest, zod, and the official MCP SDK. Import
 local files with the `.js` extension (NodeNext resolution). `@types/node` is declared explicitly
 in `tsconfig.json`; TypeScript 7 does not include it automatically.
+
+The visualizer's page (`viz/`) is built with Vite: Svelte for the shell, PixiJS for the table scene, Tailwind over a
+local brand palette, and bundled fonts, with its own `viz/tsconfig.json` (DOM library, bundler resolution). The data side
+(`src/viz/`) uses only Node's built-ins and zod, and shares one file with the page, `src/viz/contract.ts`, which must
+not import anything from Node (a test enforces it).
 
 ## Rules that matter most
 
@@ -117,11 +129,13 @@ zebra-space project with the RFC requirement removed.
 | `src/harness/` | Interim run harness (prompt, SDK options and driver, errors, the command, export, bundle reader, the `RoleDriver` seam for the critic loop) |
 | `src/trace/` | Run measurement: recorder, trace lines, join of trace to run log; no dependency on the SDK or `src/mcp` |
 | `src/sim/notes.ts` | The world notes file: prior fit, per-recipe notes and omissions; never imported by the engine or server |
+| `src/viz/` | The visualizer's data side: folder scanner, catalog, bundle supply, local server, static export, commands; no SDK and no `src/mcp` |
+| `viz/` | The visualizer's page (Vite, Svelte, PixiJS, Tailwind); built to `dist-viz/` (gitignored); component tests in `viz/test/` |
 | `src/loop/` | The critic loop: rubric and roles' instructions (one versioned file), the verdict and revision schemas, role prompts, the round controller, the loop record, the NAMS seam with its workspace guard, the candidate step, a small zip reader and diff; no SDK import |
 | `loops/` | One folder per loop (gitignored): rounds, verdicts, diffs, the accepted `skill/`. The only place model-authored review text may be written |
-| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `report.ts`, `score.ts`, `export-run.ts`, `critic-loop.ts` |
+| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `report.ts`, `score.ts`, `export-run.ts`, `critic-loop.ts`, `viz.ts`, `viz-export.ts`, `dev-viz.ts` |
 | `spikes/` | Fixtures and helper scripts from exploratory spikes (the pilot's distilled skill, the REST-ingest script, the experiment workspace helpers, the faithful-world skills); not part of the product |
-| `test/` | vitest suites; `fixtures/valid` and `fixtures/invalid` hold the world fixtures |
+| `test/` | vitest suites (`test/viz/` for the visualizer's data side); `fixtures/valid` and `fixtures/invalid` hold the world fixtures |
 | `design/adr/` | ADRs and index |
 | `design/notes/` | Exploratory notes that may become ADRs |
 | `specs/` | Spec Kit feature specs, plans and tasks |
@@ -153,6 +167,17 @@ zebra-space project with the RFC requirement removed.
 - Scoring replays a run log on a fresh game. A log that does not replay is an error, not a score.
 - `look`, `help`, `inventory` and every refusal must reveal no recipe; `test/tools-orient.test.ts`
   sweeps for leaks.
+
+## Visualizer rules to keep in mind
+
+- The visualizer is read-only. It never writes into a folder it reads, and `viz-export` refuses a destination inside it.
+- The catalog and every bundle hold no world file, recipe list or item description; `test/viz/catalog.test.ts` and
+  `test/viz/parity.test.ts` check it. Frames show the crafts a run made, which is accepted.
+- The catalog carries no timestamp and no filesystem path, and a reason for a run that cannot be opened is `code: fixed
+  message`, never a wrapped error's text. An address from a request is looked up in the catalog and never turned into a path.
+- The page reads only `catalog.json` and `bundles/<id>/...` by relative address, so one build runs against the local
+  process and a static host. At most two PixiJS scenes are alive at once (the scene pool).
+- Drawing is checked by hand (see the quickstart); the scene's logic is tested through `viz/src/scene/model.ts`.
 
 ## Critic loop rules to keep in mind
 

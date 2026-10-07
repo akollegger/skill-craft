@@ -176,7 +176,7 @@ Early on, a human also reads the first skills the critic accepts, as a post-hoc 
   - recording a finished run to NAMS through the REST API (replay, write, conversation linkage, with the recording guard), and the workspace lifecycle (create, wait until active, delete, with the delete guard): built for the critic loop's candidate step (spec 005), not yet for the experiment runner;
   - the critic loop: built (spec 005);
   - an experiment runner that runs calibration, assigns goal roles by the rule, runs the arms and trials, writes the pre-run summary (including the declared route and primary measure) and aggregates the results;
-  - observer support for arm, model, skill and prior fit;
+  - visualizer support for arm, model, skill and prior fit;
   - world design and generation: the Minecraft-inspired base subset, keeping names, applying the deviation rules, goal families and stock slack (the generator today only renames and nudges single recipes);
   - a tractable invented world: recipes of one pattern with different parameters (such as `2×A → X` and `3×B → Y`), a smaller table or the `partial` hint level to make discovery a hill-climb, and a calibration that shows the teacher reaching the goals while the student mostly fails (the renamed Minecraft-inspired world is at the floor and cannot do this);
   - the critic's output schema (settled in spec 005), and the remaining `AGENTS.md` description of `NAMS_WORKSPACE_ID` as one dedicated workspace (updated for the critic loop; the experiment runner still has to replace it).

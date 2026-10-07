@@ -42,7 +42,7 @@ truth.
   sum. The stream carried none of the five identifiers (0 occurrences of each). It offers no
   per-request cost, only the run total.
 
-The observer (see `design/notes/pixel-observer.md`) is a separate read-only process that replays a run
+The visualizer (see `design/notes/pixel-observer.md`) is a separate read-only process that replays a run
 log on its world to draw the crafting table; a *frame* is the table state, inventory and preview after
 one call. It wants time on each step and totals in the score row, live. It is meant to be shareable:
 people watching should be able to open a recorded run and poke around it, and replay is enough for that.
@@ -111,11 +111,11 @@ made outside it never appear in the trace or the totals.
 A run is shared as a **replay bundle**: the frames derived from `run.jsonl` (the bundle holds these, not
 the log), each with a `seq`, plus `trace.jsonl` and `score.json`. It contains no world file (a world
 lists every recipe) and no raw messages. Frames still show every recipe the run exercised, since
-crafted outputs appear in them. A static viewer, the same page the observer serves, loads a bundle and
+crafted outputs appear in them. A static viewer, the same page the visualizer serves, loads a bundle and
 plays it back; the visitor can pause, scrub, and open other bundles. No ingest endpoint, authentication
-or live mirror exists. Where a bundle is hosted is outside this decision. The observer's own live mode
+or live mirror exists. Where a bundle is hosted is outside this decision. The visualizer's own live mode
 stays local. Frame derivation is a function of the simulation library, called by export and by the
-observer; the wire contract between frame source and viewer is the `seq`-numbered frame list, so a live
+visualizer; the wire contract between frame source and viewer is the `seq`-numbered frame list, so a live
 mirror could be added later without changing the viewer.
 
 ## 3. Alternatives Considered
@@ -141,7 +141,7 @@ mirror could be added later without changing the viewer.
 ## 4. Consequences
 
 - The score row can show duration, tokens and cost, and the leaderboard can sort by them. What single
-  figure "cost" should be is still open (observer note, open question 1). Cost is a run total only; a
+  figure "cost" should be is still open (visualizer note, open question 1). Cost is a run total only; a
   "to goal" figure is tokens and time.
 - The harness depends on a pre-1.0 package that bundles the Claude Code binary (about 5 MB). It is
   pinned to an exact version and upgraded deliberately.
@@ -154,7 +154,7 @@ mirror could be added later without changing the viewer.
 - Interactive sessions and the desktop app are not measured by either route without changing the user's
   global settings, and are out of scope.
 - The trace is not verifiable by replay the way the log is. It is trusted as the harness observed it.
-- Bundles need an export command and a viewer that runs without the observer's server. The viewer
+- Bundles need an export command and a viewer that runs without the visualizer's server. The viewer
   becomes a static page with a data loader.
 - `score.json` gains fields, so its contract changes; the harness spec owns that change, not ADR-001.
 
@@ -197,7 +197,7 @@ mirror could be added later without changing the viewer.
   no longer use it: user settings stay out of every experiment run, and the harness records a finished run to
   NAMS afterward through the REST API, regenerating each tool output by replaying the run log. The
   measurement design here is unchanged.
-- **2026-10-02**: ADR-004 (the observer) extends §2.6. A replay bundle's manifest gains optional attributes so a
+- **2026-10-02**: ADR-004 (the skillcraft visualizer) extends §2.6. A replay bundle's manifest gains optional attributes so a
   catalog of runs can be built from bundles alone: the world's prior fit, the added prompt sentence, and the
   installed skill's name, whether the agent loaded it and after how many calls. The attributes are additive and
   readers ignore fields they do not know, so earlier bundles stay valid; the bundle still holds no world file, raw
@@ -208,3 +208,6 @@ mirror could be added later without changing the viewer.
   text may be stored under `loops/<label>/` and nowhere else. A role's free-form text and reasoning are discarded, only
   the schema's fields are kept, and a role's failure reason is `code: fixed message`. The privacy test is extended to
   enforce both sides of the boundary.
+- **2026-10-07**: [ADR-005](ADR-005-per-world-item-art.md) will give the bundle manifest one more optional field, `art`: the sprites of the
+  items that appear in the run, for a viewer that has no world file. Not built yet; readers that do not know it ignore it, and the manifest's
+  format number does not change.

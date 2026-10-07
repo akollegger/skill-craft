@@ -261,3 +261,6 @@ Section 2 was updated to match.
   in documentation beside the world (never in text the agent sees), and claims no affiliation with its
   owner. A version is named only for a recipe that differs between versions. This replaces "with the
   game version named" in the entry above. Constitution Principle III is updated to match (1.1.1).
+- **2026-10-07, an optional art file.** [ADR-005](ADR-005-per-world-item-art.md) lets a world have a sibling `<name>.art.json` of drawn item
+  sprites, beside the goals and notes files. Only the visualizer's data side reads it; the engine, the server and the agent never do. Not
+  built yet.

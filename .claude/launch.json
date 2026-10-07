@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "visualizer",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev:viz", "runs"],
+      "port": 5173
+    },
+    {
+      "name": "mockup",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5174", "-d", "design/notes/pixel-observer/mock"],
+      "port": 5174
+    }
+  ]
+}
