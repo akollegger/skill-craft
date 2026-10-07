@@ -66,7 +66,7 @@
 }
 
 html {
-  font-size: max(10px, calc(min(100vw - 32px, (100vh - 108px) * 4 / 3) / 80));
+  font-size: max(10px, calc(min(100vw - 32px, (100vh - 60px) * 4 / 3) / 80));
 }
 
 .page {
@@ -93,19 +93,6 @@ html {
   justify-content: center;
   padding-bottom: 16px;
   overflow: auto;
-}
-
-/* The help sits under the frame, on the page's dark, and has a strip of its own that the frame's size leaves out. */
-.hints {
-  flex: none;
-  height: 48px;
-  padding: 0 16px;
-  overflow: hidden;
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--color-retro-dim);
 }
 
 /*

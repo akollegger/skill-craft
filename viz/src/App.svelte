@@ -6,7 +6,6 @@
   import type { SceneFactory } from "./scene/handle.ts";
   import CompareBar from "./shell/CompareBar.svelte";
   import Empty from "./shell/Empty.svelte";
-  import Hints from "./shell/Hints.svelte";
   import OpenRun from "./shell/OpenRun.svelte";
   import Picker from "./shell/Picker.svelte";
   import SkillIcon from "./shell/SkillIcon.svelte";
@@ -121,5 +120,4 @@
       {/if}
     </div>
   </div>
-  <Hints runs={catalog?.runs ?? []} />
 </div>

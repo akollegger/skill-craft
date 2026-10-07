@@ -148,13 +148,12 @@ describe("the run count", () => {
     expect(screen.getByRole("contentinfo", { name: /run count/i }).textContent?.trim()).toBe("Showing 1 of 3 runs");
   });
 
-  it("explains the runs that cannot be opened as a table", async () => {
+  it("says why a run cannot be opened on the run itself, with no help text under the frame", async () => {
     serve([...entries(2), ...entries(1, "unfinished")]);
     render(App);
     expect((await screen.findByRole("contentinfo", { name: /run count/i })).textContent).toContain("3 runs");
-    const text = screen.getByRole("contentinfo", { name: /hints/i }).textContent ?? "";
-    expect(text).toContain("1 can't be opened as a table");
-    expect(text).toMatch(/unfinished/);
+    expect(document.body.textContent).toMatch(/can't open: the run has no score\.json yet/i);
+    expect(screen.queryByRole("contentinfo", { name: /hints/i })).toBeNull();
   });
 
   it("says 1 run, not 1 runs", async () => {
@@ -163,20 +162,12 @@ describe("the run count", () => {
     expect((await screen.findByRole("contentinfo", { name: /run count/i })).textContent?.trim()).toBe("1 run");
   });
 
-  it("holds all the help under the frame, in the dark, and none of it inside the frame", async () => {
+  it("has no help text under the frame, and the run count stays in the frame and says only the count", async () => {
     serve(entries(3));
     render(App);
     await screen.findByRole("contentinfo", { name: /run count/i });
-    const hints = screen.getByRole("contentinfo", { name: /hints/i });
-    expect(hints.textContent).toMatch(/click a run to open it/i);
-    expect(hints.textContent).toMatch(/shift-click/i);
-    expect(hints.textContent).toMatch(/shift\+enter/i);
-    expect(hints.textContent).toMatch(/grouped by/i);
-    expect(hints.textContent).toMatch(/sorted by/i);
-    expect(document.querySelector(".frame")!.contains(hints)).toBe(false);
-    const inside = document.querySelector(".frame")!.textContent ?? "";
-    expect(inside).not.toMatch(/shift-click|grouped by|sorted by/i);
-    // The run count stays in the frame and says only the count.
+    expect(screen.queryByRole("contentinfo", { name: /hints/i })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/shift-click|shift\+enter|grouped by|sorted by/i);
     expect(screen.getByRole("contentinfo", { name: /run count/i }).textContent?.trim()).toBe("3 runs");
   });
 });

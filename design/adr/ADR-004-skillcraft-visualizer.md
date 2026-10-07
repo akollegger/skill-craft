@@ -360,3 +360,6 @@ run could be opened to the point it reached; and how a view could be saved or sh
     A scrolling filmstrip was tried for the pips and dropped: with a pip a call, a long run was a row of near-identical squares and the
     motion could not be seen.
   - *Open.* The call list and the pips may share the band under the table; that is being tried by use before it is decided.
+  - *No help text.* The help under the frame (how to open and select runs, what the square and the triangle mean, and how many runs cannot
+    be opened) is removed, which supersedes "help lives in the footer" and the help under the frame on 2026-10-04. A run that cannot be
+    opened still says why on its own tile or row. Where the rest returns, if it does, is open.
