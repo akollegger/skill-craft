@@ -67,7 +67,7 @@ describe("merging the art of several runs", () => {
   const blue = toWire({ stick: { sprite: full("b") }, wall: { sprite: full("b") } });
 
   it("holds the union of the items, and the earlier run's entry where two disagree", () => {
-    const merged = mergeArt([wood, blue]);
+    const merged = mergeArt([wood, blue])!;
     expect(Object.keys(merged.items).sort()).toEqual(["stick", "wall"]);
     expect(namesOf(merged, "stick")).toEqual(stick);
     expect(namesOf(merged, "wall")).toEqual(full("b"));

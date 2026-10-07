@@ -46,8 +46,9 @@ grid last: a legend that gives each palette name present a character, assigned i
 for transparent), and each entry as eight rows over that legend.
 
 **Rationale**: Two sources have their own legends, and a world's art object mixes both, so they cannot share characters.
-Normalising through names makes the output depend only on which colors are drawn, so the same sprite is the same bytes in every
-run, and a catalog can merge the art of several runs of a world by names and then rebuild the legend.
+Normalising through names means a sprite draws the same palette names whatever characters were chosen for them, the same entries are
+the same bytes, and a catalog can merge the art of several runs of a world by names and then rebuild the legend. The characters depend on
+which names are present in that world art, so a sprite's rows may differ between two runs while its pixels do not.
 
 **Alternatives**: *Ship each entry with its own legend* repeats legends per sprite. *A fixed global character per palette name* needs
 the backend to know the palette's contents, which 2.1 avoids.
