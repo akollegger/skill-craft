@@ -2,16 +2,16 @@
   "format": 1,
   "legend": {".": null, "k": "black", "d": "woodDeep", "s": "woodShade", "f": "woodFace", "h": "woodHighlight", "w": "lightGray", "v": "slateHighlight", "t": "slateFace", "u": "slateShade"},
   "sprites": {
-    "log": ["........", ".kkkkkk.", "khhfsssk", "khffsdsk", "khffsdsk", "khhfsssk", ".kkkkkk.", "........"],
+    "log": ["........", "..kkkkk.", ".khhfksk", "khhffkss", "khfffkss", ".kfffksk", "..kkkkk.", "........"],
     "cobblestone": ["kkkkkkkk", "kvvtuvvk", "kvtttuvk", "ktuuvvtk", "kvvvtuuk", "ktuvvvtk", "kvvtuvvk", "kkkkkkkk"],
-    "ingot": ["........", "...kkkkk", "..kwwwvk", ".kwwwvtk", "kkkkkkkk", "kvvvvttk", "kkkkkkkk", "........"],
+    "ingot": ["........", "...kkkkk", "..kwwwvk", ".kwwwvtk", "kuuuuuuk", "kvvvvttk", "kuuuuuuk", "........"],
     "planks": ["kkkkkkkk", "khffffhk", "kssssssk", "kfffhffk", "kssssssk", "khfffffk", "kssssssk", "kkkkkkkk"],
     "stick": ["......kk", ".....khk", "....khsk", "...khsk.", "..khsk..", ".khsk...", "khsk....", "kkk....."],
-    "crafting-table": ["kkkkkkkk", "khhkhhhk", "khhkhhhk", "kkkkkkkk", "ksskfffk", "kssksssk", "ksssfssk", "kkkkkkkk"],
+    "crafting-table": ["kkkkkkkk", "kshshshk", "kssssssk", "kshshshk", "kssssssk", "kshshshk", "kssssssk", "kkkkkkkk"],
     "slab": ["........", "........", "........", "kkkkkkkk", "khhhhhhk", "kfffffsk", "kssssssk", "kkkkkkkk"]
   },
   "shapes": {
-    "pickaxe": ["kkkkkk..", "kmmmmMk.", "kmkkkMMk", ".k..ksMk", "...ksk.k", "..ksk...", ".ksk....", "kdk....."],
+    "pickaxe": [".kkmMkk.", "kmmmMMMk", "mkkskkkM", "k.ksk..k", "..ksk...", "..ksk...", "..ksk...", "..kdk..."],
     "sword": ["......kk", ".....kmk", "....kmMk", "...kmMk.", "k.kmMk..", "kfkMk...", ".kfk....", "kdsk...."]
   },
   "materials": {"wooden": ["woodFace", "woodShade"], "stone": ["slateFace", "slateShade"], "iron": ["lightGray", "slateHighlight"]}
