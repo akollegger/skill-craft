@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultItemArt, FAMILIES, glyphOf, paintGoalSlot, paintTable, PALETTES, slotSize, spriteToRGBA, type ItemArt, type ItemSprite } from "../src/art/index.ts";
 import { palette } from "../src/palette.ts";
+import { PALETTE_COUNT } from "../../src/viz/glyphs.ts";
 
 const itemNames = (): Map<string, string[]> => {
   const out = new Map<string, string[]>();
@@ -33,6 +34,7 @@ describe("the default item art", () => {
 
   it("uses only colors of one of eight palettes", () => {
     expect(PALETTES).toHaveLength(8);
+    expect(PALETTES).toHaveLength(PALETTE_COUNT); // the backend allocates across the shared count
     for (const name of ["a", "oak_log", "diamond", "stick", "glirol", "pluzhouvio"]) {
       const s = defaultItemArt(name);
       const allowed = new Set([...PALETTES[s.palette]!.colors, 0x181414]);
