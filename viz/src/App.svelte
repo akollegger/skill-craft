@@ -9,6 +9,7 @@
   import Hints from "./shell/Hints.svelte";
   import OpenRun from "./shell/OpenRun.svelte";
   import Picker from "./shell/Picker.svelte";
+  import SkillIcon from "./shell/SkillIcon.svelte";
   import RunCount from "./shell/RunCount.svelte";
   import Toolbar from "./shell/Toolbar.svelte";
   import Unsupported from "./shell/Unsupported.svelte";
@@ -26,7 +27,6 @@
   let error = $state<LoadError | undefined>();
   let view = $state<View>(defaultView());
   let selection = $state(initialSelection());
-  let beside = $state(false);
 
   const groups = $derived(catalog ? arrange(catalog.runs, view) : []);
   const shown = $derived(groups.reduce((n, g) => n + g.runs.length, 0));
@@ -44,11 +44,26 @@
 
   const open = (entry: CatalogEntry): void => {
     selection = openRun(selection, entry.id);
-    beside = false;
   };
   const close = (id: string): void => {
     selection = closeRun(selection, id);
-    beside = false;
+  };
+  // The title strip says where the page is: "Runs" for the list and the grid; for one table, the run's world, goal and model, taken from the
+  // catalog so it is there before the table has loaded; for two, that they are compared. Its red lamp closes whatever is open.
+  const title = $derived.by(() => {
+    if (opened.length === 0) return undefined;
+    if (opened.length > 1) return { world: "", goal: "", model: "", text: "Comparing two runs" };
+    const a = opened[0]!.attributes;
+    const qty = Number(a["goalQty"] ?? 1);
+    return {
+      text: "",
+      world: a["world"] === undefined ? "" : String(a["world"]),
+      goal: a["goalItem"] === undefined ? "" : `Make ${qty} ${a["goalItem"]}`,
+      model: typeof a["modelRan"] === "string" ? a["modelRan"] : "",
+    };
+  });
+  const closeAll = (): void => {
+    for (const e of opened) selection = closeRun(selection, e.id);
   };
   const openBoth = (): void => {
     selection = { ...selection, open: [] };
@@ -61,7 +76,7 @@
     <Toolbar {view} onChange={(v) => (view = v)} />
     <CompareBar selected={selection.selected.length} onOpenBoth={openBoth} onClear={() => (selection = { ...selection, selected: [] })} />
     {#if shown === 0}
-      <p role="status" class="p-4 font-mono text-sm text-baltic">No run matches this search.</p>
+      <p role="status" class="p-4 font-mono text-sm text-retro-dim">No run matches this search.</p>
     {:else}
       <Picker {groups} presentation={view.presentation} group={view.group} sort={view.sort} onOpen={open} selected={selection.selected} onSelect={(e) => (selection = toggleSelected(selection, e.id))} />
     {/if}
@@ -73,18 +88,25 @@
   <header class="page-title"><h1 class="font-pixel text-xl text-highlight-yellow">Skillcraft</h1></header>
   <div class="stage">
     <div class="frame">
+      <div class="frame-title">
+        <button type="button" class="frame-dot frame-dot-close" aria-label="Close table" disabled={title === undefined} onclick={closeAll}></button>
+        {#if title === undefined}
+          <span class="frame-name">Runs</span>
+        {:else if title.text !== ""}
+          <span class="frame-name">{title.text}</span>
+        {:else}
+          <span class="frame-name frame-goal">{title.goal}</span>
+          <span class="frame-sub">{[title.world, title.model].filter((x) => x !== "").join(" · ")}</span>
+          {#if opened.length === 1}<SkillIcon attributes={opened[0]!.attributes} />{/if}
+        {/if}
+      </div>
       {#if catalog}
         <main class="frame-body p-4">
           {#if opened.length > 0}
-            <div class={`grid gap-4 ${opened.length === 2 || beside ? "grid-cols-2" : ""}`}>
+            <div class={`grid h-full grid-rows-[minmax(0,1fr)] gap-4 ${opened.length === 2 ? "grid-cols-2" : ""}`}>
               {#each opened as entry (entry.id)}
-                <OpenRun {entry} {client} createScene={pool.factory} onClose={() => close(entry.id)} />
+                <OpenRun {entry} {client} createScene={pool.factory} onClose={() => close(entry.id)} titled={opened.length === 1} />
               {/each}
-              {#if opened.length === 1 && !beside}
-                <div><button class="border border-mid-baltic px-2 py-1 font-mono text-sm hover:bg-dark-baltic focus-visible:outline-2 focus-visible:outline-light-baltic" onclick={() => (beside = true)}>Open beside…</button></div>
-              {:else if opened.length === 1 && beside}
-                <div>{@render browse()}</div>
-              {/if}
             </div>
           {:else if catalog.runs.length === 0}
             <Empty />
@@ -95,7 +117,7 @@
       {:else if error}
         <main class="frame-body"><Unsupported {error} /></main>
       {:else}
-        <main class="frame-body p-6 font-mono text-sm text-baltic" role="status">Loading runs…</main>
+        <main class="frame-body p-6 font-mono text-sm text-retro-dim" role="status">Loading runs…</main>
       {/if}
     </div>
   </div>

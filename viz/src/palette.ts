@@ -40,10 +40,32 @@ export const palette = {
   woodShade: "#9D6725",
   woodFrame: "#69401C",
   woodDeep: "#362112",
+  // Derived, not brand values: the Baltic blues with the saturation pulled partway down (about two thirds of the brand) and the hue nudged a few degrees toward
+  // indigo, so the page reads as a dusky retro screen and not a bright console (decided 2026-10-06). Deepest to lightest.
+  // Each stands in for one Baltic: Deep for the black backdrop, Panel for Darkest Baltic, Raised for Dark Baltic, Line
+  // for Mid Baltic, Dim for Baltic, Muted for Light Baltic. The highlight colors are left as the brand has them.
+  retroDeep: "#081b2b",
+  retroPanel: "#0d2b42",
+  retroRaised: "#184667",
+  retroLine: "#3c7eaa",
+  retroDim: "#80afc6",
+  retroMuted: "#aed2e0",
+  // Derived, not brand values: a blue-gray for the playback controls, the retro hue with most of the saturation taken out (decided
+  // 2026-10-06), so they read as a quiet instrument beside the table and not as another blue panel. Deepest to lightest.
+  slateDeep: "#222C35",
+  slateShade: "#3B4B59",
+  slateFace: "#5F7486",
+  slateHighlight: "#9BAFBF",
 } as const;
 
-/** The names in `palette` that are derived from the brand colors and not transcribed from them. */
+/** The wood names in `palette`, derived from Marigold (the retro blues are in `RETRO`). */
 export const DERIVED = ["woodHighlight", "woodFace", "woodShade", "woodFrame", "woodDeep"] as const satisfies readonly (keyof typeof palette)[];
+
+/** The blue-grays of the playback controls, deepest to lightest. */
+export const SLATE = ["slateDeep", "slateShade", "slateFace", "slateHighlight"] as const satisfies readonly (keyof typeof palette)[];
+
+/** The retro blues, deepest to lightest. */
+export const RETRO = ["retroDeep", "retroPanel", "retroRaised", "retroLine", "retroDim", "retroMuted"] as const satisfies readonly (keyof typeof palette)[];
 
 export type PaletteName = keyof typeof palette;
 

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { defaultItemArt, paintGoalSlot, paintTable, PALETTES, slotSize, spriteToRGBA, type ItemArt, type ItemSprite } from "../src/art/index.ts";
+import { defaultItemArt, FAMILIES, glyphOf, paintGoalSlot, paintTable, PALETTES, slotSize, spriteToRGBA, type ItemArt, type ItemSprite } from "../src/art/index.ts";
 import { palette } from "../src/palette.ts";
 
 const itemNames = (): Map<string, string[]> => {
@@ -40,7 +40,34 @@ describe("the default item art", () => {
     }
   });
 
-  it("draws enough of a creature to see", () => {
+  it("draws geometric glyphs, not creatures: a fixed set of families, each a few variants, in the brand palettes", () => {
+    expect(FAMILIES.length).toBeGreaterThanOrEqual(8);
+    for (const f of FAMILIES) {
+      expect(f.variants.length, f.name).toBeGreaterThanOrEqual(3);
+      for (const rows of f.variants) {
+        // The left half only, four columns by eight rows; the right half is its mirror image.
+        expect(rows, f.name).toHaveLength(8);
+        for (const row of rows) expect(row, f.name).toMatch(/^[bad.]{4}$/);
+      }
+    }
+    // Every family and every palette turns up across a spread of names, so a world's items differ in shape and in color.
+    const seen = Array.from({ length: 300 }, (_, i) => glyphOf(`item${i}`));
+    expect(new Set(seen.map((g) => g.family)).size).toBe(FAMILIES.length);
+    expect(new Set(seen.map((g) => g.palette)).size).toBe(PALETTES.length);
+  });
+
+  it("has no eyes: no sprite carries the creature's dark pair of pixels in its fourth row", () => {
+    // The old creatures always had a dark pixel at column 2 of row 3 and its mirror; a glyph may have dark pixels only where its family draws them.
+    for (const name of ["glirol", "stick", "oak_log"]) {
+      const g = glyphOf(name);
+      const dark = FAMILIES[g.family]!.variants[g.variant]!.some((row) => row.includes("d"));
+      const s = defaultItemArt(name);
+      const hasDark = s.pixels.some((p) => p === 0x181414);
+      expect(hasDark, name).toBe(dark);
+    }
+  });
+
+  it("draws enough of a shape to see", () => {
     for (const name of ["a", "b", "c", "x", "stick"]) expect(defaultItemArt(name).pixels.filter((p) => p !== null).length, name).toBeGreaterThanOrEqual(16);
   });
 

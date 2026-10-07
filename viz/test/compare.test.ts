@@ -152,12 +152,15 @@ describe("comparing in the page", () => {
     expect(live.n).toBe(2);
   });
 
-  it("opens a second table beside the first, and closing one leaves the other", async () => {
+  it("has no way to add a second table from an open one: a comparison always starts from the list, and closing one leaves the other", async () => {
     await start();
     await fireEvent.click(screen.getByRole("button", { name: /^lab \/ 1\b/ }));
     await screen.findByRole("region", { name: /run/i });
-    await fireEvent.click(screen.getByRole("button", { name: /open beside/i }));
-    await fireEvent.click(await screen.findByRole("button", { name: /^lab \/ 3\b/ }));
+    expect(screen.queryByRole("button", { name: /open beside/i })).toBeNull();
+    await fireEvent.click(screen.getByRole("button", { name: /close table/i }));
+    await select("lab / 1");
+    await select("lab / 3");
+    await fireEvent.click(screen.getByRole("button", { name: /open both tables/i }));
     await waitFor(() => expect(screen.getAllByRole("region", { name: /run/i })).toHaveLength(2));
     expect(live.n).toBe(2);
     await fireEvent.click(within(screen.getAllByRole("region", { name: /run/i })[0]!).getByRole("button", { name: /close table/i }));

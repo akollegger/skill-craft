@@ -23,8 +23,8 @@
     {#if facts.loaded}
       <rect x="1" y="0" width="4" height="1" />
       <rect x="1" y="1" width="5" height="7" />
-      <rect x="2" y="3" width="3" height="1" class="fill-darkest-baltic" />
-      <rect x="2" y="5" width="3" height="1" class="fill-darkest-baltic" />
+      <rect x="2" y="3" width="3" height="1" class="fill-retro-panel" />
+      <rect x="2" y="5" width="3" height="1" class="fill-retro-panel" />
     {:else}
       <rect x="1" y="0" width="4" height="1" />
       <rect x="1" y="1" width="1" height="7" />
@@ -36,5 +36,5 @@
     {#if facts.pointed}<rect data-pointed x="6" y="0" width="2" height="2" class="fill-highlight-yellow" />{/if}
   </svg>
 {:else if dash}
-  <span data-no-skill class="text-baltic">-<span class="sr-only"> no skill</span></span>
+  <span data-no-skill class="text-retro-dim">-<span class="sr-only"> no skill</span></span>
 {/if}

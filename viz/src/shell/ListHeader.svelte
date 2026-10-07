@@ -8,7 +8,7 @@
   let { group = null, sort = null }: { group?: string | null; sort?: Sort | null } = $props();
 </script>
 
-<div aria-hidden="true" data-list-header class={`${LIST_GRID} sticky top-12 z-10 bg-darkest-baltic px-3 py-1 font-mono text-xs uppercase text-baltic`}>
+<div aria-hidden="true" data-list-header class={`${LIST_GRID} sticky top-12 z-10 bg-retro-panel px-3 py-1 font-mono text-xs uppercase text-retro-dim`}>
   {#each LIST_COLUMNS as col (col.label + col.attrs.join())}
     <span data-column class="flex items-center gap-1">
       {col.label}

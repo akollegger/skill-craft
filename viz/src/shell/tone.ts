@@ -24,7 +24,7 @@ export function runTone(outcome: string, calls: number | undefined, best: number
 /** The text color of a run's call count; muted when the outcome is not known. */
 export const scoreTone = (outcome: string, calls: number | undefined, best: number | undefined): string => {
   const t = runTone(outcome, calls, best);
-  return t === undefined ? "text-light-baltic" : TONE_TEXT[t];
+  return t === undefined ? "text-retro-muted" : TONE_TEXT[t];
 };
 
 /**
@@ -35,3 +35,26 @@ export function pipTone(index: number, count: number, best: number | undefined |
   if (didFail && index === count - 1) return "fail";
   return best !== undefined && best !== null && index >= best ? "over" : "ok";
 }
+
+/**
+ * The word for how a run ended, in the same terms as its color: a run that reached its goal within the ideal made a "master craft",
+ * one that took more calls an "eventual craft"; one that gave up "abandoned" it and one that ran out of turns "expired". Empty when
+ * there is nothing to say yet; an outcome with no name here (an error) is shown as it is.
+ */
+export function outcomeWord(outcome: string, calls?: number, best?: number): string {
+  switch (outcome) {
+    case "reached":
+      return runTone(outcome, calls, best) === "over" ? "eventual craft" : "master craft";
+    case "gave up":
+      return "abandoned craft";
+    case "out of turns":
+      return "expired craft";
+    case "unfinished":
+      return "";
+    default:
+      return outcome;
+  }
+}
+
+/** The text color of the outcome word: the run's own tone, muted for an outcome with no tone. */
+export const outcomeTone = (outcome: string, calls: number | undefined, best: number | undefined): string => scoreTone(outcome, calls, best);

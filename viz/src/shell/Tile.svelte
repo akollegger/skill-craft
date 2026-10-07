@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { CatalogEntry } from "../../../src/viz/contract.ts";
-  import CallStrip from "./CallStrip.svelte";
+  import Outcome from "./Outcome.svelte";
   import Score from "./Score.svelte";
   import SkillIcon from "./SkillIcon.svelte";
   import { shortModel } from "./model.ts";
   import { formatClock } from "./clock.ts";
-  import { failed, scoreTone } from "./tone.ts";
+  import { scoreTone } from "./tone.ts";
   import Thumbnail from "./Thumbnail.svelte";
 
   let { entry, onOpen, selected = false, onSelect }: { entry: CatalogEntry; onOpen: (entry: CatalogEntry) => void; selected?: boolean; onSelect?: ((entry: CatalogEntry) => void) | undefined } = $props();
@@ -35,22 +35,23 @@
     title={name}
     type={ready ? "button" : undefined}
     data-open={ready ? "" : undefined}
-    class={`flex h-full w-48 flex-col gap-2 p-3 text-left font-mono text-xs shadow-[inset_-3px_-3px_0_rgba(0,0,0,0.3),inset_3px_3px_0_rgba(255,255,255,0.08)] focus-visible:outline-2 focus-visible:outline-light-baltic ${selected ? "bg-mid-baltic ring-2 ring-inset ring-highlight-yellow" : "bg-dark-baltic enabled:hover:bg-mid-baltic"}`}
+    class={`flex h-full w-48 flex-col gap-2 p-3 text-left font-mono text-xs shadow-[inset_-3px_-3px_0_rgba(0,0,0,0.3),inset_3px_3px_0_rgba(255,255,255,0.08)] focus-visible:outline-2 focus-visible:outline-retro-muted ${selected ? "bg-retro-line ring-2 ring-inset ring-highlight-yellow" : "bg-retro-raised enabled:hover:bg-retro-line"}`}
     onclick={ready ? activate : undefined}
   >
     <span class="sr-only">{name}{#if outcome !== ""}, {outcome}{/if}</span>
-    <span class="flex items-start justify-between gap-2">
-      <Thumbnail goal={goalItem} reached={outcome === "reached"} />
+    <span class="flex items-stretch justify-between gap-2">
+      <Thumbnail goal={goalItem} reached={outcome === "reached"} fill />
       <!-- The score at the top of the thumbnail's height and the time at its bottom. -->
       <span class="flex flex-col items-end justify-between self-stretch">
-        <Score large calls={calls} tone={scoreTone(outcome, calls, best)} />
-        {#if ms !== undefined}<span class="text-xs leading-none text-light-baltic">{formatClock(ms)}</span>{/if}
+        <Score large trim calls={calls} tone={scoreTone(outcome, calls, best)} />
+        {#if ms !== undefined}<span class="font-score text-3xl leading-none [text-box:trim-both_cap_alphabetic] text-retro-muted">{formatClock(ms)}</span>{/if}
       </span>
     </span>
-    {#if entry.preview}<CallStrip strip={entry.preview.strip} {best} failed={failed(outcome)} />{/if}
+    <!-- The outcome in words, in the color of the score; the row keeps its height when a run has no outcome yet. -->
+    <span class="flex h-6 items-center"><Outcome {outcome} {calls} {best} large /></span>
     <!-- The model, short, and the skill's icon at the right of the same row; the row keeps its height when there is no icon. -->
     <span class="flex h-6 items-center justify-between gap-2">
-      <span class="min-w-0 truncate text-light-baltic" title={typeof a["modelRan"] === "string" ? a["modelRan"] : undefined}>{typeof a["modelRan"] === "string" ? shortModel(a["modelRan"]) : ""}</span>
+      <span class="min-w-0 truncate text-retro-muted" title={typeof a["modelRan"] === "string" ? a["modelRan"] : undefined}>{typeof a["modelRan"] === "string" ? shortModel(a["modelRan"]) : ""}</span>
       <SkillIcon attributes={a} />
     </span>
     {#if selected}<span class="sr-only">Selected for comparison</span>{/if}

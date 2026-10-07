@@ -84,3 +84,4 @@ looking one up. The last column names where the term is decided.
 | [ADR-002](ADR-002-client-otel-trace.md) | Measure run time and tokens on the client | accepted | specs/002-client-otel-trace |
 | [ADR-003](ADR-003-experiment-protocol.md) | Experiment protocol: arms, models, isolation and skill review | accepted | specs/003-faithful-minecraft-world, specs/005-critic-loop-harness |
 | [ADR-004](ADR-004-skillcraft-visualizer.md) | The skillcraft visualizer: a read-only view of a folder of runs | accepted | specs/004-skillcraft-visualizer |
+| [ADR-005](ADR-005-per-world-item-art.md) | Per-world item art: drawn icons where a world has them, allocated glyphs where it does not | accepted | |

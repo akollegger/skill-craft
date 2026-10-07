@@ -1,4 +1,5 @@
 import { hex, type PaletteName } from "../palette.ts";
+import { FAMILIES } from "./glyphs.ts";
 
 /** An 8 by 8 picture: one color per pixel as 0xRRGGBB, or null for transparent. Row by row, top to bottom. */
 export interface ItemSprite {
@@ -29,7 +30,6 @@ export const PALETTES = [
 
 const SIZE = 8;
 const HALF = SIZE / 2;
-const MIN_PIXELS = 20;
 
 /** FNV-1a over the name's UTF-16 units: small, stable and good enough to spread short item names. */
 export function hashName(name: string): number {
@@ -53,44 +53,48 @@ function rng(seed: number): () => number {
   };
 }
 
-// Likelihood a pixel is filled by column, outermost first: a blob that is fuller toward the middle reads as a creature.
-const FILL = [0.3, 0.55, 0.8, 0.9];
+/** Which glyph a name wears: its family, which variant of the family, which palette, and the pixels the name moves to the accent color. */
+export interface Glyph {
+  family: number;
+  variant: number;
+  palette: number;
+  /** Positions in the variant's left half, 0 to 31, of body pixels drawn in the accent color: the name's own mark on the shape. */
+  marks: readonly number[];
+}
+
+const MARKS = 2;
+
+/** A name's glyph: a pure function of the name. The first three choices are the ones the eye sees; the marks tell apart what they leave alike. */
+export function glyphOf(name: string): Glyph {
+  const next = rng(hashName(name));
+  const family = Math.floor(next() * FAMILIES.length);
+  const palette = Math.floor(next() * PALETTES.length);
+  const variant = Math.floor(next() * FAMILIES[family]!.variants.length);
+  const rows = FAMILIES[family]!.variants[variant]!;
+  const body: number[] = [];
+  rows.forEach((row, y) => [...row].forEach((c, x) => c === "b" && body.push(y * 4 + x)));
+  const marks: number[] = [];
+  for (let i = 0; i < MARKS && body.length > 0; i++) marks.push(body.splice(Math.floor(next() * body.length), 1)[0]!);
+  return { family, variant, palette, marks };
+}
 
 /**
- * The default art: each name hashes to a small creature that mirrors left to right, in one of eight palettes.
- * The same name always gives the same sprite, and an invented name needs no art.
+ * The default art: each name gets a geometric glyph (a gem, a ring, a cross, a pyramid, a block, bars, a rune or a burst) mirrored left
+ * to right, in one of eight palettes. The same name always gives the same sprite, and an invented name needs no art. Nothing here knows
+ * the rest of the world, so two items can share a family and a palette; the marks keep their pixels apart, and a world's own art
+ * file (when it has one) is what keeps them apart to the eye.
  */
 export const defaultItemArt: ItemArt = (name) => {
-  const h = hashName(name);
-  for (let attempt = 0; attempt < 16; attempt++) {
-    const next = rng(h + Math.imul(attempt, 0x9e3779b9));
-    const palette = Math.floor(next() * PALETTES.length);
-    const { colors } = PALETTES[palette]!;
-    const left: (number | null)[][] = [];
-    for (let y = 0; y < SIZE; y++) {
-      const edge = y === 0 || y === SIZE - 1 ? 0.6 : 1;
-      left.push(
-        FILL.map((p) => {
-          const filled = next() < p * edge;
-          const accent = next() < 0.25;
-          return filled ? colors[accent ? 1 : 0] : null;
-        }),
-      );
-    }
-    // Eyes: a dark pixel on the third column of the fourth row, mirrored on the right, with body between them,
-    // so every sprite looks back.
-    left[3]![3] = colors[0];
-    left[3]![2] = OUTLINE;
-    const pixels: (number | null)[] = [];
-    for (let y = 0; y < SIZE; y++) {
-      const row = left[y]!;
-      for (let x = 0; x < SIZE; x++) pixels.push(x < HALF ? row[x]! : row[SIZE - 1 - x]!);
-    }
-    if (pixels.filter((p) => p !== null).length >= MIN_PIXELS) return { width: SIZE, height: SIZE, palette, pixels };
+  const { family, variant, palette, marks } = glyphOf(name);
+  const { colors } = PALETTES[palette]!;
+  const rows = FAMILIES[family]!.variants[variant]!;
+  const marked = new Set(marks);
+  const pixels: (number | null)[] = [];
+  for (let y = 0; y < SIZE; y++) {
+    const half = [...rows[y]!].map((c, x) => (c === "." ? null : c === "d" ? OUTLINE : c === "a" || marked.has(y * 4 + x) ? colors[1] : colors[0]));
+    for (let x = 0; x < SIZE; x++) pixels.push(x < HALF ? half[x]! : half[SIZE - 1 - x]!);
   }
-  // Sixteen thin draws in a row would be remarkable; a plain block keeps the function total.
-  const { colors } = PALETTES[h % PALETTES.length]!;
-  return { width: SIZE, height: SIZE, palette: h % PALETTES.length, pixels: Array<number | null>(SIZE * SIZE).fill(colors[0]) };
+  return { width: SIZE, height: SIZE, palette, pixels };
 };
 
 /** The sprite as RGBA bytes, for making a texture. */

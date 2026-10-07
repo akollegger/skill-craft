@@ -21,7 +21,7 @@
 </script>
 
 <!-- One bar, full width in the list and in the grid, that stays at the top of the frame while the runs scroll. -->
-<div class="sticky -top-4 z-20 -mx-4 -mt-4 flex h-16 items-end gap-6 bg-darkest-baltic px-4 pb-2 font-mono text-sm">
+<div class="sticky -top-4 z-20 -mx-4 -mt-4 flex h-16 items-end gap-6 bg-retro-panel px-4 pb-2 font-mono text-sm">
   <Segmented label="View" options={[{ value: "list", label: "List" }, { value: "grid", label: "Grid" }]} active={view.presentation} onPick={(p) => set({ presentation: p as View["presentation"] })} />
   <Segmented label="Sort" options={SORTS} active={view.sort?.attr ?? null} pip={view.sort?.dir ?? null} onPick={sortBy} />
   <Segmented label="Group" options={GROUPS} active={view.group} pip="square" onPick={groupBy} />
@@ -31,6 +31,6 @@
     placeholder="search"
     value={view.search}
     oninput={(e) => set({ search: e.currentTarget.value })}
-    class="ml-auto min-w-0 flex-1 appearance-none border-0 bg-black px-3 py-1 text-light-gray shadow-[inset_2px_2px_0_rgba(0,0,0,0.6)] placeholder:text-baltic focus-visible:outline-2 focus-visible:outline-light-baltic [&::-webkit-search-cancel-button]:appearance-none"
+    class="ml-auto min-w-0 flex-1 appearance-none border-0 bg-retro-deep px-3 py-1 text-light-gray shadow-[inset_2px_2px_0_rgba(0,0,0,0.6)] placeholder:text-retro-dim focus-visible:outline-2 focus-visible:outline-retro-muted [&::-webkit-search-cancel-button]:appearance-none"
   />
 </div>

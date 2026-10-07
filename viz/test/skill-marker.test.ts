@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Picker from "../src/shell/Picker.svelte";
 import RunView from "../src/shell/RunView.svelte";
 import SkillIcon from "../src/shell/SkillIcon.svelte";
-import SkillMarker from "../src/shell/SkillMarker.svelte";
 import { groupRuns } from "../src/state/group.ts";
 import type { SceneFactory } from "../src/scene/handle.ts";
 import type { CatalogEntry } from "../../src/viz/contract.ts";
@@ -21,48 +20,6 @@ const loadedLate = { skill: "demo-skill", skillLoaded: true, skillLoadedAfter: 4
 const neverLoaded = { skill: "demo-skill", skillLoaded: false };
 const none = {};
 
-const marker = (attributes: CatalogEntry["attributes"]) => {
-  const { container, unmount } = render(SkillMarker, { attributes });
-  const text = container.textContent?.trim() ?? "";
-  const cls = container.querySelector("[data-skill]")?.className ?? "";
-  unmount();
-  return { text, cls };
-};
-
-describe("the skill marker", () => {
-  it("says a skill was installed, whether it was loaded and after how many calls", () => {
-    expect(marker(loadedLate).text).toMatch(/demo-skill.*loaded after 47 calls/);
-    expect(marker(loadedEarly).text).toMatch(/loaded after 2 calls/);
-    expect(marker(neverLoaded).text).toMatch(/demo-skill.*never loaded/);
-  });
-
-  it("says a skill loaded before the first call was there from the start", () => {
-    expect(marker({ skill: "s", skillLoaded: true, skillLoadedAfter: 0 }).text).toMatch(/loaded before the first call/);
-  });
-
-  it("says when the prompt pointed at the skill", () => {
-    expect(marker(loadedEarly).text).toMatch(/prompt pointed at it/);
-    expect(marker(loadedLate).text).not.toMatch(/prompt pointed/);
-  });
-
-  it("tells loaded from never loaded by words and by look, not only by color", () => {
-    const a = marker(loadedLate);
-    const b = marker(neverLoaded);
-    expect(a.text).not.toBe(b.text);
-    expect(a.cls).not.toBe(b.cls);
-  });
-
-  it("shows nothing for a run with no skill, or one from before skills were recorded", () => {
-    expect(marker(none).text).toBe("");
-    expect(marker({ promptNote: NOTE }).text).toBe(""); // a note with no skill is not a skill marker
-  });
-
-  it("never shows the skill's text or the prompt sentence itself", () => {
-    expect(marker(loadedEarly).text).not.toContain("PROMPT-NOTE-SECRET");
-    expect(marker(loadedEarly).text).not.toContain("use the demo-skill skill");
-  });
-});
-
 describe("where it appears", () => {
   const entry = (run: string, attributes: CatalogEntry["attributes"]): CatalogEntry => {
     const id = run.padStart(16, "0");
@@ -78,10 +35,18 @@ describe("where it appears", () => {
     expect(markers(runs[2]!.id)).toBe(0);
   });
 
-  it("is in the open view", () => {
+  it("is in the heading of a table that has none of its own in the title strip, after the model", () => {
     const scene: SceneFactory = () => ({ show() {}, destroy() {} });
     render(RunView, { entry: entry("1", loadedLate), bundle: sampleBundle(), createScene: scene, onClose: () => {} });
-    expect(screen.getByRole("region", { name: /run/i }).querySelector("[data-skill]")?.textContent).toMatch(/loaded after 47 calls/);
+    const icon = screen.getByRole("region", { name: /run/i }).querySelector("svg[data-skill]");
+    expect(icon?.getAttribute("aria-label")).toMatch(/loaded after 47 calls/);
+    expect(icon!.previousElementSibling?.textContent).toContain("claude-x");
+  });
+
+  it("is not in a table whose heading is in the title strip: the strip carries it", () => {
+    const scene: SceneFactory = () => ({ show() {}, destroy() {} });
+    render(RunView, { entry: entry("1", loadedLate), bundle: sampleBundle(), createScene: scene, onClose: () => {}, titled: true });
+    expect(document.querySelector("[data-skill]")).toBeNull();
   });
 
   it("is not in the open view of a run with no skill", () => {

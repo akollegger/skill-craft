@@ -17,14 +17,14 @@
 </script>
 
 <div role="group" aria-label={label} class="flex items-center gap-2">
-  <span aria-hidden="true" class="text-baltic">{label}</span>
+  <span aria-hidden="true" class="text-retro-dim">{label}</span>
   <span class="flex gap-1">
     {#each options as o (o.value)}
       <button
         type="button"
         data-option={o.value}
         aria-pressed={active === o.value}
-        class={`flex items-center gap-2 px-3 py-1 shadow-[inset_-2px_-2px_0_rgba(0,0,0,0.3),inset_2px_2px_0_rgba(255,255,255,0.08)] focus-visible:outline-2 focus-visible:outline-light-baltic ${active === o.value ? "bg-mid-baltic text-highlight-yellow" : "bg-dark-baltic text-light-gray hover:bg-mid-baltic"}`}
+        class={`flex items-center gap-2 px-3 py-1 shadow-[inset_-2px_-2px_0_rgba(0,0,0,0.3),inset_2px_2px_0_rgba(255,255,255,0.08)] focus-visible:outline-2 focus-visible:outline-retro-muted ${active === o.value ? "bg-retro-line text-highlight-yellow" : "bg-retro-raised text-light-gray hover:bg-retro-line"}`}
         onclick={() => onPick(o.value)}
       >
         {o.label}

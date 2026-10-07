@@ -9,12 +9,12 @@ import type { PaletteName } from "./palette.ts";
  */
 export const roles = {
   // Surfaces
-  backdrop: "black",
-  panel: "darkestBaltic",
-  raised: "darkBaltic",
+  backdrop: "retroDeep",
+  panel: "retroPanel",
+  raised: "retroRaised",
   // Text
   text: "lightGray",
-  textMuted: "lightBaltic",
+  textMuted: "retroMuted",
   accent: "highlightYellow",
   // Calls: placement, craft, refusal, take-back; a read is dimmed Baltic
   placement: "midMarigold",

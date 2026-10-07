@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { DERIVED, hex, palette, READ_ON, SOURCE } from "../src/palette.ts";
+import { DERIVED, RETRO, SLATE, hex, palette, READ_ON, SOURCE } from "../src/palette.ts";
 
 /** Hue in degrees of a #RRGGBB color. */
 function hue(value: string): number {
@@ -45,6 +45,28 @@ describe("the palette", () => {
     for (let i = 1; i < lums.length; i++) expect(lums[i]!, DERIVED[i]).toBeLessThan(lums[i - 1]!);
     // The anchor is real: the lightest step is close to a brand Marigold in hue.
     expect(Math.abs(hue(palette.woodHighlight) - hue(palette.marigold))).toBeLessThanOrEqual(6);
+  });
+
+  it("keeps the retro blues in the Baltic hue family, softer than the brand and each step lighter than the last", () => {
+    const sat = (v: string) => { const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(v.slice(i, i + 2), 16) / 255) as [number, number, number]; const mx = Math.max(r, g, b), mn = Math.min(r, g, b); return mx === mn ? 0 : (mx - mn) / (1 - Math.abs(mx + mn - 1)); };
+    for (const name of RETRO) {
+      expect(hue(palette[name]), name).toBeGreaterThanOrEqual(195);
+      expect(hue(palette[name]), name).toBeLessThanOrEqual(225);
+      expect(sat(palette[name]), name).toBeLessThan(sat(palette.midBaltic));
+    }
+    const lums = RETRO.map((n) => luminance(palette[n]));
+    for (let i = 1; i < lums.length; i++) expect(lums[i]!, RETRO[i]).toBeGreaterThan(lums[i - 1]!);
+  });
+
+  it("keeps the control blue-grays in the retro hue, nearly gray, and each step lighter than the last", () => {
+    const sat = (v: string) => { const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(v.slice(i, i + 2), 16) / 255) as [number, number, number]; const mx = Math.max(r, g, b), mn = Math.min(r, g, b); return mx === mn ? 0 : (mx - mn) / (1 - Math.abs(mx + mn - 1)); };
+    for (const name of SLATE) {
+      expect(hue(palette[name]), name).toBeGreaterThanOrEqual(200);
+      expect(hue(palette[name]), name).toBeLessThanOrEqual(220);
+      expect(sat(palette[name]), name).toBeLessThanOrEqual(0.3); // well under the retro blues
+    }
+    const lums = SLATE.map((n) => luminance(palette[n]));
+    for (let i = 1; i < lums.length; i++) expect(lums[i]!, SLATE[i]).toBeGreaterThan(lums[i - 1]!);
   });
 
   it("gives PixiJS a number", () => {

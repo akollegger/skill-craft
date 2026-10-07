@@ -18,9 +18,9 @@ export const LIST_COLUMNS: readonly ListColumn[] = [
   { label: "", attrs: [] },
   { label: "World", attrs: ["world"] },
   { label: "Goal", attrs: ["goalItem", "goalQty"] },
-  { label: "Calls", attrs: ["actionCalls", "bestCalls", "extraCalls", "outcome"] },
+  { label: "Calls", attrs: ["actionCalls", "bestCalls", "extraCalls"] },
   { label: "Time", attrs: ["durationMs"] },
-  { label: "Tape", attrs: [] },
+  { label: "Outcome", attrs: ["outcome"] },
   { label: "Model", attrs: ["modelRan", "modelRequested"] },
   { label: "Skill", attrs: ["skill", "skillLoaded", "skillLoadedAfter"] },
 ];

@@ -46,17 +46,17 @@
     type={ready ? "button" : undefined}
     data-open={ready ? "" : undefined}
     title={name}
-    class={`${LIST_GRID} w-full select-none items-center px-3 py-2 text-left font-mono text-sm focus-visible:outline-2 focus-visible:outline-light-baltic ${BLOCK} ${selected ? "bg-mid-baltic ring-2 ring-inset ring-highlight-yellow" : "bg-dark-baltic"} ${ready ? "enabled:hover:bg-mid-baltic" : ""}`}
+    class={`${LIST_GRID} w-full select-none items-center px-3 py-2 text-left font-mono text-sm focus-visible:outline-2 focus-visible:outline-retro-muted ${BLOCK} ${selected ? "bg-retro-line ring-2 ring-inset ring-highlight-yellow" : "bg-retro-raised"} ${ready ? "enabled:hover:bg-retro-line" : ""}`}
     onclick={ready ? activate : undefined}
   >
     <span class="sr-only">{name}. </span>
     <span class="flex items-center justify-center"><Thumbnail goal={goalItem} reached={outcome === "reached"} compact /></span>
-    <span class="truncate text-light-baltic">{a["world"] ?? ""}</span>
+    <span class="truncate text-retro-muted">{a["world"] ?? ""}</span>
     <span class="truncate">{#if goal !== ""}<span class="sr-only">Goal:{" "}</span>{goal}{/if}</span>
     <span><Score {calls} tone={scoreTone(outcome, calls, best)} />{#if outcome !== ""}<span class="sr-only">, {outcome}</span>{/if}</span>
-    <span class="whitespace-nowrap text-light-baltic">{ms === undefined ? "" : formatClock(ms)}</span>
+    <span class="whitespace-nowrap text-retro-muted">{ms === undefined ? "" : formatClock(ms)}</span>
     {#if entry.preview}<CallStrip strip={entry.preview.strip} {best} failed={failed(outcome)} />{:else}<span></span>{/if}
-    <span class="truncate text-baltic">{a["modelRan"] ?? ""}</span>
+    <span class="truncate text-retro-dim">{a["modelRan"] ?? ""}</span>
     <span class="flex items-center"><SkillIcon attributes={a} dash /></span>
     {#if selected}<span class="sr-only">Selected for comparison</span>{/if}
     {#if !ready}<span class="col-span-full text-mid-hibiscus">can't open: {why}</span>{/if}

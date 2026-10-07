@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
+import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { cellSizeFor, defaultItemArt, spriteToRGBA, type ItemArt } from "../art/index.ts";
 import { hex } from "../palette.ts";
 import type { FrameData } from "../../../src/viz/contract.ts";
@@ -8,21 +8,20 @@ import { confettiBurst, sceneAt, type Effect } from "./model.ts";
 // The scene is drawn at a small native size and scaled up by whole numbers with nearest-neighbour sampling, so it
 // stays crisp at any size. Which color plays which role is provisional: the palette's roles are set with the page.
 const W = 168;
-const H = 128;
 const HOTBAR_SLOTS = 8;
 
 const COLOR = {
-  backdrop: hex("darkestBaltic"),
+  backdrop: hex("retroDeep"),
   // The table is wood: a ramp derived from Marigold (see DERIVED in palette.ts), bevelled light on the top and left.
   frame: hex("woodFrame"),
   face: hex("woodFace"),
   light: hex("woodHighlight"),
   shade: hex("woodShade"),
   deep: hex("woodDeep"),
-  arrow: hex("baltic"),
+  arrow: hex("retroDim"),
   edge: hex("black"),
   socket: hex("woodDeep"),
-  ghost: hex("lightBaltic"),
+  ghost: hex("retroMuted"),
   craft: hex("midForest"),
   refuse: hex("midHibiscus"),
   text: hex("lightGray"),
@@ -44,6 +43,39 @@ const seeded = (seed: number): (() => number) => {
 /** One running effect: advance by `ms`; return false when finished. */
 type Running = (ms: number) => boolean;
 
+/**
+ * The digits 0 to 9 in a three by five pixel face, one string per row ("1" is a lit pixel). Drawn as whole pixels like the rest of the scene,
+ * so a count stays sharp at any scale; text rendered at seven pixels and scaled up four times is a blur.
+ */
+const DIGITS = [
+  ["111", "101", "101", "101", "111"],
+  ["010", "110", "010", "010", "111"],
+  ["111", "001", "111", "100", "111"],
+  ["111", "001", "111", "001", "111"],
+  ["101", "101", "111", "001", "001"],
+  ["111", "100", "111", "001", "111"],
+  ["111", "100", "111", "101", "111"],
+  ["111", "001", "001", "001", "001"],
+  ["111", "101", "111", "101", "111"],
+  ["111", "101", "111", "001", "111"],
+] as const;
+
+/** A count in pixel digits with its right edge at `right` and its top at `top`, light with a dark outline so it reads over any item. */
+function pixelCount(into: Container, count: number, right: number, top: number): void {
+  const digits = [...String(Math.min(count, 99))].map(Number);
+  const left = right - (digits.length * 4 - 1);
+  const lit: [number, number][] = [];
+  digits.forEach((d, i) =>
+    DIGITS[d]!.forEach((row, y) => [...row].forEach((on, x) => on === "1" && lit.push([left + i * 4 + x, top + y]))),
+  );
+  const g = new Graphics();
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    for (const [x, y] of lit) g.rect(x + dx, y + dy, 1, 1).fill(COLOR.deep);
+  }
+  for (const [x, y] of lit) g.rect(x, y, 1, 1).fill(COLOR.text);
+  into.addChild(g);
+}
+
 /** A wooden square with a one-pixel bevel: light on the top and left, shade on the bottom and right. Returns the Graphics drawn into. */
 function bevelled(into: Container, x: number, y: number, w: number, h: number): Graphics {
   const g = new Graphics().rect(x, y, w, h).fill(COLOR.face);
@@ -55,6 +87,8 @@ function bevelled(into: Container, x: number, y: number, w: number, h: number): 
 
 export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
   return async (host, { reducedMotion }): Promise<SceneHandle> => {
+    // The canvas is as tall as its content needs, whatever the grid: a start value until the first frame says what is on the table.
+    let H = 118;
     const app = new Application();
     await app.init({ width: W, height: H, backgroundAlpha: 0, antialias: false, autoDensity: true, resolution: 1 });
     const canvas = app.canvas;
@@ -111,12 +145,41 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
       }
     });
 
-    // Layout follows the grid: the cell is a multiple of the 8-pixel sprite, smaller as the grid grows.
+    // Layout follows the grid: the cell is a multiple of the 8-pixel sprite, smaller as the grid grows. The table, the arrow and the output
+    // frame make one row, and the hotbar sits under it; the two are centred as a block on the canvas, both ways, so the margins match.
+    // Every measure is a whole number and every width even, so nothing lands between two pixels.
+    const FRAME = 3; // the wooden rim round the grid
+    const OUT = 32; // the output frame, rim and rivets included
+    const GAP = 18; // from the table's rim to the output frame, with the arrow centred in it
+    const SLOT = 18; // one hotbar slot
+    const SLOT_GAP = 2;
+    const SECTION_GAP = 10; // between the table row and the hotbar
+    const MARGIN = 6; // above the table row and below the hotbar
     const layout = (rows: number, cols: number) => {
       const cell = cellSizeFor(Math.max(rows, cols));
-      const x0 = 8;
-      const y0 = 8;
-      return { cell, x0, y0, w: cols * cell, h: rows * cell, scale: cell / 8 };
+      const w = cols * cell;
+      const h = rows * cell;
+      const box = { w: w + 2 * FRAME, h: h + 2 * FRAME };
+      // An item is drawn a size smaller than its cell and centred in it, so the cell's bevel shows round it and neighbours do not merge:
+      // twice the sprite's size in a 24-pixel cell, and its own size in the smaller ones.
+      const scale = cell >= 24 ? 2 : 1;
+      const pad = (cell - 8 * scale) / 2;
+      const rowW = box.w + GAP + OUT;
+      const rowH = Math.max(box.h, OUT);
+      const hotbarW = HOTBAR_SLOTS * SLOT + (HOTBAR_SLOTS - 1) * SLOT_GAP;
+      const left = Math.round((W - rowW) / 2);
+      const top = MARGIN;
+      const hotY = top + rowH + SECTION_GAP;
+      const boxX = left;
+      const boxY = top + Math.round((rowH - box.h) / 2);
+      const outX = left + box.w + GAP; // the output frame's left edge
+      const outY = top + Math.round((rowH - OUT) / 2);
+      return {
+        cell, x0: boxX + FRAME, y0: boxY + FRAME, w, h, scale, pad, box, boxX, boxY, outX, outY,
+        arrowX: left + box.w + (GAP - 8) / 2, midY: outY + OUT / 2,
+        hotX: Math.round((W - hotbarW) / 2), hotY,
+        height: hotY + SLOT + MARGIN,
+      };
     };
 
     let current: ReturnType<typeof layout> | undefined;
@@ -126,13 +189,19 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
       const s = sceneAt(frames, index);
       const L = layout(s.rows, s.cols);
       current = L;
+      // The canvas is exactly as tall as the layout: a world with a taller grid gets a taller canvas, and no space is left over.
+      if (L.height !== H) {
+        H = L.height;
+        app.renderer.resize(W, H);
+        fit();
+      }
       board.removeChildren().forEach((c) => c.destroy());
       items.removeChildren().forEach((c) => c.destroy());
       hud.removeChildren().forEach((c) => c.destroy());
       cellSprites.clear();
 
       board.addChild(new Graphics().rect(0, 0, W, H).fill(COLOR.backdrop));
-      board.addChild(new Graphics().rect(L.x0 - 3, L.y0 - 3, L.w + 6, L.h + 6).fill(COLOR.frame).stroke({ width: 1, color: COLOR.deep }));
+      board.addChild(new Graphics().rect(L.boxX, L.boxY, L.box.w, L.box.h).fill(COLOR.frame).stroke({ width: 1, color: COLOR.deep }));
       for (let r = 0; r < s.rows; r++) {
         for (let c = 0; c < s.cols; c++) {
           bevelled(board, L.x0 + c * L.cell + 1, L.y0 + r * L.cell + 1, L.cell - 2, L.cell - 2);
@@ -141,17 +210,12 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
       s.cells.forEach((row, r) =>
         row.forEach((item, c) => {
           if (item === null) return;
-          // An item and its shadow move together: a dark copy one sprite pixel down and right keeps every palette legible on the wood.
+          // The holder is what the place animation moves.
           const holder = new Container();
-          holder.position.set(L.x0 + c * L.cell, L.y0 + r * L.cell);
-          const shadow = new Sprite(textureFor(item));
-          shadow.tint = COLOR.deep;
-          shadow.alpha = 0.6;
-          shadow.scale.set(L.scale);
-          shadow.position.set(L.scale, L.scale);
+          holder.position.set(L.x0 + c * L.cell + L.pad, L.y0 + r * L.cell + L.pad);
           const sp = new Sprite(textureFor(item));
           sp.scale.set(L.scale);
-          holder.addChild(shadow, sp);
+          holder.addChild(sp);
           items.addChild(holder);
           cellSprites.set(`${r},${c}`, holder);
         }),
@@ -159,16 +223,15 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
 
       // Output slot: an arrow from the table to a riveted wooden frame holding a socket, which is empty or shows a ghost of what
       // craft would make now.
-      const ox = L.x0 + L.w + 18;
-      const oy = L.y0 + Math.floor(L.h / 2) - 14;
-      const mid = oy + 14;
+      const ox = L.outX + 2;
+      const oy = L.outY + 2;
       const arrow = new Graphics();
-      arrow.rect(L.x0 + L.w + 6, mid - 1, 6, 2).fill(COLOR.arrow); // the shaft
-      arrow.rect(L.x0 + L.w + 12, mid - 3, 1, 6).fill(COLOR.arrow); // and a head, one column at a time
-      arrow.rect(L.x0 + L.w + 13, mid - 2, 1, 4).fill(COLOR.arrow);
-      arrow.rect(L.x0 + L.w + 14, mid - 1, 1, 2).fill(COLOR.arrow);
+      arrow.rect(L.arrowX, L.midY - 1, 5, 2).fill(COLOR.arrow); // the shaft
+      arrow.rect(L.arrowX + 5, L.midY - 3, 1, 6).fill(COLOR.arrow); // and a head, one column at a time
+      arrow.rect(L.arrowX + 6, L.midY - 2, 1, 4).fill(COLOR.arrow);
+      arrow.rect(L.arrowX + 7, L.midY - 1, 1, 2).fill(COLOR.arrow);
       hud.addChild(arrow);
-      const frame = bevelled(hud, ox - 2, oy - 2, 32, 32);
+      const frame = bevelled(hud, L.outX, L.outY, OUT, OUT);
       for (const [rx, ry] of [[ox - 1, oy - 1], [ox + 28, oy - 1], [ox - 1, oy + 28], [ox + 28, oy + 28]] as const) frame.rect(rx, ry, 1, 1).fill(COLOR.shade); // rivets
       const socket = new Graphics().rect(ox, oy, 28, 28).fill(COLOR.socket);
       socket.rect(ox, oy, 28, 1).fill(COLOR.frame).rect(ox, oy, 1, 28).fill(COLOR.frame); // inset: dark on the top and left
@@ -182,19 +245,20 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
         hud.addChild(g);
       }
 
-      // The hotbar: what the agent holds, with counts.
-      s.hotbar.slice(0, HOTBAR_SLOTS).forEach((h, i) => {
-        const hx = 8 + i * 19;
-        const hy = H - 24;
-        hud.addChild(new Graphics().rect(hx, hy, 18, 18).fill(COLOR.frame).stroke({ width: 1, color: COLOR.deep }));
+      // The hotbar: what the agent holds, with counts. All the slots are always drawn, so the row keeps its place and its width as the
+      // agent picks things up; an empty slot is a dark socket and a full one a wooden square.
+      for (let i = 0; i < HOTBAR_SLOTS; i++) {
+        const hx = L.hotX + i * (SLOT + SLOT_GAP);
+        const hy = L.hotY;
+        const h = s.hotbar[i];
+        hud.addChild(new Graphics().rect(hx, hy, SLOT, SLOT).fill(h ? COLOR.frame : COLOR.socket).stroke({ width: 1, color: COLOR.deep }));
+        if (!h) continue;
         const sp = new Sprite(textureFor(h.item));
         sp.scale.set(2);
         sp.position.set(hx + 1, hy + 1);
         hud.addChild(sp);
-        const n = new Text({ text: String(h.count), style: { fontFamily: "Fira Code", fontSize: 7, fill: COLOR.text } });
-        n.position.set(hx + 11, hy + 10);
-        hud.addChild(n);
-      });
+        pixelCount(hud, h.count, hx + SLOT - 2, hy + SLOT - 7); // the count at the slot's bottom right
+      }
     }
 
     function play(effects: readonly Effect[], seq: number): void {
@@ -216,7 +280,7 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
         } else if (e.kind === "lift") {
           const sp = new Sprite(textureFor(e.item));
           sp.scale.set(L.scale);
-          sp.position.set(L.x0 + e.col * L.cell, L.y0 + e.row * L.cell);
+          sp.position.set(L.x0 + e.col * L.cell + L.pad, L.y0 + e.row * L.cell + L.pad);
           fx.addChild(sp);
           let t = 0;
           running.push((ms) => {

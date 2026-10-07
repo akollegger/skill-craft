@@ -330,3 +330,33 @@ run could be opened to the point it reached; and how a view could be saved or sh
   triangle when the sort is Time. A tile shows the time, small, under its score: the score sits at the top of the thumbnail's height
   and the time at its bottom, and the score is a step smaller than before to make room.
 
+- **2026-10-07, the retro look, a detail view built around the table, and item art that points to ADR-005.** Made over several rounds of
+  using the page. Where it conflicts with an earlier amendment, this one holds.
+  - *Look.* The blues of the page are derived, softer and dustier than the brand's (`retroDeep`, `retroPanel`, `retroRaised`, `retroLine`,
+    `retroDim`, `retroMuted`, listed in `RETRO` in `viz/src/palette.ts`), and the playback controls use a nearly gray blue (`SLATE`). The
+    highlight colors are unchanged. The frame is a chunky pixel window (a thick rim, a hard offset shadow and a title strip), and the table
+    sits in a bevelled frame on the deepest blue. Items on the table are flat: the one-pixel shadow described on 2026-10-04 is gone. They are
+    drawn at twice the sprite's size in a 24-pixel cell, centred with a margin, and the hotbar always shows eight slots with counts in a pixel
+    face drawn from rectangles (scaled text blurred).
+  - *Item art.* The hashed creature is replaced by a geometric glyph (eight shape families, three variants, eight palettes, and two
+    name-chosen accent pixels). This supersedes "Sprites: generated" in 2.6 in its detail; the sprite is still a pure function of the name and
+    nothing is fetched. Per-world art, with drawn icons for the faithful world and glyphs allocated so a world's items differ, is decided in
+    [ADR-005](ADR-005-per-world-item-art.md) and not built yet.
+  - *Tiles.* A tile's score and time are larger, and the thumbnail is as tall as the two together. The tape is gone from tiles: a word in
+    the score's color says how the run ended (master craft for a goal reached within the best known count, eventual craft past it,
+    abandoned craft for a run that gave up, expired craft for one that ran out of turns). A list row keeps its tape and a smaller score, with
+    the time in the small type.
+  - *The title strip.* It names the page: "Runs" in the list and the grid; for one open table the goal, the world, the model and the
+    skill icon; for two, that they are compared. Its one lamp is dim in the list and red in the detail view, where it closes the table.
+    This replaces the close button and the heading of the detail view, and the "prior fit" line and the skill box are gone from it. Two
+    tables side by side keep their own headings and close buttons. "Open beside" is gone: a comparison always starts from the list.
+  - *The detail view.* Three columns, the two at the sides of equal width and the table in the middle. At the left are the playback
+    controls as chunky icon buttons (jump to start, step back, play or pause, step forward, jump to end, with Home and End as keys). At the
+    right are the score, the clock and the run's cost, time and token counts as small stats with no label words on screen. Above the table,
+    as wide as it, is one pip for every action call with none cut off: calls made wear the playback colors, calls to come are gray, and a click
+    on a pip shows the table after that call. Dragging the score scrubs through the run. Under the table is the call list in a box of the table's
+    width and a fixed height that scrolls inside itself. The slider, the status phrase over the pips, the "of N" count and the footer of
+    totals are gone. The score and the clock reserve the same room for every run, so nothing shifts as digits change or between runs.
+    A scrolling filmstrip was tried for the pips and dropped: with a pip a call, a long run was a row of near-identical squares and the
+    motion could not be seen.
+  - *Open.* The call list and the pips may share the band under the table; that is being tried by use before it is decided.

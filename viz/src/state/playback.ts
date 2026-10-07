@@ -50,6 +50,8 @@ export function keyAction(key: string): KeyAction | undefined {
     case "ArrowRight": return { type: "step", by: 1 };
     case "ArrowLeft": return { type: "step", by: -1 };
     case "r": return { type: "restart" };
+    case "Home": return { type: "scrub", to: 0 };
+    case "End": return { type: "scrub", to: Number.MAX_SAFE_INTEGER }; // the reducer clamps it to the last frame
     case "Escape": return { type: "close" };
     default: return undefined;
   }

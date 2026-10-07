@@ -8,6 +8,6 @@
 </script>
 
 <!-- Only the count: the help is under the frame. -->
-<footer aria-label="Run count" class="pt-2 font-mono text-xs text-light-baltic">
+<footer aria-label="Run count" class="pt-2 font-mono text-xs text-retro-muted">
   {shown === total ? noun(total) : `Showing ${shown} of ${noun(total)}`}
 </footer>

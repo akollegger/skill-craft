@@ -74,6 +74,30 @@ describe("the page", () => {
       expect(await screen.findAllByRole("listitem")).toHaveLength(1);
     });
 
+    it("names the page in its title strip: Runs for the list, the run's world, goal and model for one table; the red lamp closes it", async () => {
+      const withGoal = { ...entry("1", "forge"), attributes: { ...entry("1", "forge").attributes, goalItem: "glirol", goalQty: 1, modelRan: "claude-haiku-4-5", skill: "demo", skillLoaded: true, skillLoadedAfter: 2 } };
+      served({ "catalog.json": () => new Response(JSON.stringify({ format: 1, runs: [withGoal] })) });
+      render(App, { createScene: scene });
+      const lamp = await screen.findByRole("button", { name: /close table/i });
+      const strip = lamp.parentElement!;
+      expect((lamp as HTMLButtonElement).disabled).toBe(true); // nothing to close in the list
+      expect(strip.textContent).toContain("Runs");
+      await fireEvent.click(await screen.findByRole("button", { name: /lab \/ 1/ }));
+      const region = await screen.findByRole("region", { name: /run/i });
+      expect((lamp as HTMLButtonElement).disabled).toBe(false);
+      expect(strip.textContent).not.toContain("Runs");
+      expect(strip.textContent).toContain("Make 1 glirol");
+      expect(strip.textContent).toContain("forge · claude-haiku-4-5");
+      expect(strip.querySelector("svg[data-skill]")).not.toBeNull(); // the skill's icon, after the model
+      expect(region.textContent).not.toMatch(/prior fit|loaded after/);
+      // The table has no heading or close button of its own: the strip carries both.
+      expect(region.querySelector("h2")).toBeNull();
+      expect(screen.getAllByRole("button", { name: /close table/i })).toHaveLength(1);
+      await fireEvent.click(lamp);
+      expect(await screen.findAllByRole("listitem")).toHaveLength(1);
+      expect(strip.textContent).toContain("Runs");
+    });
+
     it("says it is opening while the bundle loads", async () => {
       const held: ((r: Response) => void)[] = [];
       vi.stubGlobal("fetch", vi.fn((url: string) =>

@@ -39,7 +39,7 @@ describe("the open run", () => {
     expect(screen.getByRole("img", { name: /best possible/i }).getAttribute("aria-label")).toContain("3");
     expect(screen.getByRole("status").textContent).toContain("Working it out.");
     expect(within(screen.getByRole("list", { name: /calls/i })).queryAllByRole("listitem")).toHaveLength(0);
-    expect((screen.getByRole("slider", { name: /position/i }) as HTMLInputElement).value).toBe("0");
+    expect(screen.queryByRole("slider")).toBeNull(); // the counter and the pips replace the slider
   });
 
   it("shows the state at the playhead as it is stepped", async () => {
@@ -88,9 +88,44 @@ describe("the open run", () => {
     open();
     await step(6);
     expect(screen.getByRole("status").textContent).toMatch(/Got it in 3 calls\. The best possible is 3\./);
-    const totals = screen.getByRole("group", { name: /totals/i }).textContent ?? "";
-    expect(totals).toContain("$0.058");
-    expect(totals).toContain("1:05");
+    const spent = screen.getByRole("list", { name: /spent/i });
+    expect(spent.textContent).toContain("$0.058");
+    expect(spent.textContent).toContain("1:05");
+  });
+
+  it("shows what the run spent as small stats under the score and the clock, with no label words on screen and the words for a tooltip", () => {
+    open();
+    const items = [...screen.getByRole("list", { name: /spent/i }).querySelectorAll("li")] as HTMLElement[];
+    expect(items.length).toBe(6); // cost, time, and four token counts
+    expect(items.map((i) => i.getAttribute("title"))).toEqual(["Cost", "Time for the whole run", "Input tokens", "Output tokens", "Cache read tokens", "Cache write tokens"]);
+    // The words are there for a screen reader and hidden from the eye.
+    for (const i of items) expect(i.querySelector(".sr-only")).not.toBeNull();
+    const counter = screen.getByLabelText(/calls so far/i);
+    const stats = screen.getByRole("list", { name: /spent/i });
+    expect(counter.closest("div")).toBe(stats.parentElement); // the same column
+    expect(counter.compareDocumentPosition(stats) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("shows no stats, and no footer, for a run whose time and tokens were not measured", () => {
+    open({ bundle: emptyBundle() });
+    expect(screen.queryByRole("list", { name: /spent/i })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/No timing/);
+  });
+
+  it("puts the controls at the left of the table and the score at its right, in side columns of equal width, with the pips above the table", () => {
+    open();
+    const grid = screen.getByRole("group", { name: /playback/i }).closest(".grid") as HTMLElement;
+    expect(grid.className).toMatch(/grid-cols-\[(\S+)_minmax\(0,1fr\)_\1\]/); // the same width at both sides, the middle taking what is left
+    const cells = [...grid.children] as HTMLElement[];
+    const at = (el: Element) => cells.findIndex((c) => c.contains(el));
+    const table = screen.getByRole("img", { name: /crafting table/i });
+    const controls = screen.getByRole("group", { name: /playback/i });
+    const counter = screen.getByLabelText(/calls so far/i);
+    const pips = document.querySelector("[data-pip]")!;
+    expect(at(controls)).toBeLessThan(at(table));
+    expect(at(table)).toBeLessThan(at(counter));
+    expect(at(pips)).toBeLessThan(at(table)); // above it
+    expect(cells[at(pips)]!.className).toMatch(/col-start-2/); // in the table's column
   });
 
   it("says a run that never reached the goal gave up, ran out of turns, or failed", async () => {
@@ -116,11 +151,10 @@ describe("the open run", () => {
     expect(document.body.textContent).not.toMatch(/shapeless|shaped/i);
   });
 
-  it("shows the run's name and its conditions, including the prior fit", () => {
+  it("shows the run's name and its model", () => {
     open();
     expect(document.body.textContent).toContain("lab / 001");
     expect(document.body.textContent).toContain("claude-x");
-    expect(document.body.textContent).toContain("faithful");
   });
 });
 
@@ -130,10 +164,9 @@ describe("controls", () => {
     await step(3);
     await fireEvent.click(screen.getByRole("button", { name: /step back/i }));
     expect(score()).toBe("2");
-    const slider = screen.getByRole("slider", { name: /position/i });
-    await fireEvent.input(slider, { target: { value: "5" } });
-    expect(score()).toBe("4");
-    await fireEvent.click(screen.getByRole("button", { name: /restart/i }));
+    await fireEvent.click(screen.getByRole("button", { name: /jump to end/i }));
+    expect(score()).toBe("5");
+    await fireEvent.click(screen.getByRole("button", { name: /jump to start/i }));
     expect(score()).toBe("0");
   });
 
@@ -187,8 +220,8 @@ describe("the scene", () => {
     const { scene } = open();
     await step();
     expect(scene.shows.at(-1)).toMatchObject({ index: 1, effects: [{ kind: "place", item: "a" }] });
-    await fireEvent.input(screen.getByRole("slider", { name: /position/i }), { target: { value: "4" } });
-    expect(scene.shows.at(-1)).toMatchObject({ index: 4, effects: [] });
+    await fireEvent.click(screen.getByRole("button", { name: /jump to end/i }));
+    expect(scene.shows.at(-1)).toMatchObject({ index: sampleBundle().frames.length - 1, effects: [] });
   });
 
   it("is destroyed when the view closes", () => {
@@ -222,5 +255,88 @@ describe("formatClock", () => {
     expect(formatClock(59_940)).toBe("59.9s");
     expect(formatClock(65_000)).toBe("1:05");
     expect(formatClock(600_000)).toBe("10:00");
+  });
+});
+
+describe("the steps and the counter", () => {
+  const pips = () => [...document.querySelectorAll("[data-pip]")] as HTMLElement[];
+
+  it("draws a pip for every action call, none cut off, the calls made in the playback colors and the rest muted gray", async () => {
+    open();
+    expect(pips()).toHaveLength(5);
+    expect(pips().every((p) => p.getAttribute("data-pip") === "to-come" && /bg-dark-gray/.test(p.className))).toBe(true);
+    await step(5); // four action calls made; the best run is 3
+    expect(pips().map((p) => p.getAttribute("data-pip"))).toEqual(["ok", "ok", "ok", "over", "to-come"]);
+    expect(pips()[4]!.className).toMatch(/bg-dark-gray/);
+  });
+
+  it("marks the latest call made, so a step shows as a move along the strip", async () => {
+    open();
+    expect(pips().some((p) => /ring-/.test(p.className))).toBe(false);
+    await step(2);
+    const marked = pips().filter((p) => /ring-/.test(p.className));
+    expect(marked).toHaveLength(1);
+    expect(pips().indexOf(marked[0]!)).toBe(Number(score()) - 1);
+  });
+
+  it("shows the table after a call when its pip is clicked", async () => {
+    open();
+    await fireEvent.click(pips()[3]!);
+    expect(score()).toBe("4");
+    await fireEvent.click(pips()[0]!);
+    expect(score()).toBe("1");
+  });
+
+  it("tells each pip's call in its tooltip", () => {
+    open();
+    expect(pips()[0]!.getAttribute("title")).toMatch(/place/);
+  });
+
+  it("does not scrub from the pips: pulling across them moves nothing", async () => {
+    open();
+    await step(2);
+    const before = score();
+    await fireEvent.pointerDown(pips()[0]!, { clientX: 0, pointerId: 1 });
+    await fireEvent.pointerMove(pips()[0]!, { clientX: 200, pointerId: 1 });
+    await fireEvent.pointerUp(pips()[0]!, { clientX: 200, pointerId: 1 });
+    expect(score()).toBe(before);
+  });
+
+  it("scrubs when the counter is pulled: right goes forward, left goes back, and a release stops it", async () => {
+    open();
+    await step(1);
+    const start = Number(score());
+    const counter = document.querySelector("[data-counter]") as HTMLElement;
+    await fireEvent.pointerDown(counter, { clientX: 100, pointerId: 1 });
+    await fireEvent.pointerMove(counter, { clientX: 124, pointerId: 1 }); // 24 pixels is two calls of five, at 12 pixels each
+    expect(score()).toBe(String(start + 2));
+    await fireEvent.pointerMove(counter, { clientX: 100, pointerId: 1 });
+    expect(score()).toBe(String(start));
+    await fireEvent.pointerMove(counter, { clientX: 76, pointerId: 1 });
+    expect(score()).toBe("0"); // pulled back past the start: stops at it
+    await fireEvent.pointerUp(counter, { clientX: 76, pointerId: 1 });
+    await fireEvent.pointerMove(counter, { clientX: 400, pointerId: 1 });
+    expect(score()).toBe("0"); // released: no longer following the pointer
+  });
+
+  it("jumps to the start and the end with its buttons and with Home and End", async () => {
+    open();
+    const region = screen.getByRole("region", { name: /run/i });
+    await fireEvent.keyDown(region, { key: "End" });
+    expect(score()).toBe("5");
+    await fireEvent.keyDown(region, { key: "Home" });
+    expect(score()).toBe("0");
+    await step(3);
+    await fireEvent.click(screen.getByRole("button", { name: /jump to start/i }));
+    expect(score()).toBe("0");
+    await fireEvent.click(screen.getByRole("button", { name: /jump to end/i }));
+    expect(score()).toBe("5");
+  });
+
+  it("stops playing when it jumps", async () => {
+    open();
+    await fireEvent.click(screen.getByRole("button", { name: /^play$/i }));
+    await fireEvent.click(screen.getByRole("button", { name: /jump to start/i }));
+    expect(screen.getByRole("button", { name: /^play$/i })).toBeTruthy();
   });
 });

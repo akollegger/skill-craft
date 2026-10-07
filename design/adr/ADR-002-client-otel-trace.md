@@ -208,3 +208,6 @@ mirror could be added later without changing the viewer.
   text may be stored under `loops/<label>/` and nowhere else. A role's free-form text and reasoning are discarded, only
   the schema's fields are kept, and a role's failure reason is `code: fixed message`. The privacy test is extended to
   enforce both sides of the boundary.
+- **2026-10-07**: [ADR-005](ADR-005-per-world-item-art.md) will give the bundle manifest one more optional field, `art`: the sprites of the
+  items that appear in the run, for a viewer that has no world file. Not built yet; readers that do not know it ignore it, and the manifest's
+  format number does not change.

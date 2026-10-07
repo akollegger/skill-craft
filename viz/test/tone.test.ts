@@ -25,8 +25,8 @@ describe("the color of a call count", () => {
   });
 
   it("is muted when the outcome is not known", () => {
-    expect(scoreTone("", 5, 11)).toBe("text-light-baltic");
-    expect(scoreTone("unfinished", 5, 11)).toBe("text-light-baltic");
+    expect(scoreTone("", 5, 11)).toBe("text-retro-muted");
+    expect(scoreTone("unfinished", 5, 11)).toBe("text-retro-muted");
     expect(runTone("", 5, 11)).toBeUndefined();
     expect(failed("unfinished")).toBe(false);
   });

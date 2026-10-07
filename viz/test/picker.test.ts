@@ -112,7 +112,7 @@ describe("the list's column headers", () => {
   it("label the columns once, at the top, even when the runs are grouped", () => {
     render(Picker, props("world"));
     expect(document.querySelectorAll("[data-list-header]")).toHaveLength(1);
-    expect([...headers()!.querySelectorAll("[data-column]")].map((c) => c.textContent?.trim())).toEqual(["", "World", "Goal", "Calls", "Time", "Tape", "Model", "Skill"]);
+    expect([...headers()!.querySelectorAll("[data-column]")].map((c) => c.textContent?.trim())).toEqual(["", "World", "Goal", "Calls", "Time", "Outcome", "Model", "Skill"]);
   });
 
   it("show a run's time beside its calls, as a clock, and nothing when it was not measured", () => {
@@ -169,7 +169,7 @@ describe("the list's column headers", () => {
   it("can mark one column for grouping and another for sorting at the same time", () => {
     render(Picker, withView("world", { attr: "outcome", dir: "asc" }));
     expect(column("World").querySelector("[data-group-pip]")).not.toBeNull();
-    expect(column("Calls").querySelector("[data-sort-pip]")).not.toBeNull();
+    expect(column("Outcome").querySelector("[data-sort-pip]")).not.toBeNull();
     expect(column("World").querySelector("[data-sort-pip]")).toBeNull();
   });
 
