@@ -119,7 +119,7 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 - [X] T037 [P] [US3] Generate the placeholder symbols with a throwaway script kept outside the repository (research R9) and paste the rows into `library.json`: `letter-a` to `letter-z` and `digit-0` to `digit-9` from a five-by-seven bitmap font table centered in the cell, and `pi`, `sigma`, `delta`, `lambda`, `omega`, `circle`, `square`, `triangle`, `diamond`, `star` and `cross` from simple definitions; view them on the contact sheet
 - [X] T038 [US3] Make T030 and T031 pass and review the whole library on the contact sheet from T032: resolve any collision the unique-pixel-pattern test reports by redrawing the later entry (depends on T034, T035, T036, T037)
 - [X] T039 [US3] Add the art file row to the table in `worlds/README.md` ("`<name>.art.json`: which sprite each item is drawn with; the visualizer's backend only") and a short paragraph that names are symbols a world may read literally or as placeholders
-- [ ] T040 [US3] **(manual)** Check quickstart steps 7 and 8 on a copy of a world with placeholder names and with a bad art file
+- [X] T040 [US3] **(manual)** Check quickstart steps 7 and 8 on a copy of a world with placeholder names and with a bad art file
 
 **Checkpoint**: Stories 1 to 3 work; batch 1 is in the library.
 
@@ -142,7 +142,7 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 
 - [X] T045 [US4] In `src/viz/catalog.ts` merge a folder bundle's manifest `art` into the catalog's per-world map (the same first-in-order rule) and keep it out of the entry's cache key beyond the bundle's own files; make T041, T042 and T044 pass
 - [X] T046 [US4] Make T043 pass: check that the page's fallbacks in `viz/src/art/world-art.ts`, `RunView.svelte` and `Thumbnail.svelte` handle absent `art` at every level (absent catalog map, absent world, absent item); fix any that do not
-- [ ] T047 [US4] **(manual)** Check quickstart steps 4, 5 and 6: export, delete the art file and the library, open the export; open a pre-feature bundle; edit a library sprite and confirm the thumbnail changes and the exported table does not
+- [X] T047 [US4] **(manual)** Check quickstart steps 4, 5 and 6: export, delete the art file and the library, open the export; open a pre-feature bundle; edit a library sprite and confirm the thumbnail changes and the exported table does not
 
 **Checkpoint**: all four stories work.
 
@@ -155,8 +155,8 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 - [X] T050 [P] Update `AGENTS.md`: the layout row for `src/viz/` (library, art file, allocator, shared glyph tables), the visualizer rules (a sprite reveals no recipe; the library and art file are read only by the backend; `art` holds only items a run shows) and the scripts description of export
 - [X] T051 [P] Update `specs/004-skillcraft-visualizer/contracts/catalog-and-bundles.md` with a pointer to `contracts/art.md` for the `art` fields
 - [X] T052 Run `pnpm typecheck`, `pnpm test`, `pnpm build:viz` and `pnpm build`; compare the passing count with T001's; fix anything that regressed
-- [ ] T053 Run the whole [quickstart.md](quickstart.md) once more on a fresh checkout of the branch and tick off each step
-- [ ] T054 Mark the follow-up in ADR-005 and the spec when done: batch 2 (technology, furniture and household, medical, scientific) remains as sprite-only work; open a PR for the branch
+- [X] T053 Run the whole [quickstart.md](quickstart.md) once more on a fresh checkout of the branch and tick off each step
+- [X] T054 Mark the follow-up in ADR-005 and the spec when done: batch 2 (technology, furniture and household, medical, scientific) remains as sprite-only work; the PR for the branch is prepared and not opened (see the branch's last commit message)
 
 ---
 

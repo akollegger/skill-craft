@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-07
 
-**Status**: Draft
+**Status**: Batch 1 built (115 sprites). Batch 2 (technology, furniture and household, medical, scientific) is later, sprite-only work.
 
 **Input**: User description: "sprite library for the visualization as described in ADR-005"
 

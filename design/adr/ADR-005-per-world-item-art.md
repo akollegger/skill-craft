@@ -234,6 +234,9 @@ against both backgrounds.
   pixels each, and a catalog's art for a world grows from about 1 KB to about 4 KB. The code change is small (the size is one constant and a
   few schemas and cell sizes). A grid wider than the 16-pixel cells allow on the 168-pixel scene is not drawn until the scene's cell sizes
   are revisited; every committed world is 3 by 3.
+- Built (spec 006): the library with batch 1 (115 drawings), the art file, the allocator, `art` in the catalog and each bundle, and the page's
+  lookup. Follow-up: batch 2 of the starter set (technology, furniture and household, medical, scientific; 54 drawings) is sprite-only work
+  on `library.json` and `CREDITS.md`, with no code change; and the drawings are redrawn as audience playtests show what does not read.
 - Out of scope, and unchanged: a hover label or legend naming the item under the cursor, and any frame or badge
   that shows whether an item is raw or crafted.
 
