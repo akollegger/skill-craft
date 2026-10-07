@@ -32,9 +32,9 @@ made before this feature. It never carries a library name, a file path, a recipe
 
 ## Wire rules
 
-- Rows are eight strings of eight characters; each character is a key of `legend`. `legend` values are palette names the page
+- Rows are sixteen strings of sixteen characters; each character is a key of `legend`. `legend` values are palette names the page
   knows, or `null`. A value the page does not know is drawn transparent.
-- `marks` are two distinct integers 0 to 31. `family`, `variant` and `palette` are in range for the shared glyph tables.
+- `marks` are two distinct integers 0 to 127. `family`, `variant` and `palette` are in range for the shared glyph tables.
 - Characters in `legend` are assigned in sorted order of the palette names present (`a`, `b`, …); `.` is transparent.
 - An entry that fails these checks makes the bundle unreadable (`BundleInvalid`), like any other malformed manifest field.
 

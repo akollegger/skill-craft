@@ -130,13 +130,13 @@ Open a bundle made before this feature and check that it opens.
 
 - **FR-001**: A world MAY have an optional art file beside its world file. An art file maps item names either to a sprite in the shared
   library or to an inline drawing, and it is read only by the visualizer's backend. The engine, the server and the agent never read it.
-- **FR-002**: The visualizer MUST keep one shared library of named sprites. Each sprite is 8 by 8 pixels and uses only colours from the
+- **FR-002**: The visualizer MUST keep one shared library of named sprites. Each sprite is 16 by 16 pixels and uses only colours from the
   visualizer's palette. A library entry is either a fixed sprite or a shape drawn once and recoloured per material, and a reference
   names one or the other (for example a log, or a pickaxe in iron).
 - **FR-003**: The library MUST ship a starter set in two batches, as ADR-005 section 2.6 lists them. Batch 1, delivered by this
   feature: the faithful world's 13 items (9 drawings), tools, containers and basic materials, food, and placeholder symbols (letters,
   digits, a few Greek letters and simple shapes). Batch 2 (technology, furniture and household, medical, scientific) is later,
-  sprite-only work. Every drawing MUST be the project's own 8 by 8 work: it may start from a licensed reference (a source and licence recorded in a credits file) but is redrawn for the size and the palette, and none copies a game's textures, a brand or a logo. The faithful world's
+  sprite-only work. Every drawing MUST be the project's own 16 by 16 work: it may start from a licensed reference (a source and licence recorded in a credits file) but is redrawn for the size and the palette, and none copies a game's textures, a brand or a logo. The faithful world's
   art file MUST name its library sprites.
 - **FR-004**: An item with no drawn sprite MUST get a generated shape allocated across the world's whole item list, so that no two such
   items share a shape family and colour palette while the list is 64 items or fewer, and the allocation MUST be deterministic, the same
@@ -150,11 +150,11 @@ Open a bundle made before this feature and check that it opens.
   run unreadable. The affected entries, or the whole file where it cannot be read, are ignored and the items fall back to generated
   shapes. No text from an art file or the library may appear in the catalog or in a reason for a run that cannot be opened.
 - **FR-008**: Editing an art file or the library MUST show at the next scan without restarting the visualizer's process.
-- **FR-009**: Sprites MUST stay 8 by 8 pixels and be drawn at the same scale as today. No new mechanics, labels, legends or badges may be
+- **FR-009**: Sprites MUST be 16 by 16 pixels, the smallest size read or drawn, and appear on screen at the size they have today (1x in the table's cells where an 8 by 8 sprite was drawn at 2x). Nothing for earlier sizes is kept: art with 8 by 8 sprites is invalid. No new mechanics, labels, legends or badges may be
   added by this feature.
 - **FR-010**: The visualizer MUST remain read-only: it MUST NOT write into a folder of runs, the world files or the art files it reads.
 - **FR-011**: Tests MUST be written before the library, the resolver and the allocator. They MUST cover at least: every item of every
-  committed world resolves to a sprite; every library sprite is 8 by 8, uses only palette names or transparency, has a unique
+  committed world resolves to a sprite; every library sprite is 16 by 16, uses only palette names or transparency, has a unique
   kebab-case name and a pixel pattern no other sprite shares; every reference in every committed art file resolves, including a shape
   for each material it is used with; no two items of one world share a pixel pattern; allocation is independent of item order; a
   bundle's art covers exactly the items its frames and goal use and holds no library names; and the catalog's sprite for a goal item
@@ -163,9 +163,11 @@ Open a bundle made before this feature and check that it opens.
   world's art file alone decides which picture an item uses, whether its names are literal or placeholders. An item named `A` MUST be
   able to use `letter-a`, `wrench` or any other library sprite.
 
+- **FR-013**: Library drawings MUST carry no black outline, and each MUST read against both the dark slot (hotbar and goal socket) and the table's grid cell, whose wood is lightened to help; a test measures each sprite's luminance contrast against both backgrounds.
+
 ### Key Entities
 
-- **Sprite**: an 8 by 8 picture of one item, drawn from palette colours with transparent pixels.
+- **Sprite**: a 16 by 16 picture of one item, drawn from palette colours with transparent pixels.
 - **Library**: the shared, named collection of sprites and recolourable shapes that worlds reference by name. It has no information
   about recipes or about any world.
 - **Art file**: an optional per-world file mapping that world's item names to library sprites or inline drawings.
@@ -187,10 +189,13 @@ Open a bundle made before this feature and check that it opens.
   export changes 0 of its sprites.
 - **SC-006**: A world author can give a perturbed world its art by writing one file of item-to-name entries, with no change to the world
   file, the engine, the server or the page.
+- **SC-008**: Every library sprite has measured contrast against the dark slot and the grid cell above a stated threshold, and none carries a black outline pixel.
 - **SC-007**: Every sprite of batch 1 resolves and passes the library checks of FR-011, and an art file may map any item name, literal or
   placeholder, to any of them.
 
 ## Assumptions
+
+- No backward compatibility is kept for 8 by 8 art: a bundle or catalog with 8 by 8 sprites is invalid, and a run folder rebuilds its bundle.
 
 - ADR-005 and its amendment (2026-10-07) are accepted and define the design; this spec describes what a person gets, and the plan
   decides file locations and formats.
@@ -200,6 +205,6 @@ Open a bundle made before this feature and check that it opens.
   the placeholder symbols of batch 1.
 - Only the faithful world gets a library-backed art file in this feature. A perturbed world's art file is out of scope until such a
   world is built.
-- Hover labels or legends, 16 by 16 sprites, and any frame or badge for raw versus crafted items stay out of scope.
+- Hover labels or legends, and any frame or badge for raw versus crafted items stay out of scope.
 - A sprite is a picture of an item kind, so showing it on a frame reveals nothing beyond the items that frames already show.
 - The worlds README gains a row for the art file with the first art file.

@@ -160,6 +160,30 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 
 ---
 
+---
+
+## Phase 8: Sixteen by sixteen, no outline (supersedes the 8 by 8 sizes above)
+
+**Purpose**: ADR-005 2.7 and research R11 and R12: sprites become 16 by 16 pixels with no black outline, nothing smaller is read, and every drawing is
+redone. The 8 by 8 tasks above stay as the record of what was built; these replace their sizes.
+
+- [X] T055 Amend ADR-005 (2.7, the alternatives, the consequences and a dated amendment), the spec, the plan, the data model and the art contract for 16 by 16 and no outline
+- [ ] T056 Choose the lighter grid-cell wood: add a derived color to `viz/src/palette.ts` (and `viz/src/theme.css`, which a test keeps equal), use it for the grid cells in `viz/src/scene/TableScene.ts`, and update the palette and scene tests
+- [ ] T057 [P] Tests first, each failing before its change: `SPRITE_SIZE` is 16 and glyph variants are 8-by-16 halves with marks 0 to 127 (`test/viz/glyphs.test.ts`); the wire schema takes sixteen rows of sixteen and rejects 8 by 8 (`test/viz/contract-art.test.ts`); the library, art-file, world-art, sprite, sheet, placeholder, faithful, offline and catalog tests use 16 by 16 fixtures (`test/viz/`); the page expands 16-by-16 rows, the goal slot is 20 sprite pixels and the table has no 8-pixel cell (`viz/test/`); a bundle with 8 by 8 art is `BundleInvalid`
+- [ ] T058 Implement the size: `SPRITE_SIZE` and `HALF` in `src/viz/glyphs.ts`, then the schema in `src/viz/contract.ts`, `src/viz/art/library.ts`, `art-file.ts`, `world-art.ts` and `sheet.ts`, and in the page `viz/src/art/sprite.ts`, `thumbnail.ts` and `world-art.ts`, the cell sizes and sprite scale in `viz/src/scene/TableScene.ts` and the thumbnail scales in `viz/src/shell/`
+- [ ] T059 Contrast: write the test and the measure from research R12 (a pure function of two colors and a sprite, with a stated threshold), show it on the contact sheet, and make `src/viz/art/library.json` pass it once the drawings are redone
+- [ ] T060 Redraw the glyph families as 8-by-16 halves (8 families by 3 variants) in `src/viz/glyphs.ts`, in colors that read on both backgrounds; update `viz/test/art.test.ts` and the pinned allocation snapshots
+- [ ] T061 Regenerate the 47 symbols at 16 by 16 with the throwaway script (a taller bitmap font for the letters and digits; larger shapes), and paste the rows into `library.json`
+- [ ] T062 Redraw the faithful world's nine sprites at 16 by 16 without an outline (`log`, `cobblestone`, `ingot`, `planks`, `stick`, `crafting-table`, `slab`, `pickaxe/`, `sword/`), starting from reduced Noto drafts where one exists and recording it in `CREDITS.md`
+- [ ] T063 [P] Redraw the sixteen tools (`hammer/`, `axe/`, `shovel/`, `hoe/`, `saw`, `wrench`, `screwdriver`, `pliers`, `scissors`, `knife`, `paintbrush`, `ruler`, `ladder`, `toolbox`, `nut-and-bolt`, `gear`) at 16 by 16 without an outline
+- [ ] T064 [P] Redraw the twenty containers and materials at 16 by 16 without an outline
+- [ ] T065 [P] Redraw the twenty-three foods at 16 by 16 without an outline
+- [ ] T066 Review every drawing on the contact sheet and in the visualizer at its real size, with the contrast column, and revise
+- [ ] T067 Update `AGENTS.md`, `worlds/README.md`, `src/viz/art/CREDITS.md`, `specs/006-sprite-library/quickstart.md` and the notes in ADR-001, ADR-002 and ADR-004 where they say 8 by 8
+- [ ] T068 Run `pnpm typecheck`, `pnpm test`, `pnpm build:viz` and `pnpm build`, then the quickstart by eye
+
+---
+
 ## Dependencies and order
 
 - Phase 1, then Phase 2 (T003 to T009). Phase 2 blocks everything.

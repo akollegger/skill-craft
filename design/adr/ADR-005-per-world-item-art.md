@@ -11,7 +11,7 @@ specs: [specs/006-sprite-library]
 ## 1. Context
 
 The visualizer replays recorded runs. Its frontend is a read-only page (`viz/`) and its backend is the Node code that scans a folder of runs and
-builds the catalog and replay bundles the page loads (`src/viz/`). The page draws every item as an 8 by 8 pixel sprite: on the crafting table (the
+builds the catalog and replay bundles the page loads (`src/viz/`). The page draws every item as an 16 by 16 pixel sprite: on the crafting table (the
 grid where the agent places items), in the output slot, in the hotbar (the row of held items) and, for a run's goal, in the thumbnail of a list row or grid tile. Today a sprite is a pure function of the item's
 name: the name hashes to a geometric glyph (one of 8 shape families with 3 variants each, in one of 8 palettes, plus two
 name-chosen accent pixels). That works for any name and needs no data, and it has two limits.
@@ -46,7 +46,7 @@ A world may have a sibling file `worlds/<name>.art.json`, next to `<name>.goals.
 ```
 
 An item's value is either a *library reference*, a string naming a sprite in the shared library of 2.5, or inline rows: eight strings
-of eight characters, each a key of the file's `legend`, whose values are names from the frontend's palette module (`viz/src/palette.ts`) or
+of sixteen characters, each a key of the file's `legend`, whose values are names from the frontend's palette module (`viz/src/palette.ts`) or
 `null` for a transparent pixel. Sprites therefore use only palette colors, and the palette stays defined in one place. The `legend` is
 needed only when the file has inline rows. The file lists the items that have drawn art and may leave others out. Only the visualizer's backend reads it.
 The engine, the server and the agent never do, as with the notes file (the file that records a world's prior fit and notes on its
@@ -61,7 +61,7 @@ reaches the catalog.
 
 The faithful world, `minecraft-inspired`, gets drawn art for its 13 items: a log, cobblestone, an ingot, planks, a stick, a crafting
 table and a slab, and one shape per tool kind (pickaxe, sword) in three materials. Its art file is a name map into the library, and
-the drawings live there (2.5). Each drawing is the project's own 8 by 8 work. It may start from a reference whose licence allows it, such as Noto Emoji
+the drawings live there (2.5). Each drawing is the project's own 16 by 16 work. It may start from a reference whose licence allows it, such as Noto Emoji
 (Apache 2.0), but copies no game's textures; the README's credit that the world is inspired by a game whose name is a trademark stays as it is.
 
 ### 2.2 Allocated glyphs for everything else
@@ -108,13 +108,13 @@ and a person drawing icons sees each change without restarting the process.
 `viz/src/art/` gains a lookup from world art to sprite: given a world art object it returns an `ItemArt` (the existing function type), expanding a
 drawn entry through the palette and a glyph entry through the glyph tables. The table scene and the thumbnails take their `ItemArt`
 from the open bundle's art or the run's world in the catalog, and draw the name-only glyph when there is none. Sprites stay
-8 by 8 and the table draws them at 2x.
+16 by 16 and the table draws each at 1x, the size an 8 by 8 sprite had at 2x.
 
 ### 2.5 A shared sprite library
 
-The backend owns one file of named 8 by 8 sprites, `src/viz/art/library.json`: `{ format, legend, sprites, shapes, materials }`.
-`legend` maps a character to a palette name or `null`, as in 2.1. A `sprites` entry is eight rows of eight characters. A `shapes` entry
-is eight rows that also use `m` and `M` for a material's body and shade; these two characters are reserved and may not be keys of
+The backend owns one file of named 16 by 16 sprites, `src/viz/art/library.json`: `{ format, legend, sprites, shapes, materials }`.
+`legend` maps a character to a palette name or `null`, as in 2.1. A `sprites` entry is sixteen rows of sixteen characters. A `shapes` entry
+is sixteen rows that also use `m` and `M` for a material's body and shade; these two characters are reserved and may not be keys of
 `legend`. `materials` maps a material name to its two palette names. A reference is a sprite name (`log`) or a shape and material
 (`pickaxe/iron`). Names are lowercase kebab-case and name a picture (a wrench, a letter A), never a recipe or a world. A library name says what is
 drawn, not what an item is: a world may map an item called `A` to `letter-a`, or to `wrench`, and the world's designer decides whether
@@ -163,6 +163,19 @@ redrawn to read at that size and in the palette, never used as a plain downscale
 emblem) is never a reference. Letters, digits and simple shapes are generated once and committed as rows. Pictures that read alike at 8 by 8 are drawn once and recoloured, not
 twice. Faces, people, animals and flags are out of the starter set.
 
+### 2.7 Sixteen by sixteen, and no outline
+
+Sprites are 16 by 16 pixels, the smallest size the visualizer draws, and nothing smaller is read or written: a library entry, an inline
+drawing and the wire form are exactly sixteen rows of sixteen characters, and a generated glyph is the mirror of an 8-by-16 half. The table
+draws a sprite at 1x, so it takes the screen space an 8 by 8 sprite had at 2x (a 24-pixel cell for grids up to 3 by 3, a 16-pixel cell for
+larger ones; there is no 8-pixel cell). Nothing is kept for earlier sizes: a bundle or catalog whose art has 8 by 8 sprites is invalid, a
+run folder rebuilds its bundle with the new art, and an exported bundle made earlier is reported as unreadable.
+
+Sprites carry no black outline. At 8 by 8 the outline took about 40% of a typical sprite's pixels; at 16 by 16 a drawing gets its edge from
+its own colors (a darker shade of its own hue where an edge needs one). Every library sprite must read against the dark slot (hotbar, goal
+socket) and the grid cell, so the cell's wood is lightened in the scene's palette, and a test measures each sprite's luminance contrast
+against both backgrounds.
+
 ## 3. Alternatives Considered
 
 - **Ship each world's item list and allocate in the page.** Rejected: a bundle would name every item of the world, including ones the
@@ -185,7 +198,11 @@ twice. Faces, people, animals and flags are out of the starter set.
 - **Carry the faithful world's drawings through the renamer to invented and perturbed worlds.** Rejected for invented worlds, whose
   point is that a name carries no prior knowledge; a log icon on an invented item would put that prior back in front of the observer.
   A perturbed world, which keeps the familiar vocabulary, declares its own art file or takes allocated glyphs.
-- **16 by 16 sprites.** Deferred: it needs new cell sizes in the scene and a redrawn glyph set, and nothing in this decision depends on it.
+
+- **Keep 8 by 8 and drop the outline.** Rejected: with the outline gone an 8 by 8 sprite has too few pixels for an edge, a highlight and
+  a shade at once, and the wood-colored items would not separate from the wood.
+- **Allow 8 by 8 and 16 by 16 together.** Rejected: nothing needs the old size, and carrying both means two sets of tables, a size field on
+  every entry and a page that scales between them.
 
 ## 4. Consequences
 
@@ -202,10 +219,10 @@ twice. Faces, people, animals and flags are out of the starter set.
   more artifact with its own format and tests, and names are added and redrawn only on purpose. A redraw reaches old runs' thumbnails
   (the catalog is rebuilt at scan) but not their tables (a bundle keeps its own drawings), so the two can differ until the run is
   exported again.
-- Tests, written first: every item of every committed world resolves to a sprite; drawn sprites are 8 by 8, and in every committed art file each legend
+- Tests, written first: every item of every committed world resolves to a sprite; drawn sprites are 16 by 16, and in every committed art file each legend
   value is a palette name or null (the page tolerates an unknown name by drawing it transparent, and the tests for committed files do
   not); no two items of one world share a pixel pattern (the library's pickaxes share a shape and differ by material, so their pixels
-  differ); every library sprite is 8 by 8 and no two share a pixel pattern; library names are unique and kebab-case; every library
+  differ); every library sprite is 16 by 16 and no two share a pixel pattern; library names are unique and kebab-case; every library
   legend value is a name exported by `viz/src/palette.ts` or `null`; every reference in a committed art file resolves, including a
   shape for each material it is used with; a bundle's manifest holds rows and no library names; and the allocator keeps family-and-palette pairs
   distinct for up to 64 items; the allocation is the same however the item list is ordered; a bundle's art covers exactly the items its
@@ -213,7 +230,11 @@ twice. Faces, people, animals and flags are out of the starter set.
 - Follow-up work before the spec is accepted: the matching amendments to ADR-004, ADR-002 and ADR-001 are recorded (2026-10-07) and
   describe the art file; they still call the backend "the data side" and need a line on the library. The page's name-only glyphs are
   already the fallback. The worlds README table gains a row for the art file with the first art file.
-- Out of scope, and unchanged: a hover label or legend naming the item under the cursor, 16 by 16 sprites, and any frame or badge
+- Sixteen by sixteen is the cost of every drawing at once: about 115 library drawings and 24 glyph shapes are redrawn, with four times the
+  pixels each, and a catalog's art for a world grows from about 1 KB to about 4 KB. The code change is small (the size is one constant and a
+  few schemas and cell sizes). A grid wider than the 16-pixel cells allow on the 168-pixel scene is not drawn until the scene's cell sizes
+  are revisited; every committed world is 3 by 3.
+- Out of scope, and unchanged: a hover label or legend naming the item under the cursor, and any frame or badge
   that shows whether an item is raw or crafted.
 
 ## 5. Related
@@ -231,3 +252,6 @@ twice. Faces, people, animals and flags are out of the starter set.
 - **2026-10-07, a starter set, and names and pictures are symbols.** Replaces "the library grows when a second world needs a concept"
   with the starter set in 2.6. An item's name and its picture are symbols that a world may read literally (a log, a pickaxe) or as
   placeholders (`A`, `B`, `π`), and the art file is where the designer chooses; the changes are in 1, 2.5, 2.6 and 4.
+- **2026-10-07, sprites are 16 by 16, with no outline.** The 8 by 8 sprites drawn so far looked too coarse once the black outline was
+  questioned (it took about 40% of the pixels), and nothing depends on the old size. 2.7 states the decision; 1, 2.1, 2.5, 2.6, 3 and 4 are
+  updated to match, and the earlier "16 by 16 sprites" deferral and out-of-scope line are gone. No backward compatibility is kept.

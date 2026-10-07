@@ -7,7 +7,7 @@
 ## Summary
 
 Give the visualizer's items drawn pictures and distinct generated shapes, per ADR-005 and its 2026-10-07 amendment. The backend
-(`src/viz/`) gains a shared **library** of named 8 by 8 sprites, an optional per-world **art file** that maps item names to library
+(`src/viz/`) gains a shared **library** of named 16 by 16 sprites, an optional per-world **art file** that maps item names to library
 names or inline drawings, and an **allocator** that gives every other item a generated glyph so no two items of a world share a
 family and palette. It resolves all of it into a small **world art** object that travels in each bundle's manifest and in the
 catalog, so the page stays self-contained and a bundle opens offline. The page expands world art into the sprites its scene and
@@ -33,7 +33,7 @@ world). Nothing is written at run time.
 over the world's item list.
 
 **Constraints**: the page stays offline and reads only `catalog.json` and `bundles/<id>/…`; `src/viz/contract.ts` and the new
-`src/viz/glyphs.ts` import nothing from Node; deterministic, no clock or randomness at run time; sprites 8 by 8.
+`src/viz/glyphs.ts` import nothing from Node; deterministic, no clock or randomness at run time; sprites 16 by 16.
 
 **Scale/Scope**: about 115 library drawings, one art file, three small backend modules, one shared module moved, two schema fields,
 and the page's art lookup and wiring.

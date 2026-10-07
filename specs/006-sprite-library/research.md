@@ -41,7 +41,7 @@ files that the engine reads.
 ## R4. One internal form: palette names per pixel
 
 **Decision**: Every sprite, whether from the library (a fixed sprite, or a shape with its material applied) or drawn inline, is turned
-into an internal grid of eight rows of eight palette names or `null` before anything else happens. The wire form is built from that
+into an internal grid of sixteen rows of sixteen palette names or `null` before anything else happens. The wire form is built from that
 grid last: a legend that gives each palette name present a character, assigned in sorted order of the names (`a`, `b`, `c`…, with `.`
 for transparent), and each entry as eight rows over that legend.
 
@@ -107,28 +107,28 @@ the bundle.
 **Decision**: Library entries end up as eight-string rows in `library.json`, whatever made them. Two ways of making them:
 
 - **Generated, then committed (47 symbols, plus the simple shapes).** Letters and digits are rendered from a small bitmap font table
-  into 8 by 8 rows; `circle`, `square`, `triangle`, `diamond`, `star`, `cross` and the Greek letters are rasterised from simple
+  into 16 by 16 rows; `circle`, `square`, `triangle`, `diamond`, `star`, `cross` and the Greek letters are rasterised from simple
   definitions. A throwaway script produces the rows, and the rows are pasted into the library. The script is not a build step.
 - **Drawn from a reference (the pictorial items).** A drawing may start from a reference image, drawing or emoji whose licence allows
   it. The preferred source is Noto Emoji (`googlefonts/noto-emoji`): its images are under Apache 2.0 and its fonts under OFL 1.1, and
   its companion `emoji-metadata` repository carries the Unicode shortcodes the library's names follow. A reference is a starting point:
-  it is downscaled and mapped to the palette, then redrawn by hand until it reads at 8 by 8 and at 2x. A sprite is the project's own
-  8 by 8 drawing; it is never a downscale used as it came.
+  it is downscaled and mapped to the palette, then redrawn by hand until it reads at 16 by 16 and at 2x. A sprite is the project's own
+  16 by 16 drawing; it is never a downscale used as it came.
 
 A contact sheet (a standalone HTML page that draws every library entry large, beside its name, on the table's colors) is how drawings
 are checked by eye. Reference images, scratch scripts and sheets are not committed; the library file and a credits file are.
 
 **Credits**: `src/viz/art/CREDITS.md` lists each sprite that started from a reference, with the source, its licence and the sentence
-"modified: reduced to 8 by 8 pixels in the project's palette", and carries the Apache 2.0 attribution text Noto Emoji's licence asks
+"modified: reduced to 16 by 16 pixels in the project's palette", and carries the Apache 2.0 attribution text Noto Emoji's licence asks
 for. A test checks that every credited sprite exists in the library. Game textures, brands and logos are never a reference
 (ADR-005 2.6); the faithful world's nine drawings start from general concepts (a log, a pickaxe), not from a game's images.
 
-**Rationale**: A rule can make letters, digits and shapes; no rule makes a good 8 by 8 pizza from the word "pizza". Starting a
-drawing from a licensed reference is faster and more recognisable than a blank grid, and the 8 by 8 redraw makes the result the
+**Rationale**: A rule can make letters, digits and shapes; no rule makes a good 16 by 16 pizza from the word "pizza". Starting a
+drawing from a licensed reference is faster and more recognisable than a blank grid, and the 16 by 16 redraw makes the result the
 project's own work. Most batch 1 and batch 2 concepts have a Noto emoji; a few do not (`crafting-table`, `slab`, `ingot`, `dough`,
 `flour`, `batter`, `first-aid-kit`) and are drawn from general knowledge.
 
-**Alternatives**: *A downscaling pipeline for everything* gives mush at 8 by 8 and ties the library to one vendor's look. *Drawing
+**Alternatives**: *A downscaling pipeline for everything* gives mush at 16 by 16 and ties the library to one vendor's look. *Drawing
 everything from a blank grid* gives up a free, licensed starting point. *A generator for letters in a committed script* adds a tool the
 project must keep; the throwaway script and its pasted rows avoid that.
 
@@ -140,3 +140,32 @@ parity and privacy tests are extended to cover `art`.
 
 **Rationale**: AGENTS.md says the catalog and every bundle hold no world file, recipe list or item description. A sprite of an item a
 frame shows adds none of those.
+
+## R11. Sixteen by sixteen is the only size (decided 2026-10-07)
+
+**Decision**: A sprite is 16 by 16 pixels and nothing else is read or written. One constant, `SPRITE_SIZE = 16`, in `src/viz/glyphs.ts` (the
+Node-free file both sides import), replaces the 8 written into the library, art-file and sprite code, the wire schema, the page's texture
+and thumbnail code and the sheet. A generated glyph's family variant becomes an 8-by-16 left half (128 body positions, so the marks are 0 to
+127). The table draws a sprite at 1x: a 24-pixel cell for grids up to 3 by 3 and a 16-pixel cell above; the 8-pixel cell is dropped. The
+goal thumbnail's slot grows from 12 to 20 sprite pixels (the sprite, two pixels of padding and a two-pixel stroke), drawn at half the scale so
+it keeps its size on screen.
+
+**Rationale**: The 8 by 8 drafts left too few pixels once the black outline was questioned, and nothing depends on the old size, so no
+size field, no second set of glyph tables and no scaling code are needed. Downscaling a 128-pixel Noto image to 16 by 16 averages
+8-by-8 blocks and gives a usable first draft, which it did not at 8 by 8.
+
+**Alternatives**: *Allow both sizes per entry* costs a size field, two glyph tables and scaling in the page, for nothing that uses 8 by 8.
+*Stay at 8 by 8 without an outline* leaves no room for an edge, a highlight and a shade together.
+
+**Consequences**: Every drawing is redone (about 115 library drawings and 24 glyph shapes). A grid whose cells would not fit the 168-pixel
+scene at 16 pixels is not drawn until the cell sizes are revisited. A bundle or catalog with 8 by 8 art is invalid.
+
+## R12. Contrast, not outlines
+
+**Decision**: A sprite has no black outline. A test computes, for every library sprite, the share of its opaque pixels whose luminance
+contrast (WCAG relative luminance ratio) with the dark slot color and with the grid cell color is at least a stated threshold, and the sprite
+passes when that share is high enough against each. The grid cell's wood is lightened in the scene's palette (a derived color next to
+`woodHighlight`) so the wood items separate from it. The contact sheet shows the same measure beside each sprite.
+
+**Rationale**: Without an outline the sprite's own fill carries its shape, so it is measured against the two backgrounds it is drawn on.
+
