@@ -52,7 +52,8 @@ needed only when the file has inline rows. The file lists the items that have dr
 The engine, the server and the agent never do, as with the notes file (the file that records a world's prior fit and notes on its
 recipes), and the worlds README gains a row for it.
 
-The art file has a schema in `src/viz/contract.ts`, and the backend checks the file against it. A malformed art file does not make a
+The backend checks the art file against a schema of its own (in `src/viz/art/`; the page never reads the file, so the shared contract
+holds only the wire shape of 2.3). A malformed art file does not make a
 run unreadable: the whole file is ignored for that world and every item of the world is drawn as an allocated glyph. A valid file with
 an item the world does not have, or a row of the wrong size, drops that entry only. A legend value that is not a palette name is
 passed through, and the page draws that pixel as transparent, so the backend needs no copy of the palette. No text from the file
@@ -69,16 +70,19 @@ An item with no drawn art gets a glyph. A pure function of the world's full item
 
 1. take the items without drawn art, sorted by name in code-unit order;
 2. each starts from the family and palette its own name hashes to;
-3. if that family-and-palette pair is taken by an earlier item, step to the next pair in a fixed order until a free one is found;
+3. if that family-and-palette pair (numbered `family * 8 + palette`, 0 to 63) is taken by an earlier item, step to `(pair + 9) mod 64` and
+   repeat until a free one is found (9 and 64 share no factor, so the walk visits every pair, and each step changes both the family and
+   the palette);
 4. past 64 items, pairs repeat and the variant and the accent pixels are all that separate them.
 
 The assignment is deterministic and has no clock or randomness. It is computed on the backend, where the world file is loaded
 for replay (the world file is already loaded to derive frames), so the page needs the family, variant, palette and accent pixels of
 each item and nothing else. A glyph recolors two of its body pixels to the accent color, which two being chosen by the name's hash,
-and ships them as `marks`; they keep two glyphs of the same family, variant and palette apart. Step 3 picks its order and the spec
-fixes it, since a test pins the assignments. The glyph shapes, the palettes and the drawing stay in `viz/src/art/`. The counts the allocator needs
-(families, variants, palettes) are constants in `src/viz/contract.ts`, the one file the two sides share, and a test fails if the
-page's tables stop matching them.
+and ships them as `marks`; they keep two glyphs of the same family, variant and palette apart. A test pins the assignments. An item whose own pair
+is free wears exactly the glyph its name alone gives, and an item that moved keeps its name's variant draw and chooses its marks from the
+body pixels of the family it moved to. The glyph shapes, the name hash and the number of palettes live in one Node-free file,
+`src/viz/glyphs.ts`, imported by both sides (the marks depend on the shapes, so counts alone are not enough); the palette *colors* and the
+drawing stay in `viz/src/art/`, and a page test fails if its palette table stops matching the shared count.
 
 ### 2.3 What travels with the data
 

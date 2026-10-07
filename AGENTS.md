@@ -38,7 +38,7 @@ experiment results table), `scripts/score.ts` (score run logs against the best r
 (export a finished run as a replay bundle), `scripts/critic-loop.ts` (finished runs, or a candidate skill, to
 a reviewed skill: up to three rounds of a critic and a reviser, then a loop record under `loops/`; `--dry-run`
 spends nothing, `--allow-workspace` is needed to distill a candidate through NAMS), `scripts/viz.ts <folder>` (serve a
-folder of runs and the built page on 127.0.0.1) and `scripts/viz-export.ts <folder> <dest>` (a static copy of the same).
+folder of runs and the built page on 127.0.0.1), `scripts/viz-export.ts <folder> <dest>` (a static copy of the same) and `scripts/art-sheet.ts <dest.html>` (a contact sheet of the sprite library, written outside the repository).
 The server runs as
 `SIM_WORLD=<world.json> [SIM_RUN_LOG=<fresh file>] pnpm exec tsx src/mcp/server.ts`.
 
@@ -54,7 +54,7 @@ in `tsconfig.json`; TypeScript 7 does not include it automatically.
 
 The visualizer's page (`viz/`) is built with Vite: Svelte for the shell, PixiJS for the table scene, Tailwind over a
 local brand palette, and bundled fonts, with its own `viz/tsconfig.json` (DOM library, bundler resolution). The data side
-(`src/viz/`) uses only Node's built-ins and zod, and shares one file with the page, `src/viz/contract.ts`, which must
+(`src/viz/`) uses only Node's built-ins and zod, and shares two files with the page, `src/viz/contract.ts` and `src/viz/glyphs.ts`, which must
 not import anything from Node (a test enforces it).
 
 ## Rules that matter most
@@ -129,7 +129,7 @@ zebra-space project with the RFC requirement removed.
 | `src/harness/` | Interim run harness (prompt, SDK options and driver, errors, the command, export, bundle reader, the `RoleDriver` seam for the critic loop) |
 | `src/trace/` | Run measurement: recorder, trace lines, join of trace to run log; no dependency on the SDK or `src/mcp` |
 | `src/sim/notes.ts` | The world notes file: prior fit, per-recipe notes and omissions; never imported by the engine or server |
-| `src/viz/` | The visualizer's data side: folder scanner, catalog, bundle supply, local server, static export, commands; no SDK and no `src/mcp` |
+| `src/viz/` | The visualizer's backend: folder scanner, catalog, bundle supply, local server, static export, commands, and item art (`art/`: the sprite library, a world's art file, glyph allocation, world art, the contact sheet); `glyphs.ts` is shared with the page; no SDK and no `src/mcp` |
 | `viz/` | The visualizer's page (Vite, Svelte, PixiJS, Tailwind); built to `dist-viz/` (gitignored); component tests in `viz/test/` |
 | `src/loop/` | The critic loop: rubric and roles' instructions (one versioned file), the verdict and revision schemas, role prompts, the round controller, the loop record, the NAMS seam with its workspace guard, the candidate step, a small zip reader and diff; no SDK import |
 | `loops/` | One folder per loop (gitignored): rounds, verdicts, diffs, the accepted `skill/`. The only place model-authored review text may be written |
@@ -178,6 +178,10 @@ zebra-space project with the RFC requirement removed.
 - The page reads only `catalog.json` and `bundles/<id>/...` by relative address, so one build runs against the local
   process and a static host. At most two PixiJS scenes are alive at once (the scene pool).
 - Drawing is checked by hand (see the quickstart); the scene's logic is tested through `viz/src/scene/model.ts`.
+- Item art: a world's optional `<world>.art.json` and the sprite library (`src/viz/art/library.json`) are read only by the backend, at scan
+  time. A library name says what is drawn, never an item's meaning, and the visualizer never interprets an item's name. A bundle's manifest and
+  the catalog carry finished sprites and generated glyphs for the items a run shows, never library names, paths or other items of the world.
+  Every library drawing is the project's own 8 by 8 work; one that started from a licensed reference is listed in `src/viz/art/CREDITS.md`.
 
 ## Critic loop rules to keep in mind
 

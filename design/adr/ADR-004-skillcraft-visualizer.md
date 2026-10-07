@@ -341,7 +341,8 @@ run could be opened to the point it reached; and how a view could be saved or sh
   - *Item art.* The hashed creature is replaced by a geometric glyph (eight shape families, three variants, eight palettes, and two
     name-chosen accent pixels). This supersedes "Sprites: generated" in 2.6 in its detail; the sprite is still a pure function of the name and
     nothing is fetched. Per-world art, with drawn icons for the faithful world and glyphs allocated so a world's items differ, is decided in
-    [ADR-005](ADR-005-per-world-item-art.md) and not built yet.
+    [ADR-005](ADR-005-per-world-item-art.md) and built in spec 006: the backend allocates glyphs and resolves a world's art file against a
+    shared sprite library, and the catalog and each bundle carry the finished art.
   - *Tiles.* A tile's score and time are larger, and the thumbnail is as tall as the two together. The tape is gone from tiles: a word in
     the score's color says how the run ended (master craft for a goal reached within the best known count, eventual craft past it,
     abandoned craft for a run that gave up, expired craft for one that ran out of turns). A list row keeps its tape and a smaller score, with

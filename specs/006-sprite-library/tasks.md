@@ -150,11 +150,11 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 
 ## Phase 7: Polish and cross-cutting
 
-- [ ] T048 [P] Apply the ADR-005 touch-ups in `design/adr/ADR-005-per-world-item-art.md`: 2.2's last sentence (the shared glyph file replaces counts plus a pinning test), 2.1's schema location (the wire shape in `src/viz/contract.ts`; the library and art file schemas in `src/viz/art/`), and the allocation's fixed order (+9 modulo 64, research R5)
-- [ ] T049 [P] Add the matching notes to `design/adr/ADR-001-crafting-table-world.md`, `design/adr/ADR-002-client-otel-trace.md` and `design/adr/ADR-004-skillcraft-visualizer.md` (the library and `art`), and use "backend" for the data side in the sentences they touch
-- [ ] T050 [P] Update `AGENTS.md`: the layout row for `src/viz/` (library, art file, allocator, shared glyph tables), the visualizer rules (a sprite reveals no recipe; the library and art file are read only by the backend; `art` holds only items a run shows) and the scripts description of export
-- [ ] T051 [P] Update `specs/004-skillcraft-visualizer/contracts/catalog-and-bundles.md` with a pointer to `contracts/art.md` for the `art` fields
-- [ ] T052 Run `pnpm typecheck`, `pnpm test`, `pnpm build:viz` and `pnpm build`; compare the passing count with T001's; fix anything that regressed
+- [X] T048 [P] Apply the ADR-005 touch-ups in `design/adr/ADR-005-per-world-item-art.md`: 2.2's last sentence (the shared glyph file replaces counts plus a pinning test), 2.1's schema location (the wire shape in `src/viz/contract.ts`; the library and art file schemas in `src/viz/art/`), and the allocation's fixed order (+9 modulo 64, research R5)
+- [X] T049 [P] Add the matching notes to `design/adr/ADR-001-crafting-table-world.md`, `design/adr/ADR-002-client-otel-trace.md` and `design/adr/ADR-004-skillcraft-visualizer.md` (the library and `art`), and use "backend" for the data side in the sentences they touch
+- [X] T050 [P] Update `AGENTS.md`: the layout row for `src/viz/` (library, art file, allocator, shared glyph tables), the visualizer rules (a sprite reveals no recipe; the library and art file are read only by the backend; `art` holds only items a run shows) and the scripts description of export
+- [X] T051 [P] Update `specs/004-skillcraft-visualizer/contracts/catalog-and-bundles.md` with a pointer to `contracts/art.md` for the `art` fields
+- [X] T052 Run `pnpm typecheck`, `pnpm test`, `pnpm build:viz` and `pnpm build`; compare the passing count with T001's; fix anything that regressed
 - [ ] T053 Run the whole [quickstart.md](quickstart.md) once more on a fresh checkout of the branch and tick off each step
 - [ ] T054 Mark the follow-up in ADR-005 and the spec when done: batch 2 (technology, furniture and household, medical, scientific) remains as sprite-only work; open a PR for the branch
 
