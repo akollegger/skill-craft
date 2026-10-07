@@ -86,13 +86,13 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 
 ### Tests for User Story 2
 
-- [ ] T026 [P] [US2] Write `test/viz/art-worlds.test.ts`: for every world file under `worlds/` and `worlds/generated/` every item resolves to a sprite; in each world of 64 items or fewer no two items share a family-and-palette pair and no two share a pixel pattern; a world with a partial art file keeps its drawn items and allocates the rest without colliding with each other; the same world scanned twice gives identical art; the assignments for the committed worlds are pinned in a snapshot so a change is deliberate
-- [ ] T027 [P] [US2] Extend `viz/test/world-art.test.ts` with glyph entries that moved off their name's own pair: the expanded sprite uses the allocated family and palette with the name's variant and marks, and differs from the name-only sprite only where the allocation moved it
+- [X] T026 [P] [US2] Write `test/viz/art-worlds.test.ts`: for every world file under `worlds/` and `worlds/generated/` every item resolves to a sprite; in each world of 64 items or fewer no two items share a family-and-palette pair and no two share a pixel pattern; a world with a partial art file keeps its drawn items and allocates the rest without colliding with each other; the same world scanned twice gives identical art; the assignments for the committed worlds are pinned in a snapshot so a change is deliberate
+- [X] T027 [P] [US2] Extend `viz/test/world-art.test.ts` with glyph entries that moved off their name's own pair: the expanded sprite uses the allocated family and palette with the name's variant and marks, and differs from the name-only sprite only where the allocation moved it
 
 ### Implementation for User Story 2
 
-- [ ] T028 [US2] Make T026 and T027 pass: fix `src/viz/art/world-art.ts` and `viz/src/art/world-art.ts` where they do not (the foundation and Story 1 should already carry most of it); if a committed world has a collision the pinned order does not resolve, record it in research R5 before changing the order
-- [ ] T029 [US2] **(manual)** Open a generated-world run and check quickstart step 3; note in `design/notes/pixel-visualizer.md` any pair of items that still read alike at 2x
+- [X] T028 [US2] Make T026 and T027 pass: fix `src/viz/art/world-art.ts` and `viz/src/art/world-art.ts` where they do not (the foundation and Story 1 should already carry most of it); if a committed world has a collision the pinned order does not resolve, record it in research R5 before changing the order
+- [X] T029 [US2] **(manual)** Open a generated-world run and check quickstart step 3; note in `design/notes/pixel-visualizer.md` any pair of items that still read alike at 2x
 
 **Checkpoint**: Stories 1 and 2 both work.
 
@@ -107,18 +107,18 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 ### Tests for User Story 3
 
 - [ ] T030 [P] [US3] Extend `test/viz/art-library.test.ts` with a hard-coded list of the batch 1 names from ADR-005 2.6 (the faithful 9, tools 16, containers and materials 20, food 23, symbols 47) and assert each resolves, so the library tasks below fail until their drawings exist
-- [ ] T031 [P] [US3] Write `test/viz/art-placeholder.test.ts` with a fixture world whose items are `A`, `B` and `π`: an art file mapping them to `letter-a`, `letter-b` and `pi` shows those sprites; an item named `wrench` mapped to `letter-a` shows `letter-a` (a name is never interpreted); a mix of references, inline rows and omitted items resolves each as written; an unknown reference falls back to a generated glyph and the run still opens; an invalid art file gives generated glyphs for the whole world and no error text in the catalog
+- [X] T031 [P] [US3] Write `test/viz/art-placeholder.test.ts` with a fixture world whose items are `A`, `B` and `π`: an art file mapping them to `letter-a`, `letter-b` and `pi` shows those sprites; an item named `wrench` mapped to `letter-a` shows `letter-a` (a name is never interpreted); a mix of references, inline rows and omitted items resolves each as written; an unknown reference falls back to a generated glyph and the run still opens; an invalid art file gives generated glyphs for the whole world and no error text in the catalog
 
 ### Implementation for User Story 3 (batch 1 drawings; each group is its own file section and can be done in parallel)
 
-- [ ] T032 [US3] Write a test and then `scripts/art-sheet.ts <dest.html>`: it writes a standalone contact sheet of `src/viz/art/library.json` (every sprite, and every shape in each of its materials, at 1x and 4x with its name, on the table's wood and on the dark backdrop) to a path outside the repository; the test checks the sheet names every library entry; the sheet is how drawings are checked by eye (research R9)
-- [ ] T033 [US3] Create `src/viz/art/CREDITS.md` (research R9): a table of the sprites that started from a reference, with source, licence and the statement of modification, and the Apache 2.0 attribution for Noto Emoji; add a test that every credited name exists in the library
+- [X] T032 [US3] Write a test and then `scripts/art-sheet.ts <dest.html>`: it writes a standalone contact sheet of `src/viz/art/library.json` (every sprite, and every shape in each of its materials, at 1x and 4x with its name, on the table's wood and on the dark backdrop) to a path outside the repository; the test checks the sheet names every library entry; the sheet is how drawings are checked by eye (research R9)
+- [X] T033 [US3] Create `src/viz/art/CREDITS.md` (research R9): a table of the sprites that started from a reference, with source, licence and the statement of modification, and the Apache 2.0 attribution for Noto Emoji; add a test that every credited name exists in the library
 - [ ] T034 [P] [US3] Add the tools to `src/viz/art/library.json`, each started from a Noto emoji where one exists and redrawn by hand at 8 by 8 (record it in `CREDITS.md`): `hammer/`, `axe/`, `shovel/`, `hoe/` (shapes with materials), `saw`, `wrench`, `screwdriver`, `pliers`, `scissors`, `knife`, `paintbrush`, `ruler`, `ladder`, `toolbox`, `nut-and-bolt`, `gear`
 - [ ] T035 [P] [US3] Add containers and basic materials, started from references and redrawn by hand as above: `box`, `crate`, `barrel`, `chest`, `bag`, `bottle`, `jar`, `bowl`, `cup`, `bucket`, `rope`, `cloth`, `paper`, `scroll`, `book`, `coin`, `gem`, `crystal`, `leaf`, `flame`
 - [ ] T036 [P] [US3] Add food, started from references and redrawn by hand as above (no Noto emoji exists for `dough`, `flour` or `batter`; draw those from general knowledge): `wheat`, `egg`, `milk`, `butter`, `cheese`, `salt`, `sugar`, `tomato`, `bell-pepper`, `chili-pepper`, `steak`, `chicken-leg`, `bacon`, `fish`, `flour`, `dough`, `bread`, `pizza`, `omelet`, `pancake`, `cake`, `cookie`, `soup`; check `pizza`, `cake` and `cookie` at 2x so the round dishes do not read alike
-- [ ] T037 [P] [US3] Generate the placeholder symbols with a throwaway script kept outside the repository (research R9) and paste the rows into `library.json`: `letter-a` to `letter-z` and `digit-0` to `digit-9` from a five-by-seven bitmap font table centered in the cell, and `pi`, `sigma`, `delta`, `lambda`, `omega`, `circle`, `square`, `triangle`, `diamond`, `star` and `cross` from simple definitions; view them on the contact sheet
+- [X] T037 [P] [US3] Generate the placeholder symbols with a throwaway script kept outside the repository (research R9) and paste the rows into `library.json`: `letter-a` to `letter-z` and `digit-0` to `digit-9` from a five-by-seven bitmap font table centered in the cell, and `pi`, `sigma`, `delta`, `lambda`, `omega`, `circle`, `square`, `triangle`, `diamond`, `star` and `cross` from simple definitions; view them on the contact sheet
 - [ ] T038 [US3] Make T030 and T031 pass and review the whole library on the contact sheet from T032: resolve any collision the unique-pixel-pattern test reports by redrawing the later entry (depends on T034, T035, T036, T037)
-- [ ] T039 [US3] Add the art file row to the table in `worlds/README.md` ("`<name>.art.json`: which sprite each item is drawn with; the visualizer's backend only") and a short paragraph that names are symbols a world may read literally or as placeholders
+- [X] T039 [US3] Add the art file row to the table in `worlds/README.md` ("`<name>.art.json`: which sprite each item is drawn with; the visualizer's backend only") and a short paragraph that names are symbols a world may read literally or as placeholders
 - [ ] T040 [US3] **(manual)** Check quickstart steps 7 and 8 on a copy of a world with placeholder names and with a bad art file
 
 **Checkpoint**: Stories 1 to 3 work; batch 1 is in the library.
@@ -133,15 +133,15 @@ Backend: `src/viz/`, `src/harness/`, `test/viz/`. Page: `viz/src/`, `viz/test/`.
 
 ### Tests for User Story 4
 
-- [ ] T041 [P] [US4] Extend `test/viz/export-folder.test.ts`: the static export's `catalog.json` carries `art` and every bundle's `bundle.json` carries its own `art`; after the library and art files are removed or edited, reading the export gives the same sprites; the export holds no library name
-- [ ] T042 [P] [US4] Extend `test/viz/catalog.test.ts` for folder bundles: a bundle with `art` in its manifest contributes its items to the catalog's `art` for its world; a bundle without `art` is listed and opens, and the catalog has no entry for it; a malformed `art` in a manifest makes that bundle `BundleInvalid`
-- [ ] T043 [P] [US4] Extend `viz/test/runview.test.ts` and `viz/test/picker.test.ts`: a bundle with no `art` opens, and every item uses the name-only sprite; a catalog with no `art` lists runs with name-only thumbnails
-- [ ] T044 [P] [US4] Extend `test/export.test.ts` (or `test/scripts.test.ts`): `scripts/export-run.ts` writes a bundle whose manifest carries `art`, so a bundle exported outside the visualizer opens offline too
+- [X] T041 [P] [US4] Extend `test/viz/export-folder.test.ts`: the static export's `catalog.json` carries `art` and every bundle's `bundle.json` carries its own `art`; after the library and art files are removed or edited, reading the export gives the same sprites; the export holds no library name
+- [X] T042 [P] [US4] Extend `test/viz/catalog.test.ts` for folder bundles: a bundle with `art` in its manifest contributes its items to the catalog's `art` for its world; a bundle without `art` is listed and opens, and the catalog has no entry for it; a malformed `art` in a manifest makes that bundle `BundleInvalid`
+- [X] T043 [P] [US4] Extend `viz/test/runview.test.ts` and `viz/test/picker.test.ts`: a bundle with no `art` opens, and every item uses the name-only sprite; a catalog with no `art` lists runs with name-only thumbnails
+- [X] T044 [P] [US4] Extend `test/export.test.ts` (or `test/scripts.test.ts`): `scripts/export-run.ts` writes a bundle whose manifest carries `art`, so a bundle exported outside the visualizer opens offline too
 
 ### Implementation for User Story 4
 
-- [ ] T045 [US4] In `src/viz/catalog.ts` merge a folder bundle's manifest `art` into the catalog's per-world map (the same first-in-order rule) and keep it out of the entry's cache key beyond the bundle's own files; make T041, T042 and T044 pass
-- [ ] T046 [US4] Make T043 pass: check that the page's fallbacks in `viz/src/art/world-art.ts`, `RunView.svelte` and `Thumbnail.svelte` handle absent `art` at every level (absent catalog map, absent world, absent item); fix any that do not
+- [X] T045 [US4] In `src/viz/catalog.ts` merge a folder bundle's manifest `art` into the catalog's per-world map (the same first-in-order rule) and keep it out of the entry's cache key beyond the bundle's own files; make T041, T042 and T044 pass
+- [X] T046 [US4] Make T043 pass: check that the page's fallbacks in `viz/src/art/world-art.ts`, `RunView.svelte` and `Thumbnail.svelte` handle absent `art` at every level (absent catalog map, absent world, absent item); fix any that do not
 - [ ] T047 [US4] **(manual)** Check quickstart steps 4, 5 and 6: export, delete the art file and the library, open the export; open a pre-feature bundle; edit a library sprite and confirm the thumbnail changes and the exported table does not
 
 **Checkpoint**: all four stories work.

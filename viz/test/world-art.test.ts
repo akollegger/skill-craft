@@ -43,6 +43,14 @@ describe("expanding a world's art", () => {
     expect(draw("moved").palette).toBe(moved.palette);
   });
 
+  it("moves an item off its own pair without changing which glyph shape its variant draws", () => {
+    const moved = art.items["moved"] as { family: number; variant: number; palette: number; marks: number[] };
+    const own = glyphOf("moved");
+    expect(moved.family * 8 + moved.palette).toBe((ownPair("moved") + 9) % 64);
+    expect(moved.variant).toBe(Math.min(own.variant, 2)); // the name's own variant draw is kept
+    expect(draw("moved").pixels).not.toEqual(defaultItemArt("moved").pixels); // it looks different from where the name alone put it
+  });
+
   it("falls back to the name-only art for an item the art does not have", () => {
     expect(draw("never-seen").pixels).toEqual(defaultItemArt("never-seen").pixels);
   });
