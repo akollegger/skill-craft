@@ -12,3 +12,11 @@ Sources used so far:
 
 | Sprite | Source | Licence | Modification |
 |---|---|---|---|
+| hammer | Noto Emoji (consulted for the silhouette and proportions of the hammer emoji) | Apache License 2.0 | redrawn from scratch at 8 by 8 in the project's palette; no pixels are copied |
+| axe | Noto Emoji (consulted for the silhouette and proportions of the axe emoji) | Apache License 2.0 | redrawn from scratch at 8 by 8 in the project's palette; no pixels are copied |
+| shovel | Noto Emoji (consulted for the silhouette and proportions of the shovel emoji) | Apache License 2.0 | redrawn from scratch at 8 by 8 in the project's palette; no pixels are copied |
+| saw | Noto Emoji (consulted for the silhouette and proportions of the saw emoji) | Apache License 2.0 | redrawn from scratch at 8 by 8 in the project's palette; no pixels are copied |
+| wrench | Noto Emoji (consulted for the silhouette and proportions of the wrench emoji) | Apache License 2.0 | redrawn from scratch at 8 by 8 in the project's palette; no pixels are copied |
+| screwdriver | Noto Emoji (consulted for the silhouette and proportions of the screwdriver emoji) | Apache License 2.0 | redrawn from scratch at 8 by 8 in the project's palette; no pixels are copied |
+| scissors | Noto Emoji (consulted for the silhouette and proportions of the scissors emoji) | Apache License 2.0 | redrawn from scratch at 8 by 8 in the project's palette; no pixels are copied |
+| knife | Noto Emoji (consulted for the silhouette and proportions of the knife emoji) | Apache License 2.0 | redrawn from scratch at 8 by 8 in the project's palette; no pixels are copied |

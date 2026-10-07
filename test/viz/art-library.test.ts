@@ -73,6 +73,32 @@ describe("the committed library", () => {
   });
 });
 
+/** Batch 1 of the starter set (ADR-005 2.6): every name must resolve, so a missing drawing fails here. */
+const BATCH_1: Record<string, string[]> = {
+  faithful: ["log", "cobblestone", "ingot", "planks", "stick", "crafting-table", "slab", "pickaxe/wooden", "pickaxe/stone", "pickaxe/iron", "sword/wooden", "sword/stone", "sword/iron"],
+  tools: ["hammer/wooden", "hammer/stone", "hammer/iron", "axe/wooden", "axe/stone", "axe/iron", "shovel/wooden", "shovel/stone", "shovel/iron", "hoe/wooden", "hoe/stone", "hoe/iron", "saw", "wrench", "screwdriver", "pliers", "scissors", "knife", "paintbrush", "ruler", "ladder", "toolbox", "nut-and-bolt", "gear"],
+  containers: ["box", "crate", "barrel", "chest", "bag", "bottle", "jar", "bowl", "cup", "bucket", "rope", "cloth", "paper", "scroll", "book", "coin", "gem", "crystal", "leaf", "flame"],
+  food: ["wheat", "egg", "milk", "butter", "cheese", "salt", "sugar", "tomato", "bell-pepper", "chili-pepper", "steak", "chicken-leg", "bacon", "fish", "flour", "dough", "bread", "pizza", "omelet", "pancake", "cake", "cookie", "soup"],
+  symbols: [
+    ...Array.from({ length: 26 }, (_, i) => `letter-${String.fromCharCode(97 + i)}`),
+    ...Array.from({ length: 10 }, (_, i) => `digit-${i}`),
+    "pi", "sigma", "delta", "lambda", "omega", "circle", "square", "triangle", "diamond", "star", "cross",
+  ],
+};
+
+describe("batch 1 of the starter set", () => {
+  const lib = parsed(JSON.parse(readFileSync(libraryPath(), "utf8")));
+  for (const [group, names] of Object.entries(BATCH_1)) {
+    it(`has every ${group} sprite`, () => {
+      for (const ref of names) expect(resolveReference(lib, ref), ref).toBeDefined();
+    });
+  }
+
+  it("holds 115 drawings: nine faithful, sixteen tools, twenty containers and materials, twenty-three foods and forty-seven symbols", () => {
+    expect(Object.keys(lib.sprites).length + Object.keys(lib.shapes).length).toBe(115);
+  });
+});
+
 describe("parsing a library", () => {
   it("accepts a small valid one", () => {
     expect("library" in parseLibrary(small)).toBe(true);
