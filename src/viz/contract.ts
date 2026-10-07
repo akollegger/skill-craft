@@ -47,6 +47,10 @@ export const entrySchema = z
     need(e.preview !== undefined, "preview", ok);
     need(e.bundle !== undefined, "bundle", ok);
     need(e.reason !== undefined, "reason", !ok);
+    // The page fetches this address, so it is exactly the relative one the contract promises: never an absolute or cross-origin URL.
+    if (ok && e.bundle !== undefined && e.bundle !== `bundles/${e.id}/`) {
+      ctx.addIssue({ code: "custom", path: ["bundle"], message: `bundle must be bundles/${e.id}/` });
+    }
   });
 export type CatalogEntry = z.infer<typeof entrySchema>;
 
@@ -149,4 +153,23 @@ export interface BundleData {
   frames: FrameData[];
   trace: TraceLineData[];
   result: ResultData;
+}
+
+/**
+ * Checks a bundle read from disk against what the page will require of it, so a folder with a malformed bundle lists it as unreadable and
+ * does not offer it as ready only for the page to refuse it on opening. Returns what is wrong, or undefined for a bundle that reads.
+ * The manifest, the result, every trace line and every frame must match their schemas, and the frames' `seq` must run 0, 1, 2 and so on.
+ */
+export function bundleProblem(bundle: { manifest: unknown; frames: readonly unknown[]; trace: readonly unknown[]; result: unknown }): string | undefined {
+  const m = manifestSchema.safeParse(bundle.manifest);
+  if (!m.success) return "bundle.json does not match the manifest schema";
+  if (bundle.frames.length === 0) return "the bundle has no frames";
+  for (const [i, f] of bundle.frames.entries()) {
+    const p = frameSchema.safeParse(f);
+    if (!p.success) return `frame ${i} does not match the frame schema`;
+    if (p.data.seq !== i) return `frame ${i} has seq ${p.data.seq}`;
+  }
+  for (const [i, t] of bundle.trace.entries()) if (!traceLineSchema.safeParse(t).success) return `trace line ${i} is not a trace line`;
+  if (!resultSchema.safeParse(bundle.result).success) return "score.json does not match the result schema";
+  return undefined;
 }

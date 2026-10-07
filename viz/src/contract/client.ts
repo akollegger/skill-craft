@@ -25,7 +25,12 @@ async function text(fetchFn: FetchText, url: string, missingIsEmpty = false): Pr
   }
   if (res.status === 404 && missingIsEmpty) return { ok: true, value: "" };
   if (!res.ok) return fail({ kind: "http", status: res.status, url });
-  return { ok: true, value: await res.text() };
+  try {
+    return { ok: true, value: await res.text() };
+  } catch (e) {
+    // A connection that drops while the body is read is a network failure like one that drops before it.
+    return fail({ kind: "network", message: e instanceof Error ? e.message : "the response could not be read" });
+  }
 }
 
 function json(source: string): Loaded<unknown> {

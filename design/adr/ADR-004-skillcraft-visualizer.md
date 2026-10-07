@@ -355,7 +355,7 @@ run could be opened to the point it reached; and how a view could be saved or sh
     right are the score, the clock and the run's cost, time and token counts as small stats with no label words on screen. Above the table,
     as wide as it, is one pip for every action call with none cut off: calls made wear the playback colors, calls to come are gray, and a click
     on a pip shows the table after that call. Dragging the score scrubs through the run. Under the table is the call list in a box of the table's
-    width and a fixed height that scrolls inside itself. The slider, the status phrase over the pips, the "of N" count and the footer of
+    width that takes the room left under the table, the same for every run at a window size, and scrolls inside itself. The slider, the status phrase over the pips, the "of N" count and the footer of
     totals are gone. The score and the clock reserve the same room for every run, so nothing shifts as digits change or between runs.
     A scrolling filmstrip was tried for the pips and dropped: with a pip a call, a long run was a row of near-identical squares and the
     motion could not be seen.
@@ -363,3 +363,7 @@ run could be opened to the point it reached; and how a view could be saved or sh
   - *No help text.* The help under the frame (how to open and select runs, what the square and the triangle mean, and how many runs cannot
     be opened) is removed, which supersedes "help lives in the footer" and the help under the frame on 2026-10-04. A run that cannot be
     opened still says why on its own tile or row. Where the rest returns, if it does, is open.
+  - *Frames are derived at scan.* The local supplier replays each run folder when it builds the catalog, because an entry's attributes (the
+    outcome, the calls, the best known count) and its preview come from the frames, and keeps the result until that run's files, or the world
+    file it recorded, change. This replaces "derives frames on demand" in 2.3 and spec FR-020; what stays on demand is serving a bundle's
+    files. A bundle folder is checked against the contract when it is scanned, and one that does not match is listed as unreadable.

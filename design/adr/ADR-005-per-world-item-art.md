@@ -131,8 +131,9 @@ from the open bundle's art or the run's world in the catalog, and draw the name-
 - The data side learns the shape of the art (the legend and the entry kinds) and the glyph-space constants, and the catalog and
   bundle manifest each grow an optional field. ADR-002's manifest description needs the matching amendment, as ADR-004's did.
 - Drawn art is hand work: 13 items for the faithful world now, and each future faithful or perturbed world pays the same.
-- Tests, written first: every item of every committed world resolves to a sprite; drawn sprites are 8 by 8 and use only legend keys
-  whose values are palette names; no two items of one world share a pixel pattern, and the allocator keeps family-and-palette pairs
+- Tests, written first: every item of every committed world resolves to a sprite; drawn sprites are 8 by 8, and in every committed art file each legend
+  value is a palette name or null (the page tolerates an unknown name by drawing it transparent, and the tests for committed files do
+  not); no two items of one world share a pixel pattern, and the allocator keeps family-and-palette pairs
   distinct for up to 64 items; the allocation is the same however the item list is ordered; a bundle's art covers exactly the items its
   frames and goal use; and the catalog's sprite for a goal item equals the one in the same run's bundle.
 - Follow-up work before the spec is accepted: the matching amendments to ADR-004, ADR-002 and ADR-001 are recorded (2026-10-07), and the

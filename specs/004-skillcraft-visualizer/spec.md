@@ -254,9 +254,10 @@ plain file server, and repeat the acceptance checks for Stories 1, 2 and 4 again
 - **FR-019**: The page MUST read runs through one catalog of runs (each with its attributes and the address of
   its bundle) and one replay bundle per run, using relative addresses only, so that it runs unchanged against
   a local supplier and a static host.
-- **FR-020**: A local supplier MUST build the catalog by scanning the folder, derive a run folder's frames on
-  demand, serve its data on the loopback address only, and serve nothing outside what it derives from the
-  folder.
+- **FR-020**: A local supplier MUST build the catalog by scanning the folder, derive a run folder's frames
+  when it scans (the catalog's attributes and previews come from the frames) and again only when that run's
+  files change, serve its data on the loopback address only, and serve nothing outside what it derives from
+  the folder.
 - **FR-021**: A static host MUST be able to supply the same contract from pre-exported bundles and a catalog
   file generated from them. A command MUST export a whole folder of runs as such bundles plus the catalog
   file, read-only with respect to the source folder, and skipping with a stated reason any run that cannot be

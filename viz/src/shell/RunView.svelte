@@ -129,10 +129,6 @@
     return Array.from({ length: steps }, (_, i): Tone | "to-come" => (i < frame.actions ? pipTone(i, frame.actions, best, lost) : "to-come"));
   });
   const seek = (calls: number): void => dispatch({ type: "scrub", to: frameForCalls(actionFrames, calls) });
-  const onPipClick = (e: MouseEvent): void => {
-    const pip = (e.target as HTMLElement).closest("[data-step]");
-    if (pip) seek(Number(pip.getAttribute("data-step")) + 1);
-  };
 
   // The counter is grabbable: pulling it sideways scrubs through the run, like a number field. Pointer only; the keyboard has the step
   // and jump controls.
@@ -191,22 +187,27 @@
        is, the strip of pips; below that the controls at the left, the table, and at the right the score, the clock and the run's spend. The
        table's own cell is the room the scene sizes itself to, and its measured width is the strip's. -->
   <div class="grid grid-cols-[9rem_minmax(0,1fr)_9rem] gap-x-4 gap-y-3">
-    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
     <div
-      role="img"
+      role="group"
       aria-label={best === null ? `Calls made: ${frame.actions}` : `Progress against the best possible run: ${frame.actions} of ${best} calls`}
       class="col-start-2 flex min-h-[2.5rem] flex-wrap content-start gap-0.5 justify-self-center"
       style:width={tableWidth === undefined ? undefined : `${tableWidth}px`}
       style:max-width="100%"
-      onclick={onPipClick}
     >
+      <!-- One tab stop for the whole strip, on the latest call made (the first when none is): the arrow keys, Home and End step and jump from it as
+           from anywhere, and the other pips are reached by pointer or by a screen reader's own navigation. -->
       {#each pips as pip, i (i)}
-        <span
+        <button
+          type="button"
           data-pip={pip}
           data-step={i}
           title={callTitles[i]}
-          class={`h-3 w-3 cursor-pointer ${pip === "to-come" ? "bg-dark-gray" : `${TONE_BG[pip]}`} ${i === frame.actions - 1 ? "ring-2 ring-light-gray" : ""}`}
-        ></span>
+          aria-label={`Call ${i + 1}: ${callTitles[i]}`}
+          aria-current={i === frame.actions - 1 ? "step" : undefined}
+          tabindex={i === Math.max(0, frame.actions - 1) ? 0 : -1}
+          class={`h-3 w-3 cursor-pointer border-0 p-0 focus-visible:outline-2 focus-visible:outline-retro-muted ${pip === "to-come" ? "bg-dark-gray" : `${TONE_BG[pip]}`} ${i === frame.actions - 1 ? "ring-2 ring-light-gray" : ""}`}
+          onclick={() => seek(i + 1)}
+        ></button>
       {/each}
     </div>
 

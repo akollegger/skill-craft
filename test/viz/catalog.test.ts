@@ -114,6 +114,32 @@ describe("RunCatalog", () => {
     expect(catalog.runs[0]).toMatchObject({ status: "unreadable", reason: expect.stringMatching(/^WorldMissing: /), attributes: { label: "lost", run: "001", goalItem: "e", outcome: "reached" } });
   });
 
+  it("notices a world file that comes back after a scan that found it missing", async () => {
+    const f = await finishedRun({ label: "returns" });
+    const saved = readFileSync(f.world);
+    rmSync(f.world);
+    const cat = new RunCatalog(f.out);
+    expect(cat.scan().catalog.runs[0]).toMatchObject({ status: "unreadable", reason: expect.stringMatching(/^WorldMissing: /) });
+    writeFileSync(f.world, saved);
+    expect(cat.scan().catalog.runs[0]).toMatchObject({ status: "ready" }); // the cached failure is not reused
+  });
+
+  it("lists a bundle that parses but does not match the contract as unreadable, before the page can be asked to open it", async () => {
+    const { root, runDir } = await folder();
+    for (const name of ["noseq", "badmanifest", "badscore"]) exportBundle(runDir, join(root, "shared", name));
+    // frames whose seq skips a number
+    const frames = readFileSync(join(root, "shared", "noseq", "frames.jsonl"), "utf8").split("\n").filter((l) => l !== "");
+    writeFileSync(join(root, "shared", "noseq", "frames.jsonl"), [frames[0], ...frames.slice(2)].join("\n") + "\n");
+    // a manifest with the right format and the wrong shape
+    writeFileSync(join(root, "shared", "badmanifest", "bundle.json"), JSON.stringify({ format: 1, label: "x" }));
+    writeFileSync(join(root, "shared", "badscore", "score.json"), JSON.stringify({ ended: "stopped" }));
+    const { catalog } = new RunCatalog(root).scan();
+    for (const name of ["noseq", "badmanifest", "badscore"]) {
+      const e = catalog.runs.find((x) => x.kind === "bundle" && x.attributes["run"] === name)!;
+      expect(e, name).toMatchObject({ status: "unreadable", reason: expect.stringMatching(/^BundleInvalid: /) });
+    }
+  });
+
   it("lists a corrupt bundle and a bundle of an unknown format as unreadable", async () => {
     const { root, runDir } = await folder();
     exportBundle(runDir, join(root, "shared", "bad"));

@@ -36,7 +36,7 @@ describe("the open run", () => {
     expect(score()).toBe("0");
     expect(screen.getByRole("button", { name: /^play$/i })).toBeTruthy();
     expect(screen.getByRole("heading", { level: 2 }).textContent).toContain("Make 1 d");
-    expect(screen.getByRole("img", { name: /best possible/i }).getAttribute("aria-label")).toContain("3");
+    expect(screen.getByRole("group", { name: /best possible/i }).getAttribute("aria-label")).toContain("3");
     expect(screen.getByRole("status").textContent).toContain("Working it out.");
     expect(within(screen.getByRole("list", { name: /calls/i })).queryAllByRole("listitem")).toHaveLength(0);
     expect(screen.queryByRole("slider")).toBeNull(); // the counter and the pips replace the slider
@@ -73,7 +73,7 @@ describe("the open run", () => {
   it("shows the call count against the best run, and the time of the step", async () => {
     open();
     await step(5);
-    expect(screen.getByRole("img", { name: /best possible/i }).getAttribute("aria-label")).toMatch(/4 of 3/);
+    expect(screen.getByRole("group", { name: /best possible/i }).getAttribute("aria-label")).toMatch(/4 of 3/);
     expect(screen.getByLabelText(/time of this step/i).textContent).toBe("8.2s");
   });
 
@@ -200,12 +200,16 @@ describe("controls", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("has every control reachable by keyboard: native buttons and a slider, none with a negative tabindex", () => {
+  it("has every control reachable by keyboard: native buttons, none with a negative tabindex, and the pips as one tab stop", () => {
     open();
-    const controls = [...document.querySelectorAll("button, input, [tabindex]")] as HTMLElement[];
+    const controls = [...document.querySelectorAll("button, input, [tabindex]")].filter((c) => !c.hasAttribute("data-pip")) as HTMLElement[];
     expect(controls.length).toBeGreaterThanOrEqual(6);
     for (const c of controls) expect(c.tabIndex, c.outerHTML.slice(0, 60)).toBeGreaterThanOrEqual(0);
     expect(screen.getByRole("button", { name: /close/i })).toBeTruthy();
+    // The pips are buttons with a name, and only one of them is in the tab order.
+    const pips = [...document.querySelectorAll("[data-pip]")] as HTMLElement[];
+    expect(pips.every((p) => p.tagName === "BUTTON" && /^Call \d+: /.test(p.getAttribute("aria-label") ?? ""))).toBe(true);
+    expect(pips.filter((p) => p.tabIndex === 0)).toHaveLength(1);
   });
 
   it("closes with the close button", async () => {
@@ -268,6 +272,15 @@ describe("the steps and the counter", () => {
     await step(5); // four action calls made; the best run is 3
     expect(pips().map((p) => p.getAttribute("data-pip"))).toEqual(["ok", "ok", "ok", "over", "to-come"]);
     expect(pips()[4]!.className).toMatch(/bg-dark-gray/);
+  });
+
+  it("keeps the one tab stop on the latest call made and names it as the current step", async () => {
+    open();
+    await step(2);
+    const current = pips().filter((p) => p.getAttribute("aria-current") === "step");
+    expect(current).toHaveLength(1);
+    expect(pips().filter((p) => p.tabIndex === 0)).toEqual(current);
+    expect(pips().indexOf(current[0]!)).toBe(Number(score()) - 1);
   });
 
   it("marks the latest call made, so a step shows as a move along the strip", async () => {

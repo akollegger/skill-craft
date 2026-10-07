@@ -3,10 +3,10 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { readBundle, type Bundle } from "../harness/bundle.js";
 import { ExportRefused, ReplayFailed } from "../harness/errors.js";
-import { bundleFiles, buildBundle, BUNDLE_FILES, type BundleFileName } from "../harness/export.js";
+import { bundleFiles, buildBundle, BUNDLE_FILES, recordedWorldPath, type BundleFileName } from "../harness/export.js";
 import { WorldError } from "../sim/errors.js";
 import { attributesOf, partialAttributes } from "./attributes.js";
-import { CATALOG_FORMAT, entrySchema, type Catalog, type CatalogEntry, type ReasonCode } from "./contract.js";
+import { bundleProblem, CATALOG_FORMAT, entrySchema, type Catalog, type CatalogEntry, type ReasonCode } from "./contract.js";
 import { previewOf } from "./preview.js";
 import { scanFolder, type Found } from "./scan.js";
 
@@ -44,6 +44,19 @@ interface Cached {
   /** A bundle folder, whose files are read when asked for. */
   dir?: string;
 }
+
+/**
+ * The state of the world file a run recorded, for the run's cache key: a world that was missing when the run was scanned and is restored
+ * later, or one that is edited, must not leave a stale entry. 0 for no recorded world or a missing file.
+ */
+const worldStamp = (runDir: string): number => {
+  try {
+    const world = recordedWorldPath(runDir);
+    return world === undefined ? 0 : mtime(world);
+  } catch {
+    return 0; // an unreadable mcp.json is the run's own failure to report, and its mtime is already in the key
+  }
+};
 
 const mtime = (path: string): number => statSync(path, { throwIfNoEntry: false })?.mtimeMs ?? 0;
 const size = (path: string): number => statSync(path, { throwIfNoEntry: false })?.size ?? 0;
@@ -93,7 +106,7 @@ export class RunCatalog {
 
   private entryFor(id: string, found: Found): Cached {
     const key = found.kind === "run"
-      ? `${mtime(join(found.dir, "score.json"))}:${size(join(found.dir, "run.jsonl"))}:${mtime(join(found.dir, "mcp.json"))}`
+      ? `${mtime(join(found.dir, "score.json"))}:${size(join(found.dir, "run.jsonl"))}:${mtime(join(found.dir, "mcp.json"))}:${worldStamp(found.dir)}`
       : `${mtime(join(found.dir, "bundle.json"))}:${size(join(found.dir, "frames.jsonl"))}:${mtime(join(found.dir, "score.json"))}`;
     const hit = this.cache.get(id);
     if (hit && hit.key === key) return hit;
@@ -126,7 +139,7 @@ export class RunCatalog {
   private bundleEntry(id: string, found: Found, key: string): Cached {
     try {
       const bundle = readBundle(found.dir);
-      if (bundle.manifest.format !== 1 || bundle.frames.length === 0) throw new Error("not a bundle this viewer reads");
+      if (bundle.manifest.format !== 1 || bundleProblem(bundle) !== undefined) throw new Error("not a bundle this viewer reads");
       return {
         key,
         dir: found.dir,

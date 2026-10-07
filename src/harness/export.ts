@@ -19,6 +19,15 @@ type SavedScore = BundleResult & {
   skill?: { name: string; invoked: boolean; loadedAfterCalls: number | null };
 };
 
+/** The world file a run folder's `mcp.json` recorded, as a path on this machine, or undefined when it recorded none. */
+export function recordedWorldPath(runDir: string): string | undefined {
+  const mcpPath = join(runDir, "mcp.json");
+  if (!existsSync(mcpPath)) return undefined;
+  const mcp = JSON.parse(readFileSync(mcpPath, "utf8")) as { mcpServers?: { craft?: { env?: { SIM_WORLD?: string } } } };
+  const recorded = mcp.mcpServers?.craft?.env?.SIM_WORLD;
+  return recorded ? fromRepoPath(recorded) : undefined;
+}
+
 /**
  * Build a finished run's replay bundle in memory: its frames, its trace if the trace matched, and its result
  * without the agent's text. Nothing in it names the world file, a recipe, an item description or an item the
@@ -29,10 +38,7 @@ export function buildBundle(runDir: string): Bundle {
   if (!existsSync(scorePath)) throw new ExportRefused("the run is unfinished (it has no score.json)", "unfinished");
   const saved = JSON.parse(readFileSync(scorePath, "utf8")) as SavedScore;
 
-  const mcpPath = join(runDir, "mcp.json");
-  const mcp = existsSync(mcpPath) ? (JSON.parse(readFileSync(mcpPath, "utf8")) as { mcpServers?: { craft?: { env?: { SIM_WORLD?: string } } } }) : {};
-  const recorded = mcp.mcpServers?.craft?.env?.SIM_WORLD;
-  const worldPath = recorded ? fromRepoPath(recorded) : undefined;
+  const worldPath = recordedWorldPath(runDir);
   if (!worldPath || !existsSync(worldPath)) throw new ExportRefused("the world file the run used is missing", "world");
   const world = loadWorld(worldPath);
 

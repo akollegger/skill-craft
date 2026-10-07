@@ -68,4 +68,11 @@ describe("the catalog contract", () => {
     expect(source).not.toMatch(/from\s+["']node:/);
     expect(source).not.toMatch(/require\(/);
   });
+
+  it("accepts only the relative bundle address built from the entry's own id, never an absolute or foreign one", () => {
+    expect(entrySchema.safeParse(ready).success).toBe(true);
+    for (const bundle of ["https://evil.example/bundles/0123456789abcdef/", "//evil.example/", "/bundles/0123456789abcdef/", "bundles/ffffffffffffffff/", "bundles/0123456789abcdef", "../bundles/0123456789abcdef/"]) {
+      expect(entrySchema.safeParse({ ...ready, bundle }).success, bundle).toBe(false);
+    }
+  });
 });

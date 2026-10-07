@@ -66,6 +66,9 @@ describe("the contract client", () => {
   it("returns a typed error for a failed fetch, an HTTP error and data that is not valid, and does not throw", async () => {
     const boom = createClient(async () => { throw new TypeError("network down"); });
     expect(await boom.catalog()).toMatchObject({ ok: false, error: { kind: "network" } });
+    // A connection that drops while the body is being read is a network failure too, and does not throw.
+    const dropped = createClient(async () => ({ ok: true, status: 200, text: async () => { throw new TypeError("connection reset"); } }) as unknown as Response);
+    expect(await dropped.catalog()).toMatchObject({ ok: false, error: { kind: "network", message: "connection reset" } });
     expect(await host({ "catalog.json": 500 }).client.catalog()).toMatchObject({ ok: false, error: { kind: "http", status: 500 } });
     expect(await host({ "catalog.json": "not json" }).client.catalog()).toMatchObject({ ok: false, error: { kind: "invalid" } });
     expect(await host({ [`bundles/${ID}/frames.jsonl`]: "{bad\n" }).client.bundle(entry)).toMatchObject({ ok: false, error: { kind: "invalid" } });
