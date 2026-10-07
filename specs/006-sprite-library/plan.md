@@ -92,7 +92,7 @@ viz/src/
 │   ├── sprite.ts        # imports the shared tables; palette colors stay here
 │   ├── world-art.ts     # expand a world art object into an ItemArt, with the name-only fallback
 │   └── index.ts
-├── scene/ (handle.ts, TableScene.ts)    # setArt(art)
+├── scene/ (handle.ts, pool.ts, TableScene.ts)   # `art` in the factory's options, used when a scene is made
 └── shell/ (Thumbnail.svelte, RunView.svelte, App.svelte)   # art from the open bundle and from the catalog
 test/viz/            # library, art-file, allocate, world-art, catalog, bundle-build, contract, parity extended
 viz/test/            # art.test.ts extended; world-art lookup, fallback, thumbnail-equals-table
@@ -115,7 +115,7 @@ The order follows the tests-first rule and the data-before-page order of spec 00
 4. **World art and the wire form.** Tests for the canonical legend, per-run covering and catalog merge, then `world-art.ts`, the contract
    fields, `buildBundle` and the catalog (including the cache key).
 5. **The faithful world's art file** and the worlds README row; the test that every committed world's items resolve.
-6. **The page.** Tests for the lookup, the fallback and thumbnail-equals-table, then `world-art.ts`, `setArt`, the thumbnail and the
+6. **The page.** Tests for the lookup, the fallback and thumbnail-equals-table, then `world-art.ts`, the scene option, the thumbnail and the
    run view.
 7. **Docs and checks.** ADR touch-ups, notes in ADR-001/002/004, AGENTS.md; `pnpm typecheck`, `pnpm test`, `pnpm build:viz`, and the
    hand checks in [quickstart.md](quickstart.md).

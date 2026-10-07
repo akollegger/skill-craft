@@ -87,17 +87,19 @@ A bundle read from a folder has no world file, so it keeps the art in its own ma
 
 **Rationale**: It is the convention already used for `notes.json` and `goals.json`.
 
-## R8. The page takes art per run
+## R8. The page takes art per run, as a scene option
 
-**Decision**: A scene's art is set when a run is opened: the scene handle gains `setArt(art)`, which clears its texture cache and
-redraws. The thumbnail takes its art from the catalog's per-world map. A small page module expands a world art object into an
-`ItemArt` and falls back to the name-only glyph for any name it lacks.
+**Decision**: The scene factory's options gain `art?: ItemArt`, next to `reducedMotion`. The run view builds the `ItemArt` from the open
+bundle's world art and passes it when it makes its scene; the thumbnail takes its art from the catalog's per-world map. A small page
+module expands a world art object into an `ItemArt` and falls back to the name-only glyph for any name it lacks.
 
-**Rationale**: `createTableScene(art)` fixes the art when a scene is made, but the scene pool reuses scenes across runs of different
-worlds (spec 004), so the art must be settable. The fallback is what lets a bundle without art open.
+**Rationale**: Each run view makes its own scene and destroys it on close; the scene pool only caps how many are alive and passes the
+options through (`viz/src/scene/pool.ts`). So the art can be fixed when the scene is made, and no `setArt` is needed. The fallback is
+what lets a bundle without art open.
 
-**Alternatives**: *One scene per art* defeats the pool's two-scene limit. *Rebuild the scene on every open* costs a PixiJS
-application per open.
+**Alternatives**: *A `setArt` method on the scene handle* would be needed only if scenes were reused across runs, which they are not.
+*A factory per art* (today's `createTableScene(art)`) works for tests but not for a scene made per run from data that arrives with
+the bundle.
 
 ## R9. Authoring the starter set
 
