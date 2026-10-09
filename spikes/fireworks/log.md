@@ -52,3 +52,24 @@ Moved everything, Claude arms included, so every arm shares one loop and only th
 First live run: `fireworks/nemotron-lightning-3p5-30b-a3b`, goal glirol on forge-7, 40 turns. It ran end to end
 (80 trace lines, 40 log entries, 48 s, 10.4k input / 4.5k output tokens, 218k cache-read) and did not reach the
 goal (36 calls against a best of 3) - a plausible baseline for a 3B-active model, not yet a result.
+
+## Billing cross-check with firectl (2026-10-09)
+
+`firectl billing get-usage` gives per-model token counts (prompt, cached, completion), grouped by UTC day and
+optionally by API key. `spikes/fireworks/reconcile.ts` snapshots those counts before a batch and, after it, compares the
+difference with the tokens summed from the run folders' `trace.jsonl`:
+
+    pnpm dev spikes/fireworks/reconcile.ts snapshot snap.json
+    ... run the batch ...
+    pnpm dev spikes/fireworks/reconcile.ts compare snap.json runs/<label>...
+
+Result on `fireworks/gpt-oss-120b`, one 15-turn run: prompt 28159/28159, cached 20538/20538, completion 762/762
+(harness/billed), an exact match, so the harness's token and cache accounting is right for Fireworks.
+
+What firectl does not give:
+
+- **No per-model dollar cost.** Rated cost exists only as an account-level daily total, which on this account
+  ($1,360+ a day) is dominated by spend that is not ours, so it cannot be used for rough price math.
+- `billing export-usage-costs` and `billing list-invoices` are blocked when run by an agent. A person can run them
+  in a terminal; the first gives costs by model or API key. `reconcile.ts compare ... --cost <model>=<usd>` turns a
+  cost read that way into a blended $/million-token rate, to be copied into `prices.json` by hand.
