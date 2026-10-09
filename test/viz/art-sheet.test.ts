@@ -25,6 +25,13 @@ describe("the contact sheet", () => {
     expect(html).not.toMatch(/https?:\/\//);
   });
 
+  it("draws on the same two backgrounds the scores are measured against: the dark slot and the lightened grid cell", () => {
+    const c = paletteColors();
+    expect(html).toContain(`background:${c["woodDeep"]}`);
+    expect(html).toContain(`background:${c["woodLight"]}`);
+    expect(html).not.toContain(`background:${c["woodFace"]}`);
+  });
+
   it("is the same every time", () => {
     expect(renderSheet(lib, paletteColors())).toBe(html);
   });

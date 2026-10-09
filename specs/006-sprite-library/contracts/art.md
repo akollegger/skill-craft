@@ -12,7 +12,7 @@ Additions only; no format number changes, and a reader that ignores unknown fiel
     "<world name>": {
       "legend": { "a": "woodFace", "b": "woodShade", ".": null },
       "items": {
-        "stick": { "rows": ["......ab", ".....ab.", "....ab..", "...ab...", "..ab....", ".ab.....", "ab......", "b......."] },
+        "stick": { "rows": ["..............ba", ".............ba.", "............ba..", "...........ba...", "..........ba....", ".........ba.....", "........ba......", ".......ba.......", "......ba........", ".....ba.........", "....ba..........", "...ba...........", "..ba............", ".ba.............", "ba..............", "a..............."] },
         "zorp": { "family": 2, "variant": 1, "palette": 5, "marks": [3, 17] }
       }
     }

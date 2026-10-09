@@ -63,6 +63,18 @@ describe("the wire form", () => {
   });
 });
 
+describe("an item named like an inherited property", () => {
+  it("keeps `constructor`, `toString` and `__proto__` as items of the art, through the wire form, a merge and back", () => {
+    const names = ["constructor", "toString", "__proto__"];
+    const entries = Object.fromEntries(names.map((n) => [n, { sprite: stick }]));
+    const art = toWire(entries);
+    expect(Object.keys(art.items).sort()).toEqual([...names].sort());
+    const merged = mergeArt([art, toWire({ other: { sprite: full("b") } })])!;
+    expect(Object.keys(merged.items).sort()).toEqual([...names, "other"].sort());
+    for (const n of names) expect(Object.hasOwn(fromWire(merged), n), n).toBe(true);
+  });
+});
+
 describe("merging the art of several runs", () => {
   const wood = toWire({ stick: { sprite: stick } });
   const blue = toWire({ stick: { sprite: full("b") }, wall: { sprite: full("b") } });

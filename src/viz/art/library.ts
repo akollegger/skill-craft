@@ -5,7 +5,7 @@ import type { Sprite } from "./world-art.js";
 
 /**
  * The shared library of named 16 by 16 sprites that worlds reference by name (ADR-005 2.5). A name says what is drawn, never what an item is or
- * how it is made. A *sprite* is eight rows of eight characters over `legend`; a *shape* is a sprite whose `m` and `M` stand for the body and
+ * how it is made. A *sprite* is sixteen rows of sixteen characters over `legend`; a *shape* is a sprite whose `m` and `M` stand for the body and
  * the shade of a material, so one drawing serves a pickaxe in every material. A reference is a sprite name (`log`) or `shape/material`
  * (`pickaxe/iron`). Read only by this backend, at scan time, so an edit shows at the next scan.
  */

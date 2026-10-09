@@ -31,7 +31,7 @@ const CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 /**
  * The wire form of a world's entries: a legend that gives each palette name present a character in sorted order of the names (and `.` for
- * transparent, when a pixel is), and each drawn sprite as eight rows over it. Items are written in name order so the same entries are the same
+ * transparent, when a pixel is), and each drawn sprite as sixteen rows over it. Items are written in name order so the same entries are the same
  * bytes. A sprite's names do not depend on what else is present, only the characters chosen for them.
  */
 export function toWire(entries: Readonly<Record<string, ArtEntry>>): WorldArt {
@@ -54,25 +54,28 @@ export function toWire(entries: Readonly<Record<string, ArtEntry>>): WorldArt {
     legend[CHARS[i]!] = n;
     char.set(n, CHARS[i]!);
   });
-  const items: WorldArt["items"] = {};
-  for (const name of Object.keys(entries).sort()) {
-    const e = entries[name]!;
-    items[name] = "sprite" in e
-      ? { rows: e.sprite.map((row) => row.map((c) => char.get(c)!).join("")) }
-      : { family: e.glyph.family, variant: e.glyph.variant, palette: e.glyph.palette, marks: [...e.glyph.marks] };
-  }
+  // Built from entries, not by assignment: an item may be named `constructor` or `__proto__`, which assignment would treat as inherited.
+  const items: WorldArt["items"] = Object.fromEntries(
+    Object.keys(entries).sort().map((name) => {
+      const e = entries[name]!;
+      return [name, "sprite" in e
+        ? { rows: e.sprite.map((row) => row.map((c) => char.get(c)!).join("")) }
+        : { family: e.glyph.family, variant: e.glyph.variant, palette: e.glyph.palette, marks: [...e.glyph.marks] }];
+    }),
+  );
   return { legend, items };
 }
 
 /** The entries a wire object draws, with each drawn sprite's characters turned back into palette names. */
 export function fromWire(art: WorldArt): Record<string, ArtEntry> {
-  const out: Record<string, ArtEntry> = {};
-  for (const [name, e] of Object.entries(art.items)) {
-    out[name] = "rows" in e
-      ? { sprite: e.rows.map((row) => [...row].map((c) => art.legend[c] ?? null)) }
-      : { glyph: { family: e.family, variant: e.variant, palette: e.palette, marks: e.marks } };
-  }
-  return out;
+  return Object.fromEntries(
+    Object.entries(art.items).map(([name, e]): [string, ArtEntry] => [
+      name,
+      "rows" in e
+        ? { sprite: e.rows.map((row) => [...row].map((c) => (Object.hasOwn(art.legend, c) ? art.legend[c] : null) ?? null)) }
+        : { glyph: { family: e.family, variant: e.variant, palette: e.palette, marks: e.marks } },
+    ]),
+  );
 }
 
 /**
@@ -81,9 +84,10 @@ export function fromWire(art: WorldArt): Record<string, ArtEntry> {
  */
 export function mergeArt(list: readonly WorldArt[]): WorldArt | undefined {
   if (list.length === 0) return undefined;
-  const entries: Record<string, ArtEntry> = {};
-  for (const art of list) for (const [name, e] of Object.entries(fromWire(art))) if (!(name in entries)) entries[name] = e;
-  return toWire(entries);
+  // Own keys only: `name in entries` would call an item named `constructor` already present, and drop it.
+  const entries = new Map<string, ArtEntry>();
+  for (const art of list) for (const [name, e] of Object.entries(fromWire(art))) if (!entries.has(name)) entries.set(name, e);
+  return toWire(Object.fromEntries(entries));
 }
 
 /** The items a run's frames show (the grid, the held items, the crafted outputs and the previewed craft) and its goal. */
@@ -108,12 +112,12 @@ export function worldArtFor(world: World, worldPath: string, used: Iterable<stri
   const ids = world.items.map((i) => i.id);
   const drawn = readArtFile(artFilePath(worldPath), ids, library);
   const glyphs = allocate(ids.filter((id) => !drawn.has(id)));
-  const entries: Record<string, ArtEntry> = {};
+  const entries = new Map<string, ArtEntry>();
   for (const name of new Set(used)) {
     const sprite = drawn.get(name);
     const glyph = glyphs.get(name);
-    if (sprite) entries[name] = { sprite };
-    else if (glyph) entries[name] = { glyph };
+    if (sprite) entries.set(name, { sprite });
+    else if (glyph) entries.set(name, { glyph });
   }
-  return toWire(entries);
+  return toWire(Object.fromEntries(entries));
 }

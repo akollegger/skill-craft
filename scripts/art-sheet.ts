@@ -4,8 +4,8 @@
  * The destination must be outside the repository, so a sheet is never committed by accident.
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { relative, resolve, sep } from "node:path";
 import { readLibrary } from "../src/viz/art/library.js";
+import { isInside } from "../src/viz/paths.js";
 import { renderSheet } from "../src/viz/art/sheet.js";
 
 const dest = process.argv[2];
@@ -13,8 +13,7 @@ if (!dest) {
   console.error("usage: art-sheet.ts <dest.html>");
   process.exit(1);
 }
-const inside = relative(process.cwd(), resolve(dest));
-if (!inside.startsWith("..") && !inside.startsWith(sep) && inside !== "") {
+if (isInside(process.cwd(), dest)) {
   console.error("the destination is inside the repository; write the sheet somewhere outside it");
   process.exit(1);
 }

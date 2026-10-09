@@ -157,10 +157,10 @@ in `/` are shapes recoloured per material. It lands in two batches; the second i
 - Scientific (14): `flask`, `beaker`, `test-tube`, `petri-dish`, `microscope`, `telescope`, `atom`, `dna`, `magnet`, `magnifier`,
   `globe`, `compass`, `balance-scale`, `hourglass`.
 
-Names follow familiar emoji concepts (the Unicode shortcodes) so a designer can guess them. Each drawing is the project's own 8 by 8
+Names follow familiar emoji concepts (the Unicode shortcodes) so a designer can guess them. Each drawing is the project's own 16 by 16
 work: it may start from a licensed reference, with the source and licence recorded in a credits file beside the library, and it is
 redrawn to read at that size and in the palette, never used as a plain downscale. A game's textures, a brand or a logo (so no protected
-emblem) is never a reference. Letters, digits and simple shapes are generated once and committed as rows. Pictures that read alike at 8 by 8 are drawn once and recoloured, not
+emblem) is never a reference. Letters, digits and simple shapes are generated once and committed as rows. Pictures that read alike at 16 by 16 are drawn once and recoloured, not
 twice. Faces, people, animals and flags are out of the starter set.
 
 ### 2.7 Sixteen by sixteen, and no outline

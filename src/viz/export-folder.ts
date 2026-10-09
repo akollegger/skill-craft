@@ -1,7 +1,8 @@
 import { cpSync, existsSync, mkdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { dirname, join } from "node:path";
 import { BUNDLE_FILES } from "../harness/export.js";
 import { RunCatalog } from "./catalog.js";
+import { isInside } from "./paths.js";
 import { VizRefused } from "./errors.js";
 import { catalogText } from "./supplier.js";
 
@@ -28,8 +29,7 @@ export function exportFolder(source: string, dest: string, opts: ExportOptions =
   if (!info) throw new VizRefused(`${source} does not exist`);
   if (!info.isDirectory()) throw new VizRefused(`${source} is not a folder`);
   if (existsSync(dest)) throw new VizRefused(`${dest} already exists`);
-  const inside = relative(resolve(source), resolve(dest));
-  if (inside === "" || (!inside.startsWith("..") && !inside.startsWith(sep))) throw new VizRefused("the destination is inside the folder being exported");
+  if (isInside(source, dest)) throw new VizRefused("the destination is inside the folder being exported");
   if (opts.pageDir !== undefined && !existsSync(join(opts.pageDir, "index.html"))) throw new VizRefused("the page has not been built; run pnpm build:viz first, or export without the page");
 
   const snap = new RunCatalog(source).scan();

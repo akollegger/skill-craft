@@ -10,12 +10,12 @@ function svg(rows: readonly (readonly (string | null)[])[], colors: Readonly<Rec
 }
 
 /**
- * A contact sheet of the library for checking drawings by eye: every reference, with its name, at two sizes (32 and 128 pixels, the table draws at 16) on the table's dark and light wood. A color name the palette does not have shows as magenta, so a wrong name is
+ * A contact sheet of the library for checking drawings by eye: every reference, with its name, at two sizes (32 and 128 pixels, the table draws at 16) on the table's dark slot and its lighter grid cell, the two backgrounds the scores are measured against. A color name the palette does not have shows as magenta, so a wrong name is
  * hard to miss. Under each name are two numbers, how well the sprite shows on the dark slot and on the grid cell (see `contrast.ts`). Pure: the same library gives the same page.
  */
 export function renderSheet(library: Library, colors: Readonly<Record<string, string>>): string {
-  const dark = colors["woodDeep"] ?? "#362112";
-  const light = colors["woodFace"] ?? "#DD992C";
+  const dark = colors[BACKGROUNDS.slot] ?? "#362112";
+  const light = colors[BACKGROUNDS.cell] ?? "#F7DCA1";
   const cells = allReferences(library).map((ref) => {
     const sprite = resolveReference(library, ref)!;
     return `<figure><div class="row"><span style="background:${dark}">${svg(sprite, colors, 32)}</span><span style="background:${light}">${svg(sprite, colors, 32)}</span></div><div class="row"><span style="background:${dark}">${svg(sprite, colors, 128)}</span><span style="background:${light}">${svg(sprite, colors, 128)}</span></div><figcaption>${escape(ref)}<br><small>slot ${showing(sprite, colors, colors[BACKGROUNDS.slot] ?? dark).toFixed(2)} cell ${showing(sprite, colors, colors[BACKGROUNDS.cell] ?? light).toFixed(2)}</small></figcaption></figure>`;

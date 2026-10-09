@@ -24,6 +24,21 @@ const capture = () => {
   return { out, err, deps: { out: (l: string) => out.push(l), err: (l: string) => err.push(l) } };
 };
 
+describe("scripts/art-sheet.ts", () => {
+  it("writes the sheet outside the repository and refuses a destination inside it, including one named like `..sheets`", () => {
+    const outside = join(mkdtempSync(join(tmpdir(), "skill-craft-sheet-")), "sheet.html");
+    const ok = run("scripts/art-sheet.ts", [outside]);
+    expect(ok.status).toBe(0);
+    expect(readFileSync(outside, "utf8")).toMatch(/^<!doctype html>/i);
+    for (const inside of ["sheet.html", "..sheets/sheet.html", "."]) {
+      const bad = run("scripts/art-sheet.ts", [inside]);
+      expect(bad.status, inside).toBe(1);
+      expect(bad.stderr).toMatch(/inside the repository/);
+    }
+    expect(existsSync("sheet.html")).toBe(false);
+  });
+});
+
 describe("vizExportCli", () => {
   it("prints usage for missing or extra arguments and an unknown option", async () => {
     for (const argv of [[], ["a"], ["a", "b", "c"], ["a", "b", "--bogus"]]) {

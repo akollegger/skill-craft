@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { catalogSchema, manifestSchema, parseCatalog, worldArtSchema } from "../../src/viz/contract.js";
 
 const eight = ["........", "..aabb..", ".aabbbb.", ".abbbbb.", ".abbbbb.", ".aabbbb.", "..aabb..", "........"];
@@ -49,6 +50,16 @@ describe("the world art shape", () => {
   it("ignores fields it does not know", () => {
     const r = worldArtSchema.safeParse({ ...art, later: 1, items: { stick: { rows, later: 2 } } });
     expect(r.success).toBe(true);
+  });
+});
+
+describe("the art contract's example", () => {
+  it("is valid: the example's rows and glyph pass the schema the page reads", () => {
+    const doc = readFileSync(new URL("../../specs/006-sprite-library/contracts/art.md", import.meta.url), "utf8");
+    const json = /```json\n(\{\n  "format": 1,[\s\S]*?\n\})\n```/.exec(doc)?.[1];
+    expect(json).toBeDefined();
+    const example = JSON.parse(json!.replace('"runs": [ ... ],', '"runs": [],')) as { art: Record<string, unknown> };
+    for (const art of Object.values(example.art)) expect(worldArtSchema.safeParse(art).success).toBe(true);
   });
 });
 
