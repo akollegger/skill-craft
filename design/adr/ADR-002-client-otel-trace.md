@@ -208,3 +208,10 @@ mirror could be added later without changing the viewer.
   text may be stored under `loops/<label>/` and nowhere else. A role's free-form text and reasoning are discarded, only
   the schema's fields are kept, and a role's failure reason is `code: fixed message`. The privacy test is extended to
   enforce both sides of the boundary.
+
+- **2026-10-09, the trace source is the AI SDK (proposed in [ADR-005](ADR-005-ai-sdk-runtime.md)).** Section 2.2's
+  source, the Claude Agent SDK's `query()` stream and its tool hooks, is replaced by a driver on the AI SDK that
+  reports the same events to the recorder. The trace keeps the shape in 2.4 except that `ttftMs` is `null` (calls are
+  not streamed), and `costUsd` is computed from token counts and a price table, since the player reports no cost. The
+  allowlist in 2.3 and the join in 2.5 are unchanged. The consequence about a pre-1.0 package that bundles the Claude
+  Code binary no longer applies. `--record` (loading user settings so that the NAMS hooks record) is removed.

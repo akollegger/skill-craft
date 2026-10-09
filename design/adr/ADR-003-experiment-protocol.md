@@ -287,3 +287,11 @@ Early on, a human also reads the first skills the critic accepts, as a post-hoc 
   to `AgentDriver`, implemented in the one file that imports the SDK. The rubric lives in a versioned file together
   with the roles' instructions, and its version and hash are recorded with every verdict. Where model-authored text may
   be stored is settled in the matching amendment to ADR-002. Spec 005 implements this.
+
+- **2026-10-09, the player runs on the AI SDK (proposed in [ADR-005](ADR-005-ai-sdk-runtime.md)).** Section 2.1 said the
+  player is Claude Code through the Agent SDK. Players and review roles now run through the AI SDK, which also reaches
+  Fireworks models, and a skill is offered as a `Skill` tool, not through Claude Code's native skill discovery. The
+  models, roles, calibration rule, arms, isolation and review are unchanged, with this addition: calibration is rerun on
+  the new runtime, since earlier Claude Code results do not carry over, and thinking, effort and temperature are pinned
+  per model in the experiment summary. The memory arm in 2.2 stays deferred and is specified as harness-side recall, which
+  does not depend on the runtime.
