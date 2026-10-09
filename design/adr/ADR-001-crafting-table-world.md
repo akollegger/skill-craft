@@ -262,5 +262,5 @@ Section 2 was updated to match.
   owner. A version is named only for a recipe that differs between versions. This replaces "with the
   game version named" in the entry above. Constitution Principle III is updated to match (1.1.1).
 - **2026-10-07, an optional art file.** [ADR-005](ADR-005-per-world-item-art.md) lets a world have a sibling `<name>.art.json` of drawn item
-  sprites, beside the goals and notes files. Only the visualizer's data side reads it; the engine, the server and the agent never do. Not
-  built yet.
+  sprites, beside the goals and notes files. Only the visualizer's backend reads it; the engine, the server and the agent never do. An item's value is a name in the visualizer's
+  shared sprite library or inline rows (built; spec 006).

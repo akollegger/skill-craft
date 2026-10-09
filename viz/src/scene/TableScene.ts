@@ -2,6 +2,7 @@ import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { cellSizeFor, defaultItemArt, spriteToRGBA, type ItemArt } from "../art/index.ts";
 import { hex } from "../palette.ts";
 import type { FrameData } from "../../../src/viz/contract.ts";
+import { SPRITE_SIZE } from "../../../src/viz/glyphs.ts";
 import type { SceneFactory, SceneHandle } from "./handle.ts";
 import { confettiBurst, sceneAt, type Effect } from "./model.ts";
 
@@ -16,6 +17,9 @@ const COLOR = {
   frame: hex("woodFrame"),
   face: hex("woodFace"),
   light: hex("woodHighlight"),
+  // The grid cells are the lightest wood, so the wood-colored items stand out from them; their bevel is cream above and left, a step of wood below.
+  cell: hex("woodLight"),
+  cellLight: hex("cream"),
   shade: hex("woodShade"),
   deep: hex("woodDeep"),
   arrow: hex("retroDim"),
@@ -77,16 +81,18 @@ function pixelCount(into: Container, count: number, right: number, top: number):
 }
 
 /** A wooden square with a one-pixel bevel: light on the top and left, shade on the bottom and right. Returns the Graphics drawn into. */
-function bevelled(into: Container, x: number, y: number, w: number, h: number): Graphics {
-  const g = new Graphics().rect(x, y, w, h).fill(COLOR.face);
-  g.rect(x, y, w, 1).fill(COLOR.light).rect(x, y, 1, h).fill(COLOR.light);
-  g.rect(x, y + h - 1, w, 1).fill(COLOR.shade).rect(x + w - 1, y, 1, h).fill(COLOR.shade);
+function bevelled(into: Container, x: number, y: number, w: number, h: number, c = { face: COLOR.face, light: COLOR.light, shade: COLOR.shade }): Graphics {
+  const g = new Graphics().rect(x, y, w, h).fill(c.face);
+  g.rect(x, y, w, 1).fill(c.light).rect(x, y, 1, h).fill(c.light);
+  g.rect(x, y + h - 1, w, 1).fill(c.shade).rect(x + w - 1, y, 1, h).fill(c.shade);
   into.addChild(g);
   return g;
 }
 
 export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
-  return async (host, { reducedMotion }): Promise<SceneHandle> => {
+  return async (host, { reducedMotion, art: runArt }): Promise<SceneHandle> => {
+    // The run's own art (its bundle's) wins over the factory's, which is what a scene draws when none is given.
+    const draw = runArt ?? art;
     // The canvas is as tall as its content needs, whatever the grid: a start value until the first frame says what is on the table.
     let H = 118;
     const app = new Application();
@@ -112,7 +118,7 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
     const textureFor = (item: string): Texture => {
       let t = textures.get(item);
       if (!t) {
-        const s = art(item);
+        const s = draw(item);
         const c = document.createElement("canvas");
         c.width = s.width;
         c.height = s.height;
@@ -145,7 +151,7 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
       }
     });
 
-    // Layout follows the grid: the cell is a multiple of the 8-pixel sprite, smaller as the grid grows. The table, the arrow and the output
+    // Layout follows the grid: the cell is 24 pixels up to a 3 by 3 grid and 16 above it, the sprite's own size. The table, the arrow and the output
     // frame make one row, and the hotbar sits under it; the two are centred as a block on the canvas, both ways, so the margins match.
     // Every measure is a whole number and every width even, so nothing lands between two pixels.
     const FRAME = 3; // the wooden rim round the grid
@@ -160,10 +166,9 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
       const w = cols * cell;
       const h = rows * cell;
       const box = { w: w + 2 * FRAME, h: h + 2 * FRAME };
-      // An item is drawn a size smaller than its cell and centred in it, so the cell's bevel shows round it and neighbours do not merge:
-      // twice the sprite's size in a 24-pixel cell, and its own size in the smaller ones.
-      const scale = cell >= 24 ? 2 : 1;
-      const pad = (cell - 8 * scale) / 2;
+      // An item is drawn at its own size and centred in its cell, so a 24-pixel cell's bevel shows round it; in a 16-pixel cell it fills it.
+      const scale = 1;
+      const pad = (cell - SPRITE_SIZE * scale) / 2;
       const rowW = box.w + GAP + OUT;
       const rowH = Math.max(box.h, OUT);
       const hotbarW = HOTBAR_SLOTS * SLOT + (HOTBAR_SLOTS - 1) * SLOT_GAP;
@@ -204,7 +209,7 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
       board.addChild(new Graphics().rect(L.boxX, L.boxY, L.box.w, L.box.h).fill(COLOR.frame).stroke({ width: 1, color: COLOR.deep }));
       for (let r = 0; r < s.rows; r++) {
         for (let c = 0; c < s.cols; c++) {
-          bevelled(board, L.x0 + c * L.cell + 1, L.y0 + r * L.cell + 1, L.cell - 2, L.cell - 2);
+          bevelled(board, L.x0 + c * L.cell + 1, L.y0 + r * L.cell + 1, L.cell - 2, L.cell - 2, { face: COLOR.cell, light: COLOR.cellLight, shade: COLOR.light });
         }
       }
       s.cells.forEach((row, r) =>
@@ -239,7 +244,7 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
       hud.addChild(socket);
       if (s.output.state === "ready") {
         const g = new Sprite(textureFor(s.output.item));
-        g.scale.set(2);
+        g.scale.set(1);
         g.position.set(ox + 6, oy + 6);
         g.alpha = 0.85;
         hud.addChild(g);
@@ -254,7 +259,7 @@ export function createTableScene(art: ItemArt = defaultItemArt): SceneFactory {
         hud.addChild(new Graphics().rect(hx, hy, SLOT, SLOT).fill(h ? COLOR.frame : COLOR.socket).stroke({ width: 1, color: COLOR.deep }));
         if (!h) continue;
         const sp = new Sprite(textureFor(h.item));
-        sp.scale.set(2);
+        sp.scale.set(1);
         sp.position.set(hx + 1, hy + 1);
         hud.addChild(sp);
         pixelCount(hud, h.count, hx + SLOT - 2, hy + SLOT - 7); // the count at the slot's bottom right

@@ -88,6 +88,7 @@ describe("exportFolder", () => {
   it("refuses a destination inside the folder it reads, and a source that is not a folder", async () => {
     const { root } = await source();
     expect(() => exportFolder(root, join(root, "site"))).toThrow(/inside/);
+    expect(() => exportFolder(root, join(root, "..site"))).toThrow(/inside/); // a name that only starts with two dots is still inside
     expect(() => exportFolder(join(tmpdir(), "no-such-folder-xyz"), join(tmpdir(), "x-out"))).toThrow(/does not exist/);
   });
 

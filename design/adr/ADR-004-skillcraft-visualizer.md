@@ -341,7 +341,8 @@ run could be opened to the point it reached; and how a view could be saved or sh
   - *Item art.* The hashed creature is replaced by a geometric glyph (eight shape families, three variants, eight palettes, and two
     name-chosen accent pixels). This supersedes "Sprites: generated" in 2.6 in its detail; the sprite is still a pure function of the name and
     nothing is fetched. Per-world art, with drawn icons for the faithful world and glyphs allocated so a world's items differ, is decided in
-    [ADR-005](ADR-005-per-world-item-art.md) and not built yet.
+    [ADR-005](ADR-005-per-world-item-art.md) and built in spec 006: the backend allocates glyphs and resolves a world's art file against a
+    shared sprite library, and the catalog and each bundle carry the finished art.
   - *Tiles.* A tile's score and time are larger, and the thumbnail is as tall as the two together. The tape is gone from tiles: a word in
     the score's color says how the run ended (master craft for a goal reached within the best known count, eventual craft past it,
     abandoned craft for a run that gave up, expired craft for one that ran out of turns). A list row keeps its tape and a smaller score, with
@@ -367,3 +368,9 @@ run could be opened to the point it reached; and how a view could be saved or sh
     outcome, the calls, the best known count) and its preview come from the frames, and keeps the result until that run's files, or the world
     file it recorded, change. This replaces "derives frames on demand" in 2.3 and spec FR-020; what stays on demand is serving a bundle's
     files. A bundle folder is checked against the contract when it is scanned, and one that does not match is listed as unreadable.
+- **2026-10-07, sprites are 16 by 16 and the grid cell is lighter.** [ADR-005](ADR-005-per-world-item-art.md) 2.7 makes item sprites 16 by 16
+  pixels with no outline, so the table draws them at their own size (1x) where an 8 by 8 sprite was drawn at 2x, in a 24-pixel cell up to a
+  3 by 3 grid and a 16-pixel cell above it (the 8-pixel cell is gone). The grid cells take a new, lighter step of the wood ramp (`woodLight`,
+  with a cream bevel above and left), so wood-colored items stand out from them; the goal thumbnail's slot is 20 sprite pixels. This supersedes
+  the "twice the sprite's size in a 24-pixel cell" in the 2026-10-07 entry above.
+

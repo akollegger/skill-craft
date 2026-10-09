@@ -23,6 +23,7 @@
   const why = $derived((entry.reason ?? "").replace(/^[A-Za-z]+: /, ""));
   const outcome = $derived(a["outcome"] === undefined ? "" : String(a["outcome"]));
   const goalItem = $derived(a["goalItem"] === undefined ? undefined : String(a["goalItem"]));
+  const worldName = $derived(a["world"] === undefined ? undefined : String(a["world"]));
   const calls = $derived(typeof a["actionCalls"] === "number" ? a["actionCalls"] : undefined);
   const best = $derived(typeof a["bestCalls"] === "number" ? a["bestCalls"] : undefined);
   const ms = $derived(typeof a["durationMs"] === "number" ? a["durationMs"] : undefined);
@@ -50,7 +51,7 @@
     onclick={ready ? activate : undefined}
   >
     <span class="sr-only">{name}. </span>
-    <span class="flex items-center justify-center"><Thumbnail goal={goalItem} reached={outcome === "reached"} compact /></span>
+    <span class="flex items-center justify-center"><Thumbnail goal={goalItem} world={worldName} reached={outcome === "reached"} compact /></span>
     <span class="truncate text-retro-muted">{a["world"] ?? ""}</span>
     <span class="truncate">{#if goal !== ""}<span class="sr-only">Goal:{" "}</span>{goal}{/if}</span>
     <span><Score {calls} tone={scoreTone(outcome, calls, best)} />{#if outcome !== ""}<span class="sr-only">, {outcome}</span>{/if}</span>

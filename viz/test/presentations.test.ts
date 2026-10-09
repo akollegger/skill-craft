@@ -125,13 +125,13 @@ describe("thumbnails", () => {
     expect(fills).toBe(drawn);
   });
 
-  it("are one size for every run: a 48-pixel slot in a tile, and 36 pixels in a row", () => {
+  it("are one size for every run: a 60-pixel slot in a tile, and 40 pixels in a row", () => {
     const { container } = render(Thumbnail, { goal: "stick", reached: true });
     const c = container.querySelector("canvas")!;
-    expect([c.width, c.height]).toEqual([48, 48]);
+    expect([c.width, c.height]).toEqual([60, 60]);
     cleanup();
     const compact = render(Thumbnail, { goal: "stick", reached: true, compact: true }).container.querySelector("canvas")!;
-    expect([compact.width, compact.height]).toEqual([36, 36]);
+    expect([compact.width, compact.height]).toEqual([40, 40]);
   });
 
   it("show the goal for every run, reached or not, so runs for one goal look alike", () => {
@@ -145,7 +145,7 @@ describe("thumbnails", () => {
   it("are an empty slot, with a label that says so, when a run does not name its goal", () => {
     const { container } = render(Thumbnail, {});
     expect(screen.getByRole("img", { name: /goal is not named/i })).toBeTruthy();
-    expect(container.querySelector("canvas")!.width).toBe(48);
+    expect(container.querySelector("canvas")!.width).toBe(60);
   });
 
   it("do not depend on how the run ended: the same goal draws the same slot size and the same pixels' places", () => {

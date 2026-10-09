@@ -16,6 +16,7 @@
   const why = $derived((entry.reason ?? "").replace(/^[A-Za-z]+: /, ""));
   const outcome = $derived(a["outcome"] === undefined ? "" : String(a["outcome"]));
   const goalItem = $derived(a["goalItem"] === undefined ? undefined : String(a["goalItem"]));
+  const worldName = $derived(a["world"] === undefined ? undefined : String(a["world"]));
   // A plain click opens the run. Shift-click selects it for comparison; Shift+Enter and Shift+Space do too, since a keyboard
   // click carries the shift key, so the keyboard has the same two actions.
   function activate(e: MouseEvent): void {
@@ -40,7 +41,7 @@
   >
     <span class="sr-only">{name}{#if outcome !== ""}, {outcome}{/if}</span>
     <span class="flex items-stretch justify-between gap-2">
-      <Thumbnail goal={goalItem} reached={outcome === "reached"} fill />
+      <Thumbnail goal={goalItem} world={worldName} reached={outcome === "reached"} fill />
       <!-- The score at the top of the thumbnail's height and the time at its bottom. -->
       <span class="flex flex-col items-end justify-between self-stretch">
         <Score large trim calls={calls} tone={scoreTone(outcome, calls, best)} />

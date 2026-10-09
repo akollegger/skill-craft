@@ -7,6 +7,12 @@ Each world is a JSON file with sibling files that share its name:
 | `<name>.json` | The world: table size, stock, items and recipes | the simulation and the MCP server |
 | `<name>.goals.json` | The goals the solver and tests use | tests, the solver and the generator; never the engine |
 | `<name>.notes.json` | How far a model's prior knowledge predicts the recipes (the world's *prior fit*), a note per recipe for a faithful world, and what it leaves out | tests, the generator and the harness's summary writer; never the engine, never the agent |
+| `<name>.art.json` | Which sprite each item is drawn with: a name from the visualizer's sprite library, or sixteen rows of sixteen characters. Optional | the visualizer's backend only; never the engine, never the agent |
+
+An item's name and its picture are symbols, and a world's designer decides how literally to read them: a faithful world names its items
+as the source does and draws them as that thing, while an invented world may use placeholder names (`A`, `B`, `π`) and map them to the library's
+letter and shape sprites, or leave them to the visualizer's generated shapes. The art file is where that choice is made; see
+[ADR-005](../design/adr/ADR-005-per-world-item-art.md).
 
 `worlds/forge.json` keeps neutral ids and is only a base for generation. `worlds/generated/` holds
 worlds renamed from a base with `scripts/make-world.ts`.

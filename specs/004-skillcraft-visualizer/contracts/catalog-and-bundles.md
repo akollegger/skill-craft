@@ -50,6 +50,9 @@ bundle. Copying the built page's files beside them gives a complete static site.
 respect to the source folder, builds in a temporary sibling and renames on success, and refuses a destination
 that already exists.
 
+Item art (an optional `art` on the catalog and on the manifest) is specified in
+[specs/006-sprite-library/contracts/art.md](../../006-sprite-library/contracts/art.md).
+
 ## Guarantees checked by tests
 
 - The catalog and every bundle from the local supplier equal those in an export of the same folder, byte

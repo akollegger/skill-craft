@@ -29,6 +29,36 @@ describe("the page", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Skillcraft");
   });
 
+  it("draws a goal thumbnail with the art the catalog gives its world", async () => {
+    const fills: string[] = [];
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((() => {
+      let style = "";
+      return { set fillStyle(v: string) { style = v; }, get fillStyle() { return style; }, fillRect() { fills.push(style.toLowerCase()); }, clearRect() {} };
+    }) as never);
+    const solid = { legend: { a: "woodFace" }, items: { d: { rows: Array(16).fill("a".repeat(16)) } } };
+    const withGoal = (world: string) => ({ ...entry("1", world), attributes: { ...entry("1", world).attributes, goalItem: "d" } });
+    serve({ format: 1, runs: [withGoal("forge")], art: { forge: solid } });
+    render(App);
+    await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(1));
+    await waitFor(() => expect(fills.filter((c) => c === "#dd992c").length).toBe(256));
+    vi.restoreAllMocks();
+  });
+
+  it("draws a goal thumbnail from its name when the catalog has no art, as a catalog made before item art does", async () => {
+    const fills: string[] = [];
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((() => {
+      let style = "";
+      return { set fillStyle(v: string) { style = v; }, get fillStyle() { return style; }, fillRect() { fills.push(style.toLowerCase()); }, clearRect() {} };
+    }) as never);
+    const withGoal = { ...entry("1", "forge"), attributes: { ...entry("1", "forge").attributes, goalItem: "d" } };
+    serve({ format: 1, runs: [withGoal] });
+    render(App);
+    await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(1));
+    await waitFor(() => expect(fills.length).toBeGreaterThan(0));
+    expect(fills.filter((c) => c === "#dd992c").length).not.toBe(256); // not the solid drawn sprite another test gives its world
+    vi.restoreAllMocks();
+  });
+
   it("says when the folder has no runs", async () => {
     serve({ format: 1, runs: [] });
     render(App);

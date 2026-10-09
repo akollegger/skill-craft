@@ -42,14 +42,14 @@ export const tableSize = (table: readonly (readonly (string | null)[])[], cell: 
   height: table.length * cell,
 });
 
-/** Pixels per cell for a grid with `size` cells on its longest side: a multiple of the 8-pixel sprite, smaller as the grid grows. */
-export const cellSizeFor = (size: number): 24 | 16 | 8 => (size <= 3 ? 24 : size <= 6 ? 16 : 8);
+/** Pixels per cell for a grid with `size` cells on its longest side: 24 up to three, then 16, the sprite's own size. A sprite is never drawn smaller. */
+export const cellSizeFor = (size: number): 24 | 16 => (size <= 3 ? 24 : 16);
 
 /**
- * The goal slot is twelve units square: the 8-unit sprite, a unit of padding all round, and a one-unit stroke. A unit is `scale`
+ * The goal slot is twenty units square: the 16-unit sprite, a unit of padding all round, and a one-unit stroke. A unit is `scale`
  * pixels and is the same size as one pixel of the art, so the stroke is exactly one art pixel wide, at any whole scale.
  */
-export const SLOT_UNITS = 12;
+export const SLOT_UNITS = 20;
 export const slotSize = (scale: number): number => SLOT_UNITS * scale;
 
 const channels = (value: string): [number, number, number] => [1, 3, 5].map((i) => Number.parseInt(value.slice(i, i + 2), 16)) as [number, number, number];

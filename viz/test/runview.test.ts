@@ -4,6 +4,7 @@ import RunView from "../src/shell/RunView.svelte";
 import { formatClock } from "../src/shell/clock.ts";
 import type { SceneFactory, SceneHandle } from "../src/scene/handle.ts";
 import { emptyBundle, sampleBundle, sampleEntry } from "./helpers/bundle.ts";
+import { defaultItemArt } from "../src/art/index.ts";
 
 function stubScene() {
   const shows: { index: number; effects: unknown[] }[] = [];
@@ -28,6 +29,34 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+describe("the open run's item art", () => {
+  const drawn = { legend: { ".": null, a: "woodFace" }, items: { d: { rows: Array(16).fill("a".repeat(16)) } } };
+
+  it("gives its scene the art its bundle carries, so the table draws what the thumbnail draws", () => {
+    const seen: { art?: (n: string) => { pixels: (number | null)[]; palette: number } }[] = [];
+    const factory: SceneFactory = (_host, options) => {
+      seen.push(options as never);
+      return { show() {}, destroy() {} } as SceneHandle;
+    };
+    const bundle = sampleBundle();
+    bundle.manifest.art = drawn;
+    render(RunView, { entry: sampleEntry, bundle, createScene: factory, onClose: vi.fn() });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.art!("d").palette).toBe(-1); // drawn, not a glyph
+    expect(seen[0]!.art!("d").pixels.every((p) => p !== null)).toBe(true);
+  });
+
+  it("falls back to the name-only art for a bundle with none", () => {
+    const seen: { art?: (n: string) => unknown }[] = [];
+    const factory: SceneFactory = (_host, options) => {
+      seen.push(options as never);
+      return { show() {}, destroy() {} } as SceneHandle;
+    };
+    render(RunView, { entry: sampleEntry, bundle: sampleBundle(), createScene: factory, onClose: vi.fn() });
+    expect(seen[0]!.art!("d")).toEqual(defaultItemArt("d"));
+  });
 });
 
 describe("the open run", () => {

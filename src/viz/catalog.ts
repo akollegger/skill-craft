@@ -6,7 +6,10 @@ import { ExportRefused, ReplayFailed } from "../harness/errors.js";
 import { bundleFiles, buildBundle, BUNDLE_FILES, recordedWorldPath, type BundleFileName } from "../harness/export.js";
 import { WorldError } from "../sim/errors.js";
 import { attributesOf, partialAttributes } from "./attributes.js";
-import { bundleProblem, CATALOG_FORMAT, entrySchema, type Catalog, type CatalogEntry, type ReasonCode } from "./contract.js";
+import { artFileStamp } from "./art/art-file.js";
+import { libraryStamp } from "./art/library.js";
+import { mergeArt } from "./art/world-art.js";
+import { bundleProblem, CATALOG_FORMAT, entrySchema, type Catalog, type CatalogEntry, type ReasonCode, type WorldArt } from "./contract.js";
 import { previewOf } from "./preview.js";
 import { scanFolder, type Found } from "./scan.js";
 
@@ -43,18 +46,20 @@ interface Cached {
   files?: Record<BundleFileName, string>;
   /** A bundle folder, whose files are read when asked for. */
   dir?: string;
+  /** How the items this run shows are drawn, with the world's name, for the catalog's per-world art. */
+  art?: { world: string; art: WorldArt };
 }
 
 /**
- * The state of the world file a run recorded, for the run's cache key: a world that was missing when the run was scanned and is restored
- * later, or one that is edited, must not leave a stale entry. 0 for no recorded world or a missing file.
+ * The state of the world file a run recorded and of the art file beside it, for the run's cache key: a world that was missing when the run was
+ * scanned and is restored later, or a world or its art edited, must not leave a stale entry. 0 for no recorded world or a missing file.
  */
-const worldStamp = (runDir: string): number => {
+const worldStamp = (runDir: string): string => {
   try {
     const world = recordedWorldPath(runDir);
-    return world === undefined ? 0 : mtime(world);
+    return world === undefined ? "0:0" : `${mtime(world)}:${artFileStamp(world)}`;
   } catch {
-    return 0; // an unreadable mcp.json is the run's own failure to report, and its mtime is already in the key
+    return "0:0"; // an unreadable mcp.json is the run's own failure to report, and its mtime is already in the key
   }
 };
 
@@ -88,7 +93,14 @@ export class RunCatalog {
       for (let i = 0; i < 3; i++) if (ka[i]! !== kb[i]!) return ka[i]! < kb[i]! ? -1 : 1;
       return 0;
     });
-    const catalog: Catalog = { format: CATALOG_FORMAT, runs };
+    // A world's art is the union of what its ready runs show; where runs disagree about an item the run first in catalog order supplies it.
+    const byWorld = new Map<string, WorldArt[]>();
+    for (const e of runs) {
+      const a = seen.get(e.id)?.art;
+      if (e.status === "ready" && a) byWorld.set(a.world, [...(byWorld.get(a.world) ?? []), a.art]);
+    }
+    const art = Object.fromEntries([...byWorld].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([world, list]) => [world, mergeArt(list)!]));
+    const catalog: Catalog = { format: CATALOG_FORMAT, runs, ...(byWorld.size > 0 ? { art } : {}) };
     return {
       catalog,
       file: (id, name) => {
@@ -106,7 +118,7 @@ export class RunCatalog {
 
   private entryFor(id: string, found: Found): Cached {
     const key = found.kind === "run"
-      ? `${mtime(join(found.dir, "score.json"))}:${size(join(found.dir, "run.jsonl"))}:${mtime(join(found.dir, "mcp.json"))}:${worldStamp(found.dir)}`
+      ? `${mtime(join(found.dir, "score.json"))}:${size(join(found.dir, "run.jsonl"))}:${mtime(join(found.dir, "mcp.json"))}:${worldStamp(found.dir)}:${libraryStamp()}`
       : `${mtime(join(found.dir, "bundle.json"))}:${size(join(found.dir, "frames.jsonl"))}:${mtime(join(found.dir, "score.json"))}`;
     const hit = this.cache.get(id);
     if (hit && hit.key === key) return hit;
@@ -131,6 +143,7 @@ export class RunCatalog {
     }
     return {
       key,
+      ...artOf(bundle),
       files: bundleFiles(bundle),
       entry: entrySchema.parse({ id, kind: "run", status: "ready", attributes: attributesOf(bundle), preview: previewOf(bundle.frames, bundle.manifest.goal.item), bundle: `bundles/${id}/` }),
     };
@@ -142,6 +155,7 @@ export class RunCatalog {
       if (bundle.manifest.format !== 1 || bundleProblem(bundle) !== undefined) throw new Error("not a bundle this viewer reads");
       return {
         key,
+        ...artOf(bundle),
         dir: found.dir,
         entry: entrySchema.parse({ id, kind: "bundle", status: "ready", attributes: attributesOf(bundle), preview: previewOf(bundle.frames, bundle.manifest.goal.item), bundle: `bundles/${id}/` }),
       };
@@ -153,3 +167,7 @@ export class RunCatalog {
     }
   }
 }
+
+/** The art a run or a bundle carries, with its world's name, when it carries any. */
+const artOf = (bundle: Bundle): { art?: { world: string; art: WorldArt } } =>
+  bundle.manifest.art === undefined ? {} : { art: { world: bundle.manifest.world.name, art: bundle.manifest.art } };

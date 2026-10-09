@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FAMILIES, HALF, MARKS, PALETTE_COUNT, SPRITE_SIZE } from "./glyphs.js";
 
 /**
  * The catalog the visualizer's page reads, and its parts. This file is shared with the page, so it imports
@@ -54,7 +55,46 @@ export const entrySchema = z
   });
 export type CatalogEntry = z.infer<typeof entrySchema>;
 
-export const catalogSchema = z.object({ format: z.literal(CATALOG_FORMAT), runs: z.array(entrySchema) });
+// ---------------------------------------------------------------------------------------------------------
+// Item art. A world's art says how each item the runs show is drawn: finished rows over a legend, or a generated glyph. It travels in a bundle's
+// manifest (the items of that run) and in the catalog (the items of any ready run of a world), so the page draws the same sprite everywhere
+// without the world, the library or the art file. Library names never appear in it. See specs/006-sprite-library/contracts/art.md.
+
+const drawnEntry = z.object({ rows: z.array(z.string().length(SPRITE_SIZE)).length(SPRITE_SIZE) });
+const glyphEntry = z
+  .object({
+    family: z.number().int().min(0).max(FAMILIES.length - 1),
+    variant: z.number().int().min(0),
+    palette: z.number().int().min(0).max(PALETTE_COUNT - 1),
+    marks: z.array(z.number().int().min(0).max(HALF * SPRITE_SIZE - 1)).length(MARKS),
+  })
+  .refine((g) => g.variant < (FAMILIES[g.family]?.variants.length ?? 0), { message: "variant out of range for its family" })
+  .refine((g) => new Set(g.marks).size === g.marks.length, { message: "marks must be distinct" });
+
+export const worldArtSchema = z
+  .object({
+    /** One character to a palette name, or null for a transparent pixel. A name the page does not know is drawn transparent. */
+    legend: z.record(z.string().length(1), z.string().nullable()),
+    items: z.record(z.string(), z.union([drawnEntry, glyphEntry])),
+  })
+  .superRefine((art, ctx) => {
+    for (const [name, entry] of Object.entries(art.items)) {
+      if (!("rows" in entry)) continue;
+      for (const row of entry.rows) {
+        for (const ch of row) {
+          if (!(ch in art.legend)) ctx.addIssue({ code: "custom", path: ["items", name], message: `row character ${JSON.stringify(ch)} is not in the legend` });
+        }
+      }
+    }
+  });
+export type WorldArt = z.infer<typeof worldArtSchema>;
+
+export const catalogSchema = z.object({
+  format: z.literal(CATALOG_FORMAT),
+  runs: z.array(entrySchema),
+  /** How each world's items are drawn, by the world's name; absent when no ready run has art. */
+  art: z.record(z.string(), worldArtSchema).optional(),
+});
 export type Catalog = z.infer<typeof catalogSchema>;
 
 export type ParsedCatalog =
@@ -117,6 +157,8 @@ export const manifestSchema = z.object({
   priorFit: z.string().optional(),
   promptNote: z.string().optional(),
   skill: z.object({ name: z.string(), loaded: z.boolean(), loadedAfter: z.number().nullable() }).optional(),
+  /** How the items of this run's frames and goal are drawn. Absent in bundles made before item art. */
+  art: worldArtSchema.optional(),
 });
 export type ManifestData = z.infer<typeof manifestSchema>;
 
