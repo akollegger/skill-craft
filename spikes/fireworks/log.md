@@ -73,3 +73,29 @@ What firectl does not give:
 - `billing export-usage-costs` and `billing list-invoices` are blocked when run by an agent. A person can run them
   in a terminal; the first gives costs by model or API key. `reconcile.ts compare ... --cost <model>=<usd>` turns a
   cost read that way into a blended $/million-token rate, to be copied into `prices.json` by hand.
+
+## Baseline arm comparison (2026-10-09)
+
+Five runs per model, no skill, goal glirol on `worlds/generated/forge-7.json`, 40 turns, the harness's base prompt,
+all run at once. Labels `base-<model>` under `runs/` (gitignored). A feasibility look, not a result: five runs a
+model, one goal, one prompt, no pinned temperature.
+
+| Model | Reached | Out of budget / gave up | Median calls to goal (best 3) | Time per run | Cost |
+|---|---|---|---|---|---|
+| fireworks/nemotron-lightning-3p5-30b-a3b | 1/5 | 4 / 0 | 15 | 12-30 s | n/a (no price) |
+| fireworks/gpt-oss-120b | 2/5 | 3 / 0 | 21.5 | 9-34 s | n/a |
+| fireworks/glm-5p3 | 5/5 | 0 / 0 | 26 | 29-129 s | n/a |
+| claude-sonnet-5-5 | 0/5 | 3 / 2 | - | 70-87 s | $3.28 total |
+
+- The Claude baseline of 0/5 agrees with the earlier finding that this base prompt leaves Claude at 0/5 (see the
+  open base-prompt decision). The open models do not behave like Claude here: glm-5p3 reached the goal every time,
+  after 18-29 calls. Whether that is better exploration or less caution about the irreversible `craft` is not
+  known; Claude crafted 2-3 times per run and did not reach the goal.
+- **Claude cost is dominated by uncached input**: about 300k input tokens per run and no cache reads, against 90-90%
+  cache reads on Fireworks. The AI SDK does not turn on Anthropic prompt caching by itself (it needs a cache
+  breakpoint in the request). Enabling it in `ai-driver.ts` should cut Claude cost a lot and is worth doing before more
+  Claude runs. It does not change what the model does.
+- **Billing cross-check passed for all three Fireworks models**, exactly (prompt, cached and completion tokens), over
+  about 1.95M prompt tokens.
+- Nemotron and gpt-oss ran out of budget on most runs by repeating cheap calls (36-37 calls, almost no crafts);
+  worth a look at one trace before reading anything into "small model fails".
