@@ -79,12 +79,12 @@ SIM_WORLD=worlds/forge.json SIM_RUN_LOG=runs/run-001.jsonl pnpm exec tsx src/mcp
 
 ### Running an agent against it
 
-`scripts/run-agent.ts` runs Claude Code against the `craft` server through the Claude Agent SDK, gives
+`scripts/run-agent.ts` runs an agent against the `craft` server through the AI SDK (a Claude model, or `--model fireworks/<model>`), gives
 each run its own run log, scores and measures it, and summarises. The goal reaches the agent only through
 the prompt, which tells it that nobody can answer questions and gives it a turn budget.
 
 ```bash
-# See the exact SDK options first; this spends nothing and creates nothing
+# See the exact run options first; this spends nothing and creates nothing
 pnpm dev scripts/run-agent.ts --goal glirol --runs 3 --dry-run
 
 # Run it: three attempts at the warm-up goal on a generated world, 40 turns each
@@ -96,7 +96,7 @@ pnpm dev scripts/run-agent.ts --goal glirol --runs 3 --max-turns 40 --label base
 Each run gets a folder under `runs/<label>/` (gitignored) with `prompt.txt`, `mcp.json`, `run.jsonl`
 (the server's log, with no clock), `trace.jsonl` (model requests and tool calls with times and tokens,
 measured by the harness), `score.json`, and a `summary.json` for the label. Built-in tools are removed,
-so the agent cannot read the world file. Sessions stay out of NAMS unless you pass `--record`. Each run
+so the agent cannot read the world file. Runs are not recorded to NAMS. Each run
 has a time limit (`--timeout-minutes`, default 30), and Ctrl-C ends the current run, writes the summary
 and exits 130. One failing run never stops the rest.
 
@@ -149,7 +149,7 @@ provides them.
 | `src/sim/` | Simulation core: schema, matcher, engine, run log, solver, loader, goals, re-skinner (no MCP dependency) |
 | `src/mcp/` | The `craft` MCP server that exposes a world to an agent |
 | `worlds/` | World definitions and goals (JSON); `worlds/generated/` holds re-skinned examples |
-| `src/harness/` | Interim run harness: prompt, SDK options and driver, errors, the command, export and bundle reader |
+| `src/harness/` | Interim run harness: prompt, the AI SDK driver, model specs, errors, the command, export and bundle reader |
 | `src/trace/` | Run measurement: the recorder, trace lines, and joining the trace to the run log |
 | `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `report.ts`, `score.ts`, `export-run.ts` |
 | `test/` | vitest suites, plus `fixtures/valid` (ten worlds) and `fixtures/invalid` (sixteen broken worlds) |

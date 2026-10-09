@@ -214,7 +214,7 @@ async function recordSession(player: FakePlayerOptions = {}, pause?: () => Promi
   const dir = mkdtempSync(join(tmpdir(), "rec-live-"));
   const tracePath = join(dir, "trace.jsonl");
   const recorder = new TraceRecorder({ path: tracePath });
-  const opts: DriverOptions = { prompt: "p", world: "test/fixtures/valid/mirror-pair.json", runLog: join(dir, "run.jsonl"), runDir: dir, maxTurns: 12, record: false, signal: new AbortController().signal };
+  const opts: DriverOptions = { prompt: "p", world: "test/fixtures/valid/mirror-pair.json", runLog: join(dir, "run.jsonl"), runDir: dir, maxTurns: 12, signal: new AbortController().signal };
   await fakePlayer({ mode: "solve", goal: { item: "c", qty: 1 }, ...player, ...(pause ? { pause } : {}) })(opts, recorder);
   return { tracePath, recorder, dir, opts };
 }
@@ -248,7 +248,7 @@ describe("a recorded session", () => {
     const dir = mkdtempSync(join(tmpdir(), "rec-grow-"));
     path = join(dir, "trace.jsonl");
     const recorder = new TraceRecorder({ path });
-    const opts: DriverOptions = { prompt: "p", world: "test/fixtures/valid/mirror-pair.json", runLog: join(dir, "run.jsonl"), runDir: dir, maxTurns: 12, record: false, signal: new AbortController().signal };
+    const opts: DriverOptions = { prompt: "p", world: "test/fixtures/valid/mirror-pair.json", runLog: join(dir, "run.jsonl"), runDir: dir, maxTurns: 12, signal: new AbortController().signal };
     await fakePlayer({ mode: "solve", goal: { item: "c", qty: 1 }, pause: async () => { counts.push(readTrace(path).length); } })(opts, recorder);
     const final = readTrace(path).length;
     expect(counts.some((c) => c > 0 && c < final)).toBe(true); // lines existed while the run was still going

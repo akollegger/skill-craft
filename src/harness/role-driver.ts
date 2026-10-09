@@ -1,6 +1,6 @@
 /**
  * The seam between the critic loop and whatever runs a role (the critic or the reviser). Types only: the loop is
- * tested against a scripted role, and only `sdk-driver.ts` imports the SDK. A role is one session with no tools:
+ * tested against a scripted role, and only `ai-driver.ts` imports the SDK. A role is one session with no tools:
  * everything it may see is in its prompt, and everything it returns is a schema-checked answer.
  */
 

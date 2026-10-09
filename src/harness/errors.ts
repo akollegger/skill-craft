@@ -139,3 +139,10 @@ export class LoopCancelled extends HarnessError {
     super("LoopCancelled", "the loop was cancelled");
   }
 }
+
+/** A `--model` value that names no provider or model the harness can call. */
+export class UnknownModel extends HarnessError {
+  constructor(spec: string) {
+    super("UnknownModel", `model '${spec}' is not supported; use a Claude id, or fireworks/<model>`);
+  }
+}

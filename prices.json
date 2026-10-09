@@ -1,0 +1,7 @@
+{
+  "_note": "US dollars per million tokens, keyed by the model spec a run records. A model with no entry has costUsd null. Claude rates are Anthropic's list prices (cache write at 1.25x and cache read at 0.1x of input where not stated). Fireworks publishes rates on its pricing page, not in its API: add fireworks/<model> entries here as { input, output, cacheRead }.",
+  "claude-opus-5-5": { "input": 4, "output": 20, "cacheRead": 0.2, "cacheWrite": 5 },
+  "claude-sonnet-5-5": { "input": 2, "output": 10, "cacheRead": 0.2, "cacheWrite": 2.5 },
+  "claude-haiku-4-5": { "input": 1, "output": 5, "cacheRead": 0.1, "cacheWrite": 1.25 },
+  "claude-haiku-4-5-20251001": { "input": 1, "output": 5, "cacheRead": 0.1, "cacheWrite": 1.25 }
+}

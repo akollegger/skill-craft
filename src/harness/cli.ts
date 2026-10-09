@@ -17,7 +17,7 @@ export interface CliDeps {
 
 const USAGE =
   "usage: run-agent.ts --goal <item>[:<qty>] [--world <world.json>] [--runs n] [--max-turns n] [--timeout-minutes n]\n" +
-  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--prompt-file <file>] [--record] [--dry-run]";
+  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--prompt-file <file>] [--dry-run]";
 
 class UsageError extends Error {}
 
@@ -76,7 +76,6 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
         skill: { type: "string" },
         "prompt-note": { type: "string" },
         "prompt-file": { type: "string" },
-        record: { type: "boolean", default: false },
         "dry-run": { type: "boolean", default: false },
       },
     });
@@ -105,7 +104,6 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
       ...(values.skill ? { skill: values.skill } : {}),
       ...(note === undefined ? {} : { promptNote: note }),
       ...(template === undefined ? {} : { promptTemplate: template }),
-      record: values.record ?? false,
       driver: deps.driver,
       signal: deps.signal,
     };

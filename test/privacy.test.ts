@@ -59,7 +59,7 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
       return spied(fakePlayer({ mode, goal: GOAL, personal: PERSONAL, agentText: CHATTER, models: ["fake-a"] }), seen)(o, s);
     };
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 3, maxTurns: 12, out, label: "p", record: false, driver });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 3, maxTurns: 12, out, label: "p", driver });
 
     // Positive control: the player really did send every secret, so finding none on disk means something.
     const sent = seen.join("\n");
@@ -72,7 +72,7 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
 
   it("never writes the operator's PATH or environment into a run folder", async () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "solve", goal: GOAL }) });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "solve", goal: GOAL }) });
     const path = process.env["PATH"] as string;
     expect(path.length).toBeGreaterThan(10);
     for (const [name, text] of Object.entries(filesUnder(out))) expect(text, name).not.toContain(path);
@@ -80,7 +80,7 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
 
   it("writes only the files the design names, and no copy of the player's messages", async () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, agentText: CHATTER }) });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, agentText: CHATTER }) });
     expect(Object.keys(filesUnder(out)).sort()).toEqual(
       ["p/001/mcp.json", "p/001/prompt.txt", "p/001/run.jsonl", "p/001/score.json", "p/001/trace.jsonl", "p/summary.json"].sort(),
     );
@@ -88,7 +88,7 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
 
   it("writes only allowlisted keys in trace lines", async () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, agentText: CHATTER }) });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, agentText: CHATTER }) });
     const request = ["seq", "kind", "requestId", "model", "turn", "startMs", "endMs", "ttftMs", "inputTokens", "outputTokens", "cacheReadTokens", "cacheCreationTokens"].sort();
     const tool = ["seq", "kind", "toolUseId", "tool", "args", "startMs", "endMs"].sort();
     const lines = readTrace(join(out, "p", "001", "trace.jsonl"));
@@ -98,7 +98,7 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
 
   it("keeps identifiers out of the error reasons, even when the player's error message carries them", async () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    const r = await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "crash", personal: PERSONAL }) });
+    const r = await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "crash", personal: PERSONAL }) });
     expect(r.reports[0]?.reason).toBe("DriverFailed: the player failed");
     for (const secret of SECRETS) expect(JSON.stringify(r.reports[0])).not.toContain(secret);
   });
@@ -117,11 +117,11 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
 
   it("keeps score.json and summary.json to the keys the design names", async () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 2, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "crash", personal: PERSONAL }) });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 2, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "crash", personal: PERSONAL }) });
     const score = JSON.parse(readFileSync(join(out, "p", "001", "score.json"), "utf8")) as Record<string, unknown>;
     expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "measured", "model", "priorFit", "reason", "score", "text", "turns"].sort());
     const summary = JSON.parse(readFileSync(join(out, "p", "summary.json"), "utf8")) as { runs: Record<string, unknown>[] } & Record<string, unknown>;
-    expect(Object.keys(summary).sort()).toEqual(["aggregate", "cancelled", "goal", "maxTurns", "mixedModels", "models", "priorFit", "record", "runs", "timeoutMs", "world"].sort());
+    expect(Object.keys(summary).sort()).toEqual(["aggregate", "cancelled", "goal", "maxTurns", "mixedModels", "models", "priorFit", "runs", "timeoutMs", "world"].sort());
     for (const run of summary.runs) expect(run).not.toHaveProperty("text"); // the agent's final message stays in score.json only
   });
 });
@@ -150,7 +150,7 @@ describe("model-authored review text stays in the loop folder (spec 005, FR-018)
   it("puts review text under rounds/ and skill/ only, and none in the run folders the loop read", async () => {
     // A run folder the loop read, made by the scripted player.
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "solve", goal: GOAL }) });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "solve", goal: GOAL }) });
     const runDir = join(out, "p", "001");
     const before = filesUnder(runDir);
 

@@ -178,13 +178,13 @@ describe("scripts/score.ts", () => {
 });
 
 describe("scripts/run-agent.ts", () => {
-  it("prints the SDK options for a dry run and creates nothing", () => {
+  it("prints the run options for a dry run and creates nothing", () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-runs-"));
     const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--runs", "2", "--out", out, "--label", "dry", "--dry-run"]);
     expect(res.status, res.stderr).toBe(0);
     const plan = JSON.parse(res.stdout) as { options: Record<string, unknown>; dir: string }[];
     expect(plan).toHaveLength(2);
-    expect(plan[0]?.options).toMatchObject({ tools: [], allowedTools: ["mcp__craft"], strictMcpConfig: true, persistSession: false, settingSources: [] });
+    expect(plan[0]?.options).toMatchObject({ tools: [], model: "claude-sonnet-5-5", maxTurns: 40 });
     expect(existsSync(join(out, "dry"))).toBe(false);
   });
 
@@ -203,7 +203,7 @@ describe("scripts/export-run.ts", () => {
   async function finished() {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-exp-"));
     const r = await runExperiment({
-      world: "test/fixtures/valid/mirror-pair.json", goal: { item: "c", qty: 1 }, runs: 1, maxTurns: 12, out, label: "x", record: false,
+      world: "test/fixtures/valid/mirror-pair.json", goal: { item: "c", qty: 1 }, runs: 1, maxTurns: 12, out, label: "x",
       driver: fakePlayer({ mode: "solve", goal: { item: "c", qty: 1 } }),
     });
     return { runDir: r.reports[0]?.dir as string, dest: join(out, "bundle") };

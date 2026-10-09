@@ -15,7 +15,6 @@ const options = (driver: AgentDriver, over: Record<string, unknown> = {}) => ({
   maxTurns: 12,
   out: mkdtempSync(join(tmpdir(), "skill-craft-fail-")),
   label: "t",
-  record: false,
   driver,
   ...over,
 });

@@ -17,7 +17,7 @@ const goodZip = () => makeZip([{ name: "craft-thing/SKILL.md", data: SKILL }, { 
 
 async function run(world: string, goal: { item: string; qty: number }, mode: "solve" | "refuse", label: string): Promise<Recording> {
   const out = mkdtempSync(join(tmpdir(), "skill-craft-cand-"));
-  const { dir } = await runExperiment({ world, goal, runs: 1, maxTurns: 12, out, label, record: false, driver: fakePlayer({ mode, goal }) });
+  const { dir } = await runExperiment({ world, goal, runs: 1, maxTurns: 12, out, label, driver: fakePlayer({ mode, goal }) });
   return replayRun(join(dir, "001"), label === "a" ? "001" : label === "b" ? "002" : "003");
 }
 

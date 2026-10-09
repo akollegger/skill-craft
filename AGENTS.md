@@ -29,7 +29,7 @@ pnpm dev <file>    # run a TypeScript file with tsx
 
 Scripts (run with `pnpm dev`): `scripts/solve.ts` (best run for a goal), `scripts/make-world.ts`
 (re-skinned world plus goals), `scripts/smoke.ts` (replay a best run over stdio),
-`scripts/run-agent.ts` (Claude Code runs through the Claude Agent SDK, scored and measured; `--dry-run`
+`scripts/run-agent.ts` (runs through the AI SDK, with a Claude model or `fireworks/<model>` via `--model`, scored and measured; `--dry-run`
 spends nothing; `--prompt-note` adds one fixed sentence to the prompt; `--prompt-file` replaces the base prompt, with `{what}`, `{item}` and `{turns}` filled in, to test a reworded one: every arm of an experiment must use the same base prompt), `scripts/report.ts` (run folders to the
 experiment results table), `scripts/score.ts` (score run logs against the best run) and `scripts/export-run.ts`
 (export a finished run as a replay bundle) and `scripts/critic-loop.ts` (finished runs, or a candidate skill, to
@@ -114,7 +114,7 @@ zebra-space project with the RFC requirement removed.
 | `src/sim/` | Schema, matcher, engine, run log, solver, loader, goals, re-skinner; no MCP dependency |
 | `src/mcp/server.ts` | MCP server exposing a world to an agent (`SIM_WORLD` selects the file, `SIM_RUN_LOG` the log) |
 | `worlds/` | World, goals and notes JSON files (the notes file declares the world's prior fit); `worlds/README.md` explains them and credits the faithful world's inspiration; `worlds/generated/` holds re-skinned examples |
-| `src/harness/` | Interim run harness (prompt, SDK options and driver, errors, the command, export, bundle reader, the `RoleDriver` seam for the critic loop) |
+| `src/harness/` | Interim run harness (prompt, the AI SDK driver and its helpers, model specs and prices, errors, the command, export, bundle reader, the `RoleDriver` seam for the critic loop) |
 | `src/trace/` | Run measurement: recorder, trace lines, join of trace to run log; no dependency on the SDK or `src/mcp` |
 | `src/sim/notes.ts` | The world notes file: prior fit, per-recipe notes and omissions; never imported by the engine or server |
 | `src/loop/` | The critic loop: rubric and roles' instructions (one versioned file), the verdict and revision schemas, role prompts, the round controller, the loop record, the NAMS seam with its workspace guard, the candidate step, a small zip reader and diff; no SDK import |
@@ -140,12 +140,17 @@ zebra-space project with the RFC requirement removed.
   `SIM_RUN_LOG` file that already has data; give each run a new path.
 - Tests never use randomness. Use fixed or exhaustively enumerated sequences. `src/sim/prng.ts` is
   for world generation only.
-- `run-agent.ts` costs real Claude usage. Use `--dry-run` first, keep `--runs` small, and never
-  point it at `worlds/forge.json` (neutral names). Built-in tools stay removed so the agent cannot
-  read world files. `--record` sends the session to NAMS; only pass it when asked. A world with no notes
+- `run-agent.ts` costs real model usage. Use `--dry-run` first, keep `--runs` small, and never
+  point it at `worlds/forge.json` (neutral names). The player has only the craft tools (and the skill tool when
+  a skill is installed) so it cannot read world files. Runs are not recorded to NAMS by hooks: the AI SDK has no
+  Claude Code hooks, and a finished run is written through the REST API. A world with no notes
   file is stamped `undeclared` in every score and summary; an experimental world carries one.
-- The Claude Agent SDK is imported only in `src/harness/sdk-driver.ts`; everything else talks to the
-  `AgentDriver` seam, and tests use the scripted player in `test/helpers/fake-player.ts`.
+- The AI SDK and its provider packages are imported only in `src/harness/ai-driver.ts`; everything else talks to the
+  `AgentDriver` seam, and `src/harness/ai-options.ts` holds the mapping that is tested without them. Keys come from
+  the environment (`ANTHROPIC_API_KEY`, `FIREWORKS_API_KEY`). A model is `claude-…` or `fireworks/<model>`; cost comes
+  from `prices.json` and is null for a model with no entry. A skill is offered as a `Skill` tool that returns its text,
+  not as a native Claude Code skill, so the comparison is the same for every provider. The driver reports the trace
+  events in the shape `TraceRecorder` has always read, so `trace.jsonl` is unchanged, and tests use the scripted player in `test/helpers/fake-player.ts`.
 - Time, tokens and cost live in `trace.jsonl` and `score.json`, measured by the harness. Never add a clock
   or a measurement to the engine, the server or `run.jsonl`. Agent text and reasoning are never written to
   a trace, a summary or a bundle; the privacy test enforces it, so keep it passing.
@@ -160,7 +165,7 @@ zebra-space project with the RFC requirement removed.
   only (rubric, goals, recordings, the current skill, and for the reviser the current verdict), so they cannot read
   the world, the goals file, the solver's output, a held-out goal or an earlier verdict (they are given only the goals the
   recordings cover). Keep it that way; `test/loop-inputs.test.ts` checks it.
-- Roles run through `RoleDriver`; the SDK is still imported only in `src/harness/sdk-driver.ts`, and tests use the
+- Roles run through `RoleDriver`; the SDK is still imported only in `src/harness/ai-driver.ts`, and tests use the
   scripted role in `test/helpers/fake-role.ts` and the scripted service in `test/helpers/fake-nams.ts`.
 - Model-authored review text (verdicts, change lists, revised skills) lives only under `loops/<label>/`, as the
   schema's fields only. It never goes into a run folder, trace, summary, score, bundle or `reason`; the privacy test

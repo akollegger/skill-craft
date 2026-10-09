@@ -14,7 +14,8 @@ import { DriverFailed, HarnessError, RunCancelled, RunFailed, RunFolderExists, R
 import { toRepoPath } from "./paths.js";
 import { readLog, replayFailure } from "./read-log.js";
 import { installSkill, SKILL_PLUGIN, skillName } from "./skill.js";
-import { craftServer, sdkOptionsFor } from "./sdk-options.js";
+import { craftServer } from "./craft-server.js";
+import { DEFAULT_MODEL, parseModelSpec } from "./models.js";
 
 export const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -32,8 +33,6 @@ export interface AgentRunOptions {
   out: string;
   label: string;
   model?: string | undefined;
-  /** Let user-level settings apply, so `nams-hooks` records the session to NAMS. */
-  record: boolean;
   /** Time limit for one run. Default 30 minutes. */
   timeoutMs?: number | undefined;
   /** Aborting it ends the current run and starts no further one. */
@@ -149,8 +148,6 @@ export function aggregate(reports: readonly RunReport[]): Aggregate {
 
 const runDir = (o: AgentRunOptions, index: number): string => join(o.out, o.label, String(index).padStart(3, "0"));
 
-const noSink: DriverSink = { onMessage: () => {}, onToolStart: () => {}, onToolEnd: () => {} };
-
 /** What a run would do, without running or creating anything (a dry run). */
 export function planExperiment(o: AgentRunOptions) {
   const priorFit = priorFitOf(o.world);
@@ -162,10 +159,14 @@ export function planExperiment(o: AgentRunOptions) {
     const skill = o.skill
       ? { pluginDir: join(resolve(dir), "skill-plugin"), qualifiedName: `${SKILL_PLUGIN}:${skillName(readFileSync(join(o.skill, "SKILL.md"), "utf8"))}` }
       : undefined;
-    const { hooks: _hooks, abortController: _abort, ...options } = sdkOptionsFor(
-      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, record: o.record, signal: new AbortController().signal, skill },
-      noSink,
-    );
+    // What a real run would pass the driver: the model as it will be called (a bad one is refused here, before any
+    // spend), the turn limit, and the tools. With a skill the agent gets the skill tool besides the craft tools.
+    const options = {
+      model: parseModelSpec(o.model ?? DEFAULT_MODEL).spec,
+      maxTurns: o.maxTurns,
+      tools: skill ? ["Skill"] : [],
+      ...(skill ? { skills: [skill.qualifiedName] } : {}),
+    };
     // Show the plan as it will be recorded: repository-relative paths, and without the PATH the live call adds.
     return { run: i + 1, dir, priorFit, prompt, runLog: toRepoPath(runLog), ...(o.skill ? { skill: toRepoPath(resolve(o.skill)) } : {}), options: { ...options, cwd: toRepoPath(resolve(dir)), ...mcpConfigFor(resolve(o.world), runLog) } };
   });
@@ -227,7 +228,7 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
   let failure: HarnessError | null = null;
   try {
     result = await driver(
-      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, record: o.record, signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
+      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
       recorder,
     );
   } catch (e) {
@@ -294,7 +295,7 @@ export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; 
   // Refuse before spending anything on a label that has already been used.
   for (let i = 1; i <= o.runs; i++) if (existsSync(runDir(o, i))) throw new RunFolderExists(runDir(o, i));
 
-  const driver = o.driver ?? (await import("./sdk-driver.js")).sdkDriver;
+  const driver = o.driver ?? (await import("./ai-driver.js")).aiDriver;
   const dir = join(o.out, o.label);
   mkdirSync(dir, { recursive: true });
 
@@ -318,7 +319,7 @@ export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; 
   const agg = aggregate(reports);
   writeFileSync(
     join(dir, "summary.json"),
-    `${JSON.stringify({ world: o.world, priorFit, ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }), goal: o.goal, maxTurns: o.maxTurns, record: o.record, timeoutMs: o.timeoutMs ?? DEFAULT_TIMEOUT_MS, cancelled, aggregate: agg, models: agg.models, mixedModels: agg.mixedModels, runs: reports.map(({ text: _text, ...r }) => r) }, null, 2)}\n`,
+    `${JSON.stringify({ world: o.world, priorFit, ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }), goal: o.goal, maxTurns: o.maxTurns, timeoutMs: o.timeoutMs ?? DEFAULT_TIMEOUT_MS, cancelled, aggregate: agg, models: agg.models, mixedModels: agg.mixedModels, runs: reports.map(({ text: _text, ...r }) => r) }, null, 2)}\n`,
   );
   return { dir, reports, aggregate: agg, cancelled };
 }

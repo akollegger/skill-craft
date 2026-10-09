@@ -1,0 +1,141 @@
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createFireworks } from "@ai-sdk/fireworks";
+import { createMCPClient } from "@ai-sdk/mcp";
+import { Experimental_StdioMCPTransport as StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
+import { generateText, isStepCount, jsonSchema, Output, tool, type LanguageModel, type ToolSet } from "ai";
+import { craftServer } from "./craft-server.js";
+import type { AgentDriver, DriverOptions } from "./driver.js";
+import { DEFAULT_MODEL, costOf, loadPrices, parseModelSpec, type ModelRef, type Tokens } from "./models.js";
+import type { RoleDriver } from "./role-driver.js";
+import { addTokens, classifyEnd, CRAFT_TOOL_PREFIX, failureCode, NO_TOKENS, readInstalledSkill, requestStart, requestStop, requestUsage, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf } from "./ai-options.js";
+
+/**
+ * Run the player through the AI SDK. This is the only file that imports the SDK (and the provider packages) at run
+ * time. The mapping to and from the harness's types is in `ai-options.ts`, where it is tested without them.
+ */
+
+/** A model on its provider. The key comes from the environment (`ANTHROPIC_API_KEY`, `FIREWORKS_API_KEY`), never an argument. */
+export function languageModel(ref: ModelRef): LanguageModel {
+  return ref.provider === "fireworks" ? createFireworks()(ref.id) : createAnthropic()(ref.id);
+}
+
+export const aiDriver: AgentDriver = async (opts, sink) => {
+  const ref = parseModelSpec(opts.model ?? DEFAULT_MODEL);
+  const price = loadPrices()[ref.spec];
+  const started = performance.now();
+  opts.signal.throwIfAborted();
+  const server = craftServer(opts.world, opts.runLog);
+  // The server needs a PATH to find `node`; it is added here, for the live call only.
+  const client = await createMCPClient({ transport: new StdioMCPTransport({ command: server.command, args: server.args, env: { ...server.env, PATH: process.env["PATH"] ?? "" }, cwd: opts.runDir }) });
+  const craftNames = new Set<string>();
+  let total: Tokens = NO_TOKENS;
+  let calls = 0; // requests started
+  let completed = 0; // requests that came back: a failed one is not a turn and has no tokens
+  let craftCalls = 0;
+  let skillLoadedAfterCalls: number | null = null;
+  try {
+    const tools: ToolSet = await client.tools();
+    for (const name of Object.keys(tools)) craftNames.add(name);
+    if (opts.skill) {
+      const skill = readInstalledSkill(opts.skill);
+      const description = skillDescription(skill.markdown);
+      tools[SKILL_TOOL] = tool({
+        description: `Load the skill '${skill.name}'${description === "" ? "" : `: ${description}`}. Returns its instructions.`,
+        inputSchema: jsonSchema({ type: "object", properties: {}, additionalProperties: false }),
+        execute: async () => {
+          skillLoadedAfterCalls ??= craftCalls;
+          return skill.markdown;
+        },
+      });
+    }
+
+    sink.onMessage(sessionInit(ref.spec));
+    let result;
+    try {
+      result = await generateText({
+        model: languageModel(ref),
+        prompt: opts.prompt,
+        tools,
+        stopWhen: isStepCount(opts.maxTurns),
+        abortSignal: opts.signal,
+        onLanguageModelCallStart: (e) => {
+          sink.onMessage(requestStart(`${e.callId}#${++calls}`, ref.spec));
+        },
+        onLanguageModelCallEnd: (e) => {
+          const t = tokensOf(e.usage);
+          total = addTokens(total, t);
+          completed++;
+          sink.onMessage(requestUsage(t));
+          sink.onMessage(requestStop());
+        },
+        onToolExecutionStart: (e) => {
+          const isCraft = craftNames.has(e.toolCall.toolName);
+          if (isCraft) craftCalls++;
+          sink.onToolStart({ toolName: isCraft ? `${CRAFT_TOOL_PREFIX}${e.toolCall.toolName}` : e.toolCall.toolName, toolUseId: e.toolCall.toolCallId, input: e.toolCall.input });
+        },
+        onToolExecutionEnd: (e) => {
+          sink.onToolEnd({ toolUseId: e.toolCall.toolCallId });
+        },
+      });
+    } catch (e) {
+      // A cancelled or timed-out run is the caller's to report; anything else is a recorded failure with a fixed reason.
+      if (opts.signal.aborted) throw e;
+      return {
+        ended: "error", reason: `DriverFailed: the player reported ${failureCode(e)}`, turns: completed === 0 ? null : completed,
+        costUsd: costOf(total, price), durationMs: Math.round(performance.now() - started),
+        usage: completed === 0 ? null : { inputTokens: total.input, outputTokens: total.output, cacheReadTokens: total.cacheRead, cacheCreationTokens: total.cacheWrite },
+        requestedModel: opts.model ?? null, initModel: ref.spec, modelsUsed: completed === 0 ? [] : [ref.spec], text: "",
+      };
+    }
+
+    const ended = classifyEnd(result.finishReason, result.steps.length, opts.maxTurns);
+    return {
+      ended,
+      ...(ended === "error" ? { reason: `DriverFailed: player ended with ${/^[a-z-]+$/.test(result.finishReason) ? result.finishReason : "an unknown finish"}` } : {}),
+      turns: result.steps.length,
+      costUsd: costOf(total, price),
+      durationMs: Math.round(performance.now() - started),
+      usage: { inputTokens: total.input, outputTokens: total.output, cacheReadTokens: total.cacheRead, cacheCreationTokens: total.cacheWrite },
+      requestedModel: opts.model ?? null,
+      initModel: ref.spec,
+      modelsUsed: [ref.spec],
+      text: ended === "error" ? "" : result.text,
+      ...(opts.skill ? { skillInvoked: skillLoadedAfterCalls !== null, skillLoadedAfterCalls } : {}),
+    };
+  } finally {
+    await client.close().catch(() => {});
+  }
+};
+
+/**
+ * One critic or reviser call. It has no tools, so it can read nothing but its prompt. Only the structured answer is
+ * used: the role's text and reasoning are never read, so they cannot reach a reason, a trace or a file.
+ */
+export const aiRoleDriver: RoleDriver = async (opts) => {
+  const ref = parseModelSpec(opts.model);
+  const price = loadPrices()[ref.spec];
+  const started = performance.now();
+  const elapsed = () => Math.round(performance.now() - started);
+  // A spend cap before the call, as a ceiling on output tokens; checked again from the real usage afterwards.
+  const ceiling = price === undefined ? 16_000 : Math.max(1, Math.min(32_000, Math.floor((opts.maxUsd * 1_000_000) / price.output)));
+  try {
+    const result = await generateText({
+      model: languageModel(ref),
+      prompt: opts.prompt,
+      ...(opts.system === undefined ? {} : { system: opts.system }),
+      output: Output.object({ schema: jsonSchema(opts.schema) }),
+      maxOutputTokens: ceiling,
+      abortSignal: opts.signal,
+    });
+    const usage = tokensOf(result.usage);
+    const costUsd = costOf(usage, price);
+    const base = { requestedModel: opts.model, resolvedModel: ref.spec, tokens: roleTokens(result.usage), costUsd, durationMs: elapsed() };
+    if (costUsd !== null && costUsd > opts.maxUsd) return { ok: false, reason: "DriverFailed: the role reached its spend cap", ...base };
+    return { ok: true, answer: result.output, ...base };
+  } catch (e) {
+    if (opts.signal.aborted) throw e;
+    const name = String((e as { name?: unknown } | null)?.name);
+    const reason = /NoOutputGenerated|NoObjectGenerated|JSONParse|TypeValidation/.test(name) ? "DriverFailed: the role could not give the requested format" : `DriverFailed: the role reported ${failureCode(e)}`;
+    return roleFailure(reason, opts.model, ref.spec, elapsed());
+  }
+};

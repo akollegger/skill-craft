@@ -18,7 +18,7 @@ const CHAIN = "test/fixtures/valid/chain-three.json";
 /** Finished runs made with the scripted player; the calls they hold are enough for citations like `run 001 call 2`. */
 async function makeRun(world: string, goal: { item: string; qty: number }, label: string, models?: string[]): Promise<string> {
   const out = mkdtempSync(join(tmpdir(), "skill-craft-clirun-"));
-  const { dir } = await runExperiment({ world, goal, runs: 1, maxTurns: 12, out, label, record: false, driver: fakePlayer({ mode: "solve", goal, ...(models ? { models } : {}) }) });
+  const { dir } = await runExperiment({ world, goal, runs: 1, maxTurns: 12, out, label, driver: fakePlayer({ mode: "solve", goal, ...(models ? { models } : {}) }) });
   return join(dir, "001");
 }
 

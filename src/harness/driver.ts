@@ -1,6 +1,6 @@
 /**
  * The seam between the harness and whatever runs the agent. Types only: the recorder, the join and the
- * export are tested against a scripted driver, and only `sdk-driver.ts` imports the SDK.
+ * export are tested against a scripted driver, and only `ai-driver.ts` imports the SDK.
  */
 
 /**
@@ -12,14 +12,14 @@ export interface PlayerMessage {
   readonly [field: string]: unknown;
 }
 
-/** The start of a tool call, from the `PreToolUse` hook. Fields are optional so malformed input is representable. */
+/** The start of a tool call, from the SDK's tool-start event. Fields are optional so malformed input is representable. */
 export interface ToolStart {
   toolName?: string | undefined;
   toolUseId?: string | undefined;
   input?: unknown;
 }
 
-/** The end of a tool call, from either `PostToolUse` or `PostToolUseFailure`. */
+/** The end of a tool call, from the SDK's tool-end event. */
 export interface ToolEnd {
   toolUseId?: string | undefined;
 }
@@ -41,8 +41,6 @@ export interface DriverOptions {
   runDir: string;
   maxTurns: number;
   model?: string | undefined;
-  /** Load user settings, so `nams-hooks` records the session to NAMS. */
-  record: boolean;
   /** Aborting it must end the run promptly. */
   signal: AbortSignal;
   /** A skill to make available to the agent: a local plugin folder, and the skill's `plugin:skill` name. */

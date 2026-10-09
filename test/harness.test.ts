@@ -102,7 +102,6 @@ const options = (player: FakePlayerOptions = {}, over: Record<string, unknown> =
   maxTurns: 12,
   out: mkdtempSync(join(tmpdir(), "skill-craft-runs-")),
   label: "t",
-  record: false,
   driver: fakePlayer({ goal: GOAL, ...player }),
   ...over,
 });
@@ -294,8 +293,7 @@ describe("planExperiment (dry run)", () => {
     const plan = planExperiment(o);
     expect(plan).toHaveLength(2);
     expect(plan[0]?.options.tools).toEqual([]);
-    expect(plan[0]?.options.allowedTools).toEqual(["mcp__craft"]);
-    expect(plan[0]?.options.strictMcpConfig).toBe(true);
+    expect(plan[0]?.options.model).toBe("claude-sonnet-5-5"); // the default, as it will be called
     expect(plan[0]?.options).not.toHaveProperty("hooks");
     expect(JSON.stringify(plan)).not.toContain(process.env["PATH"] as string); // the operator's PATH is never printed
     const craft = plan[0]?.options.mcpServers?.["craft"] as { env: Record<string, string> };

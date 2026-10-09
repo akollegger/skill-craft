@@ -167,7 +167,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
           await tools?.close?.();
         }
       }
-      const role = deps.role ?? (await import("../harness/sdk-driver.js")).sdkRoleDriver;
+      const role = deps.role ?? (await import("../harness/ai-driver.js")).aiRoleDriver;
       const result = await runLoop({
         candidate: pkg,
         recordings,

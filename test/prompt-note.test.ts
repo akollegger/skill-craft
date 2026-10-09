@@ -33,7 +33,6 @@ const options = (over: Record<string, unknown> = {}) => ({
   maxTurns: 12,
   out: mkdtempSync(join(tmpdir(), "skill-craft-note-")),
   label: "n",
-  record: false,
   ...over,
 });
 

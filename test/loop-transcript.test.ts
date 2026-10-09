@@ -12,7 +12,7 @@ const GOAL = { item: "c", qty: 1 };
 
 async function made(mode: "solve" | "refuse", label: string, world = WORLD, goal = GOAL): Promise<string> {
   const out = mkdtempSync(join(tmpdir(), "skill-craft-transcript-"));
-  const { dir } = await runExperiment({ world, goal, runs: 1, maxTurns: 12, out, label, record: false, driver: fakePlayer({ mode, goal }) });
+  const { dir } = await runExperiment({ world, goal, runs: 1, maxTurns: 12, out, label, driver: fakePlayer({ mode, goal }) });
   return join(dir, "001");
 }
 
