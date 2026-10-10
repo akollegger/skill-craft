@@ -1,7 +1,7 @@
 ---
 id: ADR-005
 title: The AI SDK as the runtime for players and review roles
-status: proposed
+status: accepted
 created: 2026-10-09
 specs: []
 ---
