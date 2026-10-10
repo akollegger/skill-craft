@@ -61,10 +61,12 @@ Expected: the first prints the plan with the model and its settings (all unset);
 ## C. Calibration rerun on the faithful world (about 30 runs, US$5 at most)
 
 Use the commands in `specs/003-faithful-minecraft-world/quickstart.md` Part B step 1 for the faithful world only, with label prefix `rt-cal-`
-and the teacher and student of ADR-003 §2.1. Then run the report over the labels:
+and the teacher and student of ADR-003 §2.1. First write `runs/rt-cal/summary.json` from
+`specs/003-faithful-minecraft-world/contracts/experiment-summary.md`, with the pinned settings in `models.settings`
+(see [contracts/run-record.md](contracts/run-record.md)); the report reads it. Then run the report over the labels:
 
 ```bash
-pnpm dev scripts/report.ts runs/rt-cal-*
+pnpm dev scripts/report.ts --experiment runs/rt-cal runs/rt-cal-*
 ```
 
 Expected: each goal's role, a cost with its unpriced count, and the models that ran. Write the results to `design/notes/runtime-recalibration.md`.
