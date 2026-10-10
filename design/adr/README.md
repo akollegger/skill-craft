@@ -84,4 +84,4 @@ looking one up. The last column names where the term is decided.
 | [ADR-002](ADR-002-client-otel-trace.md) | Measure run time and tokens on the client | accepted | specs/002-client-otel-trace |
 | [ADR-003](ADR-003-experiment-protocol.md) | Experiment protocol: arms, models, isolation and skill review | accepted | specs/003-faithful-minecraft-world, specs/005-critic-loop-harness |
 | [ADR-004](ADR-004-run-observer.md) | The observer: a read-only view of a folder of runs | proposed | |
-| [ADR-005](ADR-005-ai-sdk-runtime.md) | The AI SDK as the runtime for players and review roles | accepted | |
+| [ADR-005](ADR-005-ai-sdk-runtime.md) | The AI SDK as the runtime for players and review roles | accepted | specs/007-ai-sdk-runtime |

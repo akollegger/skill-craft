@@ -3,7 +3,7 @@ id: ADR-005
 title: The AI SDK as the runtime for players and review roles
 status: accepted
 created: 2026-10-09
-specs: []
+specs: [specs/007-ai-sdk-runtime]
 ---
 
 # ADR-005: The AI SDK as the runtime for players and review roles
@@ -86,4 +86,4 @@ Each model's thinking, effort and temperature settings are fixed before the firs
 - Related ADRs: [ADR-003](ADR-003-experiment-protocol.md) (the protocol this runtime serves; §2.4 already keeps hooks off, and §2.2 defers the memory arm).
 - Supersedes in part: [ADR-002](ADR-002-client-otel-trace.md) §2.2 (the Agent SDK as the trace source and its `query()` options), §2.4 (`ttftMs` is no longer measured), §2.5 (`costUsd` taken from the SDK's result) and §4 (the pre-1.0 package consequence), and [ADR-003](ADR-003-experiment-protocol.md) §2.1's first sentence (the player is Claude Code through the Agent SDK). Models and roles in ADR-003 §2.1 are unchanged. Both carry a matching amendment.
 - Design notes: `design/notes/agent-player-options.md` (the player options considered before ADR-003), the spike log `spikes/fireworks/log.md`.
-- Specs: _(populated by the speckit ADR-link hook)_
+- Specs: specs/007-ai-sdk-runtime
