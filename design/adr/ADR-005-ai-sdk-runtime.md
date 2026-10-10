@@ -15,7 +15,7 @@ The harness runs a *player* (the model that works a crafting-table goal through 
 The experiment protocol compares a strong *teacher* with a smaller *student* model, with and without a distilled skill. A student drawn from another provider widens that comparison, and Fireworks hosts open-weight models that can fill the role. A 20-run feasibility check on Fireworks (`spikes/fireworks/log.md`) found:
 
 - Fourteen chat models on the account support tool calling, and the three tried (`nemotron-lightning-3p5-30b-a3b`, `gpt-oss-120b`, `glm-5p3`) drove the craft server's seven tools through the OpenAI-style tool loop with no schema translation. Each returned schema-valid JSON under `response_format: json_schema`. Reasoning arrives in a field separate from the answer, so it can be dropped before anything is written.
-- Without skills, five runs per model on one goal (`glirol`, 40 turns, one prompt) gave: nemotron 1 of 5 reached, gpt-oss 2 of 5, glm-5p3 5 of 5, and `claude-sonnet-5-5` 0 of 5. The Claude result matches the earlier finding that this prompt leaves Claude at 0 of 5; the Claude runs averaged about 300k uncached input tokens each.
+- Without skills, five runs per model on one goal (`glirol`, 40 turns, one prompt) gave: nemotron 1 of 5 reached, gpt-oss 2 of 5, glm-5p3 5 of 5, and `claude-sonnet-5-5` 0 of 5. Under that prompt, `claude-sonnet-5-5` reached the goal 0 of 5 times. That is a different model, world and goal from the earlier 0 of 5 for Haiku on the faithful stone pickaxe, so it does not replicate that result. The Claude runs averaged about 300k uncached input tokens each.
 - Token counts the harness summed from `trace.jsonl` equal Fireworks' billed prompt, cached and completion tokens exactly, about 1.95M prompt tokens in all (`spikes/fireworks/reconcile.ts`).
 
 The Agent SDK cannot drive these models, and one run folder format and measurement path should serve every model. The Vercel AI SDK (`ai`) is a library, not a framework: it provides a model-call and tool loop, an MCP client, structured output, and provider packages for Anthropic and Fireworks. The spike moved the whole harness onto it, Claude arms included.
@@ -24,7 +24,7 @@ The Agent SDK cannot drive these models, and one run folder format and measureme
 
 ### 2.1 One runtime for every model
 
-The player and both review roles run through the AI SDK (`ai`, `@ai-sdk/mcp`, `@ai-sdk/anthropic`, `@ai-sdk/fireworks`). `src/harness/ai-driver.ts` is the only file that imports it. It implements the existing `AgentDriver` and `RoleDriver` seams, so the recorder, the join, the scorer, the exporter and the critic loop see no change in their types. `@anthropic-ai/claude-agent-sdk` is removed. A Claude arm and a Fireworks arm share one tool loop, so a difference between them comes from the model.
+The player and both review roles run through the AI SDK (`ai`, `@ai-sdk/mcp`, `@ai-sdk/anthropic`, `@ai-sdk/fireworks`). `src/harness/ai-driver.ts` is the only file that imports it. It implements the existing `AgentDriver` and `RoleDriver` seams, so the recorder (which writes `trace.jsonl` from the driver's events), the join of trace to run log, the scorer, the bundle exporter and the critic loop see no change in their types. `@anthropic-ai/claude-agent-sdk` is removed. A Claude arm and a Fireworks arm share one tool loop, so a difference between them comes from the model. This decision changes the runtime, not the choice of teacher or student; using a non-Claude student is an experiment decision recorded in ADR-003.
 
 The player has the craft server's tools and, when a skill is installed, a `Skill` tool. The turn limit is the number of model calls. A run that reaches the limit while the model still wants a tool is a `budget` ending, as before.
 
@@ -46,13 +46,17 @@ An installed skill is copied into the run folder as before (`SKILL.md` and its f
 
 ### 2.6 Recording, recall and the billing check
 
-Experiment runs record nothing while they play, as ADR-003 §2.4 already requires, so the `--record` flag, which loaded Claude Code's user settings so that `nams-hooks` would record, is removed. A finished run is written to NAMS through its REST API (ADR-003 §2.4). The deferred memory arm (ADR-003 §2.2, S3) is specified there as harness-side recall through the REST API before the run, with the result placed in the prompt. It does not depend on the player's runtime and stays deferred under this decision.
+Experiment runs record nothing while they play, as ADR-003 §2.4 already requires, so the `--record` flag, which loaded Claude Code's user settings so that `nams-hooks` would record, is removed. A finished run is written to NAMS through its REST API (ADR-003 §2.4). The deferred memory arm (ADR-003 §2.2, S3: the student with recalled memory and no skill) is specified there as harness-side recall through the REST API before the run, with the result placed in the prompt. It does not depend on the player's runtime and stays deferred under this decision.
 
-Before a Fireworks model is used in an experiment, a batch of its runs is checked against the provider's billed token counts with `firectl billing get-usage` (`spikes/fireworks/reconcile.ts`). `firectl` reports tokens per model but no per-model cost, and its cost-export commands do not run under an agent.
+Before a Fireworks model is used in an experiment, a batch of its runs is checked against the provider's billed token counts with `firectl billing get-usage` (`spikes/fireworks/reconcile.ts`). `firectl`, Fireworks' command-line tool, reports tokens per model but no per-model cost, and its cost-export commands do not run under an agent.
 
 ### 2.7 Review roles
 
 A role call is one structured-output request with no tools. The role's prompt contains only the named parts built in `src/loop/inputs.ts` (ADR-003 §2.6). A role fails with a fixed `code: message` reason on a malformed answer, a provider error or a spend overrun. The spend cap is applied as a ceiling on output tokens derived from the price table, and checked again from the reported usage after the call.
+
+### 2.8 Pinning and recalibration
+
+Each model's thinking, effort and temperature settings are fixed before the first trial and recorded in the experiment summary, the file that fixes an experiment's route, arms and trial counts before anything runs. Calibration (ADR-003 §2.1) is rerun on this runtime before any goal is assigned a role. The harness's base prompt is part of that rerun: rewording it moved an unaided Haiku baseline from 0 of 5 to 4 of 5 (`design/notes/critic-loop-findings.md`), and choosing the wording is a separate open decision.
 
 ## 3. Alternatives Considered
 
@@ -65,7 +69,7 @@ A role call is one structured-output request with no tools. The role's prompt co
 
 ## 4. Consequences
 
-- **Earlier Claude Code baselines do not carry over.** The Claude Code system prompt, its default thinking and effort settings and its native skill discovery are gone, and temperature, thinking and effort are not set anywhere. The Claude result above matches the earlier 0 of 5 once, on one goal. Calibration (ADR-003 §2.1) is rerun on the new runtime before any role is assigned, and thinking, effort and temperature are pinned per model in the experiment summary.
+- **Earlier Claude Code baselines do not carry over.** The Claude Code system prompt, its default thinking and effort settings and its native skill discovery are gone, and temperature, thinking and effort are not set anywhere. Every calibration result so far was measured under Claude Code, so none of them is evidence about the new runtime (2.8).
 - **Claude runs bill against the Anthropic API.** They need `ANTHROPIC_API_KEY`, not a Claude Code login. Prompt caching is off by default in the AI SDK; the spike's Claude runs paid full price for about 300k input tokens each. Enabling a cache breakpoint is follow-up work.
 - **The trace loses first-token timing and retry attempts.** Latency analyses that used `ttftMs`, and any count of failed requests, need streaming or a retry hook. Nothing in the score uses either today.
 - **`--max-turns` counts model calls.** Whether that equals the Agent SDK's turn count was not measured, so turn budgets in earlier experiments are not assumed equivalent.
@@ -77,6 +81,6 @@ A role call is one structured-output request with no tools. The role's prompt co
 ## 5. Related
 
 - Related ADRs: [ADR-003](ADR-003-experiment-protocol.md) (the protocol this runtime serves; §2.4 already keeps hooks off, and §2.2 defers the memory arm).
-- Supersedes in part: [ADR-002](ADR-002-client-otel-trace.md) §2.2 (the Agent SDK as the trace source and its `query()` options, the pre-1.0 package consequence, and `costUsd` taken from the SDK's result), and [ADR-003](ADR-003-experiment-protocol.md) §2.1's first sentence (the player is Claude Code through the Agent SDK). Models and roles in ADR-003 §2.1 are unchanged. Both carry a matching amendment.
+- Supersedes in part: [ADR-002](ADR-002-client-otel-trace.md) §2.2 (the Agent SDK as the trace source and its `query()` options), §2.4 (`ttftMs` is no longer measured), §2.5 (`costUsd` taken from the SDK's result) and §4 (the pre-1.0 package consequence), and [ADR-003](ADR-003-experiment-protocol.md) §2.1's first sentence (the player is Claude Code through the Agent SDK). Models and roles in ADR-003 §2.1 are unchanged. Both carry a matching amendment.
 - Design notes: `design/notes/agent-player-options.md` (the player options considered before ADR-003), the spike log `spikes/fireworks/log.md`.
 - Specs: _(populated by the speckit ADR-link hook)_

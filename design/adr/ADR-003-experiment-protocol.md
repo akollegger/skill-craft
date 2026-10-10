@@ -293,5 +293,5 @@ Early on, a human also reads the first skills the critic accepts, as a post-hoc 
   Fireworks models, and a skill is offered as a `Skill` tool, not through Claude Code's native skill discovery. The
   models, roles, calibration rule, arms, isolation and review are unchanged, with this addition: calibration is rerun on
   the new runtime, since earlier Claude Code results do not carry over, and thinking, effort and temperature are pinned
-  per model in the experiment summary. The memory arm in 2.2 stays deferred and is specified as harness-side recall, which
+  per model in the experiment summary. The base prompt is part of the rerun, and its wording stays an open decision. The memory arm in 2.2 stays deferred and is specified as harness-side recall, which
   does not depend on the runtime.
