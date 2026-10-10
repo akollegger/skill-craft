@@ -30,7 +30,9 @@ The player has the craft server's tools and, when a skill is installed, a `Skill
 
 ### 2.2 Model identifiers
 
-A model is named `claude-<id>` (or `anthropic/claude-<id>`), or `fireworks/<model>`, where a short name expands to `accounts/fireworks/models/<model>`. Every run pins its model (ADR-003 §2.1 stands). The run records the model it asked for and the model that ran. The model that ran is the identifier the provider's response reports, not the requested name echoed back, so a provider that substitutes a model is visible and a label that mixes models is still flagged. API keys come from the environment only: `ANTHROPIC_API_KEY` and `FIREWORKS_API_KEY`.
+A model is named `<provider>/<model>`, where the provider is an entry in the harness's provider table and `claude-<id>` is the shorthand for `anthropic/claude-<id>`. A table entry holds the provider's prefix, the AI SDK package that creates its models, the environment variable that holds its key, and how a short model name expands to the provider's id (for Fireworks, `fireworks/<model>` becomes `accounts/fireworks/models/<model>`). The table starts with Anthropic and Fireworks. Adding a provider (OpenAI, OpenRouter, Google, or any endpoint that speaks the OpenAI protocol through `@ai-sdk/openai-compatible`) is one table entry and its price entries, once the provider passes the check below. Every run pins its model (ADR-003 §2.1 stands). The run records the model it asked for and the model that ran. The model that ran is the identifier the provider's response reports, not the requested name echoed back, so a provider that substitutes a model is visible and a label that mixes models is still flagged. A provider that routes one model name across several backends (OpenRouter) is admitted only with its backend pinned: fallbacks disabled and the provider order fixed in the table entry, and the backend the response reports recorded with the model. Without that, a run's model is not fixed and a label can silently mix backends. API keys come from the environment only (`ANTHROPIC_API_KEY`, `FIREWORKS_API_KEY`, and one variable per further provider).
+
+A provider enters the table after a probe like the one in `spikes/fireworks/probe-tools.ts` and `probe-schema.ts`: a model of that provider drives the craft server's tools, and returns answers that validate against the verdict and revision schemas under the provider's structured-output mode. Providers differ in which JSON Schema features that mode accepts, whether reasoning blocks must be sent back between turns, and which settings (such as temperature) a reasoning model refuses, so the probe records what each one accepts.
 
 ### 2.3 Trace source
 
@@ -38,7 +40,7 @@ The driver reports each model call and tool call to the recorder as the same eve
 
 ### 2.4 Cost is computed
 
-The player reports no cost. A run's `costUsd` is computed from its token counts and a price table, `prices.json` (US dollars per million tokens, keyed by the recorded model identifier, with optional cache-read and cache-write rates). A model without an entry has `costUsd: null`. A total over runs states how many runs were unpriced and does not count them as free. Fireworks publishes rates on a pricing page, not in its API, so entries for those models are added by hand, and the spot check in 2.6 compares token counts against billing.
+The player reports no cost. A run's `costUsd` is computed from its token counts and a price table, `prices.json` (US dollars per million tokens, keyed by the recorded model identifier, with optional cache-read and cache-write rates). A model without an entry has `costUsd: null`. A provider that reports each request's cost (OpenRouter does) could supply it instead of the table; whether the harness records the reported cost, the computed one, or both is left to the spec. A total over runs states how many runs were unpriced and does not count them as free. Fireworks publishes rates on a pricing page, not in its API, so entries for those models are added by hand, and the spot check in 2.6 compares token counts against billing.
 
 ### 2.5 Skills are a tool
 
@@ -48,7 +50,7 @@ An installed skill is copied into the run folder as before (`SKILL.md` and its f
 
 Experiment runs record nothing while they play, as ADR-003 §2.4 already requires, so the `--record` flag, which loaded Claude Code's user settings so that `nams-hooks` would record, is removed. A finished run is written to NAMS through its REST API (ADR-003 §2.4). The deferred memory arm (ADR-003 §2.2, S3: the student with recalled memory and no skill) is specified there as harness-side recall through the REST API before the run, with the result placed in the prompt. It does not depend on the player's runtime and stays deferred under this decision.
 
-Before a Fireworks model is used in an experiment, a batch of its runs is checked against the provider's billed token counts with `firectl billing get-usage` (`spikes/fireworks/reconcile.ts`). `firectl`, Fireworks' command-line tool, reports tokens per model but no per-model cost, and its cost-export commands do not run under an agent.
+Where a provider offers a usage report, a batch of a model's runs is checked against the provider's billed token counts before the model is used in an experiment. For Fireworks this is `firectl billing get-usage` (`spikes/fireworks/reconcile.ts`). `firectl`, Fireworks' command-line tool, reports tokens per model but no per-model cost, and its cost-export commands do not run under an agent. A provider with no usage report is admitted without the check, and its token counts are the harness's own.
 
 ### 2.7 Review roles
 
@@ -76,6 +78,7 @@ Each model's thinking, effort and temperature settings are fixed before the firs
 - **Cost has two sources of error.** The price table is kept by hand, and the role spend cap is a pre-call ceiling plus a post-call check, not a stop during the call. A thinking model's reasoning tokens count against the ceiling; a small cap can truncate the structured answer, and this was not tried.
 - **Not yet exercised live:** the critic loop end to end on the new roles, a real model loading a skill through the `Skill` tool, and cancelling a run (Ctrl-C and timeout) while the craft server is running.
 - **Follow-up work:** report the provider's model identifier; make cost totals state unpriced runs; enable Anthropic prompt caching; count retries; add the price entries for Fireworks models in use; update the glossary entries for harness and hooks.
+- **Not decided: pinning a routed provider.** The table entry for a provider such as OpenRouter must fix its backend (2.2), and how that is expressed through the AI SDK provider package, and whether it holds for every model the router offers, has not been tried.
 - **Dependencies:** the harness adds `ai`, `@ai-sdk/mcp`, `@ai-sdk/anthropic` and `@ai-sdk/fireworks`. They are pinned to exact versions and upgraded deliberately, as the Agent SDK was.
 
 ## 5. Related
