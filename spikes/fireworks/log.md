@@ -87,11 +87,12 @@ model, one goal, one prompt, no pinned temperature.
 | fireworks/glm-5p3 | 5/5 | 0 / 0 | 26 | 29-129 s | n/a |
 | claude-sonnet-5-5 | 0/5 | 3 / 2 | - | 70-87 s | $3.28 total |
 
-- The Claude baseline of 0/5 agrees with the earlier finding that this base prompt leaves Claude at 0/5 (see the
-  open base-prompt decision). The open models do not behave like Claude here: glm-5p3 reached the goal every time,
-  after 18-29 calls. Whether that is better exploration or less caution about the irreversible `craft` is not
-  known; Claude crafted 2-3 times per run and did not reach the goal.
-- **Claude cost is dominated by uncached input**: about 300k input tokens per run and no cache reads, against 90-90%
+- The Claude result (0/5 on glirol, Sonnet) is new, not a replication. The earlier 0 of 5 under this base prompt
+  was Haiku on the faithful world's stone pickaxe (`design/notes/critic-loop-findings.md`): a different model, world
+  and goal. The open models do not behave like Claude here: glm-5p3 reached the goal every time, after 18-29 calls.
+  Whether that is better exploration or less caution about the irreversible `craft` is not known; Claude crafted 2-3
+  times per run and did not reach the goal.
+- **Claude cost is dominated by uncached input**: about 300k input tokens per run and no cache reads, against 87-95%
   cache reads on Fireworks. The AI SDK does not turn on Anthropic prompt caching by itself (it needs a cache
   breakpoint in the request). Enabling it in `ai-driver.ts` should cut Claude cost a lot and is worth doing before more
   Claude runs. It does not change what the model does.
