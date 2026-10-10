@@ -24,7 +24,8 @@ than one row).
 ## R2. The model that ran comes from each step's response, and the trace must agree
 
 **Decision**: a run's models are the set of `response.modelId` values over its steps, each normalised through the
-table row (Fireworks `accounts/fireworks/models/x` becomes `fireworks/x`; a Claude snapshot id stays as reported).
+table row to the canonical form (Fireworks `accounts/fireworks/models/x` becomes `fireworks/x`; a Claude id as reported,
+such as a dated snapshot, becomes `anthropic/<id>`).
 An id the row cannot normalise is recorded as reported. When a step reports none, the requested spec stands in.
 `measure.ts` compares the trace's request models with the result's `modelsUsed` and records a mismatch on any
 difference, so request lines must carry the reported id. The recorder takes a request's model from the last of its

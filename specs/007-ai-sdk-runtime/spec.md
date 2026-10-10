@@ -213,7 +213,9 @@ mention is marked as history.
 
 ### Functional Requirements
 
-- **FR-001**: A model MUST be named as `<provider>/<model>`, with the Claude shorthand kept, and a spec whose
+- **FR-001**: A model MUST be named as `<provider>/<model>`, with a bare Claude id accepted as shorthand for
+  `anthropic/<id>`, and every record (the model asked for, the model that ran, the trace, the price keys) MUST hold the
+  canonical `<provider>/<model>` form. A bare Claude id in an earlier run folder MUST be read as `anthropic/<id>`. A spec whose
   provider is not in the provider table MUST be refused before any spend.
 - **FR-002**: A provider table entry MUST hold the provider's prefix, how its models are created, the name of
   the environment variable that holds its key, and how a short model name expands to the provider's id. Adding
@@ -259,7 +261,7 @@ mention is marked as history.
 
 - **Provider table entry**: a provider's prefix, how its models are created, its key's environment variable,
   how a short model name expands, whether its backend is fixed, and whether it has a usage report.
-- **Model spec**: `<provider>/<model>`, recorded exactly as the run was asked to use it.
+- **Model spec**: `<provider>/<model>`, recorded in canonical form whichever form the run was asked with.
 - **Model record**: for a run, the model asked for, the model the provider reports as having run, and the
   backend when the provider routes.
 - **Price entry**: dollars per million tokens for a model's input, output, cache reads and cache writes.

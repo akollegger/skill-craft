@@ -17,6 +17,7 @@ Added keys, all after the existing ones:
 }
 ```
 
+- Every model name is canonical `<provider>/<model>` (a bare Claude id is recorded as `anthropic/<id>`); `requested` is `null` when the run named none. Earlier records with a bare Claude id are read as `anthropic/<id>` and not rewritten.
 - `model.resolved` is what the provider reported, normalised through the table (research R2). `backend` appears only for a routed provider.
 - `costUsd` is computed and `null` for an unpriced model. `reportedCostUsd` is present only when the provider reports a cost.
 - `settings` records the pinned settings the run used; `null` means unset (the provider's default applied).

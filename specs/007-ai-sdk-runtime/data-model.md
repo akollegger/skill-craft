@@ -22,7 +22,9 @@ refused with a fixed message listing the prefixes (FR-001).
 
 ## Model spec
 
-`<prefix>/<model>`, or a bare `claude-<id>`. Recorded exactly as given in `model.requested`.
+`<prefix>/<model>`, or a bare `claude-<id>` as input shorthand. Always recorded in canonical form: a bare Claude id is
+recorded as `anthropic/<id>`. `model.requested`, `model.resolved`, the trace's request models and the `prices.json` keys
+all use it. A bare Claude id found in an earlier run folder or price file is read as `anthropic/<id>`; no file is rewritten.
 
 ## Model record (in `score.json`)
 
@@ -31,7 +33,7 @@ sorted. An experiment whose runs' `resolved` sets differ is `mixedModels` (uncha
 
 ## Price entry (`prices.json`)
 
-Unchanged: `{ input, output, cacheRead?, cacheWrite? }` in US dollars per million tokens, keyed by spec. A model with
+Unchanged: `{ input, output, cacheRead?, cacheWrite? }` in US dollars per million tokens, keyed by canonical spec (`anthropic/claude-sonnet-5-5`). A model with
 no entry is unpriced. Entries for Fireworks models are added from measured usage.
 
 ## Pinned settings
