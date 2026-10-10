@@ -10,6 +10,12 @@
 
 **Derived From**: ADR-005 (design/adr/ADR-005-ai-sdk-runtime.md)
 
+## Clarifications
+
+### Session 2026-10-10
+
+- Q: How much of the calibration rerun (ADR-005 §2.8) does this feature complete? → A: The faithful world's calibration is rerun on this runtime and recorded (about 30 runs; roughly US$4 by the earlier cost). The invented world and a full 60-run calibration are not part of this feature.
+
 ## User Scenarios & Testing *(mandatory)*
 
 The people who use this feature are the **experiment runner**, who plays models against the crafting table
@@ -229,9 +235,9 @@ mention is marked as history.
 - **FR-009**: The experiment summary MUST record each model's thinking, effort and temperature settings before
   the first trial, each run's score MUST record the settings it used (or that they were unset), and a setting
   the provider refuses MUST be rejected before any spend.
-- **FR-010**: Calibration MUST be runnable on this runtime with the same rule as ADR-003 §2.1, and its results
-  MUST name the runtime they were measured on. [NEEDS CLARIFICATION: how much of the rerun this feature completes: a
-  faithful-world student cell only, every cell, or only the ability to run it]
+- **FR-010**: Calibration MUST run on this runtime under the same rule as ADR-003 §2.1, and the faithful world's
+  calibration MUST be rerun and recorded as part of this feature, with results that name the runtime they were
+  measured on. The invented world's calibration is not part of it.
 - **FR-011**: The retry setting MUST be a stated value, recorded in each run's score, and the number of retried
   attempts MUST be recorded in the score and left out of the trace.
 - **FR-012**: A role call MUST fail with a fixed `code: message` reason, and MUST NOT return a partial answer,
@@ -289,6 +295,8 @@ mention is marked as history.
 - **SC-011**: A search of the overview, agent guidance and specs 002 and 005 for the previous runtime and the
   removed recording flag finds only mentions marked as history.
 - **SC-012**: The live checks together cost under US$10, and no key appears in any file the feature writes.
+- **SC-013**: The faithful world's calibration is rerun and its results recorded with the runtime named, for under
+  US$5, and each goal's role (gap, solved or ambiguous) is stated under the unchanged rule.
 
 ## Assumptions
 
@@ -303,8 +311,10 @@ mention is marked as history.
 - Retries stay at a small fixed number (two, the library default) and are counted in the score.
 - The 80% cache-read target is set from the 87–95% the Fireworks runs reached and is confirmed or revised by
   the first measured Claude run.
-- The spend limit for the live checks (US$10) is a working figure for this feature; the earlier calibration of
-  60 runs cost about $16.
+- The spend limit for the live checks (US$10) is a working figure for this feature. The earlier calibration of
+  60 runs cost about $16.62, of which a faithful-world rerun is about 30 runs and $3.60.
+- The calibration rerun uses the teacher and student models fixed in ADR-003 §2.1 and the base prompt wording in
+  place when it runs, and it records which wording that was.
 - Which base prompt wording the experiment uses stays a separate open decision (ADR-005 §2.8).
 - Keys for each provider are supplied by the operator in the environment; a provider whose key is absent is
   skipped, not an error, in the checks that need it.

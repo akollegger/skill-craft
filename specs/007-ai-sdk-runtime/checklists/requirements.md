@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -33,6 +33,6 @@
 
 - "Written for non-technical stakeholders" is left open on purpose: this project's specs (001 to 005) are written for the engineers who
   run experiments, and name project terms (the craft server, the run log, the trace). The terms are introduced in the document.
-- One [NEEDS CLARIFICATION] remains (FR-010, how much of the calibration rerun this feature completes). It changes cost and scope, so it
-  goes to the user before `/speckit-plan`.
+- The one [NEEDS CLARIFICATION] (FR-010, how much of the calibration rerun this feature completes) was answered 2026-10-10: the faithful
+  world is rerun, the invented world and a full rerun are not.
 - The spec names no package, file or function. The ADR and the Assumptions section point at the spike's code as the starting point.
