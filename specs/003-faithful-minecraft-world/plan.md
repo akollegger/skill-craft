@@ -1,5 +1,7 @@
 # Implementation Plan: Faithful Minecraft-Inspired World and Its Experiments
 
+> **History note (2026-10-10):** where this document describes the player as Claude Code run through the Claude Agent SDK, or the `--record` flag, that was the design at the time. The harness now runs every model through the AI SDK and has no `--record` ([ADR-005](../../design/adr/ADR-005-ai-sdk-runtime.md), spec 007). Read the affected passages as the record of the earlier design.
+
 **Branch**: `003-faithful-minecraft-world` | **Date**: 2026-10-01 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `/specs/003-faithful-minecraft-world/spec.md`

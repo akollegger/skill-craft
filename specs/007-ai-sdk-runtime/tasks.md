@@ -210,10 +210,11 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 **Independent Test**: a search finds only mentions marked as history.
 
-- [ ] T061 [P] [US7] Search `README.md` and `AGENTS.md` for `Agent SDK`, `claude-agent-sdk`, `--record`, `sdk-driver` and `sdk-options`; update AGENTS.md for the provider table (a model is `<provider>/<model>`, rows live in `src/harness/providers.ts`, canonical names) and the new `score.json` fields.
-- [ ] T062 [P] [US7] Add a one-line history marker pointing at ADR-005 to `specs/002-client-otel-trace/` (`spec.md`, `plan.md`, `research.md`, `tasks.md`) and `specs/005-critic-loop-harness/` (`plan.md`, `research.md`, `tasks.md`, `contracts/role-io.md`) wherever the previous runtime or `--record` is described as current. Do not rewrite requirements.
-- [ ] T063 [P] [US7] The same for `design/notes/agent-player-options.md` and `design/notes/pixel-observer.md` where they name the previous runtime.
-- [ ] T064 [US7] Check SC-011: search the documents again and list every remaining mention, each marked as history or pointing to ADR-005.
+- [X] T061 [P] [US7] Search `README.md` and `AGENTS.md` for `Agent SDK`, `claude-agent-sdk`, `--record`, `sdk-driver` and `sdk-options`; update AGENTS.md for the provider table (a model is `<provider>/<model>`, rows live in `src/harness/providers.ts`, canonical names) and the new `score.json` fields.
+- [X] T062 [P] [US7] Add a one-line history marker pointing at ADR-005 to `specs/002-client-otel-trace/` (`spec.md`, `plan.md`, `research.md`, `tasks.md`) and `specs/005-critic-loop-harness/` (`plan.md`, `research.md`, `tasks.md`, `contracts/role-io.md`) wherever the previous runtime or `--record` is described as current. Do not rewrite requirements.
+- [X] T063 [P] [US7] The same for `design/notes/agent-player-options.md` and `design/notes/pixel-observer.md` where they name the previous runtime.
+- [X] T064 [US7] Check SC-011: search the documents again and list every remaining mention, each marked as history or pointing to ADR-005.
+  - Checked 2026-10-10: `README.md` and `AGENTS.md` have no mention. Marked with a history note: `design/notes/` (agent-player-options, pixel-observer, skill-pilot) and `specs/002-*` (spec, plan, research, tasks, quickstart, contracts/player-driver), `specs/003-*` (plan, quickstart, tasks), `specs/005-*` (plan, research, tasks, contracts/role-io). Pointing to ADR-005: ADR-002 and ADR-003 (their amendments), ADR-005 and spec 007 (which describe the replacement).
 
 ---
 

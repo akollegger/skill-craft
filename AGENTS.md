@@ -147,9 +147,10 @@ zebra-space project with the RFC requirement removed.
   file is stamped `undeclared` in every score and summary; an experimental world carries one.
 - The AI SDK and its provider packages are imported only in `src/harness/ai-driver.ts`; everything else talks to the
   `AgentDriver` seam, and `src/harness/ai-options.ts` holds the mapping that is tested without them. Keys come from
-  the environment (`ANTHROPIC_API_KEY`, `FIREWORKS_API_KEY`). A model is `claude-…` or `fireworks/<model>`; cost comes
-  from `prices.json` and is null for a model with no entry. A skill is offered as a `Skill` tool that returns its text,
-  not as a native Claude Code skill, so the comparison is the same for every provider. The driver reports the trace
+  the environment (`ANTHROPIC_API_KEY`, `FIREWORKS_API_KEY`). A model is `<provider>/<model>` (a bare `claude-<id>` is shorthand for `anthropic/<id>`) and every record holds the canonical form; the providers are
+  rows of the table in `src/harness/providers.ts`, and adding one is a row, its package and its price entries (`spikes/fireworks/README.md`).
+  Cost comes from `prices.json` and is null for a model with no entry; totals state how many runs were unpriced. A skill is offered as a `Skill` tool that returns its text,
+  not as a native Claude Code skill, so the comparison is the same for every provider. `--settings <file>` pins a model's thinking, effort and temperature (refused before any spend where the table knows the model does not take one); `score.json` records them (`null` is unset) beside `retries` (the stated maximum and the attempts that failed, kept out of the trace) and, when a provider reports them, `reportedCostUsd` and `model.backend`. The driver reports the trace
   events in the shape `TraceRecorder` has always read, so `trace.jsonl` is unchanged, and tests use the scripted player in `test/helpers/fake-player.ts`.
 - Time, tokens and cost live in `trace.jsonl` and `score.json`, measured by the harness. Never add a clock
   or a measurement to the engine, the server or `run.jsonl`. Agent text and reasoning are never written to

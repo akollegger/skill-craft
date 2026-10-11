@@ -1,5 +1,7 @@
 # Research: Run Observability
 
+> **History note (2026-10-10):** where this document describes the player as Claude Code run through the Claude Agent SDK, or the `--record` flag, that was the design at the time. The harness now runs every model through the AI SDK and has no `--record` ([ADR-005](../../design/adr/ADR-005-ai-sdk-runtime.md), spec 007). Read the affected passages as the record of the earlier design.
+
 Facts come from a spike on one real run (Claude Code 2.1.285, goal `glirol` on `forge-7`, 20 model
 requests, 36 tool calls, ended at its 20-turn budget). The run went through the Claude Agent SDK
 (0.3.285) with the same process's OTel export switched on, so both views describe the same run. The

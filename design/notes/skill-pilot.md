@@ -1,5 +1,7 @@
 # Skill pilot: record, distill, install
 
+> **History note (2026-10-10):** where this document describes the player as Claude Code run through the Claude Agent SDK, or the `--record` flag, that was the design at the time. The harness now runs every model through the AI SDK and has no `--record` ([ADR-005](../adr/ADR-005-ai-sdk-runtime.md), spec 007). Read the affected passages as the record of the earlier design.
+
 Status: spike findings, 2026-10-01. Input to the experiment-protocol ADR. Branch `spike/skill-install`.
 Everything below is from small samples (one to three runs per arm) on one world (`forge-7`) and one goal
 (`glirol`), with `claude-sonnet-5-5`. Treat the numbers as leads, not results.
