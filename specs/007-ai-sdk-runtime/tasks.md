@@ -121,12 +121,12 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 ### Tests first
 
-- [ ] T034 [P] [US3] Extend `test/ai-driver.test.ts`: every model call to the Anthropic row carries the cache option (`providerOptions.anthropic.cacheControl` of type `ephemeral`), and a call to a Fireworks row carries none; a provider that reports no cache figure records it as zero in the trace and in the run's token counts.
-- [ ] T035 [P] [US3] Extend `test/providers.test.ts`: the Anthropic row's `callOptions` returns the cache option, the Fireworks row's returns none.
+- [X] T034 [P] [US3] Extend `test/ai-driver.test.ts`: every model call to the Anthropic row carries the cache option (`providerOptions.anthropic.cacheControl` of type `ephemeral`), and a call to a Fireworks row carries none; a provider that reports no cache figure records it as zero in the trace and in the run's token counts.
+- [X] T035 [P] [US3] Extend `test/providers.test.ts`: the Anthropic row's `callOptions` returns the cache option, the Fireworks row's returns none.
 
 ### Implementation
 
-- [ ] T036 [US3] `src/harness/providers.ts` and `src/harness/ai-driver.ts`: the Anthropic row's `callOptions` returns the cache option and the driver passes it on every call (make T034 and T035 pass).
+- [X] T036 [US3] `src/harness/providers.ts` and `src/harness/ai-driver.ts`: the Anthropic row's `callOptions` returns the cache option and the driver passes it on every call (make T034 and T035 pass).
 - [ ] T037 [US3] **(spends, cap US$1)** Run `quickstart.md` B1 (one 40-turn Claude run). Read `score.json`: at least 80% of input tokens are cache reads (SC-004). If not, add the fallback in research R4 (a cache breakpoint on the last message in `prepareStep`), with a scripted test first, and run B1 again.
 
 **Checkpoint**: Claude cost is no longer dominated by uncached input; later spends are cheaper.

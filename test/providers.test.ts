@@ -32,6 +32,13 @@ describe("the provider table", () => {
   });
 });
 
+describe("call options", () => {
+  it("turn on the prompt cache for Anthropic, and set nothing for Fireworks", () => {
+    expect(findProvider("anthropic")?.callOptions({}, "claude-haiku-4-5-20251001")).toEqual({ providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } } });
+    expect(findProvider("fireworks")?.callOptions({}, "accounts/fireworks/models/gpt-oss-120b")).toEqual({});
+  });
+});
+
 describe("parseModelSpec", () => {
   it("records a Claude model in canonical form whichever way it was asked for", () => {
     for (const s of ["claude-sonnet-5-5", "anthropic/claude-sonnet-5-5"]) {

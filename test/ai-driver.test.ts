@@ -122,6 +122,35 @@ describe("aiDriver", () => {
 
 const reporting = (result: Result, modelId: string): Result => ({ ...result, response: { id: "resp", modelId, timestamp: new Date(0) } }) as Result;
 
+describe("the prompt cache", () => {
+  const model = () => control.model as InstanceType<typeof MockLanguageModelV4>;
+
+  it("is turned on for every model call to an Anthropic model", async () => {
+    scripted(call("c1", "look"), say("done"));
+    const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001" });
+    await aiDriver(opts, recorder);
+    expect(model().doGenerateCalls).toHaveLength(2);
+    for (const c of model().doGenerateCalls) expect(c.providerOptions?.["anthropic"]).toEqual({ cacheControl: { type: "ephemeral" } });
+  }, 30_000);
+
+  it("is not asked for on a Fireworks model, which caches without being asked", async () => {
+    scripted(say("done"));
+    const { opts, recorder } = setup({ model: "fireworks/gpt-oss-120b" });
+    await aiDriver(opts, recorder);
+    expect(model().doGenerateCalls[0]?.providerOptions?.["anthropic"]).toBeUndefined();
+  }, 30_000);
+
+  it("records a cache figure the provider does not report as zero, in the trace and in the result", async () => {
+    const bare = { content: [{ type: "text", text: "done" }], finishReason: { unified: "stop", raw: undefined }, usage: { inputTokens: { total: 50, noCache: undefined, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 4, text: 4, reasoning: undefined } }, warnings: [] } as Result;
+    scripted(bare);
+    const { opts, recorder, trace } = setup({ model: "fireworks/gpt-oss-120b" });
+    const r = await aiDriver(opts, recorder);
+    expect(r.usage).toEqual({ inputTokens: 50, outputTokens: 4, cacheReadTokens: 0, cacheCreationTokens: 0 });
+    const line = readTrace(trace).find((l) => l.kind === "request") as RequestLine;
+    expect([line.cacheReadTokens, line.cacheCreationTokens]).toEqual([0, 0]);
+  }, 30_000);
+});
+
 describe("the model that ran", () => {
   it("is the model the provider reports, in canonical form, and the trace's request lines carry it", async () => {
     scripted(reporting(say("done"), "accounts/fireworks/models/glm-5p3"));
