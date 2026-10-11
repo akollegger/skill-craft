@@ -239,8 +239,10 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 - [X] T068 [P] **HELD until the role parse-rate eval (T052) is done.** Run `quickstart.md` section D for one Fireworks batch (the billing check): harness and billed tokens equal for every model (SC-010). **(spends, cap US$1)**
   - Done 2026-10-11 (a few cents): a fresh batch of 3 `gpt-oss-120b` runs, harness against billed tokens: prompt 398,073 / 398,073, cached 343,836 / 343,836, completion 5,704 / 5,704, an exact match (SC-010).
 - [ ] T069 [P] Add Fireworks entries to `prices.json` for the models used in the calibration or checks, from measured usage and the published rate, and say so in the file's note.
+  - **Not done, and why:** `firectl billing get-usage` reports tokens per model but no per-model cost, and its cost export is blocked for an agent (T068), so there is no measured rate to enter. Fireworks models stay unpriced (reported as such everywhere). Add entries to `prices.json` when a rate is supplied, for example from the Fireworks dashboard.
 - [X] T070 Confirm FR-017 and FR-018: `git diff main -- src/sim src/mcp` is empty, no key appears in any file the feature wrote (`grep` the new notes, run folders and `design/notes/` for the key prefixes without printing them), and `.env` is untouched.
-- [ ] T071 Update ADR-005's Consequences: remove the items this feature closed (reported model, unpriced totals, caching, retries, live checks, glossary) and keep what remains open. Keep `status: accepted`; add an Amendments line only if a decision changed.
+- [X] T071 Update ADR-005's Consequences: remove the items this feature closed (reported model, unpriced totals, caching, retries, live checks, glossary) and keep what remains open. Keep `status: accepted`; add an Amendments line only if a decision changed.
+  - Done 2026-10-11: closed items removed (caching, retries, live checks, reported model, unpriced totals); open items kept as the follow-up list.
 
 ---
 
