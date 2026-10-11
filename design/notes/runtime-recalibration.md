@@ -40,9 +40,12 @@ faithful world only).
 
 A difference in a cell may come from the runtime or from these, and the rerun cannot separate them:
 
-- Claude Code's system prompt, its default thinking and effort settings and its skill discovery are gone.
-- The new runs pin settings (`calibration-settings.json`): Sonnet with adaptive thinking at high effort, Haiku with thinking off
-  and temperature 0. The earlier runs pinned none, so Haiku at temperature 0 is sampled differently from before.
+- Claude Code's system prompt and its skill discovery are gone. Its thinking and effort settings are reproduced by the pinned settings below.
+- The new runs pin settings (`calibration-settings.json`) to what the earlier runtime was found to send (request shapes captured
+  2026-10-11, see `role-parse-rate.md`): Sonnet with adaptive thinking at **medium** effort, Haiku with a thinking budget of 31,999
+  tokens and the default temperature (Anthropic requires it while thinking is on). The earlier runs pinned nothing themselves;
+  Claude Code supplied these. An earlier draft of this note pinned Haiku to thinking off and temperature 0, which would have
+  compared different configurations.
 - The base prompt is whichever wording is in place when the rerun starts; its wording is a separate open decision.
 
 ## Results

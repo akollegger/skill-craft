@@ -269,6 +269,11 @@ mention is marked as history.
   answers and this one did not.)*
 - **FR-020**: A run MUST end as an error with a fixed reason when a response's warnings say a pinned setting was not applied.
   *(Added 2026-10-11: the settings probe found the SDK drops, with a warning, a setting a model does not take.)*
+- **FR-021**: A model's thinking setting MUST be able to carry a token budget as well as `adaptive` and `off`, accepted only for
+  the models that still take a budget; a temperature other than the provider's default MUST be refused beside a budget; and a
+  role MUST be able to take the settings pinned for its model, so a role runs the way its model was calibrated. *(Added
+  2026-10-11: the earlier runtime ran Claude with thinking on, and without it the Haiku reviser's schema-valid rate fell from 65%
+  to 15%.)*
 - **FR-018**: No key MUST appear in any file, log, trace, score, summary, reason or command line, and agent
   text and reasoning MUST NOT be written to any of them (constitution Principle VI; ADR-002 §2.3).
 

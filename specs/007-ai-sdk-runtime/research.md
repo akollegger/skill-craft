@@ -96,17 +96,18 @@ records the settings per model before the first trial.
 covers the rest without silently changing a setting. Recording `null` for an unset value states that the provider's
 own default applied, which the harness did not choose.
 
-**The calibration settings** (`calibration-settings.json`, pin whatever the model takes):
+**The calibration settings** (`calibration-settings.json`) mirror what the earlier runtime was found to send, captured on
+2026-10-11 through a local forwarder that logged request shapes only (`design/notes/role-parse-rate.md`):
 
 | Model | thinking | effort | temperature | Reason |
 |---|---|---|---|---|
-| `anthropic/claude-sonnet-5-5` (teacher) | `adaptive` | `high` | unset | It runs adaptive by default and its effort default is `high`; pinning both states them so a later default change cannot move the baseline. It refuses a non-default temperature, so that stays unset. |
-| `anthropic/claude-haiku-4-5-20251001` (student) | `off` | unset | `0` | It takes no adaptive thinking and no effort level (effort errors on it), so thinking is pinned off and temperature is pinned to 0 to keep five trials from varying for sampling reasons. |
+| `anthropic/claude-sonnet-5-5` (teacher) | `adaptive` | `medium` | unset | Claude Code sent `thinking: adaptive` and effort `medium`. The model refuses a non-default temperature. |
+| `anthropic/claude-haiku-4-5-20251001` (student) | `31999` (a budget) | unset | unset | Claude Code sent `thinking: enabled` with `budget_tokens: 31999`. Haiku 4.5 takes a budget and no effort level, and Anthropic requires the default temperature while thinking is on. |
 
-The Claude Code calibration used Claude Code's own defaults, which these pins need not reproduce, and a pinned temperature of 0
-means a success rate here is not directly comparable with the earlier unpinned numbers. That comparison is a reason to rerun, not to
-match. The limits above come from Anthropic's published notes at the time of planning; the first call to each model confirms them,
-and a rejection ends the run as `request_rejected`, recorded.
+An earlier version of this file pinned Haiku to thinking off and temperature 0 and Sonnet to effort high, from Anthropic's published
+notes and not from the earlier runtime's actual requests; it would have compared different configurations. The limits themselves
+come from Anthropic's published notes; the first call to each model confirms them, and a rejection ends the run as
+`request_rejected`, recorded.
 
 ## R7. The calibration rerun is the faithful world's, by the procedure in spec 003
 
