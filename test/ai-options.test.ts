@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { LanguageModelUsage } from "ai";
-import { classifyEnd, failureCode, roleTokens, skillDescription, tokensOf } from "../src/harness/ai-options.js";
+import { classifyEnd, countInvalid, failureCode, invalidStreak, longRetryAfter, overCap, roleTokens, skillDescription, tokensOf, toolStop } from "../src/harness/ai-options.js";
 import { SettingsInvalid, UnknownModel } from "../src/harness/errors.js";
 import { canonicalSpec, costOf, loadPrices, loadSettings, parseModelSpec, priceFor } from "../src/harness/models.js";
 
@@ -174,5 +174,80 @@ describe("loadSettings", () => {
       expect(() => loadSettings(awaitedPaths.get(text) as string)).toThrow(SettingsInvalid);
     }
     expect(() => loadSettings("/no/such/settings.json")).toThrow(SettingsInvalid);
+  });
+});
+
+describe("failureCode, the operational cases", () => {
+  it("names a network failure that has no status, by its cause or by the SDK's retryable flag", () => {
+    expect(failureCode({ name: "AI_APICallError", isRetryable: true, message: "Cannot connect to API: SECRET" })).toBe("provider_unreachable");
+    expect(failureCode({ name: "Error", message: "x", cause: { code: "ECONNRESET" } })).toBe("provider_unreachable");
+    expect(failureCode({ name: "RetryError", lastError: { cause: { code: "ETIMEDOUT" } } })).toBe("provider_unreachable");
+  });
+
+  it("reads a request timeout as unavailable, and a stalled step as a step timeout", () => {
+    expect(failureCode({ statusCode: 408 })).toBe("provider_unavailable");
+    expect(failureCode({ name: "TimeoutError" })).toBe("step_timeout");
+    expect(failureCode({ name: "AbortError" })).toBe("aborted");
+  });
+
+  it("separates a prompt that is too long from other rejected requests, by the status and the message, and keeps only the code", () => {
+    expect(failureCode({ statusCode: 400, message: "prompt is too long: 250000 tokens > 200000 maximum" })).toBe("context_length_exceeded");
+    expect(failureCode({ statusCode: 413, message: "Request too large" })).toBe("context_length_exceeded");
+    expect(failureCode({ statusCode: 400, message: "temperature is not supported" })).toBe("request_rejected");
+    expect(failureCode({ statusCode: 400 })).toBe("request_rejected");
+  });
+});
+
+describe("overCap", () => {
+  const spent = { input: 600, output: 300, cacheRead: 5000, cacheWrite: 100 };
+  it("counts every token kind against a token cap, and is off when no cap is set", () => {
+    expect(overCap(spent, 0.01, {})).toBe(false);
+    expect(overCap(spent, 0.01, { maxTotalTokens: 6000 })).toBe(true); // 600 + 300 + 5000 + 100 = 6000
+    expect(overCap(spent, 0.01, { maxTotalTokens: 6001 })).toBe(false);
+  });
+
+  it("compares the computed cost with a dollar cap, and never trips on a model with no price", () => {
+    expect(overCap(spent, 0.5, { maxUsd: 0.4 })).toBe(true);
+    expect(overCap(spent, 0.3, { maxUsd: 0.4 })).toBe(false);
+    expect(overCap(spent, null, { maxUsd: 0.4 })).toBe(false);
+  });
+});
+
+describe("invalid tool calls", () => {
+  const step = (...invalid: boolean[]) => ({ toolCalls: invalid.map((i) => ({ invalid: i })) });
+  it("count the steps at the end of a run whose calls were all invalid", () => {
+    expect(invalidStreak([])).toBe(0);
+    expect(invalidStreak([step(true), step(false), step(true), step(true)])).toBe(2);
+    expect(invalidStreak([step(true, false)])).toBe(0); // one valid call in the step breaks it
+    expect(invalidStreak([step()])).toBe(0); // a step with no calls is a plain answer
+  });
+
+  it("are counted over a whole run", () => {
+    expect(countInvalid([step(true, false), step(true, true), step()])).toBe(3);
+  });
+});
+
+describe("longRetryAfter", () => {
+  const err = (headers: Record<string, string>) => ({ responseHeaders: headers });
+  it("is true only when the provider asks to wait a minute or more, in either header", () => {
+    expect(longRetryAfter(err({ "retry-after": "90" }))).toBe(true);
+    expect(longRetryAfter(err({ "retry-after": "60" }))).toBe(true);
+    expect(longRetryAfter(err({ "retry-after": "5" }))).toBe(false);
+    expect(longRetryAfter(err({ "retry-after-ms": "90000" }))).toBe(true);
+    expect(longRetryAfter(err({ "retry-after-ms": "5" }))).toBe(false);
+    expect(longRetryAfter(err({}))).toBe(false);
+    expect(longRetryAfter(new Error("x"))).toBe(false);
+  });
+});
+
+describe("toolStop", () => {
+  it("reads a closed craft server and a timed-out tool from a tool error, and nothing from a result", () => {
+    expect(toolStop({ type: "tool-error", error: { name: "MCPClientError", message: "Attempted to send a request from a closed client" } })).toBe("server_lost");
+    expect(toolStop({ type: "tool-error", error: { name: "MCPClientError", message: "Connection closed" } })).toBe("server_lost");
+    expect(toolStop({ type: "tool-error", error: { name: "TimeoutError", message: "tool timeout" } })).toBe("tool_timeout");
+    expect(toolStop({ type: "tool-error", error: { name: "MCPClientError", message: "Request was aborted", cause: { name: "TimeoutError" } } })).toBe("tool_timeout");
+    expect(toolStop({ type: "tool-error", error: { name: "MCPClientError", message: "Request was aborted", cause: { name: "AbortError" } } })).toBeUndefined(); // a cancelled run, not a stalled tool
+    expect(toolStop({ type: "tool-error", error: { name: "Error", message: "something else" } })).toBeUndefined();
+    expect(toolStop({ type: "tool-result", output: { isError: true } })).toBeUndefined();
   });
 });

@@ -1,8 +1,8 @@
 import type { ModelSettings } from "./providers.js";
 
 /**
- * The seam between the harness and whatever runs the agent. Types only: the recorder, the join and the
- * export are tested against a scripted driver, and only `ai-driver.ts` imports the SDK.
+ * The seam between the harness and whatever runs the agent. Only `ai-driver.ts` imports the SDK; the recorder, the
+ * join and the export are tested against a scripted driver. The one runtime value here is `DriverAborted`.
  */
 
 /**
@@ -33,6 +33,18 @@ export interface DriverSink {
   onToolEnd(call: ToolEnd): void;
 }
 
+/** Per-run limits on one model step, one tool call and what a run may spend. An unset one is left to the provider (or, for a timeout, to the default). */
+export interface RunLimits {
+  stepTimeoutMs?: number | undefined;
+  toolTimeoutMs?: number | undefined;
+  /** A ceiling on the output of one model step. Unset by default: a thinking budget needs a ceiling above it. */
+  maxOutputTokens?: number | undefined;
+  /** Stop after the step that takes the run's tokens (all kinds) to this. */
+  maxTotalTokens?: number | undefined;
+  /** Stop after the step that takes the run's computed cost to this; needs a priced model. */
+  maxUsd?: number | undefined;
+}
+
 export interface DriverOptions {
   prompt: string;
   /** Path of the world file the craft server plays. */
@@ -45,6 +57,8 @@ export interface DriverOptions {
   model?: string | undefined;
   /** The settings pinned for this model (thinking, effort, temperature); an unset one is left to the provider's default. */
   settings?: ModelSettings | undefined;
+  /** Limits on a step, a tool call and spend; see `RunLimits`. */
+  limits?: RunLimits | undefined;
   /** Aborting it must end the run promptly. */
   signal: AbortSignal;
   /** A skill to make available to the agent: a local plugin folder, and the skill's `plugin:skill` name. */
@@ -82,6 +96,8 @@ export interface PlayerResult {
   modelsUsed: string[];
   /** The agent's final message. Kept in score.json, never in a trace or a bundle. */
   text: string;
+  /** How many tool calls the model made that were not valid (malformed arguments, an unknown tool). Absent for a player that does not count them. */
+  invalidToolCalls?: number | undefined;
   /** Whether the agent loaded the installed skill at least once. Absent when no skill was installed. */
   skillInvoked?: boolean | undefined;
   /** How many craft calls the agent had made when it first loaded the skill; null if it never did. */
@@ -90,3 +106,14 @@ export interface PlayerResult {
 
 /** Run the player once. Resolves with the result; a driver reports failures by returning `ended: "error"` or by rejecting. */
 export type AgentDriver = (options: DriverOptions, sink: DriverSink) => Promise<PlayerResult>;
+
+/**
+ * What a driver rejects with when the run's signal aborted it (a timeout or a cancellation). It carries what the run had
+ * spent by then, so the harness can record that under its own fixed reason instead of losing the cost.
+ */
+export class DriverAborted extends Error {
+  constructor(readonly partial: PlayerResult) {
+    super("the player was aborted");
+    this.name = "DriverAborted";
+  }
+}

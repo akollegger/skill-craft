@@ -2,11 +2,11 @@ import { createMCPClient } from "@ai-sdk/mcp";
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
 import { generateText, isStepCount, jsonSchema, Output, tool, wrapLanguageModel, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
 import { craftServer } from "./craft-server.js";
-import type { AgentDriver, DriverOptions } from "./driver.js";
+import { DriverAborted, type AgentDriver, type PlayerResult } from "./driver.js";
 import { DEFAULT_MODEL, costOf, parseModelSpec, priceFor, type ModelRef, type Tokens } from "./models.js";
 import { findProvider, normaliseReported } from "./providers.js";
 import type { RoleDriver, RoleTokens } from "./role-driver.js";
-import { addRoleTokens, addTokens, classifyEnd, CRAFT_TOOL_PREFIX, droppedSetting, MAX_RETRIES, MAX_ROLE_ATTEMPTS, failureCode, NO_TOKENS, readInstalledSkill, requestStart, requestStop, requestUsage, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf } from "./ai-options.js";
+import { addRoleTokens, addTokens, classifyEnd, countInvalid, CRAFT_TOOL_PREFIX, droppedSetting, invalidStreak, longRetryAfter, MAX_INVALID_STEPS, MAX_RETRIES, MAX_ROLE_ATTEMPTS, failureCode, NO_TOKENS, overCap, readInstalledSkill, requestStart, requestStop, requestUsage, resolveLimits, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf, toolStop } from "./ai-options.js";
 
 /**
  * Run the player through the AI SDK. This is the only file that imports the SDK (and the provider packages) at run
@@ -52,6 +52,9 @@ export function observed(model: LanguageModel, probe: ModelProbe): LanguageModel
           return result;
         } catch (e) {
           probe.failedAttempts++;
+          // The SDK retries after two seconds when a provider asks for a minute or more, which only spends requests that fail
+          // again. Marking the error not retryable ends the call at once, with the status the provider gave.
+          if (longRetryAfter(e)) (e as { isRetryable?: boolean }).isRetryable = false;
           throw e;
         }
       },
@@ -87,6 +90,24 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
   let completed = 0; // requests that came back: a failed one is not a turn and has no tokens
   let craftCalls = 0;
   let skillLoadedAfterCalls: number | null = null;
+  const limits = opts.limits ?? {};
+  const resolved = resolveLimits(opts.limits);
+  let stopCode: string | undefined; // why the run was ended from inside it: the craft server died, a tool timed out, a streak of invalid calls
+  let capHit = false;
+  let seenSteps: readonly { toolCalls: readonly { invalid?: boolean | undefined }[] }[] = [];
+  const spent = () => ({
+    turns: completed === 0 ? null : completed,
+    costUsd: costOf(total, price),
+    durationMs: Math.round(performance.now() - started),
+    usage: completed === 0 ? null : { inputTokens: total.input, outputTokens: total.output, cacheReadTokens: total.cacheRead, cacheCreationTokens: total.cacheWrite },
+    requestedModel: opts.model ?? null,
+    initModel: reportedSpecs[0] ?? ref.spec,
+    modelsUsed: modelsRan(),
+    ...(reportedCost === undefined ? {} : { reportedCostUsd: reportedCost }),
+    ...(backendOf() === undefined ? {} : { backend: backendOf() }),
+    retries: { max: MAX_RETRIES, failedAttempts: probe.failedAttempts },
+    invalidToolCalls: countInvalid(seenSteps),
+  });
   try {
     const tools: ToolSet = await client.tools();
     for (const name of Object.keys(tools)) craftNames.add(name);
@@ -111,9 +132,22 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
         prompt: opts.prompt,
         tools,
         // Also stop after a response whose provider says a pinned setting was not applied: the run would not be the one recorded.
-        stopWhen: [isStepCount(opts.maxTurns), ({ steps }) => droppedSetting(steps.at(-1)?.warnings, opts.settings) !== undefined],
+        stopWhen: [
+          isStepCount(opts.maxTurns),
+          ({ steps }) => {
+            seenSteps = steps;
+            if (stopCode !== undefined) return true;
+            if (invalidStreak(steps) >= MAX_INVALID_STEPS) return (stopCode = "tool_loop"), true;
+            if (overCap(total, costOf(total, price), limits)) return (capHit = true);
+            return false;
+          },
+          ({ steps }) => droppedSetting(steps.at(-1)?.warnings, opts.settings) !== undefined,
+        ],
         maxRetries: MAX_RETRIES,
         abortSignal: opts.signal,
+        // A step or a tool call that stalls ends the run, rather than holding it to the whole time limit.
+        timeout: { stepMs: resolved.stepTimeoutMs, toolMs: resolved.toolTimeoutMs },
+        ...(resolved.maxOutputTokens === null ? {} : { maxOutputTokens: resolved.maxOutputTokens }),
         // The row's call options: the cache option for Anthropic, nothing for a provider that caches on its own.
         ...(row?.callOptions(opts.settings ?? {}, ref.id) ?? {}),
         onLanguageModelCallStart: (e) => {
@@ -140,38 +174,35 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
         },
         onToolExecutionEnd: (e) => {
           sink.onToolEnd({ toolUseId: e.toolCall.toolCallId });
+          stopCode ??= toolStop(e.toolOutput);
         },
       });
     } catch (e) {
-      // A cancelled or timed-out run is the caller's to report; anything else is a recorded failure with a fixed reason.
-      if (opts.signal.aborted) throw e;
-      return {
-        ended: "error", reason: failureReason("player", e, keyEnv), turns: completed === 0 ? null : completed,
-        costUsd: costOf(total, price), durationMs: Math.round(performance.now() - started),
-        usage: completed === 0 ? null : { inputTokens: total.input, outputTokens: total.output, cacheReadTokens: total.cacheRead, cacheCreationTokens: total.cacheWrite },
-        requestedModel: opts.model ?? null, initModel: reportedSpecs[0] ?? ref.spec, modelsUsed: modelsRan(), text: "",
-        ...(reportedCost === undefined ? {} : { reportedCostUsd: reportedCost }),
-        ...(backendOf() === undefined ? {} : { backend: backendOf() }),
-        retries: { max: MAX_RETRIES, failedAttempts: probe.failedAttempts },
-      };
+      // A cancelled or timed-out run is the caller's to report, with what it had spent; anything else is a recorded failure with a fixed reason.
+      if (opts.signal.aborted) throw new DriverAborted({ ended: "error", ...spent(), text: "" });
+      return { ended: "error", reason: failureReason("player", e, keyEnv), ...spent(), text: "" };
     }
 
     const ignored = result.steps.map((st) => droppedSetting(st.warnings, opts.settings)).find((x) => x !== undefined);
-    const ended = ignored === undefined ? classifyEnd(result.finishReason, result.steps.length, opts.maxTurns) : "error";
+    const finish = /^[a-z-]+$/.test(result.finishReason) ? result.finishReason : "an unknown finish";
+    let ended: PlayerResult["ended"];
+    let reason: string | undefined;
+    if (ignored !== undefined) [ended, reason] = ["error", `DriverFailed: the player reported setting_ignored (${ignored})`];
+    else if (stopCode !== undefined) [ended, reason] = ["error", `DriverFailed: the player reported ${stopCode}`];
+    else if (result.finishReason === "length") [ended, reason] = ["error", "DriverFailed: the player reported output_limit"];
+    else if (capHit && result.finishReason === "tool-calls") [ended, reason] = ["budget", "SpendCap: the player reached its spend cap"];
+    else {
+      ended = classifyEnd(result.finishReason, result.steps.length, opts.maxTurns);
+      if (ended === "error") reason = `DriverFailed: player ended with ${finish}`;
+    }
+    seenSteps = result.steps;
     return {
       ended,
-      ...(ignored !== undefined ? { reason: `DriverFailed: the player reported setting_ignored (${ignored})` } : ended === "error" ? { reason: `DriverFailed: player ended with ${/^[a-z-]+$/.test(result.finishReason) ? result.finishReason : "an unknown finish"}` } : {}),
+      ...(reason === undefined ? {} : { reason }),
+      ...spent(),
       turns: result.steps.length,
-      costUsd: costOf(total, price),
-      durationMs: Math.round(performance.now() - started),
-      usage: { inputTokens: total.input, outputTokens: total.output, cacheReadTokens: total.cacheRead, cacheCreationTokens: total.cacheWrite },
-      requestedModel: opts.model ?? null,
-      initModel: reportedSpecs[0] ?? ref.spec,
       modelsUsed: modelsRan().length > 0 ? modelsRan() : [ref.spec],
       text: ended === "error" ? "" : result.text,
-      ...(reportedCost === undefined ? {} : { reportedCostUsd: reportedCost }),
-      ...(backendOf() === undefined ? {} : { backend: backendOf() }),
-      retries: { max: MAX_RETRIES, failedAttempts: probe.failedAttempts },
       ...(opts.skill ? { skillInvoked: skillLoadedAfterCalls !== null, skillLoadedAfterCalls } : {}),
     };
   } finally {

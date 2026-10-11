@@ -1,13 +1,13 @@
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { execFileSync } from "node:child_process";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DriverOptions } from "../src/harness/driver.js";
 import { PROVIDERS, type ProviderRow } from "../src/harness/providers.js";
 import { installSkill } from "../src/harness/skill.js";
 import { readTrace, type RequestLine, type ToolLine } from "../src/trace/lines.js";
 import { TraceRecorder } from "../src/trace/recorder.js";
+import { noServersSoon, ownServerProcesses } from "./helpers/processes.js";
 
 // The providers are replaced by a scripted model from the SDK's own test kit, so the driver's wiring (the craft
 // server over stdio, the tool loop, the trace, the result) runs for real while no model is called.
@@ -349,30 +349,6 @@ describe("a model made through the provider table", () => {
     });
   });
 });
-
-/** Craft server processes that are descendants of this test process: the ones a driver started and must clean up. */
-function ownServerProcesses(): string[] {
-  const rows = execFileSync("ps", ["-ax", "-o", "pid=,ppid=,command="], { encoding: "utf8" })
-    .split("\n")
-    .map((l) => /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(l))
-    .filter((m): m is RegExpExecArray => m !== null)
-    .map((m) => ({ pid: Number(m[1]), ppid: Number(m[2]), cmd: m[3] as string }));
-  const byPid = new Map(rows.map((r) => [r.pid, r]));
-  const mine = (pid: number): boolean => {
-    for (let p = byPid.get(pid)?.ppid; p !== undefined && p > 1; p = byPid.get(p)?.ppid) if (p === process.pid) return true;
-    return false;
-  };
-  return rows.filter((r) => r.cmd.includes("src/mcp/server.ts") && mine(r.pid)).map((r) => r.cmd);
-}
-
-const noServersSoon = async (): Promise<string[]> => {
-  for (let i = 0; i < 40; i++) {
-    const left = ownServerProcesses();
-    if (left.length === 0) return left;
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  return ownServerProcesses();
-};
 
 describe("retries", () => {
   // The SDK waits between attempts; a retry-after header of a few milliseconds keeps the tests fast without changing what they check.

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { parseArgs } from "node:util";
 import { loadWorld } from "../sim/loader.js";
-import type { AgentDriver } from "./driver.js";
+import type { AgentDriver, RunLimits } from "./driver.js";
 import { HarnessError, isUserError, UnknownGoalItem } from "./errors.js";
 import { DEFAULT_MODEL, loadSettings, parseModelSpec } from "./models.js";
 import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, planExperiment, runExperiment, type AgentRunOptions, type RunReport } from "./run.js";
@@ -18,7 +18,8 @@ export interface CliDeps {
 
 const USAGE =
   "usage: run-agent.ts --goal <item>[:<qty>] [--world <world.json>] [--runs n] [--max-turns n] [--timeout-minutes n]\n" +
-  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--prompt-file <file>] [--settings <file>] [--dry-run]";
+  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--prompt-file <file>] [--settings <file>]\n" +
+  "       [--step-timeout-seconds n] [--tool-timeout-seconds n] [--max-output-tokens n] [--max-total-tokens n] [--max-usd n] [--dry-run]";
 
 class UsageError extends Error {}
 
@@ -37,6 +38,12 @@ function readTemplate(path: string): string {
 const positive = (name: string, text: string | undefined): number => {
   const n = Number(text);
   if (!Number.isInteger(n) || n < 1) throw new UsageError(`--${name} must be a whole number of at least 1`);
+  return n;
+};
+
+const positiveNumber = (name: string, text: string | undefined): number => {
+  const n = Number(text);
+  if (!Number.isFinite(n) || n <= 0) throw new UsageError(`--${name} must be a number greater than 0`);
   return n;
 };
 
@@ -78,6 +85,11 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
         "prompt-note": { type: "string" },
         "prompt-file": { type: "string" },
         settings: { type: "string" },
+        "step-timeout-seconds": { type: "string" },
+        "tool-timeout-seconds": { type: "string" },
+        "max-output-tokens": { type: "string" },
+        "max-total-tokens": { type: "string" },
+        "max-usd": { type: "string" },
         "dry-run": { type: "boolean", default: false },
       },
     });
@@ -96,6 +108,14 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
       throw new UsageError(`--timeout-minutes must be a number greater than 0 and at most ${Math.floor(MAX_TIMEOUT_MS / 60_000)}`);
     }
 
+    const limits: RunLimits = {
+      ...(values["step-timeout-seconds"] === undefined ? {} : { stepTimeoutMs: positiveNumber("step-timeout-seconds", values["step-timeout-seconds"]) * 1000 }),
+      ...(values["tool-timeout-seconds"] === undefined ? {} : { toolTimeoutMs: positiveNumber("tool-timeout-seconds", values["tool-timeout-seconds"]) * 1000 }),
+      ...(values["max-output-tokens"] === undefined ? {} : { maxOutputTokens: positive("max-output-tokens", values["max-output-tokens"]) }),
+      ...(values["max-total-tokens"] === undefined ? {} : { maxTotalTokens: positive("max-total-tokens", values["max-total-tokens"]) }),
+      ...(values["max-usd"] === undefined ? {} : { maxUsd: positiveNumber("max-usd", values["max-usd"]) }),
+    };
+
     const options: AgentRunOptions = {
       world: values.world as string,
       goal: { item, qty: positive("goal quantity", qty) },
@@ -106,6 +126,7 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
       label: values.label ?? `${basename(values.world as string, ".json")}-${item}-${new Date().toISOString().replace(/[:.]/g, "-")}`,
       ...(values.model ? { model: values.model } : {}),
       ...(settings === undefined ? {} : { settings }),
+      ...(Object.keys(limits).length === 0 ? {} : { limits }),
       ...(values.skill ? { skill: values.skill } : {}),
       ...(note === undefined ? {} : { promptNote: note }),
       ...(template === undefined ? {} : { promptTemplate: template }),

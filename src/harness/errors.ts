@@ -80,7 +80,7 @@ export function reasonOf(e: unknown): string {
 
 /** Mistakes the operator can fix, as opposed to a run that failed. Matched by class, never by message text. */
 export function isUserError(e: unknown): boolean {
-  return e instanceof LoopRefused || e instanceof WorkspaceRefused || e instanceof RunFolderExists || e instanceof ExportRefused || e instanceof SkillNotFound || e instanceof ReportRefused || e instanceof UnknownGoalItem || e instanceof UnknownModel || e instanceof UnknownProvider || e instanceof BackendNotPinned || e instanceof SettingRefused || e instanceof SettingsInvalid || e instanceof WorldError || e instanceof RunLogInUseError;
+  return e instanceof LoopRefused || e instanceof WorkspaceRefused || e instanceof RunFolderExists || e instanceof ExportRefused || e instanceof SkillNotFound || e instanceof ReportRefused || e instanceof UnknownGoalItem || e instanceof UnknownModel || e instanceof UnknownProvider || e instanceof BackendNotPinned || e instanceof SettingRefused || e instanceof LimitRefused || e instanceof SettingsInvalid || e instanceof WorldError || e instanceof RunLogInUseError;
 }
 
 /** A results report that cannot be trusted or built: a missing summary, a stray folder, a mismatched skill or note. */
@@ -172,5 +172,12 @@ export class SettingsInvalid extends HarnessError {
 export class BackendNotPinned extends HarnessError {
   constructor(prefix: string) {
     super("BackendNotPinned", `provider '${prefix}' routes one model across backends; its table entry must pin the backend`);
+  }
+}
+
+/** A limit that cannot be applied to the model: a dollar cap needs a price, and the model has none. */
+export class LimitRefused extends HarnessError {
+  constructor(model: string, limit: string) {
+    super("LimitRefused", `model '${model}' has no price, so limit '${limit}' cannot be applied; use a token limit`);
   }
 }

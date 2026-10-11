@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { LanguageModelUsage } from "ai";
 import type { PlayerMessage } from "./driver.js";
-import type { PlayerResult } from "./driver.js";
+import type { PlayerResult, RunLimits } from "./driver.js";
 import type { RoleResult, RoleTokens } from "./role-driver.js";
 import type { Tokens } from "./models.js";
 import type { ModelSettings } from "./providers.js";
@@ -14,6 +14,77 @@ export const CRAFT_TOOL_PREFIX = "mcp__craft__";
 
 /** How many times the SDK may retry a failed request. Stated, not inherited, so a run can record it (spec 007, research R5). */
 export const MAX_RETRIES = 2;
+
+/** How long one model step, and one craft tool call, may take before the run is ended. A hung provider would otherwise hold a run to its whole time limit. */
+export const STEP_TIMEOUT_MS = 5 * 60 * 1000;
+export const TOOL_TIMEOUT_MS = 60 * 1000;
+
+/** The SDK honours a provider's `retry-after` only below this, and otherwise retries after two seconds; a wait this long is not retried. */
+export const LONG_RETRY_AFTER_MS = 60 * 1000;
+
+/** Consecutive steps whose tool calls were all invalid (malformed arguments, an unknown tool) that end a run. */
+export const MAX_INVALID_STEPS = 5;
+
+/** The limits a run ran under, with the defaults filled in; `null` is "not set", which leaves the choice to the provider. */
+export interface ResolvedLimits {
+  stepTimeoutMs: number;
+  toolTimeoutMs: number;
+  maxOutputTokens: number | null;
+  maxTotalTokens: number | null;
+  maxUsd: number | null;
+}
+
+export const resolveLimits = (l: RunLimits | undefined): ResolvedLimits => ({
+  stepTimeoutMs: l?.stepTimeoutMs ?? STEP_TIMEOUT_MS,
+  toolTimeoutMs: l?.toolTimeoutMs ?? TOOL_TIMEOUT_MS,
+  maxOutputTokens: l?.maxOutputTokens ?? null,
+  maxTotalTokens: l?.maxTotalTokens ?? null,
+  maxUsd: l?.maxUsd ?? null,
+});
+
+/** Whether what a run has spent is over a cap it was given. A dollar cap never trips for a run with no cost figure. */
+export function overCap(total: Tokens, costUsd: number | null, limits: RunLimits): boolean {
+  if (limits.maxTotalTokens !== undefined && total.input + total.output + total.cacheRead + total.cacheWrite >= limits.maxTotalTokens) return true;
+  return limits.maxUsd !== undefined && costUsd !== null && costUsd >= limits.maxUsd;
+}
+
+type StepCalls = { toolCalls: readonly { invalid?: boolean | undefined }[] };
+
+/** How many steps at the end of a run had tool calls and every one invalid. A step with a valid call, or none, breaks the streak. */
+export function invalidStreak(steps: readonly StepCalls[]): number {
+  let n = 0;
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const calls = (steps[i] as StepCalls).toolCalls;
+    if (calls.length === 0 || !calls.every((c) => c.invalid === true)) break;
+    n++;
+  }
+  return n;
+}
+
+export const countInvalid = (steps: readonly StepCalls[]): number => steps.reduce((sum, st) => sum + st.toolCalls.filter((c) => c.invalid === true).length, 0);
+
+/** True when a provider's error asks the caller to wait a minute or more before trying again. */
+export function longRetryAfter(error: unknown): boolean {
+  const h = (error as { responseHeaders?: Record<string, string> } | null)?.responseHeaders;
+  if (h === undefined || h === null) return false;
+  const ms = Number(h["retry-after-ms"]);
+  if (Number.isFinite(ms) && h["retry-after-ms"] !== undefined) return ms >= LONG_RETRY_AFTER_MS;
+  const seconds = Number(h["retry-after"]);
+  return h["retry-after"] !== undefined && Number.isFinite(seconds) && seconds * 1000 >= LONG_RETRY_AFTER_MS;
+}
+
+/**
+ * Why a failed tool call should end the run, or undefined: the craft server's connection is closed (it died), or the
+ * call hit its time limit. Any other tool error is an ordinary one the model sees and may recover from.
+ */
+export function toolStop(output: unknown): "server_lost" | "tool_timeout" | undefined {
+  const o = output as { type?: unknown; error?: { name?: unknown; message?: unknown; cause?: { name?: unknown } } } | null;
+  if (o?.type !== "tool-error") return undefined;
+  // The MCP client reports an aborted request as its own error with the signal's reason as the cause, a TimeoutError for a time limit.
+  if (o.error?.name === "TimeoutError" || o.error?.cause?.name === "TimeoutError") return "tool_timeout";
+  if (o.error?.name === "MCPClientError" && /closed/i.test(String(o.error.message))) return "server_lost";
+  return undefined;
+}
 
 /**
  * The first pinned setting that a provider's warning says it did not apply, or undefined. The SDK does not fail a call for
@@ -105,10 +176,21 @@ export function failureCode(error: unknown): string {
   // When the SDK gives up after its retries it wraps the last failure; the code comes from that one.
   const e = (error as { lastError?: unknown } | null)?.lastError ?? error;
   const status = (e as { statusCode?: unknown } | null)?.statusCode;
-  if (typeof status === "number") return status === 401 || status === 403 ? "authentication_failed" : status === 429 ? "rate_limited" : status >= 500 ? "provider_unavailable" : "request_rejected";
+  if (typeof status === "number") {
+    if (status === 401 || status === 403) return "authentication_failed";
+    if (status === 429) return "rate_limited";
+    if (status === 408 || status >= 500) return "provider_unavailable";
+    // The message is read to tell a prompt over the window from other rejections; only the code is kept.
+    if ((status === 400 || status === 413) && /too long|too large|context (length|window)|maximum (context|prompt)|exceeds? .*(limit|maximum)/i.test(String((e as { message?: unknown }).message))) return "context_length_exceeded";
+    return "request_rejected";
+  }
   const name = (e as { name?: unknown } | null)?.name;
   if (typeof name === "string" && /LoadAPIKeyError$/.test(name)) return "api_key_missing"; // the SDK prefixes its error names
-  if (name === "AbortError" || name === "TimeoutError") return "aborted";
+  if (name === "TimeoutError") return "step_timeout";
+  if (name === "AbortError") return "aborted";
+  const cause = (e as { cause?: { code?: unknown } } | null)?.cause?.code;
+  if (typeof cause === "string" && /^(ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|UND_ERR)/.test(cause)) return "provider_unreachable";
+  if ((e as { isRetryable?: unknown } | null)?.isRetryable === true) return "provider_unreachable"; // the SDK marks a dropped connection retryable
   return "unexpected";
 }
 
