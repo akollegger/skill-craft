@@ -185,6 +185,36 @@ describe("pinned settings", () => {
     expect(r).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported request_rejected" });
     expect(JSON.stringify(r)).not.toContain("SECRET-BODY");
   }, 30_000);
+
+  describe("a setting the SDK would silently drop", () => {
+    const warned = (r: Result, feature: string): Result => ({ ...r, warnings: [{ type: "unsupported", feature, details: "will be ignored" }] }) as Result;
+
+    it("ends the run as an error after the first response, when the provider says a pinned setting is not supported", async () => {
+      scripted(warned(call("c1", "look"), "temperature"), say("never reached"));
+      const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001", settings: { temperature: 0 } });
+      const r = await aiDriver(opts, recorder);
+      expect(r).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported setting_ignored (temperature)", turns: 1 });
+      expect(model().doGenerateCalls).toHaveLength(1);
+    }, 30_000);
+
+    it("names thinking and effort too, whichever name the provider's warning gives the feature", async () => {
+      scripted(warned(say("done"), "providerOptions.anthropic.thinking"));
+      const a = setup({ model: "claude-haiku-4-5-20251001", settings: { thinking: "off" } });
+      expect((await aiDriver(a.opts, a.recorder)).reason).toBe("DriverFailed: the player reported setting_ignored (thinking)");
+      scripted(warned(say("done"), "providerOptions.anthropic.effort"));
+      const b = setup({ model: "claude-haiku-4-5-20251001", settings: { effort: "high" } });
+      expect((await aiDriver(b.opts, b.recorder)).reason).toBe("DriverFailed: the player reported setting_ignored (effort)");
+    }, 30_000);
+
+    it("does not end a run for a warning about a setting nobody pinned, or about something else", async () => {
+      scripted(warned(say("done"), "temperature"));
+      const a = setup({ model: "claude-haiku-4-5-20251001" });
+      expect((await aiDriver(a.opts, a.recorder)).ended).toBe("stopped");
+      scripted(warned(say("done"), "frequencyPenalty"));
+      const b = setup({ model: "claude-haiku-4-5-20251001", settings: { temperature: 0 } });
+      expect((await aiDriver(b.opts, b.recorder)).ended).toBe("stopped");
+    }, 30_000);
+  });
 });
 
 describe("the model that ran", () => {

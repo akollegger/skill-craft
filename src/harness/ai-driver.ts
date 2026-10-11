@@ -6,7 +6,7 @@ import type { AgentDriver, DriverOptions } from "./driver.js";
 import { DEFAULT_MODEL, costOf, parseModelSpec, priceFor, type ModelRef, type Tokens } from "./models.js";
 import { findProvider, normaliseReported } from "./providers.js";
 import type { RoleDriver } from "./role-driver.js";
-import { addTokens, classifyEnd, CRAFT_TOOL_PREFIX, MAX_RETRIES, failureCode, NO_TOKENS, readInstalledSkill, requestStart, requestStop, requestUsage, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf } from "./ai-options.js";
+import { addTokens, classifyEnd, CRAFT_TOOL_PREFIX, droppedSetting, MAX_RETRIES, failureCode, NO_TOKENS, readInstalledSkill, requestStart, requestStop, requestUsage, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf } from "./ai-options.js";
 
 /**
  * Run the player through the AI SDK. This is the only file that imports the SDK (and the provider packages) at run
@@ -110,7 +110,8 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
         model: observed(await languageModel(ref), probe),
         prompt: opts.prompt,
         tools,
-        stopWhen: isStepCount(opts.maxTurns),
+        // Also stop after a response whose provider says a pinned setting was not applied: the run would not be the one recorded.
+        stopWhen: [isStepCount(opts.maxTurns), ({ steps }) => droppedSetting(steps.at(-1)?.warnings, opts.settings) !== undefined],
         maxRetries: MAX_RETRIES,
         abortSignal: opts.signal,
         // The row's call options: the cache option for Anthropic, nothing for a provider that caches on its own.
@@ -155,10 +156,11 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
       };
     }
 
-    const ended = classifyEnd(result.finishReason, result.steps.length, opts.maxTurns);
+    const ignored = result.steps.map((st) => droppedSetting(st.warnings, opts.settings)).find((x) => x !== undefined);
+    const ended = ignored === undefined ? classifyEnd(result.finishReason, result.steps.length, opts.maxTurns) : "error";
     return {
       ended,
-      ...(ended === "error" ? { reason: `DriverFailed: player ended with ${/^[a-z-]+$/.test(result.finishReason) ? result.finishReason : "an unknown finish"}` } : {}),
+      ...(ignored !== undefined ? { reason: `DriverFailed: the player reported setting_ignored (${ignored})` } : ended === "error" ? { reason: `DriverFailed: player ended with ${/^[a-z-]+$/.test(result.finishReason) ? result.finishReason : "an unknown finish"}` } : {}),
       turns: result.steps.length,
       costUsd: costOf(total, price),
       durationMs: Math.round(performance.now() - started),

@@ -107,7 +107,8 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 - [X] T030 [US2] `src/harness/providers.ts`, `src/harness/ai-driver.ts`, `src/harness/run.ts`: add the optional row hook `backend(meta)`; the driver records the backend a routed response reports in `model.backend`; `aggregate` counts runs whose backends differ as `mixedModels` (make the routed-provider cases in T026 pass).
 - [X] T031 [US2] Generalise `spikes/fireworks/probe-tools.ts` and `probe-schema.ts` to take `<provider>/<model>`, read the row for the key and base address, and print structure only (contracts/cli.md); keep their output free of agent text and reasoning.
 - [X] T032 [US2] Write the admission procedure into `spikes/fireworks/README.md` (the probe's findings to record, the usage-report rule, how a routed row is pinned), pointing at contracts/provider-table.md; add `ANTHROPIC_API_KEY` and `FIREWORKS_API_KEY` guidance and a comment on adding a key variable to `.env.example`.
-- [ ] T033 [US2] **(spends, cap US$0.50)** Run the generalised probes for `anthropic/claude-haiku-4-5-20251001` and `fireworks/gpt-oss-120b`, and write `design/notes/provider-admission.md` with each provider's findings: tool calls, schema answers, settings refused, reasoning handling, usage fields reported, and whether it has a usage report. Take the Fireworks findings from `spikes/fireworks/log.md` and confirm them with the new probe. Set each row's `settings` and `usageReport` from the findings.
+- [X] T033 [US2] **(spends, cap US$0.50)** Run the generalised probes for `anthropic/claude-haiku-4-5-20251001` and `fireworks/gpt-oss-120b`, and write `design/notes/provider-admission.md` with each provider's findings: tool calls, schema answers, settings refused, reasoning handling, usage fields reported, and whether it has a usage report. Take the Fireworks findings from `spikes/fireworks/log.md` and confirm them with the new probe. Set each row's `settings` and `usageReport` from the findings.
+  - Done 2026-10-11 (about US$0.03): findings in `design/notes/provider-admission.md`; the table's rules matched the provider in all eight Anthropic cases, and the probes found that the SDK silently drops a setting a model does not support, which led to the `setting_ignored` guard.
 
 **Checkpoint**: US1 and US2 together are the MVP: model and cost records plus a table a provider can be added to.
 
@@ -127,7 +128,8 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 ### Implementation
 
 - [X] T036 [US3] `src/harness/providers.ts` and `src/harness/ai-driver.ts`: the Anthropic row's `callOptions` returns the cache option and the driver passes it on every call (make T034 and T035 pass).
-- [ ] T037 [US3] **(spends, cap US$1)** Run `quickstart.md` B1 (one 40-turn Claude run). Read `score.json`: at least 80% of input tokens are cache reads (SC-004). If not, add the fallback in research R4 (a cache breakpoint on the last message in `prepareStep`), with a scripted test first, and run B1 again.
+- [X] T037 [US3] **(spends, cap US$1)** Run `quickstart.md` B1 (one 40-turn Claude run). Read `score.json`: at least 80% of input tokens are cache reads (SC-004). If not, add the fallback in research R4 (a cache breakpoint on the last message in `prepareStep`), with a scripted test first, and run B1 again.
+  - Done 2026-10-11 (US$0.125): `runs/rt-cache/001`, 211,630 cache-read tokens against 68 uncached and 13,114 written, so 94% of input was read from cache (SC-004: at least 80%). The spike's runs cost about US$0.65 each.
 
 **Checkpoint**: Claude cost is no longer dominated by uncached input; later spends are cheaper.
 

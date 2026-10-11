@@ -5,6 +5,7 @@ import type { PlayerMessage } from "./driver.js";
 import type { PlayerResult } from "./driver.js";
 import type { RoleResult, RoleTokens } from "./role-driver.js";
 import type { Tokens } from "./models.js";
+import type { ModelSettings } from "./providers.js";
 
 // Type-only imports from `ai`: loading this file never loads the SDK, so dry runs and tests stay light.
 
@@ -13,6 +14,23 @@ export const CRAFT_TOOL_PREFIX = "mcp__craft__";
 
 /** How many times the SDK may retry a failed request. Stated, not inherited, so a run can record it (spec 007, research R5). */
 export const MAX_RETRIES = 2;
+
+/**
+ * The first pinned setting that a provider's warning says it did not apply, or undefined. The SDK does not fail a call for
+ * a setting a model does not support: it drops it and warns (a pinned temperature on a model that takes none is ignored),
+ * so a run could go on without a setting it recorded as pinned. The warning's feature name varies by provider
+ * (`temperature`, `providerOptions.anthropic.thinking`), so it is matched by the setting's name.
+ */
+export function droppedSetting(warnings: readonly { type: string; feature?: string }[] | undefined, settings: ModelSettings | undefined): keyof ModelSettings | undefined {
+  if (settings === undefined) return undefined;
+  for (const w of warnings ?? []) {
+    if (w.type !== "unsupported" || typeof w.feature !== "string") continue;
+    for (const name of ["temperature", "thinking", "effort"] as const) {
+      if (settings[name] !== undefined && w.feature.toLowerCase().includes(name)) return name;
+    }
+  }
+  return undefined;
+}
 
 /** What the skill tool is called. The harness reads a skill load from this name, in order, and from nothing the agent wrote. */
 export const SKILL_TOOL = "Skill";
