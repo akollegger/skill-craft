@@ -29,8 +29,8 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 **Purpose**: confirm the starting point and add the shared live-test helper.
 
-- [ ] T001 Confirm the baseline on branch `007-ai-sdk-runtime`: `pnpm typecheck` and `pnpm test` pass, and `git status` shows only `dist-viz/` untracked.
-- [ ] T002 [P] Add `test/helpers/live.ts`: a `live` flag (`process.env["LIVE_SDK"] === "1"`), a `skipUnlessKey(name)` guard that skips a check whose provider key variable is unset, and `writeCheckRecord(file, text)` that writes a check's record under `design/notes/`. It must never read or print a key's value.
+- [X] T001 Confirm the baseline on branch `007-ai-sdk-runtime`: `pnpm typecheck` and `pnpm test` pass, and `git status` shows only `dist-viz/` untracked.
+- [X] T002 [P] Add `test/helpers/live.ts`: a `live` flag (`process.env["LIVE_SDK"] === "1"`), a `skipUnlessKey(name)` guard that skips a check whose provider key variable is unset, and `writeCheckRecord(file, text)` that writes a check's record under `design/notes/`. It must never read or print a key's value.
 
 ---
 
@@ -42,19 +42,19 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 ### Tests first
 
-- [ ] T003 [P] Write `test/providers.test.ts`: the table has rows for `anthropic` and `fireworks`; `parseModelSpec` returns the canonical spec (`anthropic/claude-sonnet-5-5` for both `claude-sonnet-5-5` and `anthropic/claude-sonnet-5-5`; `fireworks/gpt-oss-120b` with id `accounts/fireworks/models/gpt-oss-120b`; a full `accounts/…` path kept); a spec round-trips; an unknown prefix throws `UnknownProvider` with the fixed message listing the prefixes; a bare non-Claude name throws; a row with `routed: true` and no `pinnedBackend` throws `BackendNotPinned`; `normaliseReported` maps `accounts/fireworks/models/x` to `fireworks/x` and a Claude id to `anthropic/<id>`.
-- [ ] T004 [P] Extend `test/ai-options.test.ts`: `loadPrices` returns canonical keys and reads a bare Claude key as `anthropic/<id>`; a price lookup by a bare id finds the canonical entry; `costOf` is unchanged; `canonicalSpec(s)` returns `anthropic/<id>` for a bare `claude-…` id and leaves a canonical spec unchanged.
+- [X] T003 [P] Write `test/providers.test.ts`: the table has rows for `anthropic` and `fireworks`; `parseModelSpec` returns the canonical spec (`anthropic/claude-sonnet-5-5` for both `claude-sonnet-5-5` and `anthropic/claude-sonnet-5-5`; `fireworks/gpt-oss-120b` with id `accounts/fireworks/models/gpt-oss-120b`; a full `accounts/…` path kept); a spec round-trips; an unknown prefix throws `UnknownProvider` with the fixed message listing the prefixes; a bare non-Claude name throws; a row with `routed: true` and no `pinnedBackend` throws `BackendNotPinned`; `normaliseReported` maps `accounts/fireworks/models/x` to `fireworks/x` and a Claude id to `anthropic/<id>`.
+- [X] T004 [P] Extend `test/ai-options.test.ts`: `loadPrices` returns canonical keys and reads a bare Claude key as `anthropic/<id>`; a price lookup by a bare id finds the canonical entry; `costOf` is unchanged; `canonicalSpec(s)` returns `anthropic/<id>` for a bare `claude-…` id and leaves a canonical spec unchanged.
 
 ### Implementation
 
-- [ ] T005 Add `UnknownProvider` and `BackendNotPinned` to `src/harness/errors.ts` (fixed messages from contracts/provider-table.md); keep `UnknownModel`.
-- [ ] T006 Create `src/harness/providers.ts` with the table and its row type (data-model.md): `prefix`, `package`, `factory`, `keyEnv`, `expand`, `normaliseReported`, `routed` and `pinnedBackend`, `usageReport`, `settings`, `callOptions`, optional `reportedCost`. It imports no provider package and no SDK. Rows for Anthropic and Fireworks; validate rows when the table loads.
-- [ ] T007 Change `src/harness/models.ts`: `parseModelSpec` reads the table and returns canonical `{ provider, id, spec }`; `DEFAULT_MODEL` becomes `anthropic/claude-sonnet-5-5`; `loadPrices` canonicalises keys and `priceFor(spec)` accepts either form. Make T003 and T004 pass.
-- [ ] T008 `src/harness/models.ts`: add `canonicalSpec(s)`, which reads a bare Claude id as `anthropic/<id>` and leaves a canonical spec unchanged; it never rewrites a file. Make the T004 cases pass.
-- [ ] T009 Apply `canonicalSpec` wherever a recorded model is read: `src/loop/cli.ts` (the teacher models behind the critic and reviser fallback, around line 110) and `src/harness/report.ts`; grep for other readers of `model.resolved` (`src/harness/bundle.ts`, `src/harness/export.ts`) and cover each. Tests first: `test/loop-cli.test.ts` (an old `score.json` with a bare Claude id gives the fallback model `anthropic/<id>`) and `test/report.test.ts` (old and new runs of one Claude model group in one row).
-- [ ] T010 Rewrite `prices.json` with canonical keys (`anthropic/claude-opus-5-5`, `anthropic/claude-sonnet-5-5`, `anthropic/claude-haiku-4-5`, `anthropic/claude-haiku-4-5-20251001`); keep the note key.
-- [ ] T011 Change `src/harness/ai-driver.ts`: `languageModel(ref)` finds the row, runs `await import(row.package)`, calls the named factory and the model id; a missing key variable ends the run with `DriverFailed: the player reported api_key_missing`, naming the variable. Remove the Anthropic and Fireworks static imports. Extend `test/ai-driver.test.ts` first with a scripted row that proves the driver builds a model through the table alone.
-- [ ] T012 Update the tests that assume bare Claude names: `test/harness.test.ts` and `test/scripts.test.ts` (the dry-run plan's default model is `anthropic/claude-sonnet-5-5`). The readers of old records are covered by T009.
+- [X] T005 Add `UnknownProvider` and `BackendNotPinned` to `src/harness/errors.ts` (fixed messages from contracts/provider-table.md); keep `UnknownModel`.
+- [X] T006 Create `src/harness/providers.ts` with the table and its row type (data-model.md): `prefix`, `package`, `factory`, `keyEnv`, `expand`, `normaliseReported`, `routed` and `pinnedBackend`, `usageReport`, `settings`, `callOptions`, optional `reportedCost`. It imports no provider package and no SDK. Rows for Anthropic and Fireworks; validate rows when the table loads.
+- [X] T007 Change `src/harness/models.ts`: `parseModelSpec` reads the table and returns canonical `{ provider, id, spec }`; `DEFAULT_MODEL` becomes `anthropic/claude-sonnet-5-5`; `loadPrices` canonicalises keys and `priceFor(spec)` accepts either form. Make T003 and T004 pass.
+- [X] T008 `src/harness/models.ts`: add `canonicalSpec(s)`, which reads a bare Claude id as `anthropic/<id>` and leaves a canonical spec unchanged; it never rewrites a file. Make the T004 cases pass.
+- [X] T009 Apply `canonicalSpec` wherever a recorded model is read: `src/loop/cli.ts` (the teacher models behind the critic and reviser fallback, around line 110) and `src/harness/report.ts`; grep for other readers of `model.resolved` (`src/harness/bundle.ts`, `src/harness/export.ts`) and cover each. Tests first: `test/loop-cli.test.ts` (an old `score.json` with a bare Claude id gives the fallback model `anthropic/<id>`) and `test/report.test.ts` (old and new runs of one Claude model group in one row).
+- [X] T010 Rewrite `prices.json` with canonical keys (`anthropic/claude-opus-5-5`, `anthropic/claude-sonnet-5-5`, `anthropic/claude-haiku-4-5`, `anthropic/claude-haiku-4-5-20251001`); keep the note key.
+- [X] T011 Change `src/harness/ai-driver.ts`: `languageModel(ref)` finds the row, runs `await import(row.package)`, calls the named factory and the model id; a missing key variable ends the run with `DriverFailed: the player reported api_key_missing`, naming the variable. Remove the Anthropic and Fireworks static imports. Extend `test/ai-driver.test.ts` first with a scripted row that proves the driver builds a model through the table alone.
+- [X] T012 Update the tests that assume bare Claude names: `test/harness.test.ts` and `test/scripts.test.ts` (the dry-run plan's default model is `anthropic/claude-sonnet-5-5`). The readers of old records are covered by T009.
 
 **Checkpoint**: `pnpm typecheck` and `pnpm test` pass; a model is `<provider>/<model>` everywhere it is recorded.
 

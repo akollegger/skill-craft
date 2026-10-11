@@ -8,6 +8,7 @@ import { fromRepoPath } from "../harness/paths.js";
 import { createCraftServer } from "../mcp/server.js";
 import { loadWorld } from "../sim/loader.js";
 import { canonical } from "../trace/measure.js";
+import { canonicalSpec } from "../harness/models.js";
 
 export interface RecordedCall {
   seq: number;
@@ -110,7 +111,8 @@ async function replay(runDir: string, label: string): Promise<Recording> {
     runDir,
     goal,
     world,
-    models: score.model?.resolved?.length ? score.model.resolved : score.model?.requested ? [score.model.requested] : [],
+    // A bare Claude id in an earlier run is read as anthropic/<id>; the file is not rewritten.
+    models: (score.model?.resolved?.length ? score.model.resolved : score.model?.requested ? [score.model.requested] : []).map(canonicalSpec),
     prompt: readFileSync(join(runDir, "prompt.txt"), "utf8"),
     calls,
     callCount: calls.length,

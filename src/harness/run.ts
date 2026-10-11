@@ -15,7 +15,7 @@ import { toRepoPath } from "./paths.js";
 import { readLog, replayFailure } from "./read-log.js";
 import { installSkill, SKILL_PLUGIN, skillName } from "./skill.js";
 import { craftServer } from "./craft-server.js";
-import { DEFAULT_MODEL, parseModelSpec } from "./models.js";
+import { canonicalSpec, DEFAULT_MODEL, parseModelSpec } from "./models.js";
 
 export const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -182,9 +182,10 @@ function scoreLog(world: World, goal: SolverGoal, entries: readonly RunLogEntry[
   }
 }
 
+/** A run's model names are recorded in canonical form (`<provider>/<model>`), whichever way the model was asked for. */
 const modelInfo = (requested: string | null, result: PlayerResult | null): ModelInfo => ({
-  requested,
-  resolved: result === null ? [] : result.modelsUsed.length > 0 ? [...result.modelsUsed] : result.initModel !== null ? [result.initModel] : [],
+  requested: requested === null ? null : canonicalSpec(requested),
+  resolved: (result === null ? [] : result.modelsUsed.length > 0 ? [...result.modelsUsed] : result.initModel !== null ? [result.initModel] : []).map(canonicalSpec),
 });
 
 /** The result recorded for a run whose player never returned one. */

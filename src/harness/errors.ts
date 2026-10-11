@@ -146,3 +146,17 @@ export class UnknownModel extends HarnessError {
     super("UnknownModel", `model '${spec}' is not supported; use a Claude id, or fireworks/<model>`);
   }
 }
+
+/** A `--model` whose provider prefix is not a row of the provider table. */
+export class UnknownProvider extends HarnessError {
+  constructor(prefix: string, available: readonly string[]) {
+    super("UnknownProvider", `provider '${prefix}' is not available; the providers are ${available.join(", ")}`);
+  }
+}
+
+/** A provider that routes one model name across several backends, without a pinned backend in its table row. */
+export class BackendNotPinned extends HarnessError {
+  constructor(prefix: string) {
+    super("BackendNotPinned", `provider '${prefix}' routes one model across backends; its table entry must pin the backend`);
+  }
+}

@@ -75,7 +75,7 @@ export function failureCode(e: unknown): string {
   const status = (e as { statusCode?: unknown } | null)?.statusCode;
   if (typeof status === "number") return status === 401 || status === 403 ? "authentication_failed" : status === 429 ? "rate_limited" : status >= 500 ? "provider_unavailable" : "request_rejected";
   const name = (e as { name?: unknown } | null)?.name;
-  if (name === "LoadAPIKeyError") return "api_key_missing";
+  if (typeof name === "string" && /LoadAPIKeyError$/.test(name)) return "api_key_missing"; // the SDK prefixes its error names
   if (name === "AbortError" || name === "TimeoutError") return "aborted";
   return "unexpected";
 }

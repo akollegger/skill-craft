@@ -184,7 +184,7 @@ describe("scripts/run-agent.ts", () => {
     expect(res.status, res.stderr).toBe(0);
     const plan = JSON.parse(res.stdout) as { options: Record<string, unknown>; dir: string }[];
     expect(plan).toHaveLength(2);
-    expect(plan[0]?.options).toMatchObject({ tools: [], model: "claude-sonnet-5-5", maxTurns: 40 });
+    expect(plan[0]?.options).toMatchObject({ tools: [], model: "anthropic/claude-sonnet-5-5", maxTurns: 40 });
     expect(existsSync(join(out, "dry"))).toBe(false);
   });
 

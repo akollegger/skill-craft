@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { LanguageModelUsage } from "ai";
 import { classifyEnd, failureCode, roleTokens, skillDescription, tokensOf } from "../src/harness/ai-options.js";
 import { UnknownModel } from "../src/harness/errors.js";
-import { costOf, parseModelSpec } from "../src/harness/models.js";
+import { canonicalSpec, costOf, loadPrices, parseModelSpec, priceFor } from "../src/harness/models.js";
 
 const usage = (over: Partial<LanguageModelUsage> = {}, details: Partial<LanguageModelUsage["inputTokenDetails"]> = {}): LanguageModelUsage => ({
   inputTokens: 100,
@@ -13,23 +13,42 @@ const usage = (over: Partial<LanguageModelUsage> = {}, details: Partial<Language
   ...over,
 });
 
-describe("parseModelSpec", () => {
-  it("takes a bare Claude id and an anthropic/ prefix as Anthropic, recorded as the bare id", () => {
-    expect(parseModelSpec("claude-haiku-4-5-20251001")).toEqual({ provider: "anthropic", id: "claude-haiku-4-5-20251001", spec: "claude-haiku-4-5-20251001" });
-    expect(parseModelSpec("anthropic/claude-sonnet-5-5").spec).toBe("claude-sonnet-5-5");
+describe("canonicalSpec", () => {
+  it("reads a bare Claude id as anthropic/<id> and leaves a canonical spec unchanged", () => {
+    expect(canonicalSpec("claude-haiku-4-5-20251001")).toBe("anthropic/claude-haiku-4-5-20251001");
+    expect(canonicalSpec("anthropic/claude-sonnet-5-5")).toBe("anthropic/claude-sonnet-5-5");
+    expect(canonicalSpec("fireworks/gpt-oss-120b")).toBe("fireworks/gpt-oss-120b");
   });
 
-  it("expands a short Fireworks name and leaves a full path alone", () => {
-    expect(parseModelSpec("fireworks/gpt-oss-120b")).toEqual({ provider: "fireworks", id: "accounts/fireworks/models/gpt-oss-120b", spec: "fireworks/gpt-oss-120b" });
-    expect(parseModelSpec("fireworks/accounts/fireworks/routers/kimi-k3-fast").id).toBe("accounts/fireworks/routers/kimi-k3-fast");
+  it("never throws: an unknown name is returned as it was found", () => {
+    expect(canonicalSpec("mystery-model")).toBe("mystery-model");
+    expect(canonicalSpec("")).toBe("");
+  });
+});
+
+describe("parseModelSpec still refuses a non-Claude bare name with UnknownModel", () => {
+  it("is the same error class as before", () => {
+    expect(() => parseModelSpec("gpt-4o")).toThrow(UnknownModel);
+  });
+});
+
+describe("the price table keys", () => {
+  it("are canonical, and a bare Claude id finds the canonical entry", () => {
+    const t = loadPrices();
+    expect(Object.keys(t).every((k) => k.includes("/"))).toBe(true);
+    expect(priceFor("claude-sonnet-5-5")).toEqual(priceFor("anthropic/claude-sonnet-5-5"));
+    expect(priceFor("anthropic/claude-sonnet-5-5")).toBeDefined();
+    expect(priceFor("fireworks/gpt-oss-120b")).toBeUndefined();
   });
 
-  it("round-trips its own spec", () => {
-    for (const s of ["claude-sonnet-5-5", "fireworks/glm-5p3"]) expect(parseModelSpec(parseModelSpec(s).spec)).toEqual(parseModelSpec(s));
-  });
-
-  it("refuses anything else, with fixed text", () => {
-    for (const s of ["gpt-4o", "fireworks/", "", "mistral/large"]) expect(() => parseModelSpec(s)).toThrow(UnknownModel);
+  it("reads a bare key in a price file as anthropic/<id>", async () => {
+    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = mkdtempSync(join(tmpdir(), "prices-"));
+    const file = join(dir, "prices.json");
+    writeFileSync(file, JSON.stringify({ _note: "x", "claude-opus-5-5": { input: 4, output: 20 }, "fireworks/x": { input: 1, output: 2 } }));
+    expect(Object.keys(loadPrices(file)).sort()).toEqual(["anthropic/claude-opus-5-5", "fireworks/x"]);
   });
 });
 
@@ -92,7 +111,7 @@ describe("skillDescription", () => {
 
 describe("the price table", () => {
   it("ships rates for the Claude models the harness defaults to, and none for a model it cannot price", async () => {
-    const { loadPrices, DEFAULT_MODEL } = await import("../src/harness/models.js");
+    const { DEFAULT_MODEL } = await import("../src/harness/models.js");
     const t = loadPrices();
     expect(t[DEFAULT_MODEL]).toMatchObject({ input: expect.any(Number), output: expect.any(Number) });
     expect(t["fireworks/gpt-oss-120b"]).toBeUndefined();

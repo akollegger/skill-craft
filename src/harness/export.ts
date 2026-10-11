@@ -8,6 +8,7 @@ import type { BundleManifest, BundleResult } from "./bundle.js";
 import { ExportRefused } from "./errors.js";
 import { fromRepoPath } from "./paths.js";
 import { readLog, replayFailure } from "./read-log.js";
+import { canonicalSpec } from "./models.js";
 
 const jsonl = (rows: readonly unknown[]): string => rows.map((r) => `${JSON.stringify(r)}\n`).join("");
 
@@ -45,7 +46,8 @@ export function exportBundle(runDir: string, dest: string): { dest: string; fram
     best: saved.score.best,
     frames: frames.length,
     trace: saved.measured.trace,
-    model: saved.model,
+    // A bare Claude id in an earlier run is read as anthropic/<id>; the run folder is not rewritten.
+    model: { ...saved.model, requested: saved.model.requested === null ? null : canonicalSpec(saved.model.requested), resolved: saved.model.resolved.map(canonicalSpec) },
   };
   const result: BundleResult = {
     ended: saved.ended,

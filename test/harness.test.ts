@@ -266,6 +266,11 @@ describe("the model a run used", () => {
     expect(out.reports[0]?.model).toEqual({ requested: "alias-a", resolved: ["fake-a"] });
   });
 
+  it("records a bare Claude id in canonical form, both as asked for and as it ran", async () => {
+    const out = await runExperiment(options({ mode: "solve", models: ["claude-haiku-4-5-20251001"] }, { runs: 1, model: "claude-haiku-4-5-20251001" }));
+    expect(out.reports[0]?.model).toEqual({ requested: "anthropic/claude-haiku-4-5-20251001", resolved: ["anthropic/claude-haiku-4-5-20251001"] });
+  });
+
   it("lists both models for a run that used two", async () => {
     const out = await runExperiment(options({ mode: "solve", models: ["fake-a", "fake-b"] }, { runs: 1 }));
     expect(out.reports[0]?.model.resolved).toEqual(["fake-a", "fake-b"]);
@@ -293,7 +298,7 @@ describe("planExperiment (dry run)", () => {
     const plan = planExperiment(o);
     expect(plan).toHaveLength(2);
     expect(plan[0]?.options.tools).toEqual([]);
-    expect(plan[0]?.options.model).toBe("claude-sonnet-5-5"); // the default, as it will be called
+    expect(plan[0]?.options.model).toBe("anthropic/claude-sonnet-5-5"); // the default, as it will be called
     expect(plan[0]?.options).not.toHaveProperty("hooks");
     expect(JSON.stringify(plan)).not.toContain(process.env["PATH"] as string); // the operator's PATH is never printed
     const craft = plan[0]?.options.mcpServers?.["craft"] as { env: Record<string, string> };

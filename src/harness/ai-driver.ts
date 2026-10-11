@@ -1,11 +1,10 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createFireworks } from "@ai-sdk/fireworks";
 import { createMCPClient } from "@ai-sdk/mcp";
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
 import { generateText, isStepCount, jsonSchema, Output, tool, type LanguageModel, type ToolSet } from "ai";
 import { craftServer } from "./craft-server.js";
 import type { AgentDriver, DriverOptions } from "./driver.js";
-import { DEFAULT_MODEL, costOf, loadPrices, parseModelSpec, type ModelRef, type Tokens } from "./models.js";
+import { DEFAULT_MODEL, costOf, parseModelSpec, priceFor, type ModelRef, type Tokens } from "./models.js";
+import { findProvider } from "./providers.js";
 import type { RoleDriver } from "./role-driver.js";
 import { addTokens, classifyEnd, CRAFT_TOOL_PREFIX, failureCode, NO_TOKENS, readInstalledSkill, requestStart, requestStop, requestUsage, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf } from "./ai-options.js";
 
@@ -14,14 +13,28 @@ import { addTokens, classifyEnd, CRAFT_TOOL_PREFIX, failureCode, NO_TOKENS, read
  * time. The mapping to and from the harness's types is in `ai-options.ts`, where it is tested without them.
  */
 
-/** A model on its provider. The key comes from the environment (`ANTHROPIC_API_KEY`, `FIREWORKS_API_KEY`), never an argument. */
-export function languageModel(ref: ModelRef): LanguageModel {
-  return ref.provider === "fireworks" ? createFireworks()(ref.id) : createAnthropic()(ref.id);
+/**
+ * A model on its provider, made through the provider table: the row names the package and the factory as strings, so a
+ * provider is added by a row, not by an import here. The key comes from the environment (the row's `keyEnv`), never an argument.
+ */
+export async function languageModel(ref: ModelRef): Promise<LanguageModel> {
+  const row = findProvider(ref.provider);
+  if (row === undefined) throw new Error("no provider row"); // parseModelSpec has already refused an unknown provider
+  const mod = (await import(row.package)) as Record<string, unknown>;
+  const create = mod[row.factory] as () => (id: string) => LanguageModel;
+  return create()(ref.id);
+}
+
+/** The fixed reason for a failed call. A missing key names the variable, never a value. */
+function failureReason(who: "player" | "role", e: unknown, keyEnv: string | undefined): string {
+  const code = failureCode(e);
+  return `DriverFailed: the ${who} reported ${code}${code === "api_key_missing" && keyEnv !== undefined ? ` (${keyEnv} is not set)` : ""}`;
 }
 
 export const aiDriver: AgentDriver = async (opts, sink) => {
   const ref = parseModelSpec(opts.model ?? DEFAULT_MODEL);
-  const price = loadPrices()[ref.spec];
+  const price = priceFor(ref.spec);
+  const keyEnv = findProvider(ref.provider)?.keyEnv;
   const started = performance.now();
   opts.signal.throwIfAborted();
   const server = craftServer(opts.world, opts.runLog);
@@ -53,7 +66,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
     let result;
     try {
       result = await generateText({
-        model: languageModel(ref),
+        model: await languageModel(ref),
         prompt: opts.prompt,
         tools,
         stopWhen: isStepCount(opts.maxTurns),
@@ -81,7 +94,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
       // A cancelled or timed-out run is the caller's to report; anything else is a recorded failure with a fixed reason.
       if (opts.signal.aborted) throw e;
       return {
-        ended: "error", reason: `DriverFailed: the player reported ${failureCode(e)}`, turns: completed === 0 ? null : completed,
+        ended: "error", reason: failureReason("player", e, keyEnv), turns: completed === 0 ? null : completed,
         costUsd: costOf(total, price), durationMs: Math.round(performance.now() - started),
         usage: completed === 0 ? null : { inputTokens: total.input, outputTokens: total.output, cacheReadTokens: total.cacheRead, cacheCreationTokens: total.cacheWrite },
         requestedModel: opts.model ?? null, initModel: ref.spec, modelsUsed: completed === 0 ? [] : [ref.spec], text: "",
@@ -113,14 +126,15 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
  */
 export const aiRoleDriver: RoleDriver = async (opts) => {
   const ref = parseModelSpec(opts.model);
-  const price = loadPrices()[ref.spec];
+  const price = priceFor(ref.spec);
+  const keyEnv = findProvider(ref.provider)?.keyEnv;
   const started = performance.now();
   const elapsed = () => Math.round(performance.now() - started);
   // A spend cap before the call, as a ceiling on output tokens; checked again from the real usage afterwards.
   const ceiling = price === undefined ? 16_000 : Math.max(1, Math.min(32_000, Math.floor((opts.maxUsd * 1_000_000) / price.output)));
   try {
     const result = await generateText({
-      model: languageModel(ref),
+      model: await languageModel(ref),
       prompt: opts.prompt,
       ...(opts.system === undefined ? {} : { system: opts.system }),
       output: Output.object({ schema: jsonSchema(opts.schema) }),
@@ -135,7 +149,7 @@ export const aiRoleDriver: RoleDriver = async (opts) => {
   } catch (e) {
     if (opts.signal.aborted) throw e;
     const name = String((e as { name?: unknown } | null)?.name);
-    const reason = /NoOutputGenerated|NoObjectGenerated|JSONParse|TypeValidation/.test(name) ? "DriverFailed: the role could not give the requested format" : `DriverFailed: the role reported ${failureCode(e)}`;
+    const reason = /NoOutputGenerated|NoObjectGenerated|JSONParse|TypeValidation/.test(name) ? "DriverFailed: the role could not give the requested format" : failureReason("role", e, keyEnv);
     return roleFailure(reason, opts.model, ref.spec, elapsed());
   }
 };

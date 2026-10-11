@@ -184,6 +184,34 @@ describe("buildReport", () => {
   });
 });
 
+describe("model names in old and new records", () => {
+  const HAIKU = "claude-haiku-4-5-20251001";
+  const named = () => fixture({ models: { teacher: "claude-sonnet-5-5", student: HAIKU } });
+
+  it("groups runs recorded with the bare id and runs recorded in canonical form into one row", () => {
+    const f = named();
+    f.addLabel("cal-old", { stage: "calibration" }, "iron", HAIKU, "faithful", wins(1, 2));
+    f.addLabel("cal-new", { stage: "calibration" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(2, 3));
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    const rows = md.split("\n").filter((l) => /^\| calibration \|/.test(l));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toContain(`anthropic/${HAIKU}`);
+    expect(rows[0]).toMatch(/\| 3\/5 \|/);
+  });
+
+  it("accepts an arm whose summary declares the bare id and whose runs recorded the canonical one", () => {
+    const f = named();
+    f.addLabel("s0", { arm: "S0" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(2, 3));
+    expect(() => buildReport({ experiment: f.write(), labels: f.labels })).not.toThrow();
+  });
+
+  it("still refuses a run that resolved a different model from the one its arm declares", () => {
+    const f = named();
+    f.addLabel("s0", { arm: "S0" }, "iron", "anthropic/claude-sonnet-5-5", "faithful", wins(1, 1));
+    expect(() => buildReport({ experiment: f.write(), labels: f.labels })).toThrow(ReportRefused);
+  });
+});
+
 describe("the staged protocol in the report", () => {
   const staged = () => fixture({ goals: { set: ["wooden", "stone", "iron"], heldOut: ["iron"] }, roles: { wooden: "solved", stone: "gap", iron: "solved" } });
   const section = (md: string, heading: string): string => {

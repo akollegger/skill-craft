@@ -49,6 +49,14 @@ describe("exportBundle", () => {
     expect(res.dest).toBe(dest);
   });
 
+  it("reads a bare Claude id in an old run as anthropic/<id> in the bundle, and leaves the run folder alone", async () => {
+    const { runDir, dest } = await finishedRun({ models: ["claude-haiku-4-5-20251001"] });
+    const before = readFileSync(join(runDir, "score.json"), "utf8");
+    exportBundle(runDir, dest);
+    expect(readBundle(dest).manifest.model).toEqual({ requested: null, resolved: ["anthropic/claude-haiku-4-5-20251001"] });
+    expect(readFileSync(join(runDir, "score.json"), "utf8")).toBe(before);
+  });
+
   it("has one frame per logged call plus the start, and carries the run's labels and model", async () => {
     const { runDir, dest, report } = await finishedRun();
     exportBundle(runDir, dest);

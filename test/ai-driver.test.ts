@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DriverOptions } from "../src/harness/driver.js";
+import { PROVIDERS, type ProviderRow } from "../src/harness/providers.js";
 import { installSkill } from "../src/harness/skill.js";
 import { readTrace, type RequestLine, type ToolLine } from "../src/trace/lines.js";
 import { TraceRecorder } from "../src/trace/recorder.js";
@@ -45,7 +46,7 @@ describe("aiDriver", () => {
     const { opts, recorder, trace } = setup({ model: "claude-haiku-4-5-20251001" });
     const r = await aiDriver(opts, recorder);
 
-    expect(r).toMatchObject({ ended: "stopped", turns: 3, requestedModel: "claude-haiku-4-5-20251001", initModel: "claude-haiku-4-5-20251001", modelsUsed: ["claude-haiku-4-5-20251001"], text: "done" });
+    expect(r).toMatchObject({ ended: "stopped", turns: 3, requestedModel: "claude-haiku-4-5-20251001", initModel: "anthropic/claude-haiku-4-5-20251001", modelsUsed: ["anthropic/claude-haiku-4-5-20251001"], text: "done" });
     expect(r.costUsd).toBeCloseTo(0.000128, 9); // from prices.json: 32 in, 13 out, 310 cached at the haiku rates
     expect(r.usage).toEqual({ inputTokens: 32, outputTokens: 13, cacheReadTokens: 310, cacheCreationTokens: 0 });
     const lines = readTrace(trace);
@@ -119,6 +120,69 @@ describe("aiDriver", () => {
   }, 30_000);
 });
 
+describe("a model made through the provider table", () => {
+  const scriptedRow = (over: Partial<ProviderRow> = {}): ProviderRow => ({
+    prefix: "scripted",
+    package: new URL("./helpers/scripted-provider.ts", import.meta.url).pathname,
+    factory: "createScripted",
+    keyEnv: "SCRIPTED_API_KEY",
+    shortPattern: /^[a-z0-9-]+$/,
+    expand: (short) => short,
+    normaliseId: (id) => `scripted/${id}`,
+    usageReport: null,
+    settings: { accepts: [] },
+    callOptions: () => ({}),
+    ...over,
+  });
+  const withRow = async (row: ProviderRow, run: () => Promise<void>) => {
+    PROVIDERS.push(row);
+    try {
+      await run();
+    } finally {
+      PROVIDERS.splice(PROVIDERS.indexOf(row), 1);
+    }
+  };
+
+  it("plays a player and a role on a provider added by a table row alone", async () => {
+    const { scripted } = await import("./helpers/scripted-provider.js");
+    await withRow(scriptedRow(), async () => {
+      scripted.model = new MockLanguageModelV4({ modelId: "m", doGenerate: [say("done")] });
+      const { opts, recorder } = setup({ model: "scripted/m-1" });
+      expect(await aiDriver(opts, recorder)).toMatchObject({ ended: "stopped", initModel: "scripted/m-1", modelsUsed: ["scripted/m-1"] });
+      scripted.model = new MockLanguageModelV4({ modelId: "m", doGenerate: [say('{"n":1}')] });
+      const r = await aiRoleDriver({ prompt: "p", model: "scripted/m-1", schema: { type: "object", properties: { n: { type: "number" } }, required: ["n"], additionalProperties: false }, maxUsd: 1, signal: new AbortController().signal });
+      expect(r).toMatchObject({ ok: true, answer: { n: 1 }, resolvedModel: "scripted/m-1" });
+    });
+  });
+
+  it("ends a run whose provider has no key with a fixed reason that names the variable and shows no value", async () => {
+    const { LoadAPIKeyError } = await import("ai");
+    const { scripted } = await import("./helpers/scripted-provider.js");
+    await withRow(scriptedRow(), async () => {
+      scripted.model = new MockLanguageModelV4({
+        modelId: "m",
+        doGenerate: async () => {
+          throw new LoadAPIKeyError({ message: "the key sk-should-not-appear is missing" });
+        },
+      });
+      const { opts, recorder } = setup({ model: "scripted/m-1" });
+      const r = await aiDriver(opts, recorder);
+      expect(r).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported api_key_missing (SCRIPTED_API_KEY is not set)" });
+      expect(JSON.stringify(r)).not.toContain("sk-should-not-appear");
+    });
+  });
+
+  it("ends a run whose provider package cannot be loaded as an error with a fixed reason", async () => {
+    await withRow(scriptedRow({ package: "no-such-provider-package" }), async () => {
+      const { opts, recorder } = setup({ model: "scripted/m-1" });
+      const r = await aiDriver(opts, recorder);
+      expect(r.ended).toBe("error");
+      expect(r.reason).toMatch(/^DriverFailed: the player reported /);
+      expect(r.reason).not.toContain("no-such-provider-package");
+    });
+  });
+});
+
 describe("aiRoleDriver", () => {
   const schema = { type: "object", properties: { n: { type: "number" } }, required: ["n"], additionalProperties: false };
   const role = (over: object = {}) => ({ prompt: "p", model: "claude-opus-5-5", schema, maxUsd: 1, signal: new AbortController().signal, ...over });
@@ -126,7 +190,7 @@ describe("aiRoleDriver", () => {
   it("returns the schema-checked answer with tokens, and sends no tools", async () => {
     scripted(say('{"n":7}'));
     const r = await aiRoleDriver(role());
-    expect(r).toMatchObject({ ok: true, answer: { n: 7 }, requestedModel: "claude-opus-5-5", resolvedModel: "claude-opus-5-5" });
+    expect(r).toMatchObject({ ok: true, answer: { n: 7 }, requestedModel: "claude-opus-5-5", resolvedModel: "anthropic/claude-opus-5-5" });
     expect(r.costUsd).toBeCloseTo(0.00013, 9);
     expect(r.tokens).toEqual({ input: 12, output: 3, cacheRead: 110, cacheCreation: null });
     const model = control.model as InstanceType<typeof MockLanguageModelV4>;

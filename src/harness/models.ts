@@ -1,35 +1,54 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { UnknownModel } from "./errors.js";
+import { UnknownModel, UnknownProvider } from "./errors.js";
 import { REPO } from "./paths.js";
-
-export type Provider = "anthropic" | "fireworks";
+import { findProvider, providerPrefixes } from "./providers.js";
 
 /** Used when a run names no model. A run still records which model it asked for (null here) and which ran. */
-export const DEFAULT_MODEL = "claude-sonnet-5-5";
+export const DEFAULT_MODEL = "anthropic/claude-sonnet-5-5";
 
 export interface ModelRef {
-  provider: Provider;
+  /** The provider's prefix. */
+  provider: string;
   /** The id the provider's API takes. */
   id: string;
-  /** The form that round-trips through `parseModelSpec` and is what a run records: a bare id for Claude. */
+  /** The canonical form, `<provider>/<model>`, which is what a run records and what the price table is keyed by. */
   spec: string;
 }
 
 /**
- * `claude-…` or `anthropic/claude-…` is Anthropic; `fireworks/<model>` is Fireworks, where a short name is the
- * model under `accounts/fireworks/models/` and a path starting `accounts/` is used as given.
+ * `<provider>/<model>`, or a bare `claude-<id>` as shorthand for `anthropic/claude-<id>`. A short model name is
+ * expanded by its provider's row, and the spec returned is always canonical. An unknown provider and a bad model
+ * name are different errors, both with fixed text.
  */
 export function parseModelSpec(spec: string): ModelRef {
   const trimmed = spec.trim();
-  if (trimmed.startsWith("fireworks/")) {
-    const rest = trimmed.slice("fireworks/".length);
-    if (rest === "") throw new UnknownModel(spec);
-    return { provider: "fireworks", id: rest.startsWith("accounts/") ? rest : `accounts/fireworks/models/${rest}`, spec: `fireworks/${rest}` };
+  const slash = trimmed.indexOf("/");
+  let prefix: string;
+  let short: string;
+  if (slash > 0) {
+    prefix = trimmed.slice(0, slash);
+    short = trimmed.slice(slash + 1);
+  } else {
+    prefix = "anthropic";
+    short = trimmed;
   }
-  const bare = trimmed.startsWith("anthropic/") ? trimmed.slice("anthropic/".length) : trimmed;
-  if (!/^claude-[a-z0-9.-]+$/.test(bare)) throw new UnknownModel(spec);
-  return { provider: "anthropic", id: bare, spec: bare };
+  const row = findProvider(prefix);
+  if (row === undefined) {
+    if (slash > 0) throw new UnknownProvider(prefix, providerPrefixes());
+    throw new UnknownModel(spec);
+  }
+  if (!row.shortPattern.test(short)) throw new UnknownModel(spec);
+  const id = row.expand(short);
+  return { provider: prefix, id, spec: row.normaliseId(id) };
+}
+
+/**
+ * A recorded model name in canonical form: a bare `claude-<id>`, as earlier run folders hold it, is read as
+ * `anthropic/<id>`. It never throws and never rewrites a file; a name it does not recognise is returned as found.
+ */
+export function canonicalSpec(spec: string): string {
+  return /^claude-[a-z0-9.-]+$/.test(spec) ? `anthropic/${spec}` : spec;
 }
 
 /** US dollars per million tokens. `cacheWrite` is absent for a provider that does not charge for it separately. */
@@ -44,13 +63,14 @@ export type PriceTable = Record<string, Price>;
 
 export const PRICES_PATH = join(REPO, "prices.json");
 
-/** The operator's price table, keyed by `ModelRef.spec`. A missing file is an empty table: costs are then null. */
+/** The operator's price table, keyed by canonical spec (a bare Claude key is read as `anthropic/<id>`). A missing file is an empty table: costs are then null. */
 export function loadPrices(path = PRICES_PATH): PriceTable {
   if (!existsSync(path)) return {};
   const raw = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
   const table: PriceTable = {};
-  for (const [spec, p] of Object.entries(raw)) {
-    if (spec.startsWith("_")) continue; // notes
+  for (const [key, p] of Object.entries(raw)) {
+    if (key.startsWith("_")) continue; // notes
+    const spec = canonicalSpec(key);
     const price = p as Partial<Price>;
     if (typeof price.input !== "number" || typeof price.output !== "number") continue;
     table[spec] = { input: price.input, output: price.output, ...(typeof price.cacheRead === "number" ? { cacheRead: price.cacheRead } : {}), ...(typeof price.cacheWrite === "number" ? { cacheWrite: price.cacheWrite } : {}) };
@@ -75,3 +95,6 @@ export function costOf(tokens: Tokens, price: Price | undefined): number | null 
   const usd = tokens.input * price.input + tokens.cacheRead * (price.cacheRead ?? price.input) + tokens.cacheWrite * (price.cacheWrite ?? price.input) + tokens.output * price.output;
   return usd / 1_000_000;
 }
+
+/** The price for a model given in either form, or undefined when the table has none. */
+export const priceFor = (spec: string, table: PriceTable = loadPrices()): Price | undefined => table[canonicalSpec(spec)];

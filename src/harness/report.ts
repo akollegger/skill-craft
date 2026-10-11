@@ -3,6 +3,7 @@ import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
 import { z } from "zod";
 import { HarnessError, isUserError, ReportRefused } from "./errors.js";
+import { canonicalSpec } from "./models.js";
 
 export { ReportRefused };
 
@@ -151,7 +152,9 @@ export function buildReport(input: ReportInput): string {
                 : null;
 
     // The model an arm declares ("teacher" or "student") resolved through the summary; a calibration folder declares none.
-    const expectedModel = arm === undefined ? undefined : summary.models[arm.model as "teacher" | "student"];
+    const declaredModel = arm === undefined ? undefined : summary.models[arm.model as "teacher" | "student"];
+    // Declared and recorded names are compared in canonical form, so a bare Claude id in an old summary or run still matches.
+    const expectedModel = declaredModel === undefined ? undefined : canonicalSpec(declaredModel);
     if (arm !== undefined && expectedModel === undefined) throw new ReportRefused(`arm ${arm.label} names model "${arm.model}", which the summary's models do not define`);
     const rowFor = (model: string, fit: string): Row => {
       const key = [stage, model, fit, goal].join("\u0000");
@@ -180,7 +183,7 @@ export function buildReport(input: ReportInput): string {
       if ((s.promptNote ?? undefined) !== (arm?.promptNote ?? undefined)) {
         throw new ReportRefused(`${name}/${rd} has a different prompt note from its arm's`);
       }
-      const model = s.model.resolved.length > 0 ? s.model.resolved.join("+") : "unknown";
+      const model = s.model.resolved.length > 0 ? s.model.resolved.map(canonicalSpec).join("+") : "unknown";
       if (expectedModel !== undefined && model !== expectedModel) throw new ReportRefused(`${name}/${rd} ran model ${model}, but arm ${arm?.label} declares ${expectedModel}`);
       const fit = s.priorFit ?? "undeclared";
       const row = rowFor(model, fit);

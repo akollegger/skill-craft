@@ -132,6 +132,21 @@ describe("--dry-run", () => {
   });
 });
 
+describe("models recorded in earlier runs", () => {
+  it("reads a bare Claude id in an old score as anthropic/<id>, so the roles default to the canonical spec", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a", ["claude-sonnet-5-5"]);
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", "old", "--dry-run"]);
+    expect(r.code).toBe(0);
+    expect(r.out.join("\n")).toContain("critic anthropic/claude-sonnet-5-5, reviser anthropic/claude-sonnet-5-5");
+  });
+
+  it("leaves a canonical id as it is", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a", ["fireworks/gpt-oss-120b"]);
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", "new", "--dry-run"]);
+    expect(r.out.join("\n")).toContain("critic fireworks/gpt-oss-120b, reviser fireworks/gpt-oss-120b");
+  });
+});
+
 describe("a loop from a candidate (scripted roles)", () => {
   it("prints the round lines and the outcome, writes the record, and the roles use the teacher's model and the cap", async () => {
     const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
