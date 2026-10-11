@@ -98,7 +98,9 @@ export function parseRevision(raw: unknown, ctx: RevisionContext): Revision {
 export function describeIssues(error: z.ZodError): string {
   const shown = error.issues.slice(0, 8).map((i) => {
     const limit = "maximum" in i && i.maximum !== undefined ? ` (max ${String(i.maximum)})` : "minimum" in i && i.minimum !== undefined ? ` (min ${String(i.minimum)})` : "";
-    return `${i.path.length === 0 ? "(answer)" : i.path.join(".")}: ${i.code}${limit}`;
+    // A custom rule's message is the schema's own fixed wording (never the answer's text), so it can say which rule was broken.
+    const rule = i.code === "custom" ? ` - ${i.message}` : "";
+    return `${i.path.length === 0 ? "(answer)" : i.path.join(".")}: ${i.code}${limit}${rule}`;
   });
   return shown.join("; ") + (error.issues.length > 8 ? `; and ${error.issues.length - 8} more` : "");
 }

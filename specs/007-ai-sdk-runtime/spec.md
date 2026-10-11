@@ -244,7 +244,9 @@ mention is marked as history.
   settings recorded.
 - **FR-010**: Calibration MUST run on this runtime under the same rule as ADR-003 §2.1, and the faithful world's
   calibration MUST be rerun and recorded as part of this feature, with results that name the runtime they were
-  measured on. The invented world's calibration is not part of it.
+  measured on, compared cell by cell with the Claude Code era results as a regression check. The record MUST say that at
+  5 trials per cell the comparison detects gross breakage only and does not show equivalence. The invented world's
+  calibration is not part of it.
 - **FR-011**: The retry setting MUST be a stated value, recorded in each run's score, and the number of retried
   attempts MUST be recorded in the score and left out of the trace.
 - **FR-012**: A role call MUST fail with a fixed `code: message` reason, and MUST NOT return a partial answer,

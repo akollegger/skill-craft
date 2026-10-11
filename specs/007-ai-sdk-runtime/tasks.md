@@ -156,8 +156,8 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 - [X] T045 [US4] `src/harness/report.ts`: extend the experiment summary schema with `models.settings`; update `specs/003-faithful-minecraft-world/contracts/experiment-summary.md` with the new optional field.
 - [X] T046 [US4] Update the allowed `score.json` keys in `test/privacy.test.ts` for `settings`, and make T038 to T041 pass.
 - [X] T047 [US4] Write `specs/007-ai-sdk-runtime/calibration-settings.json` (Sonnet: thinking adaptive, effort high, temperature refused so unset; Haiku: thinking off, temperature 0, effort refused so unset) and the reasons in `research.md` R6.
-- [ ] T048 [US4] **(spends, cap US$5; needs the user's go-ahead and T037 done)** Rerun the faithful world's calibration, 30 runs, as in `quickstart.md` section C: write `runs/rt-cal/summary.json` with `models.settings` copied from `specs/007-ai-sdk-runtime/calibration-settings.json` (T047), pass that file with `--settings` on every run, run the commands of spec 003 Part B step 1 with label prefix `rt-cal-` and the ADR-003 §2.1 teacher and student, then `pnpm dev scripts/report.ts --experiment runs/rt-cal runs/rt-cal-*`.
-- [ ] T049 [US4] Write `design/notes/runtime-recalibration.md`: the runtime (`ai-sdk, ADR-005`), the base prompt wording used, the pinned settings, each goal's role under the unchanged ADR-003 §2.1 rule, cost with its unpriced count. State plainly if a goal's role differs from the earlier Claude Code calibration.
+- [ ] T048 [US4] **Regression check (tier 2), not a calibration for its own sake. (spends, cap US$5; HELD until the role parse-rate eval, T052, is done; needs the user's go-ahead and T037 done)** Rerun the faithful world's calibration on this runtime, 30 runs, and compare it cell by cell with the Claude Code era runs already on disk: `runs/faithful-1-cal-faithful-{haiku,sonnet}-{iron,stone,wooden}` (Haiku 5/5, 0/5, 4/5 on iron, stone, wooden; Sonnet 5/5, 5/5, 5/5), `runs/calib-{haiku,sonnet}` (forge-7, 0/5 each) and `runs/live-s1`, `runs/live-s2` (Haiku with a skill on stone, 3/3 each). Steps: write `runs/rt-cal/summary.json` with `models.settings` copied from `specs/007-ai-sdk-runtime/calibration-settings.json` (T047), pass that file with `--settings` on every run, run the commands of spec 003 Part B step 1 for the faithful world with label prefix `rt-cal-` and the ADR-003 §2.1 teacher and student, then `pnpm dev scripts/report.ts --experiment runs/rt-cal runs/rt-cal-*`. A cell that was gross-broken by the migration (for example Sonnet 5/5 before and 0/5 now) is a regression to diagnose before anything else goes on.
+- [ ] T049 [US4] Write `design/notes/runtime-recalibration.md`: the runtime (`ai-sdk, ADR-005`), the base prompt wording used, the pinned settings, the table of each cell now beside the Claude Code era result, each goal's role under the unchanged ADR-003 §2.1 rule, cost with its unpriced count. It MUST say plainly that at 5 trials per cell this detects gross breakage only (a 0/5 result has a 95% upper bound near 43%, and 5/5 a lower bound near 57%) and does not show the two runtimes are equivalent, and it MUST state any cell whose result differs from the earlier runtime and what is known about why. A cell that differs by chance and one that differs by cause cannot be told apart at this sample size. The note already exists with the baseline table and this limit written down; the results are added when T048 has run.
 
 **Checkpoint**: settings are pinned and recorded, and the calibration on this runtime is on file.
 
@@ -174,13 +174,17 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 - [X] T050 [P] [US6] `test/ai-driver.test.ts`: a role whose model finishes with `length` returns `ok: false`, a fixed reason and no answer. Fix `aiRoleDriver` in `src/harness/ai-driver.ts` so a `length` finish is never an answer.
 - [X] T051 [P] [US6] `test/ai-driver.test.ts`: when the run's signal aborts during a model call, and when the model call throws, the MCP client is closed (a scripted transport records `close`) and no craft server process remains. Fix the driver's cleanup if either fails.
 
+### Role parse-rate eval (tier 1), before the other live checks
+
+- [ ] T052 [US6] **(spends, about US$6 in all; asked for 2026-10-11 after T053 failed)** Role parse-rate eval with `spikes/role-eval/parse-rate.ts`: one fixed recording (the 33-call teacher run kept under `$TMPDIR/skill-craft-live-loop-*/runs/rt-teacher/005`) and the real critic and reviser prompts, 20 calls per role per model for `anthropic/claude-haiku-4-5-20251001` and `fireworks/gpt-oss-120b` on the AI SDK driver, and the same 20 calls per role for Haiku on the earlier Claude Agent SDK driver (run from a checkout of commit 39c4fcf with `--driver sdk`). Report each schema-valid rate with its 95% Wilson interval, the first-attempt rate and the rate after the driver's bounded retry. If the AI SDK driver's rate for Claude is lower than the earlier driver's, fix it with a structured-output mode or a bounded retry, test first, and record the fix. The diagnosis (`spikes/role-eval/diagnose-verdict.ts`), the results and any fix go in `design/notes/role-parse-rate.md`.
+
 ### Gated checks (write each test first, then run it)
 
-- [ ] T052 [P] [US6] **(spends, cap US$3)** `test/live-critic-loop.test.ts`: `critic-loop.ts --runs <finished glirol run> --candidate spikes/skill-pilot/craft-glirol --max-rounds 1` with Claude critic and reviser. Make its own finished run first with `fireworks/glm-5p3` (5 of 5 on glirol in the spike; Sonnet reached 0 of 5), about US$0.05, so this check does not depend on another task's output. Assert a recorded `accept` or `reject`, one round, and no write outside `loops/` (no NAMS call). Write the record with `writeCheckRecord`. *(test written and skipped by default; not yet run live)*
-- [ ] T053 [P] [US6] **(spends, cap US$1)** `test/live-thinking-role.test.ts`: a Claude Opus role with `--max-role-usd` low enough that its reasoning can reach the output ceiling. Assert either a complete schema-valid answer or `DriverFailed: the role reached its spend cap`, never a partial answer (FR-012). The scripted test T050 covers the truncation case; this confirms it on a real thinking model. *(test written and skipped by default; not yet run live)*
-- [ ] T054 [P] [US6] **(spends, cap US$2)** `test/live-skill.test.ts`: three runs of `run-agent.ts --skill spikes/skill-pilot/craft-glirol` on Claude Haiku. Assert each score records `skill.invoked` and `skill.loadedAfterCalls`. *(test written and skipped by default; not yet run live)*
-- [ ] T055 [P] [US6] `test/live-cancel.test.ts` **(spends, cap US$1)**: start `run-agent.ts` and send SIGINT after a few turns, five times; run with a very short `--timeout-minutes`, five times. Assert exit 130 (or the timeout reason), a written `summary.json`, and no process whose command line contains `src/mcp/server.ts` afterwards. The scripted test T051 covers cleanup; this confirms it end to end. *(test written and skipped by default; not yet run live)*
-- [ ] T056 [US6] Write the records of T052 to T055 under `design/notes/` (what ran, command, cost, outcome), and note any defect found and its fix.
+- [ ] T053 [P] [US6] **(spends, cap US$3)** `test/live-critic-loop.test.ts`: `critic-loop.ts --runs <finished glirol run> --candidate spikes/skill-pilot/craft-glirol --max-rounds 1` with Claude critic and reviser. Make its own finished run first with `fireworks/glm-5p3` (5 of 5 on glirol in the spike; Sonnet reached 0 of 5), about US$0.05, so this check does not depend on another task's output. Assert a recorded `accept` or `reject`, one round, and no write outside `loops/` (no NAMS call). Write the record with `writeCheckRecord`. *(test written and skipped by default; not yet run live)*
+- [ ] T054 [P] [US6] **HELD until the role parse-rate eval (T052) is done.** **(spends, cap US$1)** `test/live-thinking-role.test.ts`: a Claude Opus role with `--max-role-usd` low enough that its reasoning can reach the output ceiling. Assert either a complete schema-valid answer or `DriverFailed: the role reached its spend cap`, never a partial answer (FR-012). The scripted test T050 covers the truncation case; this confirms it on a real thinking model. *(test written and skipped by default; not yet run live)*
+- [ ] T055 [P] [US6] **HELD until the role parse-rate eval (T052) is done.** **(spends, cap US$2)** `test/live-skill.test.ts`: three runs of `run-agent.ts --skill spikes/skill-pilot/craft-glirol` on Claude Haiku. Assert each score records `skill.invoked` and `skill.loadedAfterCalls`. *(test written and skipped by default; not yet run live)*
+- [ ] T056 [P] [US6] **HELD until the role parse-rate eval (T052) is done.** `test/live-cancel.test.ts` **(spends, cap US$1)**: start `run-agent.ts` and send SIGINT after a few turns, five times; run with a very short `--timeout-minutes`, five times. Assert exit 130 (or the timeout reason), a written `summary.json`, and no process whose command line contains `src/mcp/server.ts` afterwards. The scripted test T051 covers cleanup; this confirms it end to end. *(test written and skipped by default; not yet run live)*
+- [ ] T057 [US6] Write the records of T053 to T056 under `design/notes/` (what ran, command, cost, outcome), and note any defect found and its fix.
 
 **Checkpoint**: each of the four paths has run once on the new runtime, or its defect is fixed and recorded.
 
@@ -194,13 +198,13 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 ### Tests first
 
-- [X] T057 [P] [US5] Extend `test/ai-driver.test.ts`: a scripted model that throws a retryable `APICallError` twice then succeeds gives `retries: { max: 2, failedAttempts: 2 }` and one request line in the trace; one that fails every attempt gives an `error` ending with a fixed reason and `failedAttempts: 3`; a model that never fails gives `failedAttempts: 0`.
-- [X] T058 [P] [US5] Extend `test/privacy.test.ts`: the allowed `score.json` keys include `retries`.
+- [X] T058 [P] [US5] Extend `test/ai-driver.test.ts`: a scripted model that throws a retryable `APICallError` twice then succeeds gives `retries: { max: 2, failedAttempts: 2 }` and one request line in the trace; one that fails every attempt gives an `error` ending with a fixed reason and `failedAttempts: 3`; a model that never fails gives `failedAttempts: 0`.
+- [X] T059 [P] [US5] Extend `test/privacy.test.ts`: the allowed `score.json` keys include `retries`.
 
 ### Implementation
 
-- [X] T059 [US5] `src/harness/ai-options.ts` and `src/harness/ai-driver.ts`: export `MAX_RETRIES = 2` and pass it explicitly; wrap the model with the SDK's model middleware so each attempt is counted and each thrown attempt is a failed attempt (research R5).
-- [X] T060 [US5] `src/harness/driver.ts` and `src/harness/run.ts`: add `retries` to `PlayerResult` and the score; update `test/privacy.test.ts` (make T057 and T058 pass).
+- [X] T060 [US5] `src/harness/ai-options.ts` and `src/harness/ai-driver.ts`: export `MAX_RETRIES = 2` and pass it explicitly; wrap the model with the SDK's model middleware so each attempt is counted and each thrown attempt is a failed attempt (research R5).
+- [X] T061 [US5] `src/harness/driver.ts` and `src/harness/run.ts`: add `retries` to `PlayerResult` and the score; update `test/privacy.test.ts` (make T058 and T059 pass).
 
 **Checkpoint**: a failing provider no longer looks healthy.
 
@@ -212,22 +216,22 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 **Independent Test**: a search finds only mentions marked as history.
 
-- [X] T061 [P] [US7] Search `README.md` and `AGENTS.md` for `Agent SDK`, `claude-agent-sdk`, `--record`, `sdk-driver` and `sdk-options`; update AGENTS.md for the provider table (a model is `<provider>/<model>`, rows live in `src/harness/providers.ts`, canonical names) and the new `score.json` fields.
-- [X] T062 [P] [US7] Add a one-line history marker pointing at ADR-005 to `specs/002-client-otel-trace/` (`spec.md`, `plan.md`, `research.md`, `tasks.md`) and `specs/005-critic-loop-harness/` (`plan.md`, `research.md`, `tasks.md`, `contracts/role-io.md`) wherever the previous runtime or `--record` is described as current. Do not rewrite requirements.
-- [X] T063 [P] [US7] The same for `design/notes/agent-player-options.md` and `design/notes/pixel-observer.md` where they name the previous runtime.
-- [X] T064 [US7] Check SC-011: search the documents again and list every remaining mention, each marked as history or pointing to ADR-005.
+- [X] T062 [P] [US7] Search `README.md` and `AGENTS.md` for `Agent SDK`, `claude-agent-sdk`, `--record`, `sdk-driver` and `sdk-options`; update AGENTS.md for the provider table (a model is `<provider>/<model>`, rows live in `src/harness/providers.ts`, canonical names) and the new `score.json` fields.
+- [X] T063 [P] [US7] Add a one-line history marker pointing at ADR-005 to `specs/002-client-otel-trace/` (`spec.md`, `plan.md`, `research.md`, `tasks.md`) and `specs/005-critic-loop-harness/` (`plan.md`, `research.md`, `tasks.md`, `contracts/role-io.md`) wherever the previous runtime or `--record` is described as current. Do not rewrite requirements.
+- [X] T064 [P] [US7] The same for `design/notes/agent-player-options.md` and `design/notes/pixel-observer.md` where they name the previous runtime.
+- [X] T065 [US7] Check SC-011: search the documents again and list every remaining mention, each marked as history or pointing to ADR-005.
   - Checked 2026-10-10: `README.md` and `AGENTS.md` have no mention. Marked with a history note: `design/notes/` (agent-player-options, pixel-observer, skill-pilot) and `specs/002-*` (spec, plan, research, tasks, quickstart, contracts/player-driver), `specs/003-*` (plan, quickstart, tasks), `specs/005-*` (plan, research, tasks, contracts/role-io). Pointing to ADR-005: ADR-002 and ADR-003 (their amendments), ADR-005 and spec 007 (which describe the replacement).
 
 ---
 
 ## Phase 10: Polish and cross-cutting
 
-- [X] T065 Run `pnpm typecheck` and `pnpm test`; both pass, and the default suite spends nothing and calls no network.
-- [X] T066 Run `quickstart.md` section A (free) and confirm the stated outputs.
-- [ ] T067 [P] Run `quickstart.md` section D for one Fireworks batch (the billing check): harness and billed tokens equal for every model (SC-010). **(spends, cap US$1)**
-- [ ] T068 [P] Add Fireworks entries to `prices.json` for the models used in the calibration or checks, from measured usage and the published rate, and say so in the file's note.
-- [X] T069 Confirm FR-017 and FR-018: `git diff main -- src/sim src/mcp` is empty, no key appears in any file the feature wrote (`grep` the new notes, run folders and `design/notes/` for the key prefixes without printing them), and `.env` is untouched.
-- [ ] T070 Update ADR-005's Consequences: remove the items this feature closed (reported model, unpriced totals, caching, retries, live checks, glossary) and keep what remains open. Keep `status: accepted`; add an Amendments line only if a decision changed.
+- [X] T066 Run `pnpm typecheck` and `pnpm test`; both pass, and the default suite spends nothing and calls no network.
+- [X] T067 Run `quickstart.md` section A (free) and confirm the stated outputs.
+- [ ] T068 [P] **HELD until the role parse-rate eval (T052) is done.** Run `quickstart.md` section D for one Fireworks batch (the billing check): harness and billed tokens equal for every model (SC-010). **(spends, cap US$1)**
+- [ ] T069 [P] Add Fireworks entries to `prices.json` for the models used in the calibration or checks, from measured usage and the published rate, and say so in the file's note.
+- [X] T070 Confirm FR-017 and FR-018: `git diff main -- src/sim src/mcp` is empty, no key appears in any file the feature wrote (`grep` the new notes, run folders and `design/notes/` for the key prefixes without printing them), and `.env` is untouched.
+- [ ] T071 Update ADR-005's Consequences: remove the items this feature closed (reported model, unpriced totals, caching, retries, live checks, glossary) and keep what remains open. Keep `status: accepted`; add an Amendments line only if a decision changed.
 
 ---
 
@@ -235,8 +239,8 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 Work the live checks and probes showed was needed, done test-first and recorded here so the task list matches what was built.
 
-- [X] T071 [US6] `src/harness/ai-driver.ts`, `src/harness/role-driver.ts`, `src/loop/loop.ts`, `src/loop/verdict.ts`: a role is asked again (three attempts in all) when its answer fails the caller's own schema, with the problem named by field path and limit; the loop passes a `check` for the critic and the reviser (FR-019). Found by T052: a Haiku critic's answer exceeded a length limit that Anthropic's structured-output mode does not enforce, and the loop failed with `VerdictInvalid`. Tests: `test/ai-driver.test.ts` and `test/loop-rounds.test.ts`.
-- [X] T072 [US4] `src/harness/ai-driver.ts`, `src/harness/ai-options.ts`: end a run as `setting_ignored` when a response's warnings say a pinned setting was not applied (FR-020). Found by `spikes/fireworks/probe-settings.ts`: the SDK drops a temperature or `thinking: off` on Sonnet 5.5 with a warning instead of failing. Tests: `test/ai-driver.test.ts`.
+- [X] T072 [US6] `src/harness/ai-driver.ts`, `src/harness/role-driver.ts`, `src/loop/loop.ts`, `src/loop/verdict.ts`: a role is asked again (three attempts in all) when its answer fails the caller's own schema, with the problem named by field path and limit; the loop passes a `check` for the critic and the reviser (FR-019). Found by T053: a Haiku critic's answer exceeded a length limit that Anthropic's structured-output mode does not enforce, and the loop failed with `VerdictInvalid`. Tests: `test/ai-driver.test.ts` and `test/loop-rounds.test.ts`.
+- [X] T073 [US4] `src/harness/ai-driver.ts`, `src/harness/ai-options.ts`: end a run as `setting_ignored` when a response's warnings say a pinned setting was not applied (FR-020). Found by `spikes/fireworks/probe-settings.ts`: the SDK drops a temperature or `thinking: off` on Sonnet 5.5 with a warning instead of failing. Tests: `test/ai-driver.test.ts`.
 
 ## Dependencies and order
 
@@ -244,7 +248,7 @@ Work the live checks and probes showed was needed, done test-first and recorded 
 - **US1 (Phase 3)** and **US2 (Phase 4)** are the P1 pair and both need only Phase 2; US1 is the MVP. They touch `ai-driver.ts` and `test/ai-driver.test.ts` in different parts, so do them one after the other if one agent works.
 - **US3 (Phase 5)** needs Phase 2. It comes before US4's calibration run (T048) and before the live checks so those spend less. T037 is the gate.
 - **US4 (Phase 6)** needs Phase 2; T048 and T049 need T037.
-- **US6 (Phase 7)** needs Phase 2 and T037 (caching on). T053 and T055 may add small fixes in `src/harness/ai-driver.ts`.
+- **US6 (Phase 7)** needs Phase 2 and T037 (caching on). T054 and T056 may add small fixes in `src/harness/ai-driver.ts`.
 - **US5 (Phase 8)** needs Phase 2 and should follow US1 and US3, since it edits the same driver and the same score.
 - **US7 (Phase 9)** goes last among stories, after the code stops changing, and **Phase 10** after that.
 
@@ -255,8 +259,8 @@ Within a story: tests, then implementation, then the story's checkpoint. Tasks m
 ```text
 After Phase 2:        T013 T014 T015 T016 T017 T019   (US1 tests, six files)
                       T026 T027 T028                  (US2 tests)
-After US3:            T052 T053 T054 T055             (US6 gated checks, one file each; run one at a time to keep spend visible)
-Docs, near the end:   T061 T062 T063
+After US3:            T053 T054 T055 T056             (US6 gated checks, one file each; run one at a time to keep spend visible)
+Docs, near the end:   T062 T063 T064
 ```
 
 ## Implementation strategy
