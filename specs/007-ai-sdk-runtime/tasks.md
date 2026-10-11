@@ -254,6 +254,17 @@ Work the live checks and probes showed was needed, done test-first and recorded 
 - [X] T073 [US4] `src/harness/ai-driver.ts`, `src/harness/ai-options.ts`: end a run as `setting_ignored` when a response's warnings say a pinned setting was not applied (FR-020). Found by `spikes/fireworks/probe-settings.ts`: the SDK drops a temperature or `thinking: off` on Sonnet 5.5 with a warning instead of failing. Tests: `test/ai-driver.test.ts`.
 - [X] T073 [US6] `src/harness/providers.ts`, `src/harness/models.ts`, `src/harness/ai-driver.ts`, `src/harness/role-driver.ts`, `src/loop/loop.ts`, `src/loop/cli.ts`: `thinking` accepts a token budget, roles take settings, `critic-loop.ts --settings` passes them, and the calibration settings are re-pinned to what the earlier runtime sent (FR-021). Found by T052 and the request-shape capture. Tests: `test/providers.test.ts`, `test/ai-options.test.ts`, `test/ai-driver.test.ts`, `test/loop-rounds.test.ts`, `test/loop-cli.test.ts`, `test/harness.test.ts`, `test/report.test.ts`.
 
+## Phase 11: Operational robustness (added 2026-10-11)
+
+**Goal**: a throttled, hung or crashing run is recorded as such, with the spend it had, and a runaway run is bounded. Covers FR-022 to FR-027. Tests first; the cases are fault injection on the scripted provider and the real craft server.
+
+- [X] T074 [P] Tests first: `test/ai-driver-faults.test.ts` (provider failures, cut-off response, stalled step and tool, abort keeps usage, spend caps, dead server, invalid tool calls), `test/harness-limits.test.ts`, and unit tests in `test/ai-options.test.ts`; the process helpers move to `test/helpers/processes.ts`.
+- [X] T075 `src/harness/ai-options.ts`, `src/harness/driver.ts`: limits and their defaults, `overCap`, `invalidStreak`, `longRetryAfter`, `toolStop`, the finer `failureCode`, and `DriverAborted` carrying the partial result.
+- [X] T076 `src/harness/ai-driver.ts`: step and tool timeouts, caps and output ceiling, fail-fast on a long retry-after, `server_lost`, `tool_loop`, `output_limit`, partial usage on abort.
+- [X] T077 `src/harness/run.ts`, `src/harness/cli.ts`, `src/harness/errors.ts`, `scripts/run-agent.ts`: keep a driver's partial result under the timeout or cancel reason, `--step-timeout-seconds`, `--tool-timeout-seconds`, `--max-output-tokens`, `--max-total-tokens`, `--max-usd`, `limits` and `invalidToolCalls` in `score.json`, `LimitRefused` for a dollar cap on an unpriced model.
+- [X] T078 Docs: this spec, research R12, ADR-005 Consequences and an amendment, `AGENTS.md`, `design/notes/operational-robustness.md`.
+- [ ] T079 Live check (a few cents on Haiku, only on the owner's go-ahead): a 2,000-token cap ends a real run as a budget stop, and a one-second step timeout ends one as `step_timeout` with its cost recorded, with no craft server left running.
+
 ## Dependencies and order
 
 - **Phase 1** first. **Phase 2** blocks everything: the table and canonical names.

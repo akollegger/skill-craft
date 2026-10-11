@@ -274,6 +274,25 @@ mention is marked as history.
   role MUST be able to take the settings pinned for its model, so a role runs the way its model was calibrated. *(Added
   2026-10-11: the earlier runtime ran Claude with thinking on, and without it the Haiku reviser's schema-valid rate fell from 65%
   to 15%.)*
+- **FR-022**: A model step that does not return, and a craft tool call that does not answer, MUST each end the run after a time
+  limit shorter than the run's own (defaults of five minutes and one minute, settable), as an error with the fixed codes
+  `step_timeout` and `tool_timeout`, keeping the usage of the steps that finished. *(Added 2026-10-11: a hung provider call was
+  bounded only by the 30-minute run limit.)*
+- **FR-023**: A run ended by its time limit or by cancellation MUST keep the turns, tokens, cost and retry counts it had reached,
+  under the fixed timeout or cancellation reason, so the spend of a timed-out run is in its score and in the totals.
+- **FR-024**: A run MAY be given a total-token cap, a dollar cap and a per-step output ceiling, recorded in the score. A run that
+  crosses a cap while it still wants a tool MUST end as a budget stop with a fixed reason; a dollar cap MUST be refused, before
+  anything is spent, for a model with no price; and no output ceiling is imposed by default, since a thinking budget needs a
+  ceiling above it.
+- **FR-025**: A provider's request to wait a minute or more before a retry MUST end the call at once as `rate_limited`, not be
+  retried after the SDK's shorter wait. A dropped connection MUST be reported as `provider_unreachable`, a prompt over the
+  context window as `context_length_exceeded`, a request timeout (408) as `provider_unavailable`, and a response cut off at an
+  output limit as `output_limit`. Only the code is kept, never the error's text.
+- **FR-026**: A run MUST end as an error with the fixed code `server_lost` when the craft server's connection closes, instead of
+  spending further steps on calls that cannot succeed.
+- **FR-027**: Tool calls that are not valid (malformed arguments, an unknown tool) MUST be counted in the score as
+  `invalidToolCalls`, and a run MUST end as an error with the fixed code `tool_loop` after five consecutive steps whose calls were
+  all invalid. *(FR-022 to FR-027 added 2026-10-11 from a review of the driver's failure handling.)*
 - **FR-018**: No key MUST appear in any file, log, trace, score, summary, reason or command line, and agent
   text and reasoning MUST NOT be written to any of them (constitution Principle VI; ADR-002 §2.3).
 

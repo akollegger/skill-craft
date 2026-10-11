@@ -142,3 +142,21 @@ test suite free and offline, as the existing live tests do.
 **Decision**: README and AGENTS already describe the runtime. Specs 002 and 005 and the design notes that name the
 Agent SDK or `--record` get a one-line history marker pointing at ADR-005, as ADR-002 and ADR-003 already carry
 amendments. No spec's requirements are rewritten.
+
+## R12. Operational limits and failure codes (added 2026-10-11)
+
+**Decision**: the player passes the SDK's `timeout: { stepMs, toolMs }` (defaults five minutes and one minute); a step that stalls
+throws a `TimeoutError`, which the SDK does not retry, and a tool that stalls comes back as an MCP client error whose cause is
+the `TimeoutError`. Caps (`maxTotalTokens`, `maxUsd`) are `stopWhen` conditions, so a run ends cleanly after the step that crosses
+one and keeps its totals; a per-step `maxOutputTokens` is passed only when set. A dead craft server shows as an MCP client error
+for a closed client in the tool-end event, and a streak of five steps with only invalid tool calls ends the run; both are `stopWhen`
+conditions too. A driver aborted by its signal rejects with `DriverAborted`, which carries what it had spent.
+
+**Read from the SDK (`ai` 7.0.133)**: `retry-after` is honoured only below 60 seconds and otherwise the wait is 2 s then 4 s; an
+invalid or unknown tool call becomes a tool error with no tool-start event, so it is not in the trace and still costs a step; the
+code uses `generateText`, so a stream that drops mid-response cannot occur and `wrapStream` is not needed.
+
+**Rationale**: each of these, left alone, looks like a model failure or a lost cost in the calibration data.
+
+**Left open**: whether `MAX_RETRIES = 2` is enough under parallel Fireworks runs; no pruning of a long run's history; the role
+driver has a spend cap but no per-call stall timeout.
