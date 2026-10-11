@@ -113,7 +113,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
         stopWhen: isStepCount(opts.maxTurns),
         abortSignal: opts.signal,
         // The row's call options: the cache option for Anthropic, nothing for a provider that caches on its own.
-        ...(row?.callOptions({}, ref.id) ?? {}),
+        ...(row?.callOptions(opts.settings ?? {}, ref.id) ?? {}),
         onLanguageModelCallStart: (e) => {
           sink.onMessage(requestStart(`${e.callId}#${++calls}`, ref.spec));
         },

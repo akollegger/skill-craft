@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { BackendNotPinned, UnknownModel, UnknownProvider } from "../src/harness/errors.js";
-import { parseModelSpec } from "../src/harness/models.js";
+import { BackendNotPinned, SettingRefused, UnknownModel, UnknownProvider } from "../src/harness/errors.js";
+import { checkSettings, parseModelSpec } from "../src/harness/models.js";
 import { PROVIDERS, findProvider, normaliseReported, providerPrefixes, validateRow, type ProviderRow } from "../src/harness/providers.js";
 
 const row = (over: Partial<ProviderRow> = {}): ProviderRow => ({
@@ -36,6 +36,50 @@ describe("call options", () => {
   it("turn on the prompt cache for Anthropic, and set nothing for Fireworks", () => {
     expect(findProvider("anthropic")?.callOptions({}, "claude-haiku-4-5-20251001")).toEqual({ providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } } });
     expect(findProvider("fireworks")?.callOptions({}, "accounts/fireworks/models/gpt-oss-120b")).toEqual({});
+  });
+});
+
+describe("pinned settings", () => {
+  const anthropic = () => findProvider("anthropic") as ProviderRow;
+  const refuses = (model: string, setting: "temperature" | "effort" | "thinking", value: unknown) => anthropic().settings.refuses?.(model, setting, value) ?? false;
+
+  it("are all accepted by the Anthropic row, and only temperature by the Fireworks row", () => {
+    expect(anthropic().settings.accepts).toEqual(["temperature", "effort", "thinking"]);
+    expect(findProvider("fireworks")?.settings.accepts).toEqual(["temperature"]);
+  });
+
+  it("are refused for the Claude models that do not take them, and accepted for those that do", () => {
+    expect(refuses("claude-sonnet-5-5", "temperature", 0)).toBe(true); // sampling parameters are removed on this model
+    expect(refuses("claude-haiku-4-5-20251001", "temperature", 0)).toBe(false);
+    expect(refuses("claude-sonnet-5-5", "thinking", "off")).toBe(true); // thinking cannot be disabled; it is always on
+    expect(refuses("claude-sonnet-5-5", "thinking", "adaptive")).toBe(false);
+    expect(refuses("claude-haiku-4-5-20251001", "thinking", "adaptive")).toBe(true); // takes a budget, not adaptive thinking
+    expect(refuses("claude-haiku-4-5-20251001", "thinking", "off")).toBe(false);
+    expect(refuses("claude-haiku-4-5-20251001", "effort", "high")).toBe(true); // no effort levels on this model
+    expect(refuses("claude-sonnet-5-5", "effort", "high")).toBe(false);
+  });
+
+  it("are checked against a model's row before anything is spent, with a fixed message naming the model and the setting", () => {
+    expect(() => checkSettings("claude-sonnet-5-5", { temperature: 0 })).toThrow(SettingRefused);
+    expect(() => checkSettings("claude-sonnet-5-5", { temperature: 0 })).toThrow("model 'anthropic/claude-sonnet-5-5' does not take setting 'temperature'");
+    expect(() => checkSettings("fireworks/gpt-oss-120b", { effort: "high" })).toThrow("model 'fireworks/gpt-oss-120b' does not take setting 'effort'");
+    expect(() => checkSettings("claude-sonnet-5-5", { thinking: "adaptive", effort: "high" })).not.toThrow();
+    expect(() => checkSettings("fireworks/gpt-oss-120b", { temperature: 0 })).not.toThrow();
+    expect(() => checkSettings("claude-haiku-4-5-20251001", {})).not.toThrow();
+  });
+
+  it("become the provider's call options: temperature on the call, thinking and effort in the provider's block, beside the cache option", () => {
+    expect(anthropic().callOptions({ temperature: 0, thinking: "adaptive", effort: "high" }, "claude-x")).toEqual({
+      temperature: 0,
+      providerOptions: { anthropic: { cacheControl: { type: "ephemeral" }, thinking: { type: "adaptive" }, effort: "high" } },
+    });
+    expect(anthropic().callOptions({ thinking: "off" }, "claude-x").providerOptions?.["anthropic"]).toMatchObject({ thinking: { type: "disabled" } });
+    expect(findProvider("fireworks")?.callOptions({ temperature: 0.2 }, "m")).toEqual({ temperature: 0.2 });
+  });
+
+  it("leave unset settings out entirely, so the provider's own default applies", () => {
+    expect(anthropic().callOptions({}, "claude-x")).toEqual({ providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } } });
+    expect(findProvider("fireworks")?.callOptions({}, "m")).toEqual({});
   });
 });
 

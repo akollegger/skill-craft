@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import type { LanguageModelUsage } from "ai";
 import { classifyEnd, failureCode, roleTokens, skillDescription, tokensOf } from "../src/harness/ai-options.js";
-import { UnknownModel } from "../src/harness/errors.js";
-import { canonicalSpec, costOf, loadPrices, parseModelSpec, priceFor } from "../src/harness/models.js";
+import { SettingsInvalid, UnknownModel } from "../src/harness/errors.js";
+import { canonicalSpec, costOf, loadPrices, loadSettings, parseModelSpec, priceFor } from "../src/harness/models.js";
 
 const usage = (over: Partial<LanguageModelUsage> = {}, details: Partial<LanguageModelUsage["inputTokenDetails"]> = {}): LanguageModelUsage => ({
   inputTokens: 100,
@@ -116,5 +116,54 @@ describe("the price table", () => {
     expect(t[DEFAULT_MODEL]).toMatchObject({ input: expect.any(Number), output: expect.any(Number) });
     expect(t["fireworks/gpt-oss-120b"]).toBeUndefined();
     expect(Object.keys(t).some((k) => k.startsWith("_"))).toBe(false); // notes are not models
+  });
+});
+
+describe("loadSettings", () => {
+  const awaitedPaths = new Map<string, string>();
+  beforeAll(async () => {
+    for (const text of [JSON.stringify(["a"]), JSON.stringify({ m: 3 }), "{ not json"]) awaitedPaths.set(text, await file(text));
+  });
+  const file = async (text: string) => {
+    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const path = join(mkdtempSync(join(tmpdir(), "settings-")), "settings.json");
+    writeFileSync(path, text);
+    return path;
+  };
+
+  it("reads settings keyed by model, reading a bare Claude key as anthropic/<id>", async () => {
+    const map = loadSettings(await file(JSON.stringify({ "claude-sonnet-5-5": { thinking: "adaptive", effort: "high" }, "fireworks/gpt-oss-120b": { temperature: 0 } })));
+    expect(map).toEqual({ "anthropic/claude-sonnet-5-5": { thinking: "adaptive", effort: "high" }, "fireworks/gpt-oss-120b": { temperature: 0 } });
+  });
+
+  it("accepts an empty entry, which pins nothing", async () => {
+    expect(loadSettings(await file(JSON.stringify({ "anthropic/claude-haiku-4-5-20251001": {} })))).toEqual({ "anthropic/claude-haiku-4-5-20251001": {} });
+  });
+
+  it("refuses an unknown setting name with a fixed message", async () => {
+    const path = await file(JSON.stringify({ "fireworks/m": { topK: 3 } }));
+    expect(() => loadSettings(path)).toThrow(SettingsInvalid);
+    expect(() => loadSettings(path)).toThrow("settings file: setting 'topK' is not one of temperature, effort, thinking");
+  });
+
+  it("refuses a bad value without quoting it", async () => {
+    for (const bad of [{ effort: "maximum-ish-SECRET" }, { temperature: "hot-SECRET" }, { thinking: "sometimes-SECRET" }, { temperature: -1 }]) {
+      const path = await file(JSON.stringify({ "fireworks/m": bad }));
+      expect(() => loadSettings(path)).toThrow(SettingsInvalid);
+      try {
+        loadSettings(path);
+      } catch (e) {
+        expect((e as Error).message).not.toContain("SECRET");
+      }
+    }
+  });
+
+  it("refuses a file that is not an object of objects, one that is not JSON, and one that is missing", async () => {
+    for (const text of [JSON.stringify(["a"]), JSON.stringify({ m: 3 }), "{ not json"]) {
+      expect(() => loadSettings(awaitedPaths.get(text) as string)).toThrow(SettingsInvalid);
+    }
+    expect(() => loadSettings("/no/such/settings.json")).toThrow(SettingsInvalid);
   });
 });

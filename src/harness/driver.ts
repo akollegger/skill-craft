@@ -1,3 +1,5 @@
+import type { ModelSettings } from "./providers.js";
+
 /**
  * The seam between the harness and whatever runs the agent. Types only: the recorder, the join and the
  * export are tested against a scripted driver, and only `ai-driver.ts` imports the SDK.
@@ -41,6 +43,8 @@ export interface DriverOptions {
   runDir: string;
   maxTurns: number;
   model?: string | undefined;
+  /** The settings pinned for this model (thinking, effort, temperature); an unset one is left to the provider's default. */
+  settings?: ModelSettings | undefined;
   /** Aborting it must end the run promptly. */
   signal: AbortSignal;
   /** A skill to make available to the agent: a local plugin folder, and the skill's `plugin:skill` name. */

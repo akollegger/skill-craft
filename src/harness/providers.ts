@@ -60,6 +60,13 @@ export function validateRow(row: ProviderRow): void {
 
 const FIREWORKS_MODELS = "accounts/fireworks/models/";
 
+// What Anthropic's models take, by id prefix, from its published notes. The table can only know what it was told; a
+// setting it does not know a model refuses is sent, and a provider's rejection ends that run as `request_rejected`.
+const ALWAYS_THINKING = /^claude-(fable|mythos|opus-5-5|sonnet-5-5)/; // thinking cannot be switched off
+const NO_SAMPLING = /^claude-(fable|mythos|opus-5|opus-4-[78]|sonnet-5)/; // temperature is not taken
+const TAKES_ADAPTIVE = /^claude-(fable|mythos|opus-5|opus-4-[678]|sonnet-5|sonnet-4-6)/; // adaptive thinking
+const TAKES_EFFORT = /^claude-(fable|mythos|opus-5|opus-4-[5-8]|sonnet-5|sonnet-4-6)/; // effort levels
+
 const anthropic: ProviderRow = {
   prefix: "anthropic",
   package: "@ai-sdk/anthropic",
@@ -69,10 +76,26 @@ const anthropic: ProviderRow = {
   expand: (short) => short,
   normaliseId: (id) => `anthropic/${id}`,
   usageReport: null,
-  settings: { accepts: [] },
+  settings: {
+    accepts: ["temperature", "effort", "thinking"],
+    refuses: (modelId, setting, value) => {
+      if (setting === "temperature") return NO_SAMPLING.test(modelId);
+      if (setting === "effort") return !TAKES_EFFORT.test(modelId);
+      return value === "off" ? ALWAYS_THINKING.test(modelId) : !TAKES_ADAPTIVE.test(modelId);
+    },
+  },
   // Anthropic caches only what a request asks it to, and a run repeats a long prefix (the tool list and the history) on
-  // every turn; without this the spike's Claude runs read 0% of their input from the cache.
-  callOptions: () => ({ providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } } }),
+  // every turn; without this the spike's Claude runs read 0% of their input from the cache. Pinned settings ride beside it.
+  callOptions: (s) => ({
+    ...(s.temperature === undefined ? {} : { temperature: s.temperature }),
+    providerOptions: {
+      anthropic: {
+        cacheControl: { type: "ephemeral" },
+        ...(s.thinking === undefined ? {} : { thinking: { type: s.thinking === "adaptive" ? "adaptive" : "disabled" } }),
+        ...(s.effort === undefined ? {} : { effort: s.effort }),
+      },
+    },
+  }),
 };
 
 const fireworks: ProviderRow = {
@@ -84,8 +107,8 @@ const fireworks: ProviderRow = {
   expand: (short) => (short.startsWith("accounts/") ? short : `${FIREWORKS_MODELS}${short}`),
   normaliseId: (id) => (id.startsWith(FIREWORKS_MODELS) ? `fireworks/${id.slice(FIREWORKS_MODELS.length)}` : `fireworks/${id}`),
   usageReport: "firectl billing get-usage",
-  settings: { accepts: [] },
-  callOptions: () => ({}),
+  settings: { accepts: ["temperature"] },
+  callOptions: (s) => (s.temperature === undefined ? {} : { temperature: s.temperature }),
 };
 
 /** The rows. Adding a provider is one entry here, its package in `package.json`, and its price entries. */

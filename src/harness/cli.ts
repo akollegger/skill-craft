@@ -4,6 +4,7 @@ import { parseArgs } from "node:util";
 import { loadWorld } from "../sim/loader.js";
 import type { AgentDriver } from "./driver.js";
 import { HarnessError, isUserError, UnknownGoalItem } from "./errors.js";
+import { DEFAULT_MODEL, loadSettings, parseModelSpec } from "./models.js";
 import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, planExperiment, runExperiment, type AgentRunOptions, type RunReport } from "./run.js";
 
 export interface CliDeps {
@@ -17,7 +18,7 @@ export interface CliDeps {
 
 const USAGE =
   "usage: run-agent.ts --goal <item>[:<qty>] [--world <world.json>] [--runs n] [--max-turns n] [--timeout-minutes n]\n" +
-  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--prompt-file <file>] [--dry-run]";
+  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--prompt-file <file>] [--settings <file>] [--dry-run]";
 
 class UsageError extends Error {}
 
@@ -76,6 +77,7 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
         skill: { type: "string" },
         "prompt-note": { type: "string" },
         "prompt-file": { type: "string" },
+        settings: { type: "string" },
         "dry-run": { type: "boolean", default: false },
       },
     });
@@ -87,6 +89,8 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
     if (note !== undefined && note.trim() === "") throw new UsageError("--prompt-note must not be empty");
     const promptFile = values["prompt-file"];
     const template = promptFile === undefined ? undefined : readTemplate(promptFile);
+    // The settings pinned for the run's model: a settings file maps model specs to settings, and a model with no entry runs unset.
+    const settings = values.settings === undefined ? undefined : loadSettings(values.settings)[parseModelSpec(values.model ?? DEFAULT_MODEL).spec];
     const minutes = Number(values["timeout-minutes"]);
     if (!Number.isFinite(minutes) || minutes <= 0 || minutes * 60_000 > MAX_TIMEOUT_MS) {
       throw new UsageError(`--timeout-minutes must be a number greater than 0 and at most ${Math.floor(MAX_TIMEOUT_MS / 60_000)}`);
@@ -101,6 +105,7 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
       out: values.out as string,
       label: values.label ?? `${basename(values.world as string, ".json")}-${item}-${new Date().toISOString().replace(/[:.]/g, "-")}`,
       ...(values.model ? { model: values.model } : {}),
+      ...(settings === undefined ? {} : { settings }),
       ...(values.skill ? { skill: values.skill } : {}),
       ...(note === undefined ? {} : { promptNote: note }),
       ...(template === undefined ? {} : { promptTemplate: template }),

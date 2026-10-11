@@ -185,6 +185,25 @@ describe("buildReport", () => {
   });
 });
 
+describe("pinned settings in the experiment summary", () => {
+  it("are accepted for each model, in either name form, and a summary without them is read as none", () => {
+    const withSettings = fixture({ models: { teacher: "claude-sonnet-5-5", student: "claude-haiku-4-5-20251001", settings: { "anthropic/claude-sonnet-5-5": { thinking: "adaptive", effort: "high" }, "claude-haiku-4-5-20251001": { thinking: "off", temperature: 0 } } } });
+    withSettings.addLabel("cal", { stage: "calibration" }, "iron", "anthropic/claude-haiku-4-5-20251001", "faithful", wins(1, 2));
+    expect(() => buildReport({ experiment: withSettings.write(), labels: withSettings.labels })).not.toThrow();
+    const without = fixture();
+    without.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 2));
+    expect(() => buildReport({ experiment: without.write(), labels: without.labels })).not.toThrow();
+  });
+
+  it("are refused when a setting is misspelt or its value is not allowed", () => {
+    for (const bad of [{ topK: 3 }, { effort: "enormous" }, { temperature: "hot" }, { thinking: "sometimes" }]) {
+      const f = fixture({ models: { teacher: TEACHER, student: STUDENT, settings: { [STUDENT]: bad } } });
+      f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 2));
+      expect(() => buildReport({ experiment: f.write(), labels: f.labels })).toThrow(ReportRefused);
+    }
+  });
+});
+
 describe("cost and unpriced runs in the report", () => {
   const rowOf = (md: string, stage: string) => md.split("\n").find((l) => l.startsWith(`| ${stage} |`)) as string;
 

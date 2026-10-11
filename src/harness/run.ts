@@ -15,7 +15,7 @@ import { toRepoPath } from "./paths.js";
 import { readLog, replayFailure } from "./read-log.js";
 import { installSkill, SKILL_PLUGIN, skillName } from "./skill.js";
 import { craftServer } from "./craft-server.js";
-import { canonicalSpec, DEFAULT_MODEL, parseModelSpec } from "./models.js";
+import { canonicalSpec, checkSettings, DEFAULT_MODEL, parseModelSpec, type ModelSettings } from "./models.js";
 
 export const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -33,6 +33,8 @@ export interface AgentRunOptions {
   out: string;
   label: string;
   model?: string | undefined;
+  /** The settings pinned for this run's model, checked against its provider before anything is spent. */
+  settings?: ModelSettings | undefined;
   /** Time limit for one run. Default 30 minutes. */
   timeoutMs?: number | undefined;
   /** Aborting it ends the current run and starts no further one. */
@@ -94,6 +96,15 @@ export interface ModelInfo {
   backend?: string;
 }
 
+/** What a score records of the pinned settings: `null` for one that was not given, so the provider's own default applied. */
+export interface RecordedSettings {
+  temperature: number | null;
+  effort: string | null;
+  thinking: string | null;
+}
+
+export const recordedSettings = (s: ModelSettings | undefined): RecordedSettings => ({ temperature: s?.temperature ?? null, effort: s?.effort ?? null, thinking: s?.thinking ?? null });
+
 export interface RunReport extends PlayerResult {
   index: number;
   dir: string;
@@ -106,6 +117,8 @@ export interface RunReport extends PlayerResult {
   promptNote?: string | undefined;
   /** The skill this run had available, when one was installed. */
   skill?: { name: string; sha256: string; invoked: boolean; loadedAfterCalls: number | null } | undefined;
+  /** The settings this run used. */
+  settings: RecordedSettings;
 }
 
 export interface Aggregate {
@@ -163,6 +176,7 @@ const runDir = (o: AgentRunOptions, index: number): string => join(o.out, o.labe
 export function planExperiment(o: AgentRunOptions) {
   const priorFit = priorFitOf(o.world);
   const prompt = buildPrompt(o.goal, o.maxTurns, o.promptNote, o.promptTemplate);
+  if (o.settings !== undefined) checkSettings(o.model ?? DEFAULT_MODEL, o.settings); // a setting the provider does not take is refused here, before any spend
   return Array.from({ length: o.runs }, (_, i) => {
     const dir = runDir(o, i + 1);
     const runLog = resolve(dir, "run.jsonl");
@@ -174,6 +188,7 @@ export function planExperiment(o: AgentRunOptions) {
     // spend), the turn limit, and the tools. With a skill the agent gets the skill tool besides the craft tools.
     const options = {
       model: parseModelSpec(o.model ?? DEFAULT_MODEL).spec,
+      settings: recordedSettings(o.settings),
       maxTurns: o.maxTurns,
       tools: skill ? ["Skill"] : [],
       ...(skill ? { skills: [skill.qualifiedName] } : {}),
@@ -209,7 +224,7 @@ const failedResult = (requested: string | null, reason: string): PlayerResult =>
 const writeScore = (dir: string, r: RunReport): void =>
   writeFileSync(
     join(dir, "score.json"),
-    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, ...(r.reportedCostUsd === undefined ? {} : { reportedCostUsd: r.reportedCostUsd }), text: r.text, score: r.score, measured: r.measured, model: r.model, priorFit: r.priorFit, ...(r.promptNote === undefined ? {} : { promptNote: r.promptNote }), ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
+    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, ...(r.reportedCostUsd === undefined ? {} : { reportedCostUsd: r.reportedCostUsd }), text: r.text, score: r.score, measured: r.measured, model: r.model, settings: r.settings, priorFit: r.priorFit, ...(r.promptNote === undefined ? {} : { promptNote: r.promptNote }), ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
   );
 
 /** Run the agent once against a fresh server, then score and measure it. A failed player is a recorded error. */
@@ -241,7 +256,7 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
   let failure: HarnessError | null = null;
   try {
     result = await driver(
-      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
+      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, ...(o.settings === undefined ? {} : { settings: o.settings }), signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
       recorder,
     );
   } catch (e) {
@@ -273,6 +288,7 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
     score,
     measured: measureRun(entries, readTrace(tracePath), result, score, recorder.skipped),
     model: modelInfo(requested, result),
+    settings: recordedSettings(o.settings),
     priorFit,
     ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }),
     ...(skill ? { skill: { name: skill.name, sha256: skill.sha256, invoked: result?.skillInvoked === true, loadedAfterCalls: result?.skillLoadedAfterCalls ?? null } } : {}),
@@ -287,7 +303,7 @@ function brokenRun(o: AgentRunOptions, index: number, world: World, priorFit: De
   const reason = reasonOf(e instanceof HarnessError ? e : new RunFailed(e));
   const report: RunReport = {
     ...failedResult(o.model ?? null, reason),
-    index, dir, score: scoreRun(world, o.goal, []), measured: { trace: "absent" }, model: modelInfo(o.model ?? null, null), priorFit,
+    index, dir, score: scoreRun(world, o.goal, []), measured: { trace: "absent" }, model: modelInfo(o.model ?? null, null), settings: recordedSettings(o.settings), priorFit,
     ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }),
   };
   try {
@@ -305,6 +321,7 @@ export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; 
   // An invalid notes file ends the batch here, before anything is created or spent.
   const priorFit = priorFitOf(o.world);
   if (o.skill && !existsSync(join(o.skill, "SKILL.md"))) throw new SkillNotFound(`${o.skill} has no SKILL.md`);
+  if (o.settings !== undefined) checkSettings(o.model ?? DEFAULT_MODEL, o.settings); // before any folder is made or any model is called
   // Refuse before spending anything on a label that has already been used.
   for (let i = 1; i <= o.runs; i++) if (existsSync(runDir(o, i))) throw new RunFolderExists(runDir(o, i));
 

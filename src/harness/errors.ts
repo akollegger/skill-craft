@@ -80,7 +80,7 @@ export function reasonOf(e: unknown): string {
 
 /** Mistakes the operator can fix, as opposed to a run that failed. Matched by class, never by message text. */
 export function isUserError(e: unknown): boolean {
-  return e instanceof LoopRefused || e instanceof WorkspaceRefused || e instanceof RunFolderExists || e instanceof ExportRefused || e instanceof SkillNotFound || e instanceof ReportRefused || e instanceof UnknownGoalItem || e instanceof UnknownModel || e instanceof UnknownProvider || e instanceof BackendNotPinned || e instanceof WorldError || e instanceof RunLogInUseError;
+  return e instanceof LoopRefused || e instanceof WorkspaceRefused || e instanceof RunFolderExists || e instanceof ExportRefused || e instanceof SkillNotFound || e instanceof ReportRefused || e instanceof UnknownGoalItem || e instanceof UnknownModel || e instanceof UnknownProvider || e instanceof BackendNotPinned || e instanceof SettingRefused || e instanceof SettingsInvalid || e instanceof WorldError || e instanceof RunLogInUseError;
 }
 
 /** A results report that cannot be trusted or built: a missing summary, a stray folder, a mismatched skill or note. */
@@ -151,6 +151,20 @@ export class UnknownModel extends HarnessError {
 export class UnknownProvider extends HarnessError {
   constructor(prefix: string, available: readonly string[]) {
     super("UnknownProvider", `provider '${prefix}' is not available; the providers are ${available.join(", ")}`);
+  }
+}
+
+/** A pinned setting the model's provider does not take for that model (known from its table row). */
+export class SettingRefused extends HarnessError {
+  constructor(model: string, setting: string) {
+    super("SettingRefused", `model '${model}' does not take setting '${setting}'`);
+  }
+}
+
+/** A settings file that cannot be read as settings. The message is fixed text and never quotes the file. */
+export class SettingsInvalid extends HarnessError {
+  constructor(why: string) {
+    super("SettingsInvalid", `settings file: ${why}`);
   }
 }
 

@@ -1,8 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { UnknownModel, UnknownProvider } from "./errors.js";
+import { SettingRefused, SettingsInvalid, UnknownModel, UnknownProvider } from "./errors.js";
 import { REPO } from "./paths.js";
-import { findProvider, providerPrefixes, validateRow } from "./providers.js";
+import { findProvider, providerPrefixes, validateRow, type Effort, type ModelSettings } from "./providers.js";
+
+export type { ModelSettings };
 
 /** Used when a run names no model. A run still records which model it asked for (null here) and which ran. */
 export const DEFAULT_MODEL = "anthropic/claude-sonnet-5-5";
@@ -99,3 +101,57 @@ export function costOf(tokens: Tokens, price: Price | undefined): number | null 
 
 /** The price for a model given in either form, or undefined when the table has none. */
 export const priceFor = (spec: string, table: PriceTable = loadPrices()): Price | undefined => table[canonicalSpec(spec)];
+
+const SETTING_NAMES = ["temperature", "effort", "thinking"] as const;
+const EFFORTS: readonly Effort[] = ["low", "medium", "high", "xhigh", "max"];
+
+/**
+ * Refuse a pinned setting the model's provider does not take for it, before anything is spent. The table only knows
+ * what it was told (providers.ts); a setting it does not know a model refuses is sent, and a rejection ends the run.
+ */
+export function checkSettings(spec: string, settings: ModelSettings): void {
+  const ref = parseModelSpec(spec);
+  const row = findProvider(ref.provider);
+  if (row === undefined) return;
+  for (const name of SETTING_NAMES) {
+    const value = settings[name];
+    if (value === undefined) continue;
+    if (!row.settings.accepts.includes(name) || row.settings.refuses?.(ref.id, name, value) === true) throw new SettingRefused(ref.spec, name);
+  }
+}
+
+/** A settings file: model spec to the settings to pin for it. Keys are read in canonical form; a key starting `_` is a note. */
+export function loadSettings(path: string): Record<string, ModelSettings> {
+  if (!existsSync(path)) throw new SettingsInvalid(`${path} does not exist`);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    throw new SettingsInvalid("not valid JSON");
+  }
+  const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+  if (!isObject(raw)) throw new SettingsInvalid("it must be an object that maps a model to its settings");
+  const map: Record<string, ModelSettings> = {};
+  for (const [key, entry] of Object.entries(raw)) {
+    if (key.startsWith("_")) continue;
+    if (!isObject(entry)) throw new SettingsInvalid("it must be an object that maps a model to its settings");
+    const spec = canonicalSpec(key);
+    const settings: ModelSettings = {};
+    for (const [name, value] of Object.entries(entry)) {
+      if (!(SETTING_NAMES as readonly string[]).includes(name)) throw new SettingsInvalid(`setting '${name}' is not one of ${SETTING_NAMES.join(", ")}`);
+      const bad = () => new SettingsInvalid(`the value of '${name}' for model '${spec}' is not allowed`);
+      if (name === "temperature") {
+        if (typeof value !== "number" || !Number.isFinite(value) || value < 0) throw bad();
+        settings.temperature = value;
+      } else if (name === "effort") {
+        if (typeof value !== "string" || !EFFORTS.includes(value as Effort)) throw bad();
+        settings.effort = value as Effort;
+      } else {
+        if (value !== "adaptive" && value !== "off") throw bad();
+        settings.thinking = value;
+      }
+    }
+    map[spec] = settings;
+  }
+  return map;
+}

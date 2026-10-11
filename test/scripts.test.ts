@@ -188,6 +188,31 @@ describe("scripts/run-agent.ts", () => {
     expect(existsSync(join(out, "dry"))).toBe(false);
   });
 
+  it("takes --settings: a dry run shows the settings it would use, and refuses one the model's provider does not take", () => {
+    const dir = mkdtempSync(join(tmpdir(), "skill-craft-settings-"));
+    const ok = join(dir, "ok.json");
+    const bad = join(dir, "bad.json");
+    writeFileSync(ok, JSON.stringify({ "claude-sonnet-5-5": { thinking: "adaptive", effort: "high" } }));
+    writeFileSync(bad, JSON.stringify({ "claude-sonnet-5-5": { temperature: 0 } }));
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-runs-"));
+    const good = run("scripts/run-agent.ts", ["--goal", GOAL, "--model", "claude-sonnet-5-5", "--settings", ok, "--out", out, "--label", "s", "--dry-run"]);
+    expect(good.status, good.stderr).toBe(0);
+    expect((JSON.parse(good.stdout) as { options: Record<string, unknown> }[])[0]?.options["settings"]).toEqual({ temperature: null, effort: "high", thinking: "adaptive" });
+    const refused = run("scripts/run-agent.ts", ["--goal", GOAL, "--model", "claude-sonnet-5-5", "--settings", bad, "--out", out, "--label", "s2", "--dry-run"]);
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain("model 'anthropic/claude-sonnet-5-5' does not take setting 'temperature'");
+    expect(existsSync(join(out, "s2"))).toBe(false);
+  });
+
+  it("refuses a settings file that is not valid, naming the problem and not quoting the file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "skill-craft-settings-"));
+    const file = join(dir, "x.json");
+    writeFileSync(file, JSON.stringify({ m: { topK: 3 } }));
+    const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--settings", file, "--dry-run"]);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("settings file: setting 'topK' is not one of temperature, effort, thinking");
+  });
+
   it("refuses an unknown provider in a dry run, before anything is created, naming the providers and no key", () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-runs-"));
     const secret = "sk-test-secret-should-not-print";

@@ -151,6 +151,41 @@ describe("the prompt cache", () => {
   }, 30_000);
 });
 
+describe("pinned settings", () => {
+  const model = () => control.model as InstanceType<typeof MockLanguageModelV4>;
+
+  it("reach the provider: temperature on the call, thinking and effort in the provider's block beside the cache option", async () => {
+    scripted(say("done"));
+    const { opts, recorder } = setup({ model: "claude-sonnet-5-5", settings: { temperature: 0, thinking: "adaptive", effort: "high" } });
+    await aiDriver(opts, recorder);
+    const call0 = model().doGenerateCalls[0];
+    expect(call0?.temperature).toBe(0);
+    expect(call0?.providerOptions?.["anthropic"]).toEqual({ cacheControl: { type: "ephemeral" }, thinking: { type: "adaptive" }, effort: "high" });
+  }, 30_000);
+
+  it("are left out when none are given, so the provider's own defaults apply", async () => {
+    scripted(say("done"));
+    const { opts, recorder } = setup({ model: "claude-sonnet-5-5" });
+    await aiDriver(opts, recorder);
+    expect(model().doGenerateCalls[0]?.temperature).toBeUndefined();
+    expect(model().doGenerateCalls[0]?.providerOptions?.["anthropic"]).toEqual({ cacheControl: { type: "ephemeral" } });
+  }, 30_000);
+
+  it("a setting the table does not know a model refuses is sent, and the provider's rejection ends the run as request_rejected", async () => {
+    const { APICallError } = await import("ai");
+    control.model = new MockLanguageModelV4({
+      modelId: "m",
+      doGenerate: async () => {
+        throw new APICallError({ message: "temperature is not supported SECRET-BODY", url: "u", requestBodyValues: {}, statusCode: 400, isRetryable: false });
+      },
+    });
+    const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001", settings: { temperature: 0 } });
+    const r = await aiDriver(opts, recorder);
+    expect(r).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported request_rejected" });
+    expect(JSON.stringify(r)).not.toContain("SECRET-BODY");
+  }, 30_000);
+});
+
 describe("the model that ran", () => {
   it("is the model the provider reports, in canonical form, and the trace's request lines carry it", async () => {
     scripted(reporting(say("done"), "accounts/fireworks/models/glm-5p3"));

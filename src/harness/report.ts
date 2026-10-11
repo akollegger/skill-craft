@@ -26,7 +26,14 @@ const summarySchema = z.object({
   priorFit: z.string(),
   route: z.enum(["escalating", "preemptive"]),
   primary: z.enum(["repair", "transfer"]),
-  models: z.object({ teacher: z.string(), student: z.string() }),
+  models: z.object({
+    teacher: z.string(),
+    student: z.string(),
+    /** The settings pinned for each model, keyed by model spec (a bare Claude id is read as `anthropic/<id>`); absent means none were pinned. */
+    settings: z
+      .record(z.string(), z.object({ temperature: z.number().min(0).optional(), effort: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(), thinking: z.enum(["adaptive", "off"]).optional() }).strict())
+      .default({}),
+  }),
   /** The goal set, and the goals set aside before any trial. */
   goals: z.object({ set: z.array(z.string()), heldOut: z.array(z.string()) }),
   /** Each goal's role from calibration; absent until calibration has been read. */

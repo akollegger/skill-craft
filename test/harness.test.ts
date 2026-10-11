@@ -38,6 +38,7 @@ const report = (over: Partial<RunReport> & { reached: boolean; callsToGoal: numb
   text: "",
   measured: { trace: "absent" },
   model: { requested: null, resolved: ["m"] },
+  settings: { temperature: null, effort: null, thinking: null },
   priorFit: "undeclared",
   score: {
     goal: { item: "x", qty: 1 },
@@ -339,6 +340,37 @@ describe("the model a run used", () => {
   it("still records the requested model and no resolved model for a crashed run", async () => {
     const out = await runExperiment(options({ mode: "crash" }, { runs: 1, model: "alias-a" }));
     expect(out.reports[0]?.model).toEqual({ requested: "alias-a", resolved: [] });
+  });
+});
+
+describe("pinned settings in a run", () => {
+  it("are recorded in each score, with null for each setting not given", async () => {
+    const some = await runExperiment(options({ mode: "solve" }, { runs: 1, model: "claude-haiku-4-5-20251001", settings: { temperature: 0, thinking: "off" } }));
+    expect(scoreOf(some.reports[0]?.dir as string)["settings"]).toEqual({ temperature: 0, effort: null, thinking: "off" });
+    const none = await runExperiment(options({ mode: "solve" }, { runs: 1 }));
+    expect(scoreOf(none.reports[0]?.dir as string)["settings"]).toEqual({ temperature: null, effort: null, thinking: null });
+  });
+
+  it("are handed to the player", async () => {
+    let seen: unknown;
+    const driver: AgentDriver = (o, sink) => {
+      seen = o.settings;
+      return fakePlayer({ goal: GOAL, mode: "solve" })(o, sink);
+    };
+    await runExperiment(options({}, { runs: 1, driver, settings: { effort: "high" } }));
+    expect(seen).toEqual({ effort: "high" });
+  });
+
+  it("are refused before anything is created when the model's provider does not take them", async () => {
+    const o = options({ mode: "solve" }, { runs: 1, model: "claude-sonnet-5-5", settings: { temperature: 0 } });
+    await expect(runExperiment(o)).rejects.toThrow("model 'anthropic/claude-sonnet-5-5' does not take setting 'temperature'");
+    expect(existsSync(join(o.out as string, o.label as string))).toBe(false);
+  });
+
+  it("show in the dry-run plan for each run", () => {
+    const plan = planExperiment(options({}, { runs: 2, model: "claude-sonnet-5-5", settings: { thinking: "adaptive", effort: "high" } }));
+    expect(plan[0]?.options.settings).toEqual({ temperature: null, effort: "high", thinking: "adaptive" });
+    expect(() => planExperiment(options({}, { model: "claude-sonnet-5-5", settings: { temperature: 0.5 } }))).toThrow("does not take setting 'temperature'");
   });
 });
 
