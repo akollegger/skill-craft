@@ -5,7 +5,7 @@
  * Candidate mode distils nothing through NAMS, so it writes nothing outside the output folders it is given.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -30,8 +30,11 @@ describe.skipIf(skip)("the critic loop on the AI SDK roles", () => {
     expect(reached, "none of five teacher runs reached the goal, so the loop has no recording").toBeDefined();
     const runDir = reached as string;
 
+    // The roles run the way their model was calibrated: the earlier runtime ran Haiku with a 31,999-token thinking budget.
+    const settings = join(work, "settings.json");
+    writeFileSync(settings, JSON.stringify({ [CRITIC]: { thinking: 31999 } }));
     const loops = join(work, "loops");
-    const loop = spawnSync(process.execPath, scriptArgs("scripts/critic-loop.ts", ["--runs", runDir, "--candidate", SKILL, "--max-rounds", "1", "--critic-model", CRITIC, "--reviser-model", CRITIC, "--max-role-usd", "0.5", "--out", loops, "--label", "rt-loop"]), { encoding: "utf8", timeout: 600_000 });
+    const loop = spawnSync(process.execPath, scriptArgs("scripts/critic-loop.ts", ["--runs", runDir, "--candidate", SKILL, "--max-rounds", "1", "--critic-model", CRITIC, "--reviser-model", CRITIC, "--max-role-usd", "0.5", "--settings", settings, "--out", loops, "--label", "rt-loop"]), { encoding: "utf8", timeout: 600_000 });
     expect(loop.status, loop.stderr).toBe(0);
 
     const record = JSON.parse(readFileSync(join(loops, "rt-loop", "loop.json"), "utf8")) as { outcome: string; rounds: unknown[]; failed: boolean; stages: { costUsd: number | null }[]; models: { critic: { requested: string; resolved: string[] } } };
@@ -44,7 +47,7 @@ describe.skipIf(skip)("the critic loop on the AI SDK roles", () => {
     const cost = record.stages.reduce((sum, s) => sum + (s.costUsd ?? 0), 0);
     writeCheckRecord(
       "live-check-critic-loop.md",
-      `# Live check: the critic loop on the AI SDK roles\n\nRun by \`test/live-critic-loop.test.ts\` (spec 007, T052).\n\n- Teacher recording: \`scripts/run-agent.ts --goal ${GOAL} --runs 5 --model ${TEACHER}\`, the first run that reached the goal.\n- Loop: \`scripts/critic-loop.ts --candidate ${SKILL} --max-rounds 1\`, critic and reviser \`${CRITIC}\`.\n- Outcome: ${record.outcome} after ${record.rounds.length} round(s).\n- Role cost: $${cost.toFixed(3)} (models resolved to ${record.models.critic.resolved.join(", ")}).\n- No NAMS call: candidate mode.\n`,
+      `# Live check: the critic loop on the AI SDK roles\n\nRun by \`test/live-critic-loop.test.ts\` (spec 007, T053).\n\n- Teacher recording: \`scripts/run-agent.ts --goal ${GOAL} --runs 5 --model ${TEACHER}\`, the first run that reached the goal.\n- Loop: \`scripts/critic-loop.ts --candidate ${SKILL} --max-rounds 1\`, critic and reviser \`${CRITIC}\`.\n- Outcome: ${record.outcome} after ${record.rounds.length} round(s).\n- Role cost: $${cost.toFixed(3)} (models resolved to ${record.models.critic.resolved.join(", ")}).\n- No NAMS call: candidate mode.\n`,
     );
   }, 1_500_000);
 });

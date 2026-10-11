@@ -48,7 +48,7 @@ describe.skipIf(skipUnlessKey("FIREWORKS_API_KEY"))("cancelling a real run", () 
     expect(orphanServers().filter((l) => !before.has(l))).toEqual([]);
     writeCheckRecord(
       "live-check-cancel.md",
-      `# Live check: cancelling a real run\n\nRun by \`test/live-cancel.test.ts\` (spec 007, T055).\n\n- Model: \`${MODEL}\` (cheap), goal glirol.\n- Five runs interrupted with SIGINT after 6 s: each exited 130, wrote a summary with \`cancelled: true\` and a \`RunCancelled\` reason.\n- Five runs with \`--timeout-minutes 0.05\`: each wrote a summary whose run reason starts \`RunTimedOut\`.\n- After all ten, no craft server process was left running (none reparented to init).\n`,
+      `# Live check: cancelling a real run\n\nRun by \`test/live-cancel.test.ts\` (spec 007, T056).\n\n- Model: \`${MODEL}\` (cheap), goal glirol.\n- Five runs interrupted with SIGINT after 6 s: each exited 130, wrote a summary with \`cancelled: true\` and a \`RunCancelled\` reason.\n- Five runs with \`--timeout-minutes 0.05\`: each wrote a summary whose run reason starts \`RunTimedOut\`.\n- After all ten, no craft server process was left running (none reparented to init).\n`,
     );
   }, 300_000);
 });
