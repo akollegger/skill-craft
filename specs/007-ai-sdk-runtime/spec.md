@@ -197,8 +197,9 @@ mention is marked as history.
 ### Edge Cases
 
 - A provider substitutes another model for the one requested, mid-experiment.
-- A provider reports no cache figure, or no cost, or neither; the figures are recorded as absent, never zero
-  where zero would mean "free".
+- A provider reports no cache figure: the count is recorded as zero, as the trace has always held it, and cost
+  treats it as no cached tokens. A provider reports no cost: `reportedCostUsd` is absent. A model without a price
+  never gets a cost of zero.
 - A model has a price but no cache rates: cached tokens are priced at the input rate and the entry says so.
 - A provider's key is missing from the environment: the run ends with a fixed reason that names the variable
   and never shows a key.
@@ -233,7 +234,7 @@ mention is marked as history.
 - **FR-007**: Every total, summary and report that sums cost MUST state how many runs were unpriced and MUST NOT
   count them as zero.
 - **FR-008**: Claude requests MUST use the provider's prompt cache, and a cache figure a provider does not
-  report MUST be recorded as absent.
+  report MUST be recorded as zero in the trace and in the run's token counts.
 - **FR-009**: The experiment summary MUST record each model's thinking, effort and temperature settings before
   the first trial, each run's score MUST record the settings it used (or that they were unset), and a setting
   the provider refuses MUST be rejected before any spend.

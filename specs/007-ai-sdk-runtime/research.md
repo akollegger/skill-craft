@@ -96,6 +96,18 @@ records the settings per model before the first trial.
 covers the rest without silently changing a setting. Recording `null` for an unset value states that the provider's
 own default applied, which the harness did not choose.
 
+**The calibration settings** (`calibration-settings.json`, pin whatever the model takes):
+
+| Model | thinking | effort | temperature | Reason |
+|---|---|---|---|---|
+| `anthropic/claude-sonnet-5-5` (teacher) | `adaptive` | `high` | unset | It runs adaptive by default and its effort default is `high`; pinning both states them so a later default change cannot move the baseline. It refuses a non-default temperature, so that stays unset. |
+| `anthropic/claude-haiku-4-5-20251001` (student) | `off` | unset | `0` | It takes no adaptive thinking and no effort level (effort errors on it), so thinking is pinned off and temperature is pinned to 0 to keep five trials from varying for sampling reasons. |
+
+The Claude Code calibration used Claude Code's own defaults, which these pins need not reproduce, and a pinned temperature of 0
+means a success rate here is not directly comparable with the earlier unpinned numbers. That comparison is a reason to rerun, not to
+match. The limits above come from Anthropic's published notes at the time of planning; the first call to each model confirms them,
+and a rejection ends the run as `request_rejected`, recorded.
+
 ## R7. The calibration rerun is the faithful world's, by the procedure in spec 003
 
 **Decision**: rerun the faithful world's calibration on this runtime: the teacher and student of ADR-003 §2.1, the
