@@ -54,6 +54,8 @@ export interface FakePlayerOptions {
   reportedCostUsd?: number;
   /** The backend a routed provider reported for the run. */
   backend?: string;
+  /** The retry setting and the attempts that failed, as a player that counts them reports them. */
+  retries?: { max: number; failedAttempts: number };
 }
 
 export const FAKE_TOKENS = { input: 2, output: 10, cacheRead: 100, cacheCreation: 50 };
@@ -184,6 +186,7 @@ export function fakePlayer(options: FakePlayerOptions = {}): AgentDriver {
       text: mode === "solve" ? "I hold it." : "I could not find it.",
       ...(options.reportedCostUsd === undefined ? {} : { reportedCostUsd: options.reportedCostUsd }),
       ...(options.backend === undefined ? {} : { backend: options.backend }),
+      ...(options.retries === undefined ? {} : { retries: options.retries }),
     };
   };
 }

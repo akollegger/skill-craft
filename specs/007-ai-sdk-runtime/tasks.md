@@ -169,8 +169,8 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 ### Scripted tests first (FR-012, FR-013)
 
-- [ ] T050 [P] [US6] `test/ai-driver.test.ts`: a role whose model finishes with `length` returns `ok: false`, a fixed reason and no answer. Fix `aiRoleDriver` in `src/harness/ai-driver.ts` so a `length` finish is never an answer.
-- [ ] T051 [P] [US6] `test/ai-driver.test.ts`: when the run's signal aborts during a model call, and when the model call throws, the MCP client is closed (a scripted transport records `close`) and no craft server process remains. Fix the driver's cleanup if either fails.
+- [X] T050 [P] [US6] `test/ai-driver.test.ts`: a role whose model finishes with `length` returns `ok: false`, a fixed reason and no answer. Fix `aiRoleDriver` in `src/harness/ai-driver.ts` so a `length` finish is never an answer.
+- [X] T051 [P] [US6] `test/ai-driver.test.ts`: when the run's signal aborts during a model call, and when the model call throws, the MCP client is closed (a scripted transport records `close`) and no craft server process remains. Fix the driver's cleanup if either fails.
 
 ### Gated checks (write each test first, then run it)
 
@@ -192,13 +192,13 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 ### Tests first
 
-- [ ] T057 [P] [US5] Extend `test/ai-driver.test.ts`: a scripted model that throws a retryable `APICallError` twice then succeeds gives `retries: { max: 2, failedAttempts: 2 }` and one request line in the trace; one that fails every attempt gives an `error` ending with a fixed reason and `failedAttempts: 3`; a model that never fails gives `failedAttempts: 0`.
-- [ ] T058 [P] [US5] Extend `test/privacy.test.ts`: the allowed `score.json` keys include `retries`.
+- [X] T057 [P] [US5] Extend `test/ai-driver.test.ts`: a scripted model that throws a retryable `APICallError` twice then succeeds gives `retries: { max: 2, failedAttempts: 2 }` and one request line in the trace; one that fails every attempt gives an `error` ending with a fixed reason and `failedAttempts: 3`; a model that never fails gives `failedAttempts: 0`.
+- [X] T058 [P] [US5] Extend `test/privacy.test.ts`: the allowed `score.json` keys include `retries`.
 
 ### Implementation
 
-- [ ] T059 [US5] `src/harness/ai-options.ts` and `src/harness/ai-driver.ts`: export `MAX_RETRIES = 2` and pass it explicitly; wrap the model with the SDK's model middleware so each attempt is counted and each thrown attempt is a failed attempt (research R5).
-- [ ] T060 [US5] `src/harness/driver.ts` and `src/harness/run.ts`: add `retries` to `PlayerResult` and the score; update `test/privacy.test.ts` (make T057 and T058 pass).
+- [X] T059 [US5] `src/harness/ai-options.ts` and `src/harness/ai-driver.ts`: export `MAX_RETRIES = 2` and pass it explicitly; wrap the model with the SDK's model middleware so each attempt is counted and each thrown attempt is a failed attempt (research R5).
+- [X] T060 [US5] `src/harness/driver.ts` and `src/harness/run.ts`: add `retries` to `PlayerResult` and the score; update `test/privacy.test.ts` (make T057 and T058 pass).
 
 **Checkpoint**: a failing provider no longer looks healthy.
 

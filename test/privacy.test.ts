@@ -135,6 +135,16 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
   });
 });
 
+describe("retries in a score (spec 007)", () => {
+  it("add only a retries key to score.json, holding two numbers", async () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "r", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, retries: { max: 2, failedAttempts: 1 } }) });
+    const score = JSON.parse(readFileSync(join(out, "r", "001", "score.json"), "utf8")) as Record<string, unknown>;
+    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "measured", "model", "priorFit", "retries", "score", "settings", "text", "turns"].sort());
+    expect(score["retries"]).toEqual({ max: 2, failedAttempts: 1 });
+  });
+});
+
 describe("model-authored review text stays in the loop folder (spec 005, FR-018)", () => {
   const MARK = "MODEL-AUTHORED-MARK-5150";
   const FREEFORM = "FREEFORM-ROLE-TEXT-9090";

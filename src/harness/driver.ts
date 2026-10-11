@@ -70,6 +70,8 @@ export interface PlayerResult {
   reportedCostUsd?: number | undefined;
   /** For a routed provider: the backend (or, sorted and joined by `+`, backends) the responses reported. Absent otherwise. */
   backend?: string | undefined;
+  /** The retry setting, and how many request attempts failed (and were retried or gave up). Absent for a player that does not count them. */
+  retries?: { max: number; failedAttempts: number } | undefined;
   durationMs: number | null;
   usage: TokenUsage | null;
   /** What the harness asked for; null when it left the choice to the default. */

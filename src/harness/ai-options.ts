@@ -11,6 +11,9 @@ import type { Tokens } from "./models.js";
 /** The prefix the recorder keys on, kept so `trace.jsonl` is the same whichever SDK drives the player. */
 export const CRAFT_TOOL_PREFIX = "mcp__craft__";
 
+/** How many times the SDK may retry a failed request. Stated, not inherited, so a run can record it (spec 007, research R5). */
+export const MAX_RETRIES = 2;
+
 /** What the skill tool is called. The harness reads a skill load from this name, in order, and from nothing the agent wrote. */
 export const SKILL_TOOL = "Skill";
 
@@ -71,7 +74,9 @@ export function classifyEnd(lastFinish: string | undefined, steps: number, maxTu
 }
 
 /** A code from a closed set for a failed call; the error's own text is never kept. */
-export function failureCode(e: unknown): string {
+export function failureCode(error: unknown): string {
+  // When the SDK gives up after its retries it wraps the last failure; the code comes from that one.
+  const e = (error as { lastError?: unknown } | null)?.lastError ?? error;
   const status = (e as { statusCode?: unknown } | null)?.statusCode;
   if (typeof status === "number") return status === 401 || status === 403 ? "authentication_failed" : status === 429 ? "rate_limited" : status >= 500 ? "provider_unavailable" : "request_rejected";
   const name = (e as { name?: unknown } | null)?.name;

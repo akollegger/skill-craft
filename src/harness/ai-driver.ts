@@ -6,7 +6,7 @@ import type { AgentDriver, DriverOptions } from "./driver.js";
 import { DEFAULT_MODEL, costOf, parseModelSpec, priceFor, type ModelRef, type Tokens } from "./models.js";
 import { findProvider, normaliseReported } from "./providers.js";
 import type { RoleDriver } from "./role-driver.js";
-import { addTokens, classifyEnd, CRAFT_TOOL_PREFIX, failureCode, NO_TOKENS, readInstalledSkill, requestStart, requestStop, requestUsage, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf } from "./ai-options.js";
+import { addTokens, classifyEnd, CRAFT_TOOL_PREFIX, MAX_RETRIES, failureCode, NO_TOKENS, readInstalledSkill, requestStart, requestStop, requestUsage, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf } from "./ai-options.js";
 
 /**
  * Run the player through the AI SDK. This is the only file that imports the SDK (and the provider packages) at run
@@ -111,6 +111,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
         prompt: opts.prompt,
         tools,
         stopWhen: isStepCount(opts.maxTurns),
+        maxRetries: MAX_RETRIES,
         abortSignal: opts.signal,
         // The row's call options: the cache option for Anthropic, nothing for a provider that caches on its own.
         ...(row?.callOptions(opts.settings ?? {}, ref.id) ?? {}),
@@ -150,6 +151,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
         requestedModel: opts.model ?? null, initModel: reportedSpecs[0] ?? ref.spec, modelsUsed: modelsRan(), text: "",
         ...(reportedCost === undefined ? {} : { reportedCostUsd: reportedCost }),
         ...(backendOf() === undefined ? {} : { backend: backendOf() }),
+        retries: { max: MAX_RETRIES, failedAttempts: probe.failedAttempts },
       };
     }
 
@@ -167,6 +169,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
       text: ended === "error" ? "" : result.text,
       ...(reportedCost === undefined ? {} : { reportedCostUsd: reportedCost }),
       ...(backendOf() === undefined ? {} : { backend: backendOf() }),
+      retries: { max: MAX_RETRIES, failedAttempts: probe.failedAttempts },
       ...(opts.skill ? { skillInvoked: skillLoadedAfterCalls !== null, skillLoadedAfterCalls } : {}),
     };
   } finally {
@@ -201,12 +204,15 @@ export const aiRoleDriver: RoleDriver = async (opts) => {
     // The SDK fills a result's model id with the one asked for when the provider reports none, so the wrapper's record is read instead.
     const reported = probe.last;
     const base = { requestedModel: opts.model, resolvedModel: reported === undefined ? ref.spec : normaliseReported(ref.provider, reported), tokens: roleTokens(result.usage), costUsd, durationMs: elapsed() };
+    // A response cut off at the output limit is never an answer, even if the text happens to parse: it may be missing its end.
+    if (result.finishReason === "length") return { ok: false, reason: "DriverFailed: the role reached its output limit", ...base };
     if (costUsd !== null && costUsd > opts.maxUsd) return { ok: false, reason: "DriverFailed: the role reached its spend cap", ...base };
     return { ok: true, answer: result.output, ...base };
   } catch (e) {
     if (opts.signal.aborted) throw e;
     const name = String((e as { name?: unknown } | null)?.name);
-    const reason = /NoOutputGenerated|NoObjectGenerated|JSONParse|TypeValidation/.test(name) ? "DriverFailed: the role could not give the requested format" : failureReason("role", e, keyEnv);
+    const cutOff = (e as { finishReason?: unknown } | null)?.finishReason === "length";
+    const reason = cutOff ? "DriverFailed: the role reached its output limit" : /NoOutputGenerated|NoObjectGenerated|JSONParse|TypeValidation/.test(name) ? "DriverFailed: the role could not give the requested format" : failureReason("role", e, keyEnv);
     return roleFailure(reason, opts.model, ref.spec, elapsed());
   }
 };

@@ -98,6 +98,7 @@ describe("failureCode", () => {
     expect(failureCode({ statusCode: 400 })).toBe("request_rejected");
     expect(failureCode({ name: "LoadAPIKeyError", message: "FIREWORKS_API_KEY is missing" })).toBe("api_key_missing");
     expect(failureCode(new Error("anything"))).toBe("unexpected");
+    expect(failureCode({ name: "RetryError", lastError: { statusCode: 503 } })).toBe("provider_unavailable"); // the SDK wraps the last failure when its retries run out
   });
 });
 

@@ -1,6 +1,7 @@
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DriverOptions } from "../src/harness/driver.js";
 import { PROVIDERS, type ProviderRow } from "../src/harness/providers.js";
@@ -312,6 +313,109 @@ describe("a model made through the provider table", () => {
   });
 });
 
+/** Craft server processes that are descendants of this test process: the ones a driver started and must clean up. */
+function ownServerProcesses(): string[] {
+  const rows = execFileSync("ps", ["-ax", "-o", "pid=,ppid=,command="], { encoding: "utf8" })
+    .split("\n")
+    .map((l) => /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(l))
+    .filter((m): m is RegExpExecArray => m !== null)
+    .map((m) => ({ pid: Number(m[1]), ppid: Number(m[2]), cmd: m[3] as string }));
+  const byPid = new Map(rows.map((r) => [r.pid, r]));
+  const mine = (pid: number): boolean => {
+    for (let p = byPid.get(pid)?.ppid; p !== undefined && p > 1; p = byPid.get(p)?.ppid) if (p === process.pid) return true;
+    return false;
+  };
+  return rows.filter((r) => r.cmd.includes("src/mcp/server.ts") && mine(r.pid)).map((r) => r.cmd);
+}
+
+const noServersSoon = async (): Promise<string[]> => {
+  for (let i = 0; i < 40; i++) {
+    const left = ownServerProcesses();
+    if (left.length === 0) return left;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return ownServerProcesses();
+};
+
+describe("retries", () => {
+  // The SDK waits between attempts; a retry-after header of a few milliseconds keeps the tests fast without changing what they check.
+  const failing = async (n: number | "always", then: Result) => {
+    const { APICallError } = await import("ai");
+    let seen = 0;
+    control.model = new MockLanguageModelV4({
+      modelId: "m",
+      doGenerate: async () => {
+        seen++;
+        if (n === "always" || seen <= n) {
+          throw new APICallError({ message: "overloaded SECRET-BODY", url: "u", requestBodyValues: {}, statusCode: 529, isRetryable: true, responseHeaders: { "retry-after-ms": "5" } });
+        }
+        return then as never;
+      },
+    });
+  };
+
+  it("are stated, so the score can say how many were allowed", async () => {
+    const { MAX_RETRIES } = await import("../src/harness/ai-options.js");
+    expect(MAX_RETRIES).toBe(2);
+    scripted(say("done"));
+    const { opts, recorder } = setup();
+    expect((await aiDriver(opts, recorder)).retries).toEqual({ max: 2, failedAttempts: 0 });
+  }, 30_000);
+
+  it("count the attempts that failed before one succeeded, and leave the trace with the one request that did", async () => {
+    await failing(2, say("done"));
+    const { opts, recorder, trace } = setup();
+    const r = await aiDriver(opts, recorder);
+    expect(r).toMatchObject({ ended: "stopped", retries: { max: 2, failedAttempts: 2 } });
+    expect(readTrace(trace).filter((l) => l.kind === "request")).toHaveLength(1);
+    expect(r.turns).toBe(1);
+  }, 30_000);
+
+  it("count every attempt of a request that never succeeded, and end the run as an error with a fixed reason", async () => {
+    await failing("always", say("never"));
+    const { opts, recorder, trace } = setup();
+    const r = await aiDriver(opts, recorder);
+    expect(r).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported provider_unavailable", retries: { max: 2, failedAttempts: 3 } });
+    expect(JSON.stringify(r)).not.toContain("SECRET-BODY");
+    expect(readTrace(trace).filter((l) => l.kind === "request")).toHaveLength(0);
+  }, 30_000);
+});
+
+describe("cleaning up the craft server (FR-013)", () => {
+  it("leaves no craft server running after a run that ends normally", async () => {
+    scripted(call("c1", "look"), say("done"));
+    const { opts, recorder } = setup();
+    await aiDriver(opts, recorder);
+    expect(await noServersSoon()).toEqual([]);
+  }, 30_000);
+
+  it("leaves none running when the model call throws", async () => {
+    control.model = new MockLanguageModelV4({ modelId: "m", doGenerate: async () => { throw new Error("boom"); } });
+    const { opts, recorder } = setup();
+    const r = await aiDriver(opts, recorder);
+    expect(r.ended).toBe("error");
+    expect(await noServersSoon()).toEqual([]);
+  }, 30_000);
+
+  it("leaves none running when the run is aborted during a model call, and the run rejects as cancelled", async () => {
+    control.model = new MockLanguageModelV4({
+      modelId: "m",
+      doGenerate: ((options: { abortSignal?: AbortSignal }) =>
+        new Promise((_, reject) => {
+          options.abortSignal?.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })));
+        })) as never,
+    });
+    const stop = new AbortController();
+    const { opts, recorder } = setup({ signal: stop.signal });
+    const running = aiDriver(opts, recorder);
+    await new Promise((r) => setTimeout(r, 1500)); // the server is up and the call is waiting
+    expect(ownServerProcesses().length).toBeGreaterThan(0);
+    stop.abort();
+    await expect(running).rejects.toBeDefined();
+    expect(await noServersSoon()).toEqual([]);
+  }, 30_000);
+});
+
 describe("aiRoleDriver", () => {
   const schema = { type: "object", properties: { n: { type: "number" } }, required: ["n"], additionalProperties: false };
   const role = (over: object = {}) => ({ prompt: "p", model: "claude-opus-5-5", schema, maxUsd: 1, signal: new AbortController().signal, ...over });
@@ -330,6 +434,22 @@ describe("aiRoleDriver", () => {
     scripted(reporting(say('{"n":7}'), "claude-opus-5-5-20260101"));
     const r = await aiRoleDriver(role());
     expect(r).toMatchObject({ ok: true, requestedModel: "claude-opus-5-5", resolvedModel: "anthropic/claude-opus-5-5-20260101" });
+  });
+
+  it("never returns an answer from a response the provider cut off at the output limit, even when it happens to parse", async () => {
+    const cut = { content: [{ type: "text", text: '{"n":7}' }], finishReason: { unified: "length", raw: "max_tokens" }, usage: usage(12, 3), warnings: [] } as Result;
+    scripted(cut);
+    const r = await aiRoleDriver(role());
+    expect(r.ok).toBe(false);
+    expect(r).not.toHaveProperty("answer");
+    expect(r.reason).toBe("DriverFailed: the role reached its output limit");
+    expect(r.tokens.output).toBe(3); // what it used is still reported
+  });
+
+  it("says the output limit was reached when a cut-off response is not even parseable", async () => {
+    scripted({ content: [{ type: "text", text: '{"n":' }], finishReason: { unified: "length", raw: "max_tokens" }, usage: usage(12, 3), warnings: [] } as Result);
+    const r = await aiRoleDriver(role());
+    expect(r).toMatchObject({ ok: false, reason: "DriverFailed: the role reached its output limit" });
   });
 
   it("fails with fixed text when the answer does not match the schema", async () => {
