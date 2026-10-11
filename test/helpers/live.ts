@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { REPO } from "../../src/harness/paths.js";
@@ -20,4 +21,19 @@ export function writeCheckRecord(file: string, text: string): string {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, text.endsWith("\n") ? text : `${text}\n`);
   return path;
+}
+
+/** Run one of the repository's scripts as a child process, as an operator would (keys come from the environment). */
+export function scriptArgs(script: string, args: string[]): string[] {
+  return ["--import", "tsx", script, ...args];
+}
+
+/** Craft server processes whose parent is gone (reparented to init): the ones a cancelled run must not leave behind. */
+export function orphanServers(): string[] {
+  const out = execFileSync("ps", ["-ax", "-o", "pid=,ppid=,command="], { encoding: "utf8" });
+  return out
+    .split("\n")
+    .map((l) => /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(l))
+    .filter((m): m is RegExpExecArray => m !== null && m[2] === "1" && (m[3] as string).includes("src/mcp/server.ts"))
+    .map((m) => `${m[1]} ${m[3]}`);
 }

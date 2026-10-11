@@ -174,10 +174,10 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 ### Gated checks (write each test first, then run it)
 
-- [ ] T052 [P] [US6] **(spends, cap US$3)** `test/live-critic-loop.test.ts`: `critic-loop.ts --runs <finished glirol run> --candidate spikes/skill-pilot/craft-glirol --max-rounds 1` with Claude critic and reviser. Make its own finished run first with `fireworks/glm-5p3` (5 of 5 on glirol in the spike; Sonnet reached 0 of 5), about US$0.05, so this check does not depend on another task's output. Assert a recorded `accept` or `reject`, one round, and no write outside `loops/` (no NAMS call). Write the record with `writeCheckRecord`.
-- [ ] T053 [P] [US6] **(spends, cap US$1)** `test/live-thinking-role.test.ts`: a Claude Opus role with `--max-role-usd` low enough that its reasoning can reach the output ceiling. Assert either a complete schema-valid answer or `DriverFailed: the role reached its spend cap`, never a partial answer (FR-012). The scripted test T050 covers the truncation case; this confirms it on a real thinking model.
-- [ ] T054 [P] [US6] **(spends, cap US$2)** `test/live-skill.test.ts`: three runs of `run-agent.ts --skill spikes/skill-pilot/craft-glirol` on Claude Haiku. Assert each score records `skill.invoked` and `skill.loadedAfterCalls`.
-- [ ] T055 [P] [US6] `test/live-cancel.test.ts` **(spends, cap US$1)**: start `run-agent.ts` and send SIGINT after a few turns, five times; run with a very short `--timeout-minutes`, five times. Assert exit 130 (or the timeout reason), a written `summary.json`, and no process whose command line contains `src/mcp/server.ts` afterwards. The scripted test T051 covers cleanup; this confirms it end to end.
+- [ ] T052 [P] [US6] **(spends, cap US$3)** `test/live-critic-loop.test.ts`: `critic-loop.ts --runs <finished glirol run> --candidate spikes/skill-pilot/craft-glirol --max-rounds 1` with Claude critic and reviser. Make its own finished run first with `fireworks/glm-5p3` (5 of 5 on glirol in the spike; Sonnet reached 0 of 5), about US$0.05, so this check does not depend on another task's output. Assert a recorded `accept` or `reject`, one round, and no write outside `loops/` (no NAMS call). Write the record with `writeCheckRecord`. *(test written and skipped by default; not yet run live)*
+- [ ] T053 [P] [US6] **(spends, cap US$1)** `test/live-thinking-role.test.ts`: a Claude Opus role with `--max-role-usd` low enough that its reasoning can reach the output ceiling. Assert either a complete schema-valid answer or `DriverFailed: the role reached its spend cap`, never a partial answer (FR-012). The scripted test T050 covers the truncation case; this confirms it on a real thinking model. *(test written and skipped by default; not yet run live)*
+- [ ] T054 [P] [US6] **(spends, cap US$2)** `test/live-skill.test.ts`: three runs of `run-agent.ts --skill spikes/skill-pilot/craft-glirol` on Claude Haiku. Assert each score records `skill.invoked` and `skill.loadedAfterCalls`. *(test written and skipped by default; not yet run live)*
+- [ ] T055 [P] [US6] `test/live-cancel.test.ts` **(spends, cap US$1)**: start `run-agent.ts` and send SIGINT after a few turns, five times; run with a very short `--timeout-minutes`, five times. Assert exit 130 (or the timeout reason), a written `summary.json`, and no process whose command line contains `src/mcp/server.ts` afterwards. The scripted test T051 covers cleanup; this confirms it end to end. *(test written and skipped by default; not yet run live)*
 - [ ] T056 [US6] Write the records of T052 to T055 under `design/notes/` (what ran, command, cost, outcome), and note any defect found and its fix.
 
 **Checkpoint**: each of the four paths has run once on the new runtime, or its defect is fixed and recorded.
@@ -220,11 +220,11 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 ## Phase 10: Polish and cross-cutting
 
-- [ ] T065 Run `pnpm typecheck` and `pnpm test`; both pass, and the default suite spends nothing and calls no network.
-- [ ] T066 Run `quickstart.md` section A (free) and confirm the stated outputs.
+- [X] T065 Run `pnpm typecheck` and `pnpm test`; both pass, and the default suite spends nothing and calls no network.
+- [X] T066 Run `quickstart.md` section A (free) and confirm the stated outputs.
 - [ ] T067 [P] Run `quickstart.md` section D for one Fireworks batch (the billing check): harness and billed tokens equal for every model (SC-010). **(spends, cap US$1)**
 - [ ] T068 [P] Add Fireworks entries to `prices.json` for the models used in the calibration or checks, from measured usage and the published rate, and say so in the file's note.
-- [ ] T069 Confirm FR-017 and FR-018: `git diff main -- src/sim src/mcp` is empty, no key appears in any file the feature wrote (`grep` the new notes, run folders and `design/notes/` for the key prefixes without printing them), and `.env` is untouched.
+- [X] T069 Confirm FR-017 and FR-018: `git diff main -- src/sim src/mcp` is empty, no key appears in any file the feature wrote (`grep` the new notes, run folders and `design/notes/` for the key prefixes without printing them), and `.env` is untouched.
 - [ ] T070 Update ADR-005's Consequences: remove the items this feature closed (reported model, unpriced totals, caching, retries, live checks, glossary) and keep what remains open. Keep `status: accepted`; add an Amendments line only if a decision changed.
 
 ---
