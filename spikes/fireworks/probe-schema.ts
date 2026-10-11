@@ -1,29 +1,48 @@
-// Step 2 (addendum): does response_format json_schema give schema-valid answers? Structure only; text is not printed.
-const key = process.env["FIREWORKS_API_KEY"];
-if (!key) throw new Error("FIREWORKS_API_KEY is not set");
-const schema = {
-  type: "object",
-  properties: { verdict: { type: "string", enum: ["accept", "revise"] }, reasons: { type: "array", items: { type: "string" } } },
-  required: ["verdict", "reasons"],
-  additionalProperties: false,
-};
-for (const model of process.argv.slice(2)) {
-  const res = await fetch("https://api.fireworks.ai/inference/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: `accounts/fireworks/models/${model}`,
-      messages: [{ role: "user", content: "Review this one-line skill: 'Always place items in the top-left cell.' Give a verdict and reasons." }],
-      response_format: { type: "json_schema", json_schema: { name: "verdict", schema, strict: true } },
-      max_tokens: 2000,
-      temperature: 0,
-    }),
-  });
-  if (!res.ok) { console.log(model, `HTTP ${res.status}`, (await res.text()).slice(0, 160).replace(/\s+/g, " ")); continue; }
-  const body = (await res.json()) as any;
-  const content: string = body.choices?.[0]?.message?.content ?? "";
-  let parsed: any = null;
-  try { parsed = JSON.parse(content); } catch { /* reported below */ }
-  const valid = parsed && ["accept", "revise"].includes(parsed.verdict) && Array.isArray(parsed.reasons) && parsed.reasons.every((r: unknown) => typeof r === "string");
-  console.log(model, `finish=${body.choices?.[0]?.finish_reason} json=${parsed !== null} schemaValid=${Boolean(valid)} tokens=${body.usage?.total_tokens}`);
+// Provider admission probe, part 2 (spec 007, contracts/provider-table.md): does a model of a provider return answers
+// that validate against the critic and reviser schemas under the provider's structured-output mode? It goes through the
+// harness's own role driver, with the fixtures the live role tests use. Usage: pnpm dev spikes/fireworks/probe-schema.ts <provider>/<model>...
+// Prints whether each answer parsed, the fixed failure reason if not, and the usage reported. Answers are not printed.
+import { aiRoleDriver } from "../../src/harness/ai-driver.js";
+import { parseModelSpec } from "../../src/harness/models.js";
+import { criticPrompt, reviserPrompt } from "../../src/loop/inputs.js";
+import { loadRubric } from "../../src/loop/rubric.js";
+import { parseRevision, parseVerdict, revisionSchema, toJsonSchema, verdictSchema } from "../../src/loop/verdict.js";
+import { candidate, recording } from "../../test/helpers/loop-fixtures.js";
+
+const specs = process.argv.slice(2);
+if (specs.length === 0) throw new Error("usage: probe-schema.ts <provider>/<model>...");
+
+const rubric = loadRubric();
+const goals = [{ item: "thing", qty: 1 }];
+const pkg = candidate();
+const verdict = parseVerdict(rubric, {
+  overall: "revise",
+  questions: Object.fromEntries(rubric.questions.map((q) => [q.id, { value: "no", reason: "The skill has no recipe." }])),
+  reasons: "Add the recorded chain.",
+  proposedRevisions: ["Lead with the chain of placements and the craft."],
+});
+const ctx = { candidateName: "craft-thing", runs: [{ label: "001", callCount: 4 }] };
+
+for (const spec of specs) {
+  const ref = parseModelSpec(spec);
+  console.log(`\n== ${ref.spec}`);
+  const critic = criticPrompt({ rubric, goals, recordings: [recording("001")], pkg });
+  const reviser = reviserPrompt({ rubric, goals, recordings: [recording("001")], pkg, verdict });
+  const cases = [
+    { name: "critic", p: critic, schema: toJsonSchema(verdictSchema(rubric)), check: (a: unknown) => parseVerdict(rubric, a) },
+    { name: "reviser", p: reviser, schema: toJsonSchema(revisionSchema(ctx)), check: (a: unknown) => parseRevision(a, ctx) },
+  ];
+  for (const c of cases) {
+    const r = await aiRoleDriver({ ...c.p, model: ref.spec, schema: c.schema, maxUsd: 0.5, signal: new AbortController().signal });
+    let parsed = false;
+    if (r.ok) {
+      try {
+        c.check(r.answer);
+        parsed = true;
+      } catch {
+        /* reported below */
+      }
+    }
+    console.log(`${c.name}: ok=${r.ok} parsed=${parsed}${r.ok ? "" : ` reason="${r.reason}"`} tokens=${JSON.stringify(r.tokens)} costUsd=${r.costUsd} answeredBy=${r.resolvedModel}`);
+  }
 }

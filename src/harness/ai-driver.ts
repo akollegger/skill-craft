@@ -70,6 +70,8 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
   const price = priceFor(ref.spec);
   const row = findProvider(ref.provider);
   const keyEnv = row?.keyEnv;
+  const backends = new Set<string>(); // the backends a routed provider reported
+  const backendOf = (): string | undefined => (backends.size === 0 ? undefined : [...backends].sort().join("+"));
   let reportedCost: number | undefined; // the sum of what the provider reported per response, when it reports any
   const started = performance.now();
   opts.signal.throwIfAborted();
@@ -117,6 +119,8 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
           const t = tokensOf(e.usage);
           total = addTokens(total, t);
           completed++;
+          const backend = row?.backend?.(e.providerMetadata);
+          if (typeof backend === "string" && backend !== "") backends.add(backend);
           const reported = row?.reportedCost?.(e.providerMetadata);
           if (typeof reported === "number" && Number.isFinite(reported)) reportedCost = (reportedCost ?? 0) + reported;
           // The model the provider reported for this response, or the one asked for when it reported none.
@@ -143,6 +147,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
         usage: completed === 0 ? null : { inputTokens: total.input, outputTokens: total.output, cacheReadTokens: total.cacheRead, cacheCreationTokens: total.cacheWrite },
         requestedModel: opts.model ?? null, initModel: reportedSpecs[0] ?? ref.spec, modelsUsed: modelsRan(), text: "",
         ...(reportedCost === undefined ? {} : { reportedCostUsd: reportedCost }),
+        ...(backendOf() === undefined ? {} : { backend: backendOf() }),
       };
     }
 
@@ -159,6 +164,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
       modelsUsed: modelsRan().length > 0 ? modelsRan() : [ref.spec],
       text: ended === "error" ? "" : result.text,
       ...(reportedCost === undefined ? {} : { reportedCostUsd: reportedCost }),
+      ...(backendOf() === undefined ? {} : { backend: backendOf() }),
       ...(opts.skill ? { skillInvoked: skillLoadedAfterCalls !== null, skillLoadedAfterCalls } : {}),
     };
   } finally {

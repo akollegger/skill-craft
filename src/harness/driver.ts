@@ -64,6 +64,8 @@ export interface PlayerResult {
   costUsd: number | null;
   /** A per-run cost the provider itself reported, in US dollars, kept beside the computed one. Absent when it reports none. */
   reportedCostUsd?: number | undefined;
+  /** For a routed provider: the backend (or, sorted and joined by `+`, backends) the responses reported. Absent otherwise. */
+  backend?: string | undefined;
   durationMs: number | null;
   usage: TokenUsage | null;
   /** What the harness asked for; null when it left the choice to the default. */

@@ -97,16 +97,16 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 ### Tests first
 
-- [ ] T026 [P] [US2] Extend `test/providers.test.ts`: a scripted row added to the table is usable by `parseModelSpec` and `aiDriver` with no other change (SC-003); a routed row with a pinned backend is accepted and records `model.backend` from the response; the same row without one is refused; two scripted runs of a routed model that report different backends make the experiment `mixedModels`.
-- [ ] T027 [P] [US2] Extend `test/scripts.test.ts`: `run-agent.ts --model mistral/large --dry-run` exits 1 with `provider 'mistral' is not available; the providers are anthropic, fireworks`, creates nothing, and shows no key.
-- [ ] T028 [P] [US2] Extend `test/ai-driver.test.ts`: with the key variable unset, a run ends with `DriverFailed: the player reported api_key_missing`, the reason names the variable, and no value appears anywhere in the result.
+- [X] T026 [P] [US2] Extend `test/providers.test.ts`: a scripted row added to the table is usable by `parseModelSpec` and `aiDriver` with no other change (SC-003); a routed row with a pinned backend is accepted and records `model.backend` from the response; the same row without one is refused; two scripted runs of a routed model that report different backends make the experiment `mixedModels`.
+- [X] T027 [P] [US2] Extend `test/scripts.test.ts`: `run-agent.ts --model mistral/large --dry-run` exits 1 with `provider 'mistral' is not available; the providers are anthropic, fireworks`, creates nothing, and shows no key.
+- [X] T028 [P] [US2] Extend `test/ai-driver.test.ts`: with the key variable unset, a run ends with `DriverFailed: the player reported api_key_missing`, the reason names the variable, and no value appears anywhere in the result.
 
 ### Implementation
 
-- [ ] T029 [US2] `src/harness/run.ts` `planExperiment`: refuse an unknown provider or an unpinned router before anything is created, using the table (make T026 and T027 pass).
-- [ ] T030 [US2] `src/harness/providers.ts`, `src/harness/ai-driver.ts`, `src/harness/run.ts`: add the optional row hook `backend(meta)`; the driver records the backend a routed response reports in `model.backend`; `aggregate` counts runs whose backends differ as `mixedModels` (make the routed-provider cases in T026 pass).
-- [ ] T031 [US2] Generalise `spikes/fireworks/probe-tools.ts` and `probe-schema.ts` to take `<provider>/<model>`, read the row for the key and base address, and print structure only (contracts/cli.md); keep their output free of agent text and reasoning.
-- [ ] T032 [US2] Write the admission procedure into `spikes/fireworks/README.md` (the probe's findings to record, the usage-report rule, how a routed row is pinned), pointing at contracts/provider-table.md; add `ANTHROPIC_API_KEY` and `FIREWORKS_API_KEY` guidance and a comment on adding a key variable to `.env.example`.
+- [X] T029 [US2] `src/harness/run.ts` `planExperiment`: refuse an unknown provider or an unpinned router before anything is created, using the table (make T026 and T027 pass).
+- [X] T030 [US2] `src/harness/providers.ts`, `src/harness/ai-driver.ts`, `src/harness/run.ts`: add the optional row hook `backend(meta)`; the driver records the backend a routed response reports in `model.backend`; `aggregate` counts runs whose backends differ as `mixedModels` (make the routed-provider cases in T026 pass).
+- [X] T031 [US2] Generalise `spikes/fireworks/probe-tools.ts` and `probe-schema.ts` to take `<provider>/<model>`, read the row for the key and base address, and print structure only (contracts/cli.md); keep their output free of agent text and reasoning.
+- [X] T032 [US2] Write the admission procedure into `spikes/fireworks/README.md` (the probe's findings to record, the usage-report rule, how a routed row is pinned), pointing at contracts/provider-table.md; add `ANTHROPIC_API_KEY` and `FIREWORKS_API_KEY` guidance and a comment on adding a key variable to `.env.example`.
 - [ ] T033 [US2] **(spends, cap US$0.50)** Run the generalised probes for `anthropic/claude-haiku-4-5-20251001` and `fireworks/gpt-oss-120b`, and write `design/notes/provider-admission.md` with each provider's findings: tool calls, schema answers, settings refused, reasoning handling, usage fields reported, and whether it has a usage report. Take the Fireworks findings from `spikes/fireworks/log.md` and confirm them with the new probe. Set each row's `settings` and `usageReport` from the findings.
 
 **Checkpoint**: US1 and US2 together are the MVP: model and cost records plus a table a provider can be added to.

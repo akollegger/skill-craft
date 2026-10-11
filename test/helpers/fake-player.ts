@@ -52,6 +52,8 @@ export interface FakePlayerOptions {
   unpriced?: boolean;
   /** A per-run cost the provider itself reported, kept beside the computed one. */
   reportedCostUsd?: number;
+  /** The backend a routed provider reported for the run. */
+  backend?: string;
 }
 
 export const FAKE_TOKENS = { input: 2, output: 10, cacheRead: 100, cacheCreation: 50 };
@@ -181,6 +183,7 @@ export function fakePlayer(options: FakePlayerOptions = {}): AgentDriver {
       modelsUsed: reported && !options.omitModel ? used : [],
       text: mode === "solve" ? "I hold it." : "I could not find it.",
       ...(options.reportedCostUsd === undefined ? {} : { reportedCostUsd: options.reportedCostUsd }),
+      ...(options.backend === undefined ? {} : { backend: options.backend }),
     };
   };
 }

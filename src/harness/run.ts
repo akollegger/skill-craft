@@ -90,6 +90,8 @@ export function mcpConfigFor(worldPath: string, runLog: string) {
 export interface ModelInfo {
   requested: string | null;
   resolved: string[];
+  /** For a routed provider: the backend the responses reported. */
+  backend?: string;
 }
 
 export interface RunReport extends PlayerResult {
@@ -136,6 +138,8 @@ export function aggregate(reports: readonly RunReport[]): Aggregate {
   const extras = wins.flatMap((r) => (r.score.extraCalls === null ? [] : [r.score.extraCalls]));
   const models = [...new Set(reports.flatMap((r) => r.model.resolved))].sort();
   const priced = reports.filter((r) => r.costUsd !== null);
+  // A routed provider can serve one model from different backends; runs that reached different backends are not one comparable set.
+  const backends = new Set(reports.flatMap((r) => (r.model.backend === undefined ? [] : [r.model.backend])));
   return {
     runs: reports.length,
     reached: wins.length,
@@ -149,7 +153,7 @@ export function aggregate(reports: readonly RunReport[]): Aggregate {
     pricedRuns: priced.length,
     unpricedRuns: reports.length - priced.length,
     models,
-    mixedModels: models.length > 1,
+    mixedModels: models.length > 1 || backends.size > 1,
   };
 }
 
@@ -193,6 +197,7 @@ function scoreLog(world: World, goal: SolverGoal, entries: readonly RunLogEntry[
 const modelInfo = (requested: string | null, result: PlayerResult | null): ModelInfo => ({
   requested: requested === null ? null : canonicalSpec(requested),
   resolved: (result === null ? [] : result.modelsUsed.length > 0 ? [...result.modelsUsed] : result.initModel !== null ? [result.initModel] : []).map(canonicalSpec),
+  ...(result?.backend === undefined ? {} : { backend: result.backend }),
 });
 
 /** The result recorded for a run whose player never returned one. */

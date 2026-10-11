@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { UnknownModel, UnknownProvider } from "./errors.js";
 import { REPO } from "./paths.js";
-import { findProvider, providerPrefixes } from "./providers.js";
+import { findProvider, providerPrefixes, validateRow } from "./providers.js";
 
 /** Used when a run names no model. A run still records which model it asked for (null here) and which ran. */
 export const DEFAULT_MODEL = "anthropic/claude-sonnet-5-5";
@@ -38,6 +38,7 @@ export function parseModelSpec(spec: string): ModelRef {
     if (slash > 0) throw new UnknownProvider(prefix, providerPrefixes());
     throw new UnknownModel(spec);
   }
+  validateRow(row); // a router without a pinned backend is refused here, before a run or a dry run goes any further
   if (!row.shortPattern.test(short)) throw new UnknownModel(spec);
   const id = row.expand(short);
   return { provider: prefix, id, spec: row.normaliseId(id) };

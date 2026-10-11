@@ -132,6 +132,22 @@ describe("cost, and runs with no price", () => {
     expect(scoreOf(out.reports[0]?.dir as string)["costUsd"]).toBeNull();
   });
 
+  it("flags an experiment whose runs reached different backends as mixed, and records the backend in score.json", async () => {
+    let n = 0;
+    const driver: AgentDriver = (o, sink) => fakePlayer({ goal: GOAL, mode: "solve", backend: n++ === 0 ? "b1" : "b2" })(o, sink);
+    const out = await runExperiment(options({}, { driver }));
+    expect(out.aggregate.mixedModels).toBe(true);
+    expect(scoreOf(out.reports[0]?.dir as string)["model"]).toMatchObject({ backend: "b1" });
+  });
+
+  it("is not mixed when every run reached the same backend, or when none reports one", async () => {
+    const same = await runExperiment(options({ mode: "solve", backend: "b1" }));
+    expect(same.aggregate.mixedModels).toBe(false);
+    const none = await runExperiment(options({ mode: "solve" }));
+    expect(none.aggregate.mixedModels).toBe(false);
+    expect(scoreOf(none.reports[0]?.dir as string)["model"]).not.toHaveProperty("backend");
+  });
+
   it("keeps a provider-reported cost beside the computed one, and only when the provider reports one", async () => {
     const withReported = await runExperiment(options({ mode: "solve", reportedCostUsd: 0.5 }, { runs: 1 }));
     const s = scoreOf(withReported.reports[0]?.dir as string);

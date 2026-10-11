@@ -97,3 +97,29 @@ FIREWORKS_API_KEY=
 ```
 
 Load it in a script with `set -a; source ./.env; set +a`. Do not `cat` `.env`.
+
+---
+
+## Admitting a provider (spec 007, ADR-005 §2.2)
+
+The probes here are how a provider enters the harness's provider table (`src/harness/providers.ts`). The full contract is
+[specs/007-ai-sdk-runtime/contracts/provider-table.md](../../specs/007-ai-sdk-runtime/contracts/provider-table.md).
+
+1. **Probe the tools.** `pnpm dev spikes/fireworks/probe-tools.ts worlds/generated/forge-7.json <provider>/<model>` makes a model
+   through the table, gives it the craft server's tools and prints, per step: the finish reason, the tools called (and whether
+   several arrived together), the usage fields the provider reports (cache reads and writes, reasoning tokens) and the model the
+   provider says answered. It counts text and reasoning and prints neither.
+2. **Probe the schemas.** `pnpm dev spikes/fireworks/probe-schema.ts <provider>/<model>` runs a critic and a reviser call through
+   the harness's role driver with the real schemas and reports whether each answer parsed.
+3. **Record the findings** in `design/notes/provider-admission.md`: tool calls, schema answers, the settings the provider refused
+   (temperature, effort, thinking), how reasoning arrives (and whether it must be sent back between turns), the usage fields
+   reported, and whether the provider has a usage report.
+4. **Check the billing** where the provider has a usage report: `reconcile.ts snapshot`, run a batch, `reconcile.ts compare`, and
+   require the harness's token counts to equal the billed ones. A provider with no usage report is admitted without this step. The
+   check is a procedure a person runs and records; the harness does not enforce it.
+5. **Add the row.** The package in `package.json`, one row in the table, the key's name in `.env.example`, and price entries in
+   `prices.json`. Nothing else changes.
+6. **A router** (one model name served from several backends) is admitted only with its backend pinned in the row: fallbacks off,
+   the order fixed, and a `backend(meta)` hook that reads the backend a response reports. Without that the table refuses it.
+
+Keys come from the environment (`set -a; source ./.env; set +a`). The probes read only whether a key variable is set, never its value.

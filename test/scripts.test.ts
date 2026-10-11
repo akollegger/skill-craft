@@ -188,6 +188,22 @@ describe("scripts/run-agent.ts", () => {
     expect(existsSync(join(out, "dry"))).toBe(false);
   });
 
+  it("refuses an unknown provider in a dry run, before anything is created, naming the providers and no key", () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-runs-"));
+    const secret = "sk-test-secret-should-not-print";
+    const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--model", "mistral/large", "--out", out, "--label", "x", "--dry-run"], { ANTHROPIC_API_KEY: secret, FIREWORKS_API_KEY: secret });
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("provider 'mistral' is not available; the providers are anthropic, fireworks");
+    expect(res.stdout + res.stderr).not.toContain(secret);
+    expect(existsSync(join(out, "x"))).toBe(false);
+  });
+
+  it("refuses a bare name that is not a Claude id the same way, with the accepted forms", () => {
+    const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--model", "gpt-4o", "--dry-run"]);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("model 'gpt-4o' is not supported; use <provider>/<model> or a Claude id");
+  });
+
   it("exits 1 for an unknown goal item or world, and for a bad number of runs", () => {
     expect(run("scripts/run-agent.ts", ["--goal", "ghost", "--dry-run"]).stderr).toContain("unknown item 'ghost'");
     expect(run("scripts/run-agent.ts", ["--goal", GOAL, "--world", "worlds/none.json", "--dry-run"]).status).toBe(1);

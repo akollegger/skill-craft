@@ -186,6 +186,26 @@ describe("a model made through the provider table", () => {
     });
   });
 
+  it("records the backend a routed provider reports, joining several in order sorted", async () => {
+    const { scripted } = await import("./helpers/scripted-provider.js");
+    const on = (result: Result, backend: string): Result => ({ ...result, providerMetadata: { scripted: { backend } } }) as Result;
+    const row = scriptedRow({ routed: true, pinnedBackend: { allowFallbacks: false, order: ["b1"] }, backend: (meta) => ((meta as { scripted?: { backend?: string } } | undefined)?.scripted?.backend) });
+    await withRow(row, async () => {
+      scripted.model = new MockLanguageModelV4({ modelId: "m", doGenerate: [on(say("done"), "b1")] });
+      const a = setup({ model: "scripted/m-1" });
+      expect((await aiDriver(a.opts, a.recorder)).backend).toBe("b1");
+      scripted.model = new MockLanguageModelV4({ modelId: "m", doGenerate: [on(call("c1", "look"), "b2"), on(say("done"), "b1")] });
+      const b = setup({ model: "scripted/m-1" });
+      expect((await aiDriver(b.opts, b.recorder)).backend).toBe("b1+b2");
+    });
+  });
+
+  it("reports no backend for a provider whose row has no backend hook", async () => {
+    scripted(say("done"));
+    const { opts, recorder } = setup({ model: "fireworks/gpt-oss-120b" });
+    expect(await aiDriver(opts, recorder)).not.toHaveProperty("backend");
+  });
+
   it("sums a provider-reported cost over a run's responses, and reports none when the provider gives none", async () => {
     const { scripted } = await import("./helpers/scripted-provider.js");
     const priced = (result: Result, cost: number): Result => ({ ...result, providerMetadata: { scripted: { cost } } }) as Result;

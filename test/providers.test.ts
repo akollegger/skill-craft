@@ -91,6 +91,16 @@ describe("adding a row", () => {
     if (i >= 0) PROVIDERS.splice(i, 1);
   });
 
+  it("is refused at parse time when it is a router with no pinned backend, so a run or a dry run stops before anything is created", () => {
+    PROVIDERS.push(row({ routed: true }));
+    expect(() => parseModelSpec("scripted/m-1")).toThrow(BackendNotPinned);
+  });
+
+  it("is accepted at parse time when its backend is pinned", () => {
+    PROVIDERS.push(row({ routed: true, pinnedBackend: { allowFallbacks: false, order: ["b1"] } }));
+    expect(parseModelSpec("scripted/m-1").spec).toBe("scripted/m-1");
+  });
+
   it("makes its models parse with no other change", () => {
     PROVIDERS.push(row());
     expect(parseModelSpec("scripted/m-1")).toEqual({ provider: "scripted", id: "m-1", spec: "scripted/m-1" });
