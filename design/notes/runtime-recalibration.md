@@ -1,6 +1,6 @@
 # Recalibration on the AI SDK runtime: a regression check
 
-Status: **baseline and limits written; the rerun (spec 007, T048) has not run.** Results are added below when it has.
+Status: **run 2026-10-11** (spec 007, T048 and T049). The baseline and the limits were written before the rerun; the results are below.
 
 ## What this is, and what it is not
 
@@ -50,5 +50,42 @@ A difference in a cell may come from the runtime or from these, and the rerun ca
 
 ## Results
 
-_Not yet run._ When T048 has run: the table of each cell now beside the baseline above, each goal's role under the unchanged
-ADR-003 §2.1 rule, the cost with its unpriced count, and any cell that differs with what is known about why.
+The faithful world, 5 trials per cell, the base prompt as originally worded, settings pinned as in `calibration-settings.json`
+(Sonnet: adaptive thinking, medium effort; Haiku: a 31,999-token thinking budget), `--max-turns 80`. Labels `rt-cal-faithful-*`.
+Intervals are 95% Wilson.
+
+| Model, goal | Claude Code era | AI SDK runtime | Same? |
+|---|---|---|---|
+| Haiku, wooden_pickaxe | 4/5 [38, 96] | 4/5 [38, 96] | yes |
+| Haiku, stone_pickaxe | **0/5 [0, 43]** | **4/5 [38, 96]** | **differs** (the intervals overlap only between 38 and 43) |
+| Haiku, iron_pickaxe | **5/5 [57, 100]** | **3/5 [23, 88]** | **differs** (the intervals overlap widely) |
+| Sonnet, wooden_pickaxe | 5/5 [57, 100] | 5/5 [57, 100] | yes |
+| Sonnet, stone_pickaxe | 5/5 [57, 100] | 5/5 [57, 100] | yes |
+| Sonnet, iron_pickaxe | 5/5 [57, 100] | 5/5 [57, 100] | yes |
+
+**Gross breakage: none seen.** No cell that was high is now at or near zero, and Sonnet's three cells and Haiku's wooden cell are the
+same. This is what the check can show and nothing more: at 5 trials per cell it does not show the runtimes are equivalent.
+
+**Two Haiku cells differ, in opposite directions, and the cause is not known.** Stone went from 0/5 to 4/5 and iron from 5/5 to
+3/5. At 5 trials a difference of this size is within what chance produces, and chance and cause cannot be told apart from
+these runs. The differences between the two runtimes' requests that this note knows of, none of them tested:
+
+- The tools were named `mcp__craft__place`, `mcp__craft__craft` and so on under Claude Code, and are `place`, `craft` and so on
+  here; the prompt says "use only the craft tools".
+- Claude Code added a short system stub and several context blocks to every request that have no counterpart here.
+- The earlier note on the base prompt (`design/notes/critic-loop-findings.md`) found that rewording it moved Haiku on stone from
+  0/5 to 4/5 under Claude Code; the same 4/5 appears here with the original wording, which may mean the original wording's effect
+  was partly the Claude Code context.
+
+Each trial's cost: Haiku $0.12 to $0.20, Sonnet about $0.02 (priced runs only, none unpriced), $2.72 for the 30 runs.
+
+## What this means for the experiment
+
+Under ADR-003's rule, unchanged (at most 1 of 5 is a gap, at least 4 of 5 is solved, otherwise ambiguous), Haiku's roles on this
+runtime are **wooden solved, stone solved, iron ambiguous**. There is **no gap goal** in the faithful world on the new runtime: the
+earlier finding that stone is Haiku's one real gap (0/5) is not reproduced. ADR-003 says an experiment needs at least one gap goal
+and that, without one, the world is made harder and calibration repeated. Whether the earlier 0/5 was a Claude Code effect or
+chance is the open question; the cheap next step is more trials on stone (and iron) on both runtimes, since 5 trials cannot settle it.
+
+The report had a bug found here: it proposed no roles ("no student trials") because it compared the summary's bare model name with
+the runs' canonical one. It is fixed, with a test.

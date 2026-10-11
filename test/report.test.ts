@@ -249,6 +249,14 @@ describe("model names in old and new records", () => {
     expect(rows[0]).toMatch(/\| 3\/5 \|/);
   });
 
+  it("proposes each goal's role from the student's calibration trials when the summary declares the bare id and the runs recorded the canonical one", () => {
+    const f = fixture({ models: { teacher: "claude-sonnet-5-5", student: HAIKU }, goals: { set: ["iron"], heldOut: [] }, roles: undefined });
+    f.addLabel("cal", { stage: "calibration" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(0, 5));
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(md).not.toContain("no student trials");
+    expect(md).toMatch(/- iron: gap/);
+  });
+
   it("accepts an arm whose summary declares the bare id and whose runs recorded the canonical one", () => {
     const f = named();
     f.addLabel("s0", { arm: "S0" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(2, 3));

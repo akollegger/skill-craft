@@ -230,7 +230,7 @@ export function buildReport(input: ReportInput): string {
   if (summary.roles === undefined) {
     const proposal = [`# Role proposals: ${summary.experiment}`, "", "From the student's unaided calibration trials in this world (at most 20% is a gap, at least 80% is solved, otherwise ambiguous):", ""];
     for (const goal of summary.goals.set) {
-      const r = sorted.find((x) => x.stage === "calibration" && x.model === summary.models.student && x.fit === summary.priorFit && x.goal === goal);
+      const r = sorted.find((x) => x.stage === "calibration" && x.model === canonicalSpec(summary.models.student) && x.fit === summary.priorFit && x.goal === goal);
       if (r === undefined || r.trials === 0) proposal.push(`- ${goal}: no student trials`);
       else {
         const rate = r.reached / r.trials;
