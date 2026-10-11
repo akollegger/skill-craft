@@ -1,3 +1,5 @@
+import type { ModelSettings } from "./providers.js";
+
 /**
  * The seam between the critic loop and whatever runs a role (the critic or the reviser). Types only: the loop is
  * tested against a scripted role, and only `ai-driver.ts` imports the SDK. A role is one session with no tools:
@@ -12,6 +14,8 @@ export interface RoleOptions {
   model: string;
   /** JSON Schema for the answer. */
   schema: Record<string, unknown>;
+  /** The settings pinned for this role's model (thinking, effort, temperature); an unset one is left to the provider's default. */
+  settings?: ModelSettings | undefined;
   /** Spend cap for this one call, over all the attempts it makes. */
   maxUsd: number;
   /**

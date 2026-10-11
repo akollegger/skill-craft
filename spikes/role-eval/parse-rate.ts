@@ -2,7 +2,7 @@
 // critic and reviser schemas? It uses one fixed recording and the real role prompts, N calls per role per model, and reports
 // the rate with its 95% Wilson interval. It runs on either runtime, so the AI SDK driver can be compared with the earlier
 // Claude Agent SDK driver (run it from a checkout of the earlier commit with --driver sdk).
-//   pnpm dev spikes/role-eval/parse-rate.ts --runs <run folder> --models <m1,m2> [--driver ai|sdk] [--n 20] [--concurrency 4]
+//   pnpm dev spikes/role-eval/parse-rate.ts --runs <run folder> --models <m1,m2> [--driver ai|sdk] [--n 20] [--concurrency 4] [--settings <file>]
 // For the AI SDK driver it reports two rates from the same calls: the first attempt (what a single call would give) and the
 // final answer after the driver's bounded retry. Answers and reasons are never printed; only counts, paths and costs.
 import { parseArgs } from "node:util";
@@ -19,11 +19,15 @@ const { parseVerdict, revisionSchema, toJsonSchema, verdictSchema } = V;
 // The earlier checkout has no describeIssues (it did not retry in the driver); a plain stand-in is only used there, where it is never called.
 const describeIssues: (e: ZodError) => string = (V as { describeIssues?: (e: ZodError) => string }).describeIssues ?? ((e) => e.issues.map((i) => i.path.join(".")).join("; "));
 
-const { values } = parseArgs({ options: { runs: { type: "string" }, models: { type: "string" }, driver: { type: "string", default: "ai" }, n: { type: "string", default: "20" }, concurrency: { type: "string", default: "4" }, skill: { type: "string", default: "spikes/skill-pilot/craft-glirol" } } });
+const { values } = parseArgs({ options: { runs: { type: "string" }, models: { type: "string" }, driver: { type: "string", default: "ai" }, n: { type: "string", default: "20" }, concurrency: { type: "string", default: "4" }, skill: { type: "string", default: "spikes/skill-pilot/craft-glirol" }, settings: { type: "string" } } });
 if (!values.runs || !values.models) throw new Error("usage: parse-rate.ts --runs <run folder> --models <m1,m2> [--driver ai|sdk] [--n 20]");
 const N = Number(values.n);
 const sdk = values.driver === "sdk";
 const driver = sdk ? (await import("../../src/harness/sdk-driver.js")).sdkRoleDriver : (await import("../../src/harness/ai-driver.js")).aiRoleDriver;
+
+// Settings pinned per model, as the loop gives them to a role (the earlier runtime ran Claude with thinking on).
+const settingsMap: Record<string, unknown> = values.settings ? (await import("../../src/harness/models.js")).loadSettings(values.settings) : {};
+const canonical = (m: string) => (/^claude-/.test(m) ? `anthropic/${m}` : m);
 
 const rubric = loadRubric();
 const rec = await replayRun(values.runs, "001");
@@ -60,7 +64,7 @@ for (const model of (values.models as string).split(",")) {
           }
           return p.success ? undefined : describeIssues(p.error);
         };
-        const r = await driver({ prompt: role.prompt.prompt, system: role.prompt.system, model, schema: toJsonSchema(role.zod), maxUsd: 0.5, signal: new AbortController().signal, ...(sdk ? {} : { check }) });
+        const r = await driver({ prompt: role.prompt.prompt, system: role.prompt.system, model, schema: toJsonSchema(role.zod), maxUsd: 0.5, signal: new AbortController().signal, ...(sdk ? {} : { check, ...(settingsMap[canonical(model)] === undefined ? {} : { settings: settingsMap[canonical(model)] }) }) });
         cell.calls++;
         if (r.costUsd === null) cell.unpriced++;
         else cell.cost += r.costUsd;

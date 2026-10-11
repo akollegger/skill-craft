@@ -118,6 +118,8 @@ export function checkSettings(spec: string, settings: ModelSettings): void {
     if (value === undefined) continue;
     if (!row.settings.accepts.includes(name) || row.settings.refuses?.(ref.id, name, value) === true) throw new SettingRefused(ref.spec, name);
   }
+  const conflicting = row.settings.conflict?.(settings);
+  if (conflicting !== undefined) throw new SettingRefused(ref.spec, conflicting);
 }
 
 /** A settings file: model spec to the settings to pin for it. Keys are read in canonical form; a key starting `_` is a note. */
@@ -147,8 +149,9 @@ export function loadSettings(path: string): Record<string, ModelSettings> {
         if (typeof value !== "string" || !EFFORTS.includes(value as Effort)) throw bad();
         settings.effort = value as Effort;
       } else {
-        if (value !== "adaptive" && value !== "off") throw bad();
-        settings.thinking = value;
+        const budget = typeof value === "number" && Number.isInteger(value) && value >= 1024;
+        if (value !== "adaptive" && value !== "off" && !budget) throw bad();
+        settings.thinking = value as "adaptive" | "off" | number;
       }
     }
     map[spec] = settings;

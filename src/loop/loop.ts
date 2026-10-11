@@ -1,4 +1,5 @@
 import { LoopCancelled, reasonOf, RevisionInvalid, RoleFailed } from "../harness/errors.js";
+import { canonicalSpec, type ModelSettings } from "../harness/models.js";
 import { skillName } from "../harness/skill.js";
 import type { RoleDriver, RoleResult, RoleTokens } from "../harness/role-driver.js";
 import { unifiedDiff } from "./diff.js";
@@ -22,6 +23,8 @@ export interface LoopInput {
   signal: AbortSignal;
   /** The harness clock, injectable so tests are exact. Default `Date.now`. */
   now?: () => number;
+  /** Settings pinned per model, keyed by model spec in either name form; a role whose model has no entry runs on the provider's defaults. */
+  settings?: Record<string, ModelSettings> | undefined;
 }
 
 export interface Stage {
@@ -99,10 +102,13 @@ export async function runLoop(input: LoopInput): Promise<LoopResult> {
     rubric: { version: rubric.version, sha256: rubric.sha256 },
   });
 
+  const settingsByModel = Object.fromEntries(Object.entries(input.settings ?? {}).map(([k, v]) => [canonicalSpec(k), v]));
+
   /** One role call, timed and recorded. A failure is a typed error; an abort is a cancellation. */
   async function call(stage: string, model: string, prompt: RolePrompt, schema: Record<string, unknown>, check: (answer: unknown) => string | undefined): Promise<RoleResult> {
     const startedAt = now();
-    const r = await input.role({ prompt: prompt.prompt, system: prompt.system, model, schema, maxUsd: input.maxUsd, signal, check });
+    const pinned = settingsByModel[canonicalSpec(model)];
+    const r = await input.role({ prompt: prompt.prompt, system: prompt.system, model, schema, maxUsd: input.maxUsd, signal, check, ...(pinned === undefined ? {} : { settings: pinned }) });
     const endedAt = now();
     stages.push({ stage, startedAt, endedAt, durationMs: Math.max(0, endedAt - startedAt), model: { requested: r.requestedModel, resolved: r.resolvedModel }, tokens: r.tokens, costUsd: r.costUsd });
     if (!r.ok) {

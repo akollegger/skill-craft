@@ -155,6 +155,13 @@ describe("the prompt cache", () => {
 describe("pinned settings", () => {
   const model = () => control.model as InstanceType<typeof MockLanguageModelV4>;
 
+  it("reach the provider with a thinking budget as a thinking block, and the provider's own requirement for temperature is left to the table", async () => {
+    scripted(say("done"));
+    const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001", settings: { thinking: 31999 } });
+    await aiDriver(opts, recorder);
+    expect(model().doGenerateCalls[0]?.providerOptions?.["anthropic"]).toEqual({ cacheControl: { type: "ephemeral" }, thinking: { type: "enabled", budgetTokens: 31999 } });
+  }, 30_000);
+
   it("reach the provider: temperature on the call, thinking and effort in the provider's block beside the cache option", async () => {
     scripted(say("done"));
     const { opts, recorder } = setup({ model: "claude-sonnet-5-5", settings: { temperature: 0, thinking: "adaptive", effort: "high" } });
@@ -464,6 +471,24 @@ describe("aiRoleDriver", () => {
     scripted(reporting(say('{"n":7}'), "claude-opus-5-5-20260101"));
     const r = await aiRoleDriver(role());
     expect(r).toMatchObject({ ok: true, requestedModel: "claude-opus-5-5", resolvedModel: "anthropic/claude-opus-5-5-20260101" });
+  });
+
+  describe("settings for a role", () => {
+    const model = () => control.model as InstanceType<typeof MockLanguageModelV4>;
+
+    it("reach the provider as they do for a player, a thinking budget included", async () => {
+      scripted(say('{"n":7}'));
+      const r = await aiRoleDriver(role({ model: "claude-haiku-4-5-20251001", settings: { thinking: 31999 } }));
+      expect(r.ok).toBe(true);
+      expect(model().doGenerateCalls[0]?.providerOptions?.["anthropic"]).toMatchObject({ thinking: { type: "enabled", budgetTokens: 31999 } });
+    });
+
+    it("end the role with a fixed reason when the provider says a pinned setting was not applied", async () => {
+      scripted({ content: [{ type: "text", text: '{"n":7}' }], finishReason: { unified: "stop", raw: undefined }, usage: usage(12, 3), warnings: [{ type: "unsupported", feature: "temperature", details: "ignored" }] } as Result);
+      const r = await aiRoleDriver(role({ model: "claude-haiku-4-5-20251001", settings: { temperature: 0 } }));
+      expect(r).toMatchObject({ ok: false, reason: "DriverFailed: the role reported setting_ignored (temperature)" });
+      expect(r).not.toHaveProperty("answer");
+    });
   });
 
   describe("an answer that fails the caller's check", () => {

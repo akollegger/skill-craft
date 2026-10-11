@@ -195,6 +195,12 @@ describe("pinned settings in the experiment summary", () => {
     expect(() => buildReport({ experiment: without.write(), labels: without.labels })).not.toThrow();
   });
 
+  it("accept a thinking budget as a number", () => {
+    const f = fixture({ models: { teacher: TEACHER, student: STUDENT, settings: { [STUDENT]: { thinking: 31999 } } } });
+    f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 2));
+    expect(() => buildReport({ experiment: f.write(), labels: f.labels })).not.toThrow();
+  });
+
   it("are refused when a setting is misspelt or its value is not allowed", () => {
     for (const bad of [{ topK: 3 }, { effort: "enormous" }, { temperature: "hot" }, { thinking: "sometimes" }]) {
       const f = fixture({ models: { teacher: TEACHER, student: STUDENT, settings: { [STUDENT]: bad } } });

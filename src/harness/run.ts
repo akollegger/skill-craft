@@ -100,7 +100,7 @@ export interface ModelInfo {
 export interface RecordedSettings {
   temperature: number | null;
   effort: string | null;
-  thinking: string | null;
+  thinking: string | number | null;
 }
 
 export const recordedSettings = (s: ModelSettings | undefined): RecordedSettings => ({ temperature: s?.temperature ?? null, effort: s?.effort ?? null, thinking: s?.thinking ?? null });

@@ -31,7 +31,7 @@ const summarySchema = z.object({
     student: z.string(),
     /** The settings pinned for each model, keyed by model spec (a bare Claude id is read as `anthropic/<id>`); absent means none were pinned. */
     settings: z
-      .record(z.string(), z.object({ temperature: z.number().min(0).optional(), effort: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(), thinking: z.enum(["adaptive", "off"]).optional() }).strict())
+      .record(z.string(), z.object({ temperature: z.number().min(0).optional(), effort: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(), thinking: z.union([z.enum(["adaptive", "off"]), z.number().int().min(1024)]).optional() }).strict())
       .default({}),
   }),
   /** The goal set, and the goals set aside before any trial. */

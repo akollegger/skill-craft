@@ -351,6 +351,11 @@ describe("pinned settings in a run", () => {
     expect(scoreOf(none.reports[0]?.dir as string)["settings"]).toEqual({ temperature: null, effort: null, thinking: null });
   });
 
+  it("record a thinking budget as the number it is", async () => {
+    const out = await runExperiment(options({ mode: "solve" }, { runs: 1, model: "claude-haiku-4-5-20251001", settings: { thinking: 31999 } }));
+    expect(scoreOf(out.reports[0]?.dir as string)["settings"]).toEqual({ temperature: null, effort: null, thinking: 31999 });
+  });
+
   it("are handed to the player", async () => {
     let seen: unknown;
     const driver: AgentDriver = (o, sink) => {

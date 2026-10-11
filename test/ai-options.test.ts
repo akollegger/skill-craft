@@ -139,6 +139,14 @@ describe("loadSettings", () => {
     expect(map).toEqual({ "anthropic/claude-sonnet-5-5": { thinking: "adaptive", effort: "high" }, "fireworks/gpt-oss-120b": { temperature: 0 } });
   });
 
+  it("reads a thinking budget as a whole number of at least 1024, and nothing else", async () => {
+    expect(loadSettings(await file(JSON.stringify({ "claude-haiku-4-5-20251001": { thinking: 31999 } })))["anthropic/claude-haiku-4-5-20251001"]).toEqual({ thinking: 31999 });
+    for (const bad of [100, 3000.5, "31999", -5, null]) {
+      const path = await file(JSON.stringify({ "fireworks/m": { thinking: bad } }));
+      expect(() => loadSettings(path)).toThrow(SettingsInvalid);
+    }
+  });
+
   it("accepts an empty entry, which pins nothing", async () => {
     expect(loadSettings(await file(JSON.stringify({ "anthropic/claude-haiku-4-5-20251001": {} })))).toEqual({ "anthropic/claude-haiku-4-5-20251001": {} });
   });

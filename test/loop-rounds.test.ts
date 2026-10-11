@@ -49,6 +49,26 @@ describe("the check each role is given", () => {
   });
 });
 
+describe("settings for the roles", () => {
+  it("are looked up by each role's model, in either name form, and handed to the role driver", async () => {
+    const { base, role } = input([verdict("revise", "V1"), revision("TEXT-1"), verdict("accept", "V2")], {
+      criticModel: "claude-haiku-4-5-20251001",
+      reviserModel: "anthropic/claude-sonnet-5-5",
+      settings: { "anthropic/claude-haiku-4-5-20251001": { thinking: 31999 }, "claude-sonnet-5-5": { thinking: "adaptive", effort: "medium" } },
+    });
+    await runLoop(base);
+    expect(role.calls[0]?.settings).toEqual({ thinking: 31999 });
+    expect(role.calls[1]?.settings).toEqual({ thinking: "adaptive", effort: "medium" });
+    expect(role.calls[2]?.settings).toEqual({ thinking: 31999 });
+  });
+
+  it("are left out for a model with no entry, so the provider's own defaults apply", async () => {
+    const { base, role } = input([verdict("accept", "A")], { settings: { "fireworks/other": { temperature: 0 } } });
+    await runLoop(base);
+    expect(role.calls[0]?.settings).toBeUndefined();
+  });
+});
+
 describe("round control", () => {
   it("accepts in round 1 and leaves the skill unchanged", async () => {
     const { base, role } = input([verdict("accept", "A")]);

@@ -14,7 +14,8 @@ export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 export interface ModelSettings {
   temperature?: number;
   effort?: Effort;
-  thinking?: "adaptive" | "off";
+  /** `adaptive`, `off`, or a budget in tokens (at least 1024) for the models that still take one, as Claude Haiku 4.5 does. */
+  thinking?: "adaptive" | "off" | number;
 }
 
 /** What a row turns a model's settings into: the call's own temperature and the provider's option block. */
@@ -44,7 +45,12 @@ export interface ProviderRow {
   /** The name of the provider's usage report for the billing check, or null when it has none. */
   usageReport: string | null;
   /** Which settings the provider takes, and a way to say a particular model refuses one. */
-  settings: { accepts: SettingName[]; refuses?: (modelId: string, setting: SettingName, value: unknown) => boolean };
+  settings: {
+    accepts: SettingName[];
+    refuses?: (modelId: string, setting: SettingName, value: unknown) => boolean;
+    /** A setting that cannot be given beside another the settings hold (a temperature with a thinking budget), if any. */
+    conflict?: (settings: ModelSettings) => SettingName | undefined;
+  };
   /** Provider call options for a model's settings, such as the cache option. */
   callOptions(settings: ModelSettings, modelId: string): CallOptions;
   /** Optional: a per-request cost the provider reports in its metadata, in US dollars. */
@@ -64,6 +70,7 @@ const FIREWORKS_MODELS = "accounts/fireworks/models/";
 // setting it does not know a model refuses is sent, and a provider's rejection ends that run as `request_rejected`.
 const ALWAYS_THINKING = /^claude-(fable|mythos|opus-5-5|sonnet-5-5)/; // thinking cannot be switched off
 const NO_SAMPLING = /^claude-(fable|mythos|opus-5|opus-4-[78]|sonnet-5)/; // temperature is not taken
+const NO_BUDGET = /^claude-(fable|mythos|opus-5|opus-4-[78]|sonnet-5)/; // a thinking budget was removed: adaptive only
 const TAKES_ADAPTIVE = /^claude-(fable|mythos|opus-5|opus-4-[678]|sonnet-5|sonnet-4-6)/; // adaptive thinking
 const TAKES_EFFORT = /^claude-(fable|mythos|opus-5|opus-4-[5-8]|sonnet-5|sonnet-4-6)/; // effort levels
 
@@ -81,8 +88,11 @@ const anthropic: ProviderRow = {
     refuses: (modelId, setting, value) => {
       if (setting === "temperature") return NO_SAMPLING.test(modelId);
       if (setting === "effort") return !TAKES_EFFORT.test(modelId);
+      if (typeof value === "number") return NO_BUDGET.test(modelId);
       return value === "off" ? ALWAYS_THINKING.test(modelId) : !TAKES_ADAPTIVE.test(modelId);
     },
+    // Anthropic requires the default temperature while thinking is on with a budget.
+    conflict: (s) => (typeof s.thinking === "number" && s.temperature !== undefined && s.temperature !== 1 ? "temperature" : undefined),
   },
   // Anthropic caches only what a request asks it to, and a run repeats a long prefix (the tool list and the history) on
   // every turn; without this the spike's Claude runs read 0% of their input from the cache. Pinned settings ride beside it.
@@ -91,7 +101,7 @@ const anthropic: ProviderRow = {
     providerOptions: {
       anthropic: {
         cacheControl: { type: "ephemeral" },
-        ...(s.thinking === undefined ? {} : { thinking: { type: s.thinking === "adaptive" ? "adaptive" : "disabled" } }),
+        ...(s.thinking === undefined ? {} : { thinking: typeof s.thinking === "number" ? { type: "enabled", budgetTokens: s.thinking } : { type: s.thinking === "adaptive" ? "adaptive" : "disabled" } }),
         ...(s.effort === undefined ? {} : { effort: s.effort }),
       },
     },

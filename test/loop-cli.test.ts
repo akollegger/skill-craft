@@ -132,6 +132,39 @@ describe("--dry-run", () => {
   });
 });
 
+describe("--settings for the roles", () => {
+  const settingsFile = (map: object) => {
+    const f = join(mkdtempSync(join(tmpdir(), "skill-craft-lsettings-")), "settings.json");
+    writeFileSync(f, JSON.stringify(map));
+    return f;
+  };
+
+  it("hands each role the settings pinned for its model", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    const file = settingsFile({ "claude-haiku-4-5-20251001": { thinking: 31999 } });
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", "s", "--critic-model", "claude-haiku-4-5-20251001", "--reviser-model", "claude-haiku-4-5-20251001", "--settings", file], [verdict("accept", "A")]);
+    expect(r.code).toBe(0);
+    expect(r.role.calls[0]?.settings).toEqual({ thinking: 31999 });
+  });
+
+  it("refuses a setting a role's model does not take, before any call", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    const file = settingsFile({ "claude-sonnet-5-5": { temperature: 0 } });
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", "s", "--critic-model", "claude-sonnet-5-5", "--reviser-model", "claude-sonnet-5-5", "--settings", file]);
+    expect(r.code).toBe(1);
+    expect(r.err.join("\n")).toContain("model 'anthropic/claude-sonnet-5-5' does not take setting 'temperature'");
+    expect(r.role.calls).toHaveLength(0);
+  });
+
+  it("shows the settings in a dry run", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    const file = settingsFile({ "claude-haiku-4-5-20251001": { thinking: 31999 } });
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", "s", "--critic-model", "claude-haiku-4-5-20251001", "--reviser-model", "claude-haiku-4-5-20251001", "--settings", file, "--dry-run"]);
+    expect(r.code).toBe(0);
+    expect(r.out.join("\n")).toMatch(/settings .*thinking.*31999/);
+  });
+});
+
 describe("models recorded in earlier runs", () => {
   it("reads a bare Claude id in an old score as anthropic/<id>, so the roles default to the canonical spec", async () => {
     const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a", ["claude-sonnet-5-5"]);

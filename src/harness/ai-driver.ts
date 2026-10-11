@@ -205,7 +205,11 @@ export const aiRoleDriver: RoleDriver = async (opts) => {
         output: Output.object({ schema: jsonSchema(opts.schema) }),
         maxOutputTokens: ceiling,
         abortSignal: opts.signal,
+        // The row's call options for the role's settings, as for a player (a thinking budget, effort, temperature, the cache option).
+        ...(findProvider(ref.provider)?.callOptions(opts.settings ?? {}, ref.id) ?? {}),
       });
+      const ignored = droppedSetting(result.warnings, opts.settings);
+      if (ignored !== undefined) throw Object.assign(new Error("setting ignored"), { settingIgnored: ignored });
       spent = addTokens(spent, tokensOf(result.usage));
       tokens = addRoleTokens(tokens, roleTokens(result.usage));
       const costUsd = costOf(spent, price);
@@ -228,7 +232,8 @@ export const aiRoleDriver: RoleDriver = async (opts) => {
     if (opts.signal.aborted) throw e;
     const name = String((e as { name?: unknown } | null)?.name);
     const cutOff = (e as { finishReason?: unknown } | null)?.finishReason === "length";
-    const reason = cutOff ? "DriverFailed: the role reached its output limit" : /NoOutputGenerated|NoObjectGenerated|JSONParse|TypeValidation/.test(name) ? "DriverFailed: the role could not give the requested format" : failureReason("role", e, keyEnv);
+    const ignoredName = (e as { settingIgnored?: string } | null)?.settingIgnored;
+    const reason = ignoredName !== undefined ? `DriverFailed: the role reported setting_ignored (${ignoredName})` : cutOff ? "DriverFailed: the role reached its output limit" : /NoOutputGenerated|NoObjectGenerated|JSONParse|TypeValidation/.test(name) ? "DriverFailed: the role could not give the requested format" : failureReason("role", e, keyEnv);
     return roleFailure(reason, opts.model, ref.spec, elapsed());
   }
 };

@@ -59,6 +59,24 @@ describe("pinned settings", () => {
     expect(refuses("claude-sonnet-5-5", "effort", "high")).toBe(false);
   });
 
+  it("include a thinking budget, which only the models that still take one accept (the earlier runtime ran Haiku with one)", () => {
+    expect(refuses("claude-haiku-4-5-20251001", "thinking", 31999)).toBe(false);
+    expect(refuses("claude-sonnet-5-5", "thinking", 31999)).toBe(true); // budgets were removed: adaptive thinking only
+    expect(refuses("claude-opus-5-5", "thinking", 31999)).toBe(true);
+    expect(refuses("claude-sonnet-4-6", "thinking", 31999)).toBe(false);
+  });
+
+  it("refuse a temperature other than 1 beside a thinking budget, which the provider requires", () => {
+    expect(() => checkSettings("claude-haiku-4-5-20251001", { thinking: 31999, temperature: 0 })).toThrow("model 'anthropic/claude-haiku-4-5-20251001' does not take setting 'temperature'");
+    expect(() => checkSettings("claude-haiku-4-5-20251001", { thinking: 31999, temperature: 1 })).not.toThrow();
+    expect(() => checkSettings("claude-haiku-4-5-20251001", { thinking: 31999 })).not.toThrow();
+    expect(() => checkSettings("claude-haiku-4-5-20251001", { temperature: 0 })).not.toThrow(); // no thinking, no conflict
+  });
+
+  it("become a thinking block with a budget in the provider's options", () => {
+    expect(anthropic().callOptions({ thinking: 31999 }, "claude-haiku-4-5-20251001").providerOptions?.["anthropic"]).toMatchObject({ thinking: { type: "enabled", budgetTokens: 31999 } });
+  });
+
   it("are checked against a model's row before anything is spent, with a fixed message naming the model and the setting", () => {
     expect(() => checkSettings("claude-sonnet-5-5", { temperature: 0 })).toThrow(SettingRefused);
     expect(() => checkSettings("claude-sonnet-5-5", { temperature: 0 })).toThrow("model 'anthropic/claude-sonnet-5-5' does not take setting 'temperature'");
