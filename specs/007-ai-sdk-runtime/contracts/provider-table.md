@@ -36,7 +36,7 @@ Admission is the result of one command, `pnpm dev spikes/fireworks/probe-tools.t
 - whether it has a usage report to compare against, and if so that one batch matched exactly.
 
 The findings are written to the spike log or a design note, and the row's `settings` and `usageReport` fields come from them.
-A provider without a usage report is admitted without the comparison (FR-014).
+A provider without a usage report is admitted without the comparison (FR-014). The comparison is a procedure a person runs and records in `design/notes/provider-admission.md`; the harness does not enforce it in code.
 
 ## Routed providers
 

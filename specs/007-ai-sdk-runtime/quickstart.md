@@ -42,10 +42,17 @@ Expected: the first prints the plan with the model and its settings (all unset);
 
    Expected: each score records `skill.invoked` and `skill.loadedAfterCalls`.
 
-3. **Critic loop end to end, and a thinking role under a small cap.**
+3. **Critic loop end to end, and a thinking role under a small cap.** The loop needs a finished run that reached the goal.
+   Sonnet reached `glirol` 0 of 5 times in the spike and `fireworks/glm-5p3` 5 of 5, so make one first (about US$0.05):
 
    ```bash
-   pnpm dev scripts/critic-loop.ts --runs runs/rt-skill/001 --candidate spikes/skill-pilot/craft-glirol --max-rounds 1 --critic-model claude-opus-5-5 --max-role-usd 0.05 --label rt-loop
+   pnpm dev scripts/run-agent.ts --goal glirol --runs 1 --max-turns 40 --model fireworks/glm-5p3 --label rt-teacher
+   ```
+
+   Then run the loop on it:
+
+   ```bash
+   pnpm dev scripts/critic-loop.ts --runs runs/rt-teacher/001 --candidate spikes/skill-pilot/craft-glirol --max-rounds 1 --critic-model claude-opus-5-5 --max-role-usd 0.05 --label rt-loop
    ```
 
    Expected: a loop record with an accept or reject and one round, or a role failure with the fixed `spend cap` reason. No truncated answer is accepted.

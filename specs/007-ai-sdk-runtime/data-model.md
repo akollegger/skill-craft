@@ -16,6 +16,7 @@ Shapes the feature adds or changes. Files are JSON; fields are optional only whe
 | `settings` | Which of thinking, effort and temperature the provider takes, with per-model refusals |
 | `callOptions(settings)` | Provider call options (the cache option; settings mapped to the provider's names) |
 | `reportedCost(meta)` | Optional: reads a per-request cost from provider metadata |
+| `backend(meta)` | Optional, for a routed row: reads the backend a response reports from provider metadata |
 
 Validation: a row with `routed: true` and no `pinnedBackend` is invalid (FR-004). A spec whose prefix is not a row is
 refused with a fixed message listing the prefixes (FR-001).

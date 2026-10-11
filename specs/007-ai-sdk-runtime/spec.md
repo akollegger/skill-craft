@@ -123,8 +123,9 @@ shows the settings it used.
 
 1. **Given** settings for a model, **When** an experiment is planned, **Then** the plan shows them and the
    summary records them before the first trial.
-2. **Given** a setting the provider refuses for that model, **When** the experiment is planned, **Then** it is
-   refused before anything is spent, naming the model and the setting.
+2. **Given** a setting the table says the provider refuses for that model, **When** the experiment is planned,
+   **Then** it is refused before anything is spent, naming the model and the setting. A setting the table does not
+   know is refused only if the provider rejects it, which ends that run as an error and records the settings.
 3. **Given** a model with no settings given, **When** a run ends, **Then** its score records the settings as
    unset, not as a default the harness chose.
 
@@ -227,7 +228,8 @@ mention is marked as history.
 - **FR-004**: A provider that serves one model name from several backends MUST be refused unless its entry
   fixes the backend and the run records the backend the response reports.
 - **FR-005**: Each run MUST record the model it asked for and the model the provider's response reports, and an
-  experiment whose runs differ in the model that ran MUST be flagged as mixing models.
+  experiment whose runs differ in the model that ran, or for a routed provider in the backend that served it, MUST be
+  flagged as mixing models.
 - **FR-006**: A run's cost MUST be computed from its token counts and a price entry, MUST be absent for a model
   with no entry, and MUST be the figure of record when a provider also reports one; a provider-reported cost
   MUST be kept beside it.
@@ -237,7 +239,9 @@ mention is marked as history.
   report MUST be recorded as zero in the trace and in the run's token counts.
 - **FR-009**: The experiment summary MUST record each model's thinking, effort and temperature settings before
   the first trial, each run's score MUST record the settings it used (or that they were unset), and a setting
-  the provider refuses MUST be rejected before any spend.
+  the provider's table entry says the model refuses MUST be rejected before any spend. A setting the entry does not
+  know a model refuses is sent, and a provider's rejection of it ends the run as `request_rejected`, with the
+  settings recorded.
 - **FR-010**: Calibration MUST run on this runtime under the same rule as ADR-003 §2.1, and the faithful world's
   calibration MUST be rerun and recorded as part of this feature, with results that name the runtime they were
   measured on. The invented world's calibration is not part of it.
@@ -305,6 +309,8 @@ mention is marked as history.
 
 - ADR-005 is accepted and is the source for the decisions: one runtime for every model, the provider table,
   pinning, and the skill as a tool. This feature builds them and does not reopen them.
+- The billing check (FR-014) is a procedure recorded in the admission notes and run by a person before a model is
+  used in an experiment. The harness does not enforce it in code.
 - The memory arm stays deferred (ADR-003 §2.2), and distilling or comparing skills is out of scope.
 - The simulation engine, the craft server and the run log do not change.
 - The spike's code on this branch is the starting point: the player and role drivers, model parsing, price
