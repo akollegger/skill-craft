@@ -231,6 +231,13 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 ---
 
+## Found during implementation
+
+Work the live checks and probes showed was needed, done test-first and recorded here so the task list matches what was built.
+
+- [X] T071 [US6] `src/harness/ai-driver.ts`, `src/harness/role-driver.ts`, `src/loop/loop.ts`, `src/loop/verdict.ts`: a role is asked again (three attempts in all) when its answer fails the caller's own schema, with the problem named by field path and limit; the loop passes a `check` for the critic and the reviser (FR-019). Found by T052: a Haiku critic's answer exceeded a length limit that Anthropic's structured-output mode does not enforce, and the loop failed with `VerdictInvalid`. Tests: `test/ai-driver.test.ts` and `test/loop-rounds.test.ts`.
+- [X] T072 [US4] `src/harness/ai-driver.ts`, `src/harness/ai-options.ts`: end a run as `setting_ignored` when a response's warnings say a pinned setting was not applied (FR-020). Found by `spikes/fireworks/probe-settings.ts`: the SDK drops a temperature or `thinking: off` on Sonnet 5.5 with a warning instead of failing. Tests: `test/ai-driver.test.ts`.
+
 ## Dependencies and order
 
 - **Phase 1** first. **Phase 2** blocks everything: the table and canonical names.

@@ -1,12 +1,12 @@
 import { createMCPClient } from "@ai-sdk/mcp";
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
-import { generateText, isStepCount, jsonSchema, Output, tool, wrapLanguageModel, type LanguageModel, type ToolSet } from "ai";
+import { generateText, isStepCount, jsonSchema, Output, tool, wrapLanguageModel, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
 import { craftServer } from "./craft-server.js";
 import type { AgentDriver, DriverOptions } from "./driver.js";
 import { DEFAULT_MODEL, costOf, parseModelSpec, priceFor, type ModelRef, type Tokens } from "./models.js";
 import { findProvider, normaliseReported } from "./providers.js";
-import type { RoleDriver } from "./role-driver.js";
-import { addTokens, classifyEnd, CRAFT_TOOL_PREFIX, droppedSetting, MAX_RETRIES, failureCode, NO_TOKENS, readInstalledSkill, requestStart, requestStop, requestUsage, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf } from "./ai-options.js";
+import type { RoleDriver, RoleTokens } from "./role-driver.js";
+import { addRoleTokens, addTokens, classifyEnd, CRAFT_TOOL_PREFIX, droppedSetting, MAX_RETRIES, MAX_ROLE_ATTEMPTS, failureCode, NO_TOKENS, readInstalledSkill, requestStart, requestStop, requestUsage, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf } from "./ai-options.js";
 
 /**
  * Run the player through the AI SDK. This is the only file that imports the SDK (and the provider packages) at run
@@ -190,26 +190,40 @@ export const aiRoleDriver: RoleDriver = async (opts) => {
   const probe = newProbe();
   const started = performance.now();
   const elapsed = () => Math.round(performance.now() - started);
-  // A spend cap before the call, as a ceiling on output tokens; checked again from the real usage afterwards.
+  // A spend cap before each call, as a ceiling on output tokens; checked again from the real usage, over all attempts, afterwards.
   const ceiling = price === undefined ? 16_000 : Math.max(1, Math.min(32_000, Math.floor((opts.maxUsd * 1_000_000) / price.output)));
+  const messages: ModelMessage[] = [{ role: "user", content: opts.prompt }];
+  let spent: Tokens = NO_TOKENS;
+  let tokens: RoleTokens = { input: null, output: null, cacheRead: null, cacheCreation: null };
   try {
-    const result = await generateText({
-      model: observed(await languageModel(ref), probe),
-      prompt: opts.prompt,
-      ...(opts.system === undefined ? {} : { system: opts.system }),
-      output: Output.object({ schema: jsonSchema(opts.schema) }),
-      maxOutputTokens: ceiling,
-      abortSignal: opts.signal,
-    });
-    const usage = tokensOf(result.usage);
-    const costUsd = costOf(usage, price);
-    // The SDK fills a result's model id with the one asked for when the provider reports none, so the wrapper's record is read instead.
-    const reported = probe.last;
-    const base = { requestedModel: opts.model, resolvedModel: reported === undefined ? ref.spec : normaliseReported(ref.provider, reported), tokens: roleTokens(result.usage), costUsd, durationMs: elapsed() };
-    // A response cut off at the output limit is never an answer, even if the text happens to parse: it may be missing its end.
-    if (result.finishReason === "length") return { ok: false, reason: "DriverFailed: the role reached its output limit", ...base };
-    if (costUsd !== null && costUsd > opts.maxUsd) return { ok: false, reason: "DriverFailed: the role reached its spend cap", ...base };
-    return { ok: true, answer: result.output, ...base };
+    const model = observed(await languageModel(ref), probe);
+    for (let attempt = 1; ; attempt++) {
+      const result = await generateText({
+        model,
+        messages,
+        ...(opts.system === undefined ? {} : { system: opts.system }),
+        output: Output.object({ schema: jsonSchema(opts.schema) }),
+        maxOutputTokens: ceiling,
+        abortSignal: opts.signal,
+      });
+      spent = addTokens(spent, tokensOf(result.usage));
+      tokens = addRoleTokens(tokens, roleTokens(result.usage));
+      const costUsd = costOf(spent, price);
+      // The SDK fills a result's model id with the one asked for when the provider reports none, so the wrapper's record is read instead.
+      const reported = probe.last;
+      const base = { requestedModel: opts.model, resolvedModel: reported === undefined ? ref.spec : normaliseReported(ref.provider, reported), tokens, costUsd, durationMs: elapsed() };
+      // A response cut off at the output limit is never an answer, even if the text happens to parse: it may be missing its end.
+      if (result.finishReason === "length") return { ok: false, reason: "DriverFailed: the role reached its output limit", ...base };
+      if (costUsd !== null && costUsd > opts.maxUsd) return { ok: false, reason: "DriverFailed: the role reached its spend cap", ...base };
+      const problem = opts.check?.(result.output);
+      if (problem === undefined) return { ok: true, answer: result.output, ...base };
+      if (attempt >= MAX_ROLE_ATTEMPTS) return { ok: false, reason: "DriverFailed: the role could not give the requested format", ...base };
+      // Ask again, naming the problem by field path and limit (never by the answer's text) and keeping the earlier answer in view.
+      messages.push(
+        { role: "assistant", content: JSON.stringify(result.output) },
+        { role: "user", content: `That answer does not meet the schema's limits: ${problem}. Answer again in full, within the limits.` },
+      );
+    }
   } catch (e) {
     if (opts.signal.aborted) throw e;
     const name = String((e as { name?: unknown } | null)?.name);

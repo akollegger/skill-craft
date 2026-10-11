@@ -24,6 +24,31 @@ function input(script: ScriptedAnswer[], over: Partial<LoopInput> = {}) {
   return { base, role };
 }
 
+describe("the check each role is given", () => {
+  it("lets the role driver test an answer against the verdict schema and describe a miss without quoting the answer", async () => {
+    const { base, role } = input([verdict("accept", "A")]);
+    await runLoop(base);
+    const check = role.calls[0]?.check;
+    expect(typeof check).toBe("function");
+    expect(check?.(verdict("accept", "A"))).toBeUndefined();
+    const miss = check?.({ overall: "maybe" });
+    expect(miss).toContain("overall");
+    const long = check?.({ ...(verdict("accept", "A") as object), reasons: "SECRET-TEXT".repeat(200) });
+    expect(long).toContain("reasons");
+    expect(long).toContain("too_big");
+    expect(long).not.toContain("SECRET-TEXT");
+  });
+
+  it("is given to the reviser too, against the revision schema", async () => {
+    const { base, role } = input([verdict("revise", "V1"), revision("TEXT-1"), verdict("accept", "V2")]);
+    await runLoop(base);
+    const check = role.calls[1]?.check;
+    expect(typeof check).toBe("function");
+    expect(check?.(revision("TEXT-1"))).toBeUndefined();
+    expect(check?.({})).toBeDefined();
+  });
+});
+
 describe("round control", () => {
   it("accepts in round 1 and leaves the skill unchanged", async () => {
     const { base, role } = input([verdict("accept", "A")]);

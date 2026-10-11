@@ -15,16 +15,20 @@ const skip = skipUnlessKey("FIREWORKS_API_KEY") || skipUnlessKey("ANTHROPIC_API_
 const GOAL = "glirol";
 const SKILL = "spikes/skill-pilot/craft-glirol";
 const CRITIC = "anthropic/claude-haiku-4-5-20251001";
+const TEACHER = "fireworks/gpt-oss-120b";
 
 describe.skipIf(skip)("the critic loop on the AI SDK roles", () => {
   it("runs from a finished teacher run and a candidate skill to a recorded accept or reject", () => {
     const work = mkdtempSync(join(tmpdir(), "skill-craft-live-loop-"));
-    // A teacher recording that reached the goal: glm-5p3 reached glirol 5 of 5 times in the spike (Sonnet reached it 0 of 5).
-    const teacher = spawnSync(process.execPath, scriptArgs("scripts/run-agent.ts", ["--goal", GOAL, "--runs", "1", "--max-turns", "40", "--model", "fireworks/glm-5p3", "--out", join(work, "runs"), "--label", "rt-teacher"]), { encoding: "utf8", timeout: 300_000 });
+    // A teacher recording that reached the goal. gpt-oss-120b reached glirol in 2 of 5 runs in the spike and answers quickly (glm-5p3
+    // reached it 5 of 5 but its responses took 20 to 40 seconds on the day this was first run), so make up to five and take the first that reached it.
+    const teacher = spawnSync(process.execPath, scriptArgs("scripts/run-agent.ts", ["--goal", GOAL, "--runs", "5", "--max-turns", "40", "--model", TEACHER, "--out", join(work, "runs"), "--label", "rt-teacher", "--timeout-minutes", "5"]), { encoding: "utf8", timeout: 900_000 });
     expect(teacher.status, teacher.stderr).toBe(0);
-    const runDir = join(work, "runs", "rt-teacher", "001");
-    const score = JSON.parse(readFileSync(join(runDir, "score.json"), "utf8")) as { score: { reached: boolean } };
-    expect(score.score.reached, "the teacher run must reach the goal for the loop to have a recording").toBe(true);
+    const reached = [1, 2, 3, 4, 5]
+      .map((i) => join(work, "runs", "rt-teacher", String(i).padStart(3, "0")))
+      .find((dir) => existsSync(join(dir, "score.json")) && (JSON.parse(readFileSync(join(dir, "score.json"), "utf8")) as { score: { reached: boolean } }).score.reached);
+    expect(reached, "none of five teacher runs reached the goal, so the loop has no recording").toBeDefined();
+    const runDir = reached as string;
 
     const loops = join(work, "loops");
     const loop = spawnSync(process.execPath, scriptArgs("scripts/critic-loop.ts", ["--runs", runDir, "--candidate", SKILL, "--max-rounds", "1", "--critic-model", CRITIC, "--reviser-model", CRITIC, "--max-role-usd", "0.5", "--out", loops, "--label", "rt-loop"]), { encoding: "utf8", timeout: 600_000 });
@@ -40,7 +44,7 @@ describe.skipIf(skip)("the critic loop on the AI SDK roles", () => {
     const cost = record.stages.reduce((sum, s) => sum + (s.costUsd ?? 0), 0);
     writeCheckRecord(
       "live-check-critic-loop.md",
-      `# Live check: the critic loop on the AI SDK roles\n\nRun by \`test/live-critic-loop.test.ts\` (spec 007, T052).\n\n- Teacher recording: \`scripts/run-agent.ts --goal ${GOAL} --model fireworks/glm-5p3\`, reached the goal.\n- Loop: \`scripts/critic-loop.ts --candidate ${SKILL} --max-rounds 1\`, critic and reviser \`${CRITIC}\`.\n- Outcome: ${record.outcome} after ${record.rounds.length} round(s).\n- Role cost: $${cost.toFixed(3)} (models resolved to ${record.models.critic.resolved.join(", ")}).\n- No NAMS call: candidate mode.\n`,
+      `# Live check: the critic loop on the AI SDK roles\n\nRun by \`test/live-critic-loop.test.ts\` (spec 007, T052).\n\n- Teacher recording: \`scripts/run-agent.ts --goal ${GOAL} --runs 5 --model ${TEACHER}\`, the first run that reached the goal.\n- Loop: \`scripts/critic-loop.ts --candidate ${SKILL} --max-rounds 1\`, critic and reviser \`${CRITIC}\`.\n- Outcome: ${record.outcome} after ${record.rounds.length} round(s).\n- Role cost: $${cost.toFixed(3)} (models resolved to ${record.models.critic.resolved.join(", ")}).\n- No NAMS call: candidate mode.\n`,
     );
-  }, 1_000_000);
+  }, 1_500_000);
 });

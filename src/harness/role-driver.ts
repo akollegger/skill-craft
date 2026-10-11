@@ -12,8 +12,15 @@ export interface RoleOptions {
   model: string;
   /** JSON Schema for the answer. */
   schema: Record<string, unknown>;
-  /** Spend cap for this one call. */
+  /** Spend cap for this one call, over all the attempts it makes. */
   maxUsd: number;
+  /**
+   * Tests an answer against the caller's own schema, which can say more than the JSON Schema the provider is given (string
+   * lengths, for one: Anthropic's structured output does not enforce them). Returns undefined when the answer is valid, or a
+   * short problem description made of field paths and limits, never any of the answer's text, which the driver may show the
+   * model in a follow-up. The driver asks again, up to a fixed number of attempts, when it finds a problem.
+   */
+  check?: ((answer: unknown) => string | undefined) | undefined;
   /** Aborting it must end the call promptly. */
   signal: AbortSignal;
 }

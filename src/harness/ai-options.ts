@@ -32,6 +32,15 @@ export function droppedSetting(warnings: readonly { type: string; feature?: stri
   return undefined;
 }
 
+/** How many times a role is asked for an answer that passes its caller's check, the first time included. */
+export const MAX_ROLE_ATTEMPTS = 3;
+
+/** Add two role token figures; a figure either side reports counts, and one neither reports stays null. */
+export function addRoleTokens(a: RoleTokens, b: RoleTokens): RoleTokens {
+  const add = (x: number | null, y: number | null): number | null => (x === null && y === null ? null : (x ?? 0) + (y ?? 0));
+  return { input: add(a.input, b.input), output: add(a.output, b.output), cacheRead: add(a.cacheRead, b.cacheRead), cacheCreation: add(a.cacheCreation, b.cacheCreation) };
+}
+
 /** What the skill tool is called. The harness reads a skill load from this name, in order, and from nothing the agent wrote. */
 export const SKILL_TOOL = "Skill";
 

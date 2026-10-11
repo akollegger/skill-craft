@@ -259,6 +259,14 @@ mention is marked as history.
   remaining mention of the previous runtime or of the removed recording flag MUST be marked as history.
 - **FR-017**: Tests for each requirement above MUST be written before its implementation (constitution
   Principle IV), and no change MAY be made to the simulation engine, the craft server or the run log.
+- **FR-019**: A role call MUST be asked again, up to three attempts in all, when its answer fails the caller's own schema,
+  because a provider's structured-output mode does not enforce every limit the schema states (string lengths). The follow-up
+  names the problem by field path and limit and never by the answer's text, the attempts count together against the spend
+  cap, and after the last attempt the role fails with the fixed format reason and no answer. *(Added 2026-10-11: the
+  critic-loop live check found a Claude critic whose answer exceeded a length limit; the earlier runtime retried such
+  answers and this one did not.)*
+- **FR-020**: A run MUST end as an error with a fixed reason when a response's warnings say a pinned setting was not applied.
+  *(Added 2026-10-11: the settings probe found the SDK drops, with a warning, a setting a model does not take.)*
 - **FR-018**: No key MUST appear in any file, log, trace, score, summary, reason or command line, and agent
   text and reasoning MUST NOT be written to any of them (constitution Principle VI; ADR-002 §2.3).
 

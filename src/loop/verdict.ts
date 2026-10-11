@@ -91,6 +91,18 @@ export function parseRevision(raw: unknown, ctx: RevisionContext): Revision {
   return parsed.data;
 }
 
+/**
+ * A short description of what a schema found wrong with an answer: each issue's field path, its kind and any limit. It never
+ * quotes the answer, so a role driver can show it to the model in a follow-up and a log can hold it.
+ */
+export function describeIssues(error: z.ZodError): string {
+  const shown = error.issues.slice(0, 8).map((i) => {
+    const limit = "maximum" in i && i.maximum !== undefined ? ` (max ${String(i.maximum)})` : "minimum" in i && i.minimum !== undefined ? ` (min ${String(i.minimum)})` : "";
+    return `${i.path.length === 0 ? "(answer)" : i.path.join(".")}: ${i.code}${limit}`;
+  });
+  return shown.join("; ") + (error.issues.length > 8 ? `; and ${error.issues.length - 8} more` : "");
+}
+
 /** The JSON Schema the SDK is given to constrain a role's answer. */
 export function toJsonSchema(schema: z.ZodType): Record<string, unknown> {
   // The SDK refuses a schema that carries the `$schema` meta key (found by the live role check), so it is dropped.

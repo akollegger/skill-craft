@@ -466,6 +466,47 @@ describe("aiRoleDriver", () => {
     expect(r).toMatchObject({ ok: true, requestedModel: "claude-opus-5-5", resolvedModel: "anthropic/claude-opus-5-5-20260101" });
   });
 
+  describe("an answer that fails the caller's check", () => {
+    const model = () => control.model as InstanceType<typeof MockLanguageModelV4>;
+    const checkNeedsSeven = (a: unknown) => ((a as { n?: number } | null)?.n === 7 ? undefined : "n: too_big (max 7)");
+
+    it("is asked for again with the problem named, and the second answer is returned with both attempts' tokens counted", async () => {
+      scripted(say('{"n":99}'), say('{"n":7}'));
+      const r = await aiRoleDriver(role({ check: checkNeedsSeven }));
+      expect(r).toMatchObject({ ok: true, answer: { n: 7 } });
+      expect(model().doGenerateCalls).toHaveLength(2);
+      expect(r.tokens).toEqual({ input: 24, output: 6, cacheRead: 220, cacheCreation: null }); // two attempts of 12 in, 3 out, 110 cached
+      const second = JSON.stringify(model().doGenerateCalls[1]?.prompt);
+      expect(second).toContain("n: too_big (max 7)"); // the problem is named in the follow-up
+    });
+
+    it("gives up after three attempts with the fixed format reason and no answer", async () => {
+      scripted(say('{"n":1}'), say('{"n":2}'), say('{"n":3}'), say('{"n":7}'));
+      const r = await aiRoleDriver(role({ check: checkNeedsSeven }));
+      expect(r).toMatchObject({ ok: false, reason: "DriverFailed: the role could not give the requested format" });
+      expect(r).not.toHaveProperty("answer");
+      expect(model().doGenerateCalls).toHaveLength(3);
+    });
+
+    it("is not retried when the first answer passes, or when no check is given", async () => {
+      scripted(say('{"n":7}'));
+      await aiRoleDriver(role({ check: checkNeedsSeven }));
+      expect(model().doGenerateCalls).toHaveLength(1);
+      scripted(say('{"n":99}'));
+      const r = await aiRoleDriver(role());
+      expect(r.ok).toBe(true);
+      expect(model().doGenerateCalls).toHaveLength(1);
+    });
+
+    it("stops retrying when the attempts together have spent the cap", async () => {
+      // Opus 5.5 is priced, so 12 input and 3 output tokens cost far under a cent: use a cap smaller than one attempt.
+      scripted(say('{"n":1}'), say('{"n":7}'));
+      const r = await aiRoleDriver(role({ check: checkNeedsSeven, maxUsd: 0.000001 }));
+      expect(r).toMatchObject({ ok: false, reason: "DriverFailed: the role reached its spend cap" });
+      expect(model().doGenerateCalls).toHaveLength(1);
+    });
+  });
+
   it("never returns an answer from a response the provider cut off at the output limit, even when it happens to parse", async () => {
     const cut = { content: [{ type: "text", text: '{"n":7}' }], finishReason: { unified: "length", raw: "max_tokens" }, usage: usage(12, 3), warnings: [] } as Result;
     scripted(cut);
