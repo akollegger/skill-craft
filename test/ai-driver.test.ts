@@ -120,6 +120,37 @@ describe("aiDriver", () => {
   }, 30_000);
 });
 
+const reporting = (result: Result, modelId: string): Result => ({ ...result, response: { id: "resp", modelId, timestamp: new Date(0) } }) as Result;
+
+describe("the model that ran", () => {
+  it("is the model the provider reports, in canonical form, and the trace's request lines carry it", async () => {
+    scripted(reporting(say("done"), "accounts/fireworks/models/glm-5p3"));
+    const { opts, recorder, trace } = setup({ model: "fireworks/gpt-oss-120b" });
+    const r = await aiDriver(opts, recorder);
+    expect(r).toMatchObject({ requestedModel: "fireworks/gpt-oss-120b", initModel: "fireworks/glm-5p3", modelsUsed: ["fireworks/glm-5p3"] });
+    const models = (readTrace(trace).filter((l): l is RequestLine => l.kind === "request")).map((l) => l.model);
+    expect(models).toEqual(["fireworks/glm-5p3"]);
+  }, 30_000);
+
+  it("lists every model that answered, sorted, with the first one as the session's model", async () => {
+    scripted(reporting(call("c1", "look"), "accounts/fireworks/models/b"), reporting(say("done"), "accounts/fireworks/models/a"));
+    const { opts, recorder, trace } = setup({ model: "fireworks/gpt-oss-120b" });
+    const r = await aiDriver(opts, recorder);
+    expect(r.modelsUsed).toEqual(["fireworks/a", "fireworks/b"]);
+    expect(r.initModel).toBe("fireworks/b");
+    const models = (readTrace(trace).filter((l): l is RequestLine => l.kind === "request")).map((l) => l.model);
+    expect(models).toEqual(["fireworks/b", "fireworks/a"]);
+  }, 30_000);
+
+  it("falls back to the requested spec when a response reports none", async () => {
+    scripted(say("done"));
+    const { opts, recorder, trace } = setup({ model: "fireworks/gpt-oss-120b" });
+    const r = await aiDriver(opts, recorder);
+    expect(r).toMatchObject({ initModel: "fireworks/gpt-oss-120b", modelsUsed: ["fireworks/gpt-oss-120b"] });
+    expect((readTrace(trace).find((l) => l.kind === "request") as RequestLine).model).toBe("fireworks/gpt-oss-120b");
+  }, 30_000);
+});
+
 describe("a model made through the provider table", () => {
   const scriptedRow = (over: Partial<ProviderRow> = {}): ProviderRow => ({
     prefix: "scripted",
@@ -152,6 +183,20 @@ describe("a model made through the provider table", () => {
       scripted.model = new MockLanguageModelV4({ modelId: "m", doGenerate: [say('{"n":1}')] });
       const r = await aiRoleDriver({ prompt: "p", model: "scripted/m-1", schema: { type: "object", properties: { n: { type: "number" } }, required: ["n"], additionalProperties: false }, maxUsd: 1, signal: new AbortController().signal });
       expect(r).toMatchObject({ ok: true, answer: { n: 1 }, resolvedModel: "scripted/m-1" });
+    });
+  });
+
+  it("sums a provider-reported cost over a run's responses, and reports none when the provider gives none", async () => {
+    const { scripted } = await import("./helpers/scripted-provider.js");
+    const priced = (result: Result, cost: number): Result => ({ ...result, providerMetadata: { scripted: { cost } } }) as Result;
+    const row = scriptedRow({ reportedCost: (meta) => ((meta as { scripted?: { cost?: number } } | undefined)?.scripted?.cost) });
+    await withRow(row, async () => {
+      scripted.model = new MockLanguageModelV4({ modelId: "m", doGenerate: [priced(call("c1", "look"), 0.002), priced(say("done"), 0.003)] });
+      const a = setup({ model: "scripted/m-1" });
+      expect((await aiDriver(a.opts, a.recorder)).reportedCostUsd).toBeCloseTo(0.005, 9);
+      scripted.model = new MockLanguageModelV4({ modelId: "m", doGenerate: [say("done")] });
+      const b = setup({ model: "scripted/m-1" });
+      expect(await aiDriver(b.opts, b.recorder)).not.toHaveProperty("reportedCostUsd");
     });
   });
 
@@ -195,6 +240,12 @@ describe("aiRoleDriver", () => {
     expect(r.tokens).toEqual({ input: 12, output: 3, cacheRead: 110, cacheCreation: null });
     const model = control.model as InstanceType<typeof MockLanguageModelV4>;
     expect(model.doGenerateCalls[0]?.tools ?? []).toEqual([]);
+  });
+
+  it("reports the model the provider says answered, in canonical form", async () => {
+    scripted(reporting(say('{"n":7}'), "claude-opus-5-5-20260101"));
+    const r = await aiRoleDriver(role());
+    expect(r).toMatchObject({ ok: true, requestedModel: "claude-opus-5-5", resolvedModel: "anthropic/claude-opus-5-5-20260101" });
   });
 
   it("fails with fixed text when the answer does not match the schema", async () => {

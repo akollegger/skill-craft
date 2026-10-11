@@ -117,7 +117,7 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
     for (const r of reports) deps.out(line(r));
     deps.out(
       `${aggregate.runs} runs: ${aggregate.reached} reached (${Math.round(aggregate.successRate * 100)}%), ${aggregate.gaveUp} gave up, ${aggregate.outOfBudget} out of budget, ${aggregate.errors} errors; ` +
-        `median calls to goal ${aggregate.medianCallsToGoal ?? "-"}; mean extra calls ${aggregate.meanExtraCalls === null ? "-" : aggregate.meanExtraCalls.toFixed(1)}; cost $${aggregate.totalCostUsd.toFixed(3)}`,
+        `median calls to goal ${aggregate.medianCallsToGoal ?? "-"}; mean extra calls ${aggregate.meanExtraCalls === null ? "-" : aggregate.meanExtraCalls.toFixed(1)}; cost ${aggregate.totalCostUsd === null ? "-" : `$${aggregate.totalCostUsd.toFixed(3)}`} (${aggregate.unpricedRuns} unpriced)`,
     );
     if (aggregate.mixedModels) deps.out(`warning: runs used different models (${aggregate.models.join(", ")}); their figures are not one comparable set`);
     deps.out(`files: ${dir}`);

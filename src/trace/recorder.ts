@@ -111,6 +111,9 @@ export class TraceRecorder implements DriverSink {
   private deltaRequest(event: Record<string, unknown>): void {
     const p = this.pending;
     if (!p) return;
+    // A usage event may name the model the provider reports; it replaces the one the request started with, so the
+    // trace agrees with the result's `modelsUsed` when a provider answers with a different model from the one asked for.
+    if (typeof event["model"] === "string" && event["model"] !== "") p.model = event["model"];
     const usage = event["usage"];
     const counts = isObject(usage) ? ["input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"].map((k) => usage[k]) : [];
     // All four counts must be real numbers. Defaulting a missing one to zero would let a malformed request

@@ -14,6 +14,7 @@ interface RunSpec {
   reached: boolean;
   extra?: number;
   cost?: number;
+  unpriced?: boolean; // the model had no price: the run's cost is null
   loadedAfter?: number | null; // undefined: no skill installed; null: installed, never loaded
   sha?: string;
   note?: string;
@@ -61,12 +62,12 @@ function fixture(summaryOver: Record<string, unknown> = {}) {
         join(rd, "score.json"),
         JSON.stringify({
           ended: "stopped",
-          costUsd: r.cost ?? 0.1,
+          costUsd: r.unpriced ? null : (r.cost ?? 0.1),
           text: SECRET,
           priorFit: fit,
           ...(r.note ? { promptNote: r.note } : {}),
           score: { goal: { item: goal, qty: 1 }, reached: r.reached, callsToGoal: 10, extraCalls: r.reached ? (r.extra ?? 0) : null, refusals: {} },
-          measured: { trace: "matched", total: { durationMs: 1000, inputTokens: 10, outputTokens: 20, cacheReadTokens: 30, cacheCreationTokens: 40, costUsd: r.cost ?? 0.1 } },
+          measured: { trace: "matched", total: { durationMs: 1000, inputTokens: 10, outputTokens: 20, cacheReadTokens: 30, cacheCreationTokens: 40, costUsd: r.unpriced ? 0 : (r.cost ?? 0.1) } },
           model: { requested: null, resolved: [model] },
           ...(r.loadedAfter === undefined ? {} : { skill: { name: "s", sha256: r.sha ?? SHA, invoked: r.loadedAfter !== null, loadedAfterCalls: r.loadedAfter } }),
         }),
@@ -181,6 +182,30 @@ describe("buildReport", () => {
     const a = buildReport(input);
     expect(buildReport({ experiment: input.experiment, labels: [...f.labels].reverse() })).toBe(a);
     expect(a).not.toContain(SECRET);
+  });
+});
+
+describe("cost and unpriced runs in the report", () => {
+  const rowOf = (md: string, stage: string) => md.split("\n").find((l) => l.startsWith(`| ${stage} |`)) as string;
+
+  it("states the unpriced count beside every cost", () => {
+    const f = fixture();
+    f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(2, 4));
+    expect(rowOf(buildReport({ experiment: f.write(), labels: f.labels }), "calibration")).toContain("$0.40 (0 unpriced)");
+  });
+
+  it("totals the priced runs only and counts the rest", () => {
+    const f = fixture();
+    f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", [{ reached: true }, { reached: false }, { reached: false, unpriced: true }, { reached: true, unpriced: true }]);
+    expect(rowOf(buildReport({ experiment: f.write(), labels: f.labels }), "calibration")).toContain("$0.20 (2 unpriced)");
+  });
+
+  it("prints a dash for a row whose runs were all unpriced, never $0.00", () => {
+    const f = fixture();
+    f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 3, { unpriced: true }));
+    const row = rowOf(buildReport({ experiment: f.write(), labels: f.labels }), "calibration");
+    expect(row).toContain("- (3 unpriced)");
+    expect(row).not.toContain("$0.00");
   });
 });
 

@@ -62,6 +62,8 @@ export interface PlayerResult {
   reason?: string | undefined;
   turns: number | null;
   costUsd: number | null;
+  /** A per-run cost the provider itself reported, in US dollars, kept beside the computed one. Absent when it reports none. */
+  reportedCostUsd?: number | undefined;
   durationMs: number | null;
   usage: TokenUsage | null;
   /** What the harness asked for; null when it left the choice to the default. */

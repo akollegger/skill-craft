@@ -48,8 +48,8 @@ export function requestStart(id: string, model: string): PlayerMessage {
   return { type: "stream_event", event: { type: "message_start", message: { id, model } } };
 }
 
-export function requestUsage(t: Tokens): PlayerMessage {
-  return { type: "stream_event", event: { type: "message_delta", usage: { input_tokens: t.input, output_tokens: t.output, cache_read_input_tokens: t.cacheRead, cache_creation_input_tokens: t.cacheWrite } } };
+export function requestUsage(t: Tokens, model?: string): PlayerMessage {
+  return { type: "stream_event", event: { type: "message_delta", ...(model === undefined ? {} : { model }), usage: { input_tokens: t.input, output_tokens: t.output, cache_read_input_tokens: t.cacheRead, cache_creation_input_tokens: t.cacheWrite } } };
 }
 
 export function requestStop(): PlayerMessage {

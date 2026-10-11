@@ -108,6 +108,40 @@ const options = (player: FakePlayerOptions = {}, over: Record<string, unknown> =
 
 const scoreOf = (dir: string) => JSON.parse(readFileSync(join(dir, "score.json"), "utf8")) as Record<string, any>;
 
+describe("cost, and runs with no price", () => {
+  it("counts priced and unpriced runs, and totals the priced ones only", () => {
+    const a = aggregate([
+      report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: 0.01 }),
+      report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: 0.02 }),
+      report({ reached: false, callsToGoal: 5, extraCalls: null, costUsd: null }),
+    ]);
+    expect(a).toMatchObject({ pricedRuns: 2, unpricedRuns: 1 });
+    expect(a.totalCostUsd).toBeCloseTo(0.03, 9);
+  });
+
+  it("has no total at all when no run was priced, never zero", () => {
+    const a = aggregate([report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: null }), report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: null })]);
+    expect(a).toMatchObject({ pricedRuns: 0, unpricedRuns: 2, totalCostUsd: null });
+    expect(aggregate([])).toMatchObject({ pricedRuns: 0, unpricedRuns: 0, totalCostUsd: null });
+  });
+
+  it("writes the counts to summary.json and leaves an unpriced run's cost null in score.json", async () => {
+    const out = await runExperiment(options({ mode: "solve", unpriced: true }));
+    const summary = JSON.parse(readFileSync(join(out.dir, "summary.json"), "utf8")) as { aggregate: Record<string, unknown> };
+    expect(summary.aggregate).toMatchObject({ pricedRuns: 0, unpricedRuns: 2, totalCostUsd: null });
+    expect(scoreOf(out.reports[0]?.dir as string)["costUsd"]).toBeNull();
+  });
+
+  it("keeps a provider-reported cost beside the computed one, and only when the provider reports one", async () => {
+    const withReported = await runExperiment(options({ mode: "solve", reportedCostUsd: 0.5 }, { runs: 1 }));
+    const s = scoreOf(withReported.reports[0]?.dir as string);
+    expect(s["reportedCostUsd"]).toBe(0.5);
+    expect(s["costUsd"]).toBeGreaterThan(0); // the computed figure is still the figure of record
+    const without = await runExperiment(options({ mode: "solve" }, { runs: 1 }));
+    expect(scoreOf(without.reports[0]?.dir as string)).not.toHaveProperty("reportedCostUsd");
+  });
+});
+
 describe("runExperiment with a scripted player", () => {
   it("runs, scores, measures and aggregates runs that reach the goal", async () => {
     const out = await runExperiment(options({ mode: "solve" }));

@@ -117,7 +117,11 @@ export interface Aggregate {
   errors: number;
   medianCallsToGoal: number | null;
   meanExtraCalls: number | null;
-  totalCostUsd: number;
+  /** The cost of the runs that have one; null when none do, never zero for "no figure". */
+  totalCostUsd: number | null;
+  /** Runs with a cost figure, and runs without (a model with no price, or a run that never got a response). */
+  pricedRuns: number;
+  unpricedRuns: number;
   /** Every model any run used, sorted. */
   models: string[];
   /** True when runs used more than one model, so their figures are not one comparable set. */
@@ -131,6 +135,7 @@ export function aggregate(reports: readonly RunReport[]): Aggregate {
   const median = sorted.length === 0 ? null : sorted.length % 2 ? (sorted[mid] as number) : ((sorted[mid - 1] as number) + (sorted[mid] as number)) / 2;
   const extras = wins.flatMap((r) => (r.score.extraCalls === null ? [] : [r.score.extraCalls]));
   const models = [...new Set(reports.flatMap((r) => r.model.resolved))].sort();
+  const priced = reports.filter((r) => r.costUsd !== null);
   return {
     runs: reports.length,
     reached: wins.length,
@@ -140,7 +145,9 @@ export function aggregate(reports: readonly RunReport[]): Aggregate {
     errors: reports.filter((r) => r.ended === "error").length,
     medianCallsToGoal: median,
     meanExtraCalls: extras.length === 0 ? null : extras.reduce((a, b) => a + b, 0) / extras.length,
-    totalCostUsd: reports.reduce((sum, r) => sum + (r.costUsd ?? 0), 0),
+    totalCostUsd: priced.length === 0 ? null : priced.reduce((sum, r) => sum + (r.costUsd as number), 0),
+    pricedRuns: priced.length,
+    unpricedRuns: reports.length - priced.length,
     models,
     mixedModels: models.length > 1,
   };
@@ -197,7 +204,7 @@ const failedResult = (requested: string | null, reason: string): PlayerResult =>
 const writeScore = (dir: string, r: RunReport): void =>
   writeFileSync(
     join(dir, "score.json"),
-    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, text: r.text, score: r.score, measured: r.measured, model: r.model, priorFit: r.priorFit, ...(r.promptNote === undefined ? {} : { promptNote: r.promptNote }), ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
+    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, ...(r.reportedCostUsd === undefined ? {} : { reportedCostUsd: r.reportedCostUsd }), text: r.text, score: r.score, measured: r.measured, model: r.model, priorFit: r.priorFit, ...(r.promptNote === undefined ? {} : { promptNote: r.promptNote }), ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
   );
 
 /** Run the agent once against a fresh server, then score and measure it. A failed player is a recorded error. */

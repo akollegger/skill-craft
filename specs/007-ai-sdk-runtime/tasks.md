@@ -68,22 +68,22 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 ### Tests first
 
-- [ ] T013 [P] [US1] Extend `test/recorder.test.ts`: a request's model is the last one named by its `message_start` or `message_delta` event; a usage event that names none leaves the start event's model.
-- [ ] T014 [P] [US1] Extend `test/measure.test.ts`: request lines that carry the reported model agree with the result's `modelsUsed`; a trace whose models differ from the result's is still `trace: "mismatch"`.
-- [ ] T015 [P] [US1] Extend `test/ai-driver.test.ts`: a scripted model whose step reports `response.modelId` differing from the request yields `modelsUsed` and `initModel` as the normalised reported ids; a step that reports none falls back to the requested spec; the trace's request lines carry the reported id.
-- [ ] T016 [P] [US1] Extend `test/harness.test.ts`: `aggregate` returns `pricedRuns` and `unpricedRuns`, and `totalCostUsd` sums priced runs only; a label whose runs differ in the model that ran has `mixedModels`; `score.json` holds `reportedCostUsd` only when the driver reports one (use a scripted driver).
-- [ ] T017 [P] [US1] Extend `test/report.test.ts`: every printed cost carries `(N unpriced)`, and a label of only unpriced runs prints `-` for cost.
-- [ ] T018 [P] [US1] Extend `test/report.test.ts`: a summary that declares `claude-haiku-4-5-20251001` and runs that resolved `anthropic/claude-haiku-4-5-20251001` report as one row; a run that resolved a different model still raises `ReportRefused`.
-- [ ] T019 [P] [US1] Extend `test/privacy.test.ts`: the allowed `score.json` keys include `reportedCostUsd`, and `summary.json`'s aggregate keys include `pricedRuns` and `unpricedRuns`.
+- [X] T013 [P] [US1] Extend `test/recorder.test.ts`: a request's model is the last one named by its `message_start` or `message_delta` event; a usage event that names none leaves the start event's model.
+- [X] T014 [P] [US1] Extend `test/measure.test.ts`: request lines that carry the reported model agree with the result's `modelsUsed`; a trace whose models differ from the result's is still `trace: "mismatch"`.
+- [X] T015 [P] [US1] Extend `test/ai-driver.test.ts`: a scripted model whose step reports `response.modelId` differing from the request yields `modelsUsed` and `initModel` as the normalised reported ids; a step that reports none falls back to the requested spec; the trace's request lines carry the reported id.
+- [X] T016 [P] [US1] Extend `test/harness.test.ts`: `aggregate` returns `pricedRuns` and `unpricedRuns`, and `totalCostUsd` sums priced runs only; a label whose runs differ in the model that ran has `mixedModels`; `score.json` holds `reportedCostUsd` only when the driver reports one (use a scripted driver).
+- [X] T017 [P] [US1] Extend `test/report.test.ts`: every printed cost carries `(N unpriced)`, and a label of only unpriced runs prints `-` for cost.
+- [X] T018 [P] [US1] Extend `test/report.test.ts`: a summary that declares `claude-haiku-4-5-20251001` and runs that resolved `anthropic/claude-haiku-4-5-20251001` report as one row; a run that resolved a different model still raises `ReportRefused`.
+- [X] T019 [P] [US1] Extend `test/privacy.test.ts`: the allowed `score.json` keys include `reportedCostUsd`, and `summary.json`'s aggregate keys include `pricedRuns` and `unpricedRuns`.
 
 ### Implementation
 
-- [ ] T020 [US1] `src/trace/recorder.ts`: take a request's model from the last event that names one. Change `requestUsage` in `src/harness/ai-options.ts` to carry the model.
-- [ ] T021 [US1] `src/harness/ai-driver.ts`: collect each step's `response.modelId`, normalise it through the row (`normaliseReported`), return the sorted set as `modelsUsed` and the first as `initModel`; name the reported id on the usage event; read the row's optional `reportedCost` from the provider metadata and sum it into the result's `reportedCostUsd`.
-- [ ] T022 [US1] `src/harness/driver.ts` and `src/harness/run.ts`: add optional `reportedCostUsd` to `PlayerResult` and the score; extend `aggregate` with `pricedRuns` and `unpricedRuns` and fix `totalCostUsd`.
-- [ ] T023 [US1] `src/harness/report.ts`: print the unpriced count beside every cost and `-` for a label with no priced run; extend the zod score schema with the optional field.
-- [ ] T024 [US1] `src/harness/report.ts` (around lines 155 and 186): compare the summary's declared model and each run's resolved models through `canonicalSpec`, and group rows by the canonical string (make T018 pass). A provider that reports a different id from the one declared stays refused: it is a substitution.
-- [ ] T025 [US1] Update the key lists in `test/privacy.test.ts` for the new fields (T019) and make T013 to T019 pass.
+- [X] T020 [US1] `src/trace/recorder.ts`: take a request's model from the last event that names one. Change `requestUsage` in `src/harness/ai-options.ts` to carry the model.
+- [X] T021 [US1] `src/harness/ai-driver.ts`: collect each step's `response.modelId`, normalise it through the row (`normaliseReported`), return the sorted set as `modelsUsed` and the first as `initModel`; name the reported id on the usage event; read the row's optional `reportedCost` from the provider metadata and sum it into the result's `reportedCostUsd`.
+- [X] T022 [US1] `src/harness/driver.ts` and `src/harness/run.ts`: add optional `reportedCostUsd` to `PlayerResult` and the score; extend `aggregate` with `pricedRuns` and `unpricedRuns` and fix `totalCostUsd`.
+- [X] T023 [US1] `src/harness/report.ts`: print the unpriced count beside every cost and `-` for a label with no priced run; extend the zod score schema with the optional field.
+- [X] T024 [US1] `src/harness/report.ts` (around lines 155 and 186): compare the summary's declared model and each run's resolved models through `canonicalSpec`, and group rows by the canonical string (make T018 pass). A provider that reports a different id from the one declared stays refused: it is a substitution.
+- [X] T025 [US1] Update the key lists in `test/privacy.test.ts` for the new fields (T019) and make T013 to T019 pass.
 
 **Checkpoint**: US1 stands alone: the substitution and unpriced scenarios pass in the scripted tests.
 

@@ -1,10 +1,10 @@
 import { createMCPClient } from "@ai-sdk/mcp";
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
-import { generateText, isStepCount, jsonSchema, Output, tool, type LanguageModel, type ToolSet } from "ai";
+import { generateText, isStepCount, jsonSchema, Output, tool, wrapLanguageModel, type LanguageModel, type ToolSet } from "ai";
 import { craftServer } from "./craft-server.js";
 import type { AgentDriver, DriverOptions } from "./driver.js";
 import { DEFAULT_MODEL, costOf, parseModelSpec, priceFor, type ModelRef, type Tokens } from "./models.js";
-import { findProvider } from "./providers.js";
+import { findProvider, normaliseReported } from "./providers.js";
 import type { RoleDriver } from "./role-driver.js";
 import { addTokens, classifyEnd, CRAFT_TOOL_PREFIX, failureCode, NO_TOKENS, readInstalledSkill, requestStart, requestStop, requestUsage, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf } from "./ai-options.js";
 
@@ -25,6 +25,40 @@ export async function languageModel(ref: ModelRef): Promise<LanguageModel> {
   return create()(ref.id);
 }
 
+/**
+ * What the model wrapper saw of the calls it carried. The SDK retries a failed request inside one call, so a wrapper
+ * around the model sees every attempt where the call callbacks see one: it counts attempts and failures, and it holds the
+ * model id the provider reported for the last response, which no call callback carries.
+ */
+export interface ModelProbe {
+  attempts: number;
+  failedAttempts: number;
+  /** The model id the provider reported for the last response; undefined when it reported none. */
+  last: string | undefined;
+}
+
+export const newProbe = (): ModelProbe => ({ attempts: 0, failedAttempts: 0, last: undefined });
+
+/** Wrap a model so each attempt is counted and the reported model is kept (see `ModelProbe`). */
+export function observed(model: LanguageModel, probe: ModelProbe): LanguageModel {
+  return wrapLanguageModel({
+    model: model as Parameters<typeof wrapLanguageModel>[0]["model"],
+    middleware: {
+      wrapGenerate: async ({ doGenerate }) => {
+        probe.attempts++;
+        try {
+          const result = await doGenerate();
+          probe.last = result.response?.modelId;
+          return result;
+        } catch (e) {
+          probe.failedAttempts++;
+          throw e;
+        }
+      },
+    },
+  }) as LanguageModel;
+}
+
 /** The fixed reason for a failed call. A missing key names the variable, never a value. */
 function failureReason(who: "player" | "role", e: unknown, keyEnv: string | undefined): string {
   const code = failureCode(e);
@@ -34,7 +68,9 @@ function failureReason(who: "player" | "role", e: unknown, keyEnv: string | unde
 export const aiDriver: AgentDriver = async (opts, sink) => {
   const ref = parseModelSpec(opts.model ?? DEFAULT_MODEL);
   const price = priceFor(ref.spec);
-  const keyEnv = findProvider(ref.provider)?.keyEnv;
+  const row = findProvider(ref.provider);
+  const keyEnv = row?.keyEnv;
+  let reportedCost: number | undefined; // the sum of what the provider reported per response, when it reports any
   const started = performance.now();
   opts.signal.throwIfAborted();
   const server = craftServer(opts.world, opts.runLog);
@@ -42,6 +78,9 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
   const client = await createMCPClient({ transport: new StdioMCPTransport({ command: server.command, args: server.args, env: { ...server.env, PATH: process.env["PATH"] ?? "" }, cwd: opts.runDir }) });
   const craftNames = new Set<string>();
   let total: Tokens = NO_TOKENS;
+  const probe = newProbe();
+  const reportedSpecs: string[] = []; // the model each response reported, in order, canonical
+  const modelsRan = (): string[] => [...new Set(reportedSpecs)].sort();
   let calls = 0; // requests started
   let completed = 0; // requests that came back: a failed one is not a turn and has no tokens
   let craftCalls = 0;
@@ -66,7 +105,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
     let result;
     try {
       result = await generateText({
-        model: await languageModel(ref),
+        model: observed(await languageModel(ref), probe),
         prompt: opts.prompt,
         tools,
         stopWhen: isStepCount(opts.maxTurns),
@@ -78,7 +117,12 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
           const t = tokensOf(e.usage);
           total = addTokens(total, t);
           completed++;
-          sink.onMessage(requestUsage(t));
+          const reported = row?.reportedCost?.(e.providerMetadata);
+          if (typeof reported === "number" && Number.isFinite(reported)) reportedCost = (reportedCost ?? 0) + reported;
+          // The model the provider reported for this response, or the one asked for when it reported none.
+          const ran = probe.last === undefined ? ref.spec : normaliseReported(ref.provider, probe.last);
+          reportedSpecs.push(ran);
+          sink.onMessage(requestUsage(t, ran));
           sink.onMessage(requestStop());
         },
         onToolExecutionStart: (e) => {
@@ -97,7 +141,8 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
         ended: "error", reason: failureReason("player", e, keyEnv), turns: completed === 0 ? null : completed,
         costUsd: costOf(total, price), durationMs: Math.round(performance.now() - started),
         usage: completed === 0 ? null : { inputTokens: total.input, outputTokens: total.output, cacheReadTokens: total.cacheRead, cacheCreationTokens: total.cacheWrite },
-        requestedModel: opts.model ?? null, initModel: ref.spec, modelsUsed: completed === 0 ? [] : [ref.spec], text: "",
+        requestedModel: opts.model ?? null, initModel: reportedSpecs[0] ?? ref.spec, modelsUsed: modelsRan(), text: "",
+        ...(reportedCost === undefined ? {} : { reportedCostUsd: reportedCost }),
       };
     }
 
@@ -110,9 +155,10 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
       durationMs: Math.round(performance.now() - started),
       usage: { inputTokens: total.input, outputTokens: total.output, cacheReadTokens: total.cacheRead, cacheCreationTokens: total.cacheWrite },
       requestedModel: opts.model ?? null,
-      initModel: ref.spec,
-      modelsUsed: [ref.spec],
+      initModel: reportedSpecs[0] ?? ref.spec,
+      modelsUsed: modelsRan().length > 0 ? modelsRan() : [ref.spec],
       text: ended === "error" ? "" : result.text,
+      ...(reportedCost === undefined ? {} : { reportedCostUsd: reportedCost }),
       ...(opts.skill ? { skillInvoked: skillLoadedAfterCalls !== null, skillLoadedAfterCalls } : {}),
     };
   } finally {
@@ -128,13 +174,14 @@ export const aiRoleDriver: RoleDriver = async (opts) => {
   const ref = parseModelSpec(opts.model);
   const price = priceFor(ref.spec);
   const keyEnv = findProvider(ref.provider)?.keyEnv;
+  const probe = newProbe();
   const started = performance.now();
   const elapsed = () => Math.round(performance.now() - started);
   // A spend cap before the call, as a ceiling on output tokens; checked again from the real usage afterwards.
   const ceiling = price === undefined ? 16_000 : Math.max(1, Math.min(32_000, Math.floor((opts.maxUsd * 1_000_000) / price.output)));
   try {
     const result = await generateText({
-      model: await languageModel(ref),
+      model: observed(await languageModel(ref), probe),
       prompt: opts.prompt,
       ...(opts.system === undefined ? {} : { system: opts.system }),
       output: Output.object({ schema: jsonSchema(opts.schema) }),
@@ -143,7 +190,9 @@ export const aiRoleDriver: RoleDriver = async (opts) => {
     });
     const usage = tokensOf(result.usage);
     const costUsd = costOf(usage, price);
-    const base = { requestedModel: opts.model, resolvedModel: ref.spec, tokens: roleTokens(result.usage), costUsd, durationMs: elapsed() };
+    // The SDK fills a result's model id with the one asked for when the provider reports none, so the wrapper's record is read instead.
+    const reported = probe.last;
+    const base = { requestedModel: opts.model, resolvedModel: reported === undefined ? ref.spec : normaliseReported(ref.provider, reported), tokens: roleTokens(result.usage), costUsd, durationMs: elapsed() };
     if (costUsd !== null && costUsd > opts.maxUsd) return { ok: false, reason: "DriverFailed: the role reached its spend cap", ...base };
     return { ok: true, answer: result.output, ...base };
   } catch (e) {

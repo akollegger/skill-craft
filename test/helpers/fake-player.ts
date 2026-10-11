@@ -48,6 +48,10 @@ export interface FakePlayerOptions {
   malformedLog?: boolean;
   /** Leave the model out of the init message and the usage keys. */
   omitModel?: boolean;
+  /** Report no cost, as a player does for a model with no price. */
+  unpriced?: boolean;
+  /** A per-run cost the provider itself reported, kept beside the computed one. */
+  reportedCostUsd?: number;
 }
 
 export const FAKE_TOKENS = { input: 2, output: 10, cacheRead: 100, cacheCreation: 50 };
@@ -162,7 +166,7 @@ export function fakePlayer(options: FakePlayerOptions = {}): AgentDriver {
     return {
       ended: mode === "budget" ? "budget" : "stopped",
       turns: reported ? requests : null,
-      costUsd: reported ? 0.01 * requests : null,
+      costUsd: reported && options.unpriced !== true ? 0.01 * requests : null,
       durationMs: reported ? 1000 + 100 * requests : null,
       usage: reported
         ? {
@@ -176,6 +180,7 @@ export function fakePlayer(options: FakePlayerOptions = {}): AgentDriver {
       initModel,
       modelsUsed: reported && !options.omitModel ? used : [],
       text: mode === "solve" ? "I hold it." : "I could not find it.",
+      ...(options.reportedCostUsd === undefined ? {} : { reportedCostUsd: options.reportedCostUsd }),
     };
   };
 }

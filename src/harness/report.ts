@@ -76,6 +76,9 @@ interface Row {
   reached: number;
   extras: number[];
   cost: number;
+  /** Runs with no cost figure; a row's cost is the priced runs only. */
+  unpriced: number;
+  priced: number;
   tokens: [number, number, number, number];
   skillRuns: number;
   loaded: number[];
@@ -160,7 +163,7 @@ export function buildReport(input: ReportInput): string {
       const key = [stage, model, fit, goal].join("\u0000");
       let row = rows.get(key);
       if (row === undefined) {
-        row = { order: STAGES.indexOf(stage), stage, model, fit, goal, role, trials: 0, planned, reached: 0, extras: [], cost: 0, tokens: [0, 0, 0, 0], skillRuns: 0, loaded: [], skilled: arm?.skill === true };
+        row = { order: STAGES.indexOf(stage), stage, model, fit, goal, role, trials: 0, planned, reached: 0, extras: [], cost: 0, unpriced: 0, priced: 0, tokens: [0, 0, 0, 0], skillRuns: 0, loaded: [], skilled: arm?.skill === true };
         rows.set(key, row);
       }
       return row;
@@ -192,7 +195,11 @@ export function buildReport(input: ReportInput): string {
         row.reached += 1;
         if (s.score.extraCalls !== null) row.extras.push(s.score.extraCalls);
       }
-      row.cost += s.costUsd ?? 0;
+      if (s.costUsd === null) row.unpriced += 1;
+      else {
+        row.cost += s.costUsd;
+        row.priced += 1;
+      }
       const t = s.measured?.total;
       if (t) {
         row.tokens[0] += t.inputTokens;
@@ -242,7 +249,7 @@ export function buildReport(input: ReportInput): string {
     const skill = r.skilled ? `${r.loaded.length}/${r.skillRuns} loaded${r.loaded.length > 0 ? `, median ${num(median(r.loaded))}` : ""}` : "-";
     const [ti, to, tc, tw] = r.tokens;
     lines.push(
-      `| ${r.stage} | ${r.model} | ${r.fit} | ${goalCell(r)} | ${r.reached}/${r.trials} | [${pct2(lo)}, ${pct2(hi)}] | ${extras} | $${r.cost.toFixed(2)} | ${ti} in / ${to} out / ${tc} cache read / ${tw} cache write | ${skill} | ${flags} |`,
+      `| ${r.stage} | ${r.model} | ${r.fit} | ${goalCell(r)} | ${r.reached}/${r.trials} | [${pct2(lo)}, ${pct2(hi)}] | ${extras} | ${r.priced === 0 ? "-" : `$${r.cost.toFixed(2)}`} (${r.unpriced} unpriced) | ${ti} in / ${to} out / ${tc} cache read / ${tw} cache write | ${skill} | ${flags} |`,
     );
   }
 

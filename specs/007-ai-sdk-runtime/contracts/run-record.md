@@ -37,7 +37,7 @@ setting is unset.
 
 ## Report (`scripts/report.ts`)
 
-Every cost it prints carries the unpriced count: `$3.28 (0 unpriced)`, or `$0.41 (5 unpriced)`. A cost cell for a label with only unpriced runs is `-`.
+Every cost it prints carries the unpriced count: `$3.28 (0 unpriced)`, or `$0.41 (5 unpriced)`. A cost cell for a label with only unpriced runs is `- (N unpriced)`, never `$0.00`. A run with no cost figure at all (a model with no price, or a run that never got a response) counts as unpriced.
 
 ## Calibration results
 
