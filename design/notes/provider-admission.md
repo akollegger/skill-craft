@@ -11,7 +11,7 @@ spike (`spikes/fireworks/log.md`, step 2) and are confirmed here through the har
 |---|---|
 | Tool calls | `claude-haiku-4-5-20251001` called `look` and `inventory` together in one turn, then answered. All seven craft tools are reachable |
 | Schema answers | critic and reviser answers both parsed against the real schemas (cost about US$0.005 each) |
-| Reasoning | with thinking on (budget 31,999, as calibrated), reasoning came back on the **first turn only** of a six-turn run (215 characters); the five later turns, which called tools, returned none and held only text (checked 2026-10-12, one run, about US$0.02). With thinking off there is none. Whether interleaved thinking would return it every turn was not tried |
+| Reasoning | with thinking on (budget 31,999, as calibrated), reasoning came back on the **first turn only** of a six-turn run (215 characters); the five later turns, which called tools, returned none and held only text (checked 2026-10-12, one run, about US$0.02). With thinking off there is none. Interleaved thinking (the `anthropic-beta: interleaved-thinking-2025-05-14` header) fixes that: with it, reasoning came back on all six turns in three runs (two direct, one through the harness), and the driver now sends it whenever a thinking budget is pinned (`spikes/fireworks/probe-interleaved.ts`, checked 2026-10-12) |
 | Usage fields | `input`, `noCache`, `cacheRead`, `cacheWrite` and `out` reported; cache fields were 0 in the probe because it does not set the cache option (a real run does: 94% cache reads, T037) |
 | Model that answered | reported as `claude-haiku-4-5-20251001`, recorded `anthropic/claude-haiku-4-5-20251001` |
 | Usage report | none used. The table's `usageReport` is null, so the billing check does not apply |

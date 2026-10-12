@@ -382,6 +382,9 @@ named below is present and none holds recorded text; change the process version 
   student that is given the skill is not given its provenance.
 - **FR-038**: A student run that installs a skill already stores the skill's hash; the documents MUST say how that hash finds the
   loop record that produced it.
+- **FR-039**: A thinking budget pinned for an Anthropic model MUST be sent with the interleaved-thinking beta, so the model reasons
+  between tool results as the earlier runtime did, and no beta is sent for adaptive thinking, thinking off or no thinking setting.
+  *(Added 2026-10-12: without it Haiku 4.5 reasoned on the first turn only.)*
 - **FR-018**: No key MUST appear in any file, log, trace, score, summary, reason or command line, and agent
   text and reasoning MUST NOT be written to any of them (constitution Principle VI; ADR-002 §2.3).
 

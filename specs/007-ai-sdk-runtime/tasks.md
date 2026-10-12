@@ -296,6 +296,12 @@ Work the live checks and probes showed was needed, done test-first and recorded 
 
 ---
 
+## Phase 14: Parity found late (added 2026-10-12)
+
+- [X] T091 `src/harness/providers.ts`: the Anthropic row sends `anthropic-beta: interleaved-thinking-2025-05-14` when a thinking budget is pinned (FR-039). Found by comparing the earlier runtime's request headers with this one's after `probe-reasoning.ts` showed Haiku reasoning on the first turn only. Tests: `test/providers.test.ts`, `test/ai-driver.test.ts`. Not done: rerunning the Haiku calibration cells, which were measured without it.
+
+---
+
 ## Dependencies and order
 
 - **Phase 1** first. **Phase 2** blocks everything: the table and canonical names.

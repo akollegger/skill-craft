@@ -89,3 +89,8 @@ chance is the open question; the cheap next step is more trials on stone (and ir
 
 The report had a bug found here: it proposed no roles ("no student trials") because it compared the summary's bare model name with
 the runs' canonical one. It is fixed, with a test.
+
+## Addendum 2026-10-12: Haiku was measured without interleaved thinking
+
+The Haiku cells above were run with a thinking budget of 31,999 but without the `interleaved-thinking-2025-05-14` beta that the earlier runtime sent. Without it Haiku reasoned once, before its first tool call, and then only wrote text between tool results (two runs); with it, it reasoned on every turn (three runs). The Haiku stone (0/5 to 4/5) and iron (5/5 to 3/5) differences were therefore measured between a model that reasoned every turn and one that did not, which is a candidate cause that was not known when the differences were recorded. It has not been tested: the Haiku cells have not been rerun with the flag, and at 5 trials per cell a rerun would still show gross differences only. Sonnet's cells used adaptive thinking, for which no flag is sent; whether Sonnet reasons on every turn here is unchecked. The driver now sends the flag with a pinned budget (ADR-005 amendment of 2026-10-12).
+

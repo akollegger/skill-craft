@@ -34,3 +34,8 @@ Captured by pointing the old Agent SDK at a local sink that logged the system an
 ## To close it
 
 Done: the extra blocks were captured. What remains is a test, a real spend: Haiku on the stone cell with the old Haiku context added to the prompt, and with the `mcp__craft__` tool-name prefix, against the current runtime. Adding the text would be a change to the base prompt, which ADR-003 keeps fixed across arms, so it is a diagnostic, not a candidate fix.
+
+## Addendum 2026-10-12: the request headers
+
+The shapes above left out headers. The old runtime's `anthropic-beta` header (feature names only) held, for Haiku: `interleaved-thinking-2025-05-14`, `thinking-token-count-2026-05-13`, `context-management-2025-06-27`, `extended-cache-ttl-2025-04-11`, `prompt-caching-scope-2026-01-05` and Claude Code's own flags; for Sonnet the same plus `effort-2025-11-24`, `mid-conversation-system-2026-04-07` and `per-turn-control-2026-07-01`. The AI SDK sent none of them. The first matters for behaviour: with a thinking budget, Haiku reasons between tool results only when `interleaved-thinking-2025-05-14` is sent, and it is now sent (ADR-005 amendment; `design/notes/runtime-recalibration.md`). The others are untried here.
+
