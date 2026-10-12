@@ -265,17 +265,18 @@ Work the live checks and probes showed was needed, done test-first and recorded 
 - [X] T078 Docs: this spec, research R12, ADR-005 Consequences and an amendment, `AGENTS.md`, `design/notes/operational-robustness.md`.
 - [ ] T079 Live check (a few cents on Haiku, only on the owner's go-ahead): a 2,000-token cap ends a real run as a budget stop, and a one-second step timeout ends one as `step_timeout` with its cost recorded, with no craft server left running.
 
-## Phase 12: User Story 8 - Record a run as the model lived it (added 2026-10-12, not built)
+## Phase 12: User Story 8 - Record a run as the model lived it (added 2026-10-12; T080 to T084 built, T085 not run)
 
 **Goal**: a recorded run reaches the memory service with the model's messages and reasoning, FR-028 to FR-032. Decided in ADR-003 §2.4 (amended) with matching amendments to ADR-002 and ADR-005. Open question for the memory service's team: whether the distiller uses a step's reasoning.
 
 **Independent Test**: record a scripted run through the scripted service and inspect the writes (SC-014).
 
-- [ ] T080 [P] [US8] Tests first: `test/ai-driver.test.ts` (the driver reports each turn's text, reasoning and call ids; a model with no reasoning), `test/loop-candidate.test.ts` (the writes: messages in order, a step per tool-calling turn, calls under their steps, tool names as seen, no placeholder text naming Claude Code, no score or solver content, metadata fields, a run with no conversation file), `test/privacy.test.ts` (`conversation.jsonl` is in no trace, score, summary, bundle, export or reason).
-- [ ] T081 [US8] `src/harness/driver.ts`, `src/harness/ai-driver.ts`, `test/helpers/fake-player.ts`: the sink reports each turn (text, reasoning, call ids); the scripted player does too.
-- [ ] T082 [US8] `src/harness/run.ts`: write `conversation.jsonl` from the turns; `src/harness/export.ts` and the summary never read it.
-- [ ] T083 [US8] `src/loop/transcript.ts`, `src/loop/candidate.ts`, `src/loop/nams.ts`: the recording step reads the file and writes the conversation as FR-029 to FR-031 say, and falls back to the earlier shape when the file is absent.
-- [ ] T084 [US8] Update `specs/005-critic-loop-harness/contracts/` and `quickstart.md` if they describe the recording, and `AGENTS.md`'s line on the conversation file once it exists.
+- [X] T080 [P] [US8] Tests first: `test/ai-driver.test.ts` (the driver reports each turn's text, reasoning and call ids; a model with no reasoning), `test/loop-candidate.test.ts` (the writes: messages in order, a step per tool-calling turn, calls under their steps, tool names as seen, no placeholder text naming Claude Code, no score or solver content, metadata fields, a run with no conversation file), `test/privacy.test.ts` (`conversation.jsonl` is in no trace, score, summary, bundle, export or reason).
+- [X] T081 [US8] `src/harness/driver.ts`, `src/harness/ai-driver.ts`, `test/helpers/fake-player.ts`: the sink reports each turn (text, reasoning, call ids); the scripted player does too.
+- [X] T082 [US8] `src/harness/run.ts`: write `conversation.jsonl` from the turns; `src/harness/export.ts` and the summary never read it.
+- [X] T083 [US8] `src/loop/transcript.ts`, `src/loop/candidate.ts`, `src/loop/nams.ts`: the recording step reads the file and writes the conversation as FR-029 to FR-031 say, and falls back to the earlier shape when the file is absent.
+- [X] T084 [US8] Update `specs/005-critic-loop-harness/contracts/` and `quickstart.md` if they describe the recording, and `AGENTS.md`'s line on the conversation file once it exists.
+  - Done 2026-10-12: `nams-seam.md` (the `addStep` signature), `AGENTS.md`, and `design/notes/skill-process.md` (v2, `PROCESS_VERSION` 2). Built and tested with the scripted player and the mock model; no real provider has yet returned reasoning to this code, so what `onStepEnd` reports for Claude's thinking and for gpt-oss is unverified (a few cents on each, to be run with T085).
 - [ ] T085 [US8] FR-032, gated and spending: record new teacher runs, distil twice from the same runs (placeholder steps, then real reasoning) and record the comparison in `design/notes/`. Only on the owner's go-ahead.
 
 ---

@@ -26,11 +26,24 @@ export interface ToolEnd {
   toolUseId?: string | undefined;
 }
 
+/**
+ * One model turn as the model lived it: what it wrote, the reasoning the provider returned for it (empty when none
+ * came back) and the calls it made, by the id and name the model used. It is kept in `conversation.jsonl` for the
+ * memory service's recording and nowhere else (ADR-003 §2.4, amended 2026-10-12).
+ */
+export interface TurnReport {
+  text: string;
+  reasoning: string;
+  calls: { id: string; tool: string }[];
+}
+
 /** Where a driver sends what it observes. */
 export interface DriverSink {
   onMessage(message: PlayerMessage): void;
   onToolStart(call: ToolStart): void;
   onToolEnd(call: ToolEnd): void;
+  /** A model turn finished. Optional: a sink that does not keep turns ignores them. */
+  onTurn?(turn: TurnReport): void;
 }
 
 /** Per-run limits on one model step, one tool call and what a run may spend. An unset one is left to the provider (or, for a timeout, to the default). */

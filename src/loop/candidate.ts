@@ -10,6 +10,7 @@ import { checkSizes } from "./inputs.js";
 import { packageFromFiles, writePackage, type SkillPackage } from "./package.js";
 import { guarded, WorkspaceGuard, type NamsApi, type RunStatus } from "./nams.js";
 import { assertSameTask, type Recording } from "./transcript.js";
+import type { ConversationTurn } from "../harness/conversation.js";
 import { readZip } from "./zip.js";
 
 /** A step that happened before the roles ran. Roles' stages are in `loop.ts`. */
@@ -108,17 +109,12 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
     const conversationIds: string[] = [];
     for (const rec of a.runs) {
       await timed(`record-run-${rec.label}`, async () => {
-        const conv = (await guard(nams.addConversation(id, { source: "critic-loop", run: rec.label }))).id;
+        const conv = (await guard(nams.addConversation(id, conversationMetadata(rec)))).id;
         conversationIds.push(conv);
         await guard(nams.addMessage(id, conv, "user", rec.prompt));
-        // One step per distinct tool, as the hooks make, so the recording has the same shape.
-        const steps = new Map<string, string>();
-        for (const tool of new Set(rec.calls.map((c) => `mcp__craft__${c.tool}`))) steps.set(tool, (await guard(nams.addStep(id, conv, tool))).id);
-        for (const c of rec.calls) {
-          const tool = `mcp__craft__${c.tool}`;
-          await guard(nams.addToolCall(id, { tool, input: JSON.stringify(c.args), output: c.output, status: c.ok ? "success" : "failure", durationMs: c.durationMs }, steps.get(tool)!));
-        }
-        await guard(nams.addMessage(id, conv, "assistant", rec.finalAnswer));
+        const write = { id, conv, nams, guard };
+        if (rec.conversation === null) await recordPlaceholder(write, rec);
+        else await recordConversation(write, rec, rec.conversation);
       });
       a.out(`recorded run ${rec.label}`);
     }
@@ -173,6 +169,66 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
   }
   if (failure !== undefined) throw wrap(failure, a.signal);
   return { ...outcome!, stages };
+}
+
+const NO_REASONING_TURN = "No reasoning was returned for this turn.";
+const NO_REASONING_RUN = "No reasoning was recorded for this run.";
+
+/** How much of a conversation's tool-calling turns came with reasoning from the provider. */
+function reasoningState(turns: readonly ConversationTurn[]): "returned" | "partial" | "none" {
+  const calling = turns.filter((t) => t.calls.length > 0);
+  const given = calling.filter((t) => t.reasoning.trim() !== "").length;
+  return given === 0 ? "none" : given === calling.length ? "returned" : "partial";
+}
+
+/** What the conversation says about who wrote it, so a skill traces to the model and settings behind its recording. */
+function conversationMetadata(rec: Recording): Record<string, unknown> {
+  const model = rec.models[0] ?? null;
+  return {
+    source: "critic-loop",
+    run: rec.label,
+    recordingFormat: rec.conversation === null ? "placeholder" : "conversation",
+    reasoning: rec.conversation === null ? "not-kept" : reasoningState(rec.conversation),
+    model,
+    models: rec.models,
+    provider: model === null ? null : model.split("/")[0],
+    settings: rec.settings,
+  };
+}
+
+interface Write {
+  id: string;
+  conv: string;
+  nams: NamsApi;
+  guard: <T>(p: Promise<T>) => Promise<T>;
+}
+
+/** The recording as the model lived it: its messages, a step for each turn that called tools, and each call under its step. */
+async function recordConversation(w: Write, rec: Recording, turns: readonly ConversationTurn[]): Promise<void> {
+  const byId = new Map(rec.calls.map((c) => [c.toolUseId, c]));
+  for (const turn of turns) {
+    if (turn.text.trim() !== "") await w.guard(w.nams.addMessage(w.id, w.conv, "assistant", turn.text));
+    if (turn.calls.length === 0) continue;
+    // The provider's reasoning; else what the model wrote that turn; else a fixed line. Never an account the harness made up.
+    const reasoning = turn.reasoning.trim() !== "" ? turn.reasoning : turn.text.trim() !== "" ? turn.text : NO_REASONING_TURN;
+    const step = await w.guard(w.nams.addStep(w.id, w.conv, { action: turn.calls.map((c) => c.tool).join(", "), reasoning }));
+    for (const made of turn.calls) {
+      const c = byId.get(made.id);
+      if (c === undefined) continue; // a call that was not valid never reached the craft server, so it has no outcome to record
+      await w.guard(w.nams.addToolCall(w.id, { tool: c.tool, input: JSON.stringify(c.args), output: c.output, status: c.ok ? "success" : "failure", durationMs: c.durationMs }, step.id));
+    }
+  }
+}
+
+/** A run made before conversations were kept: two messages and one step per distinct tool, with no reasoning, as the hooks recorded it. */
+async function recordPlaceholder(w: Write, rec: Recording): Promise<void> {
+  const steps = new Map<string, string>();
+  for (const tool of new Set(rec.calls.map((c) => `mcp__craft__${c.tool}`))) steps.set(tool, (await w.guard(w.nams.addStep(w.id, w.conv, { action: tool, reasoning: NO_REASONING_RUN }))).id);
+  for (const c of rec.calls) {
+    const tool = `mcp__craft__${c.tool}`;
+    await w.guard(w.nams.addToolCall(w.id, { tool, input: JSON.stringify(c.args), output: c.output, status: c.ok ? "success" : "failure", durationMs: c.durationMs }, steps.get(tool)!));
+  }
+  await w.guard(w.nams.addMessage(w.id, w.conv, "assistant", rec.finalAnswer));
 }
 
 /** Anything that is not already a typed harness error becomes one with fixed text; an abort becomes a cancellation. */

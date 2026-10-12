@@ -8,10 +8,16 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { REPO } from "../harness/paths.js";
 
-export const PROCESS_VERSION = "1";
+export const PROCESS_VERSION = "2";
 
-/** How the recording step writes a run to the memory service: `placeholder` steps (one per distinct tool), until per-turn reasoning exists. */
-export const RECORDING_FORMAT = "placeholder";
+/**
+ * How the recording step wrote these runs: `conversation` (the model's messages and reasoning, a step per turn),
+ * `placeholder` (a run that kept none: two messages and a fixed step per distinct tool), or `mixed`.
+ */
+export function recordingFormatOf(runs: readonly { conversation: unknown }[]): "conversation" | "placeholder" | "mixed" {
+  const kept = runs.filter((r) => r.conversation !== null).length;
+  return kept === runs.length ? "conversation" : kept === 0 ? "placeholder" : "mixed";
+}
 
 export interface ProcessInfo {
   version: string;

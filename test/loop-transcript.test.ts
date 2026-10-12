@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -49,6 +49,29 @@ describe("replayRun", () => {
     delete score.settings;
     writeFileSync(join(run, "score.json"), JSON.stringify(score));
     expect((await replayRun(run, "001")).settings).toBeNull();
+  });
+
+  it("carries the conversation, and each call's tool use id so a turn's calls can be found", async () => {
+    const rec = await replayRun(await made("solve", "conv"), "001");
+    expect(rec.conversation).not.toBeNull();
+    const ids = rec.calls.map((c) => c.toolUseId);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(rec.conversation!.flatMap((t) => t.calls.map((c) => c.id))).toEqual(ids);
+    expect(rec.conversation!.at(-1)).toMatchObject({ text: "I hold it.", calls: [] });
+  });
+
+  it("reads a run with no conversation file as having none", async () => {
+    const run = await made("solve", "noconv");
+    rmSync(join(run, "conversation.jsonl"));
+    expect((await replayRun(run, "001")).conversation).toBeNull();
+  });
+
+  it("refuses a run whose trace holds a call that no turn of the conversation made", async () => {
+    const run = await made("solve", "mismatch");
+    const lines = readFileSync(join(run, "conversation.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    lines[1].calls = [];
+    writeFileSync(join(run, "conversation.jsonl"), `${lines.map((l) => JSON.stringify(l)).join("\n")}\n`);
+    await expect(replayRun(run, "001")).rejects.toBeInstanceOf(ReplayFailed);
   });
 
   it("marks a refusal as refused, with the engine's own error code", async () => {

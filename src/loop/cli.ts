@@ -8,7 +8,7 @@ import { endedLoopResult, runLoop, type LoopResult, type Stage } from "./loop.js
 import { createMcpWorkspaceTools, createNamsClient, type NamsApi } from "./nams.js";
 import { packageFromFiles, readPackage, type SkillPackage } from "./package.js";
 import { createLoopFolder, runPath, writeLoopRecord, type RecordOptions } from "./record.js";
-import { currentProcessInfo, RECORDING_FORMAT, type ProcessInfo } from "./process.js";
+import { currentProcessInfo, recordingFormatOf, type ProcessInfo } from "./process.js";
 import { recordedSettings } from "../harness/run.js";
 import { loadRubric } from "./rubric.js";
 import { assertSameTask, recordingsChars, replayRun, type Recording } from "./transcript.js";
@@ -138,7 +138,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
       process: (deps.processInfo ?? currentProcessInfo)(),
       recorded: recordings.map((r) => ({ label: r.label, run: runPath(r.runDir), runLogSha256: r.runLogSha256, scoreSha256: r.scoreSha256, models: r.models, settings: r.settings })),
       // A given candidate means this loop recorded nothing; otherwise the candidate step writes the runs in the current format.
-      recordingFormat: candidateFolder === undefined ? RECORDING_FORMAT : null,
+      recordingFormat: candidateFolder === undefined ? recordingFormatOf(recordings) : null,
       roleSettings: { critic: roleSettings(criticModel), reviser: roleSettings(reviserModel) },
     };
 

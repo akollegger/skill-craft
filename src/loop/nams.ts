@@ -30,7 +30,8 @@ export interface NamsApi {
   deleteWorkspace(id: string): Promise<void>;
   addConversation(ws: string, metadata: object): Promise<{ id: string }>;
   addMessage(ws: string, conv: string, role: "user" | "assistant", content: string): Promise<void>;
-  addStep(ws: string, conv: string, tool: string): Promise<{ id: string }>;
+  /** One reasoning step: the action taken and the reasoning behind it, as the model gave it. */
+  addStep(ws: string, conv: string, step: { action: string; reasoning: string }): Promise<{ id: string }>;
   addToolCall(ws: string, call: RecordedCall, stepId: string): Promise<void>;
   waitExtracted(ws: string, convs: string[], signal: AbortSignal): Promise<void>;
   generateSkill(ws: string, req: { conversationIds: string[]; procedureFormat: "graph" | "prose"; nameHint?: string }): Promise<{ runId: string }>;
@@ -199,8 +200,8 @@ export function createNamsClient(o: NamsClientOptions): NamsApi {
     async addMessage(ws, conv, role, content) {
       await request("POST", `/v1/conversations/${conv}/messages`, ws, { role, content });
     },
-    async addStep(ws, conv, tool) {
-      const id = str((await json("POST", "/v1/reasoning/steps", ws, { conversationId: conv, actionTaken: tool, reasoning: `Claude Code ran ${tool} with the provided tool input` }))["id"]);
+    async addStep(ws, conv, step) {
+      const id = str((await json("POST", "/v1/reasoning/steps", ws, { conversationId: conv, actionTaken: step.action, reasoning: step.reasoning }))["id"]);
       if (!id) throw new CandidateFailed("the service gave no step id");
       return { id };
     },

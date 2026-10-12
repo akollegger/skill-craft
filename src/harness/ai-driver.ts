@@ -167,6 +167,10 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
           sink.onMessage(requestUsage(t, ran));
           sink.onMessage(requestStop());
         },
+        // What the model wrote and reasoned this turn, for the run's conversation file; the trace never sees it.
+        onStepEnd: (step) => {
+          sink.onTurn?.({ text: step.text, reasoning: step.reasoningText ?? "", calls: step.toolCalls.map((c) => ({ id: c.toolCallId, tool: c.toolName })) });
+        },
         onToolExecutionStart: (e) => {
           const isCraft = craftNames.has(e.toolCall.toolName);
           if (isCraft) craftCalls++;

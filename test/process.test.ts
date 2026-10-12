@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { currentProcessInfo, hasChangelogEntry, PROCESS_VERSION, RECORDING_FORMAT } from "../src/loop/process.js";
+import { currentProcessInfo, hasChangelogEntry, PROCESS_VERSION, recordingFormatOf } from "../src/loop/process.js";
+import { recording } from "./helpers/loop-fixtures.js";
 
 const CHANGELOG = "design/notes/skill-process.md";
 
@@ -17,8 +18,8 @@ describe("the process version", () => {
     expect(hasChangelogEntry("99", text)).toBe(false);
   });
 
-  it("names the recording format the loop's recording step writes today", () => {
-    expect(RECORDING_FORMAT).toBe("placeholder");
+  it("is the version that records per-turn reasoning", () => {
+    expect(PROCESS_VERSION).toBe("2");
   });
 });
 
@@ -47,5 +48,15 @@ describe("currentProcessInfo", () => {
 
   it("gives nulls, not a failure, when git cannot answer", () => {
     expect(currentProcessInfo(git({ "rev-parse HEAD": new Error("not a repo") }))).toEqual({ version: PROCESS_VERSION, commit: null, dirty: null, changesSha256: null });
+  });
+});
+
+describe("recordingFormatOf", () => {
+  const conv = { ...recording("001"), conversation: [] };
+  const old = recording("002");
+  it("names the format the recording step writes for these runs: conversation, placeholder, or mixed", () => {
+    expect(recordingFormatOf([conv, { ...conv, label: "003" }])).toBe("conversation");
+    expect(recordingFormatOf([old])).toBe("placeholder");
+    expect(recordingFormatOf([conv, old])).toBe("mixed");
   });
 });

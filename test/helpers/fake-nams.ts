@@ -67,7 +67,7 @@ export class FakeNams implements NamsApi {
   async deleteWorkspace(id: string) { await this.enter("deleteWorkspace", id); this.deleted.push(id); this.accounts.delete(id); }
   async addConversation(ws: string, metadata: object) { await this.enter("addConversation", ws, metadata); const id = `conv-${++this.convCount}`; this.recorded.push({ ws, conv: id, kind: "conversation", detail: metadata }); return { id }; }
   async addMessage(ws: string, conv: string, role: "user" | "assistant", content: string) { await this.enter("addMessage", ws, { conv, role }); this.recorded.push({ ws, conv, kind: "message", detail: { role, content } }); }
-  async addStep(ws: string, conv: string, tool: string) { await this.enter("addStep", ws, { conv, tool }); const id = `step-${this.recorded.length}`; this.recorded.push({ ws, conv, kind: "step", detail: { tool, id } }); return { id }; }
+  async addStep(ws: string, conv: string, step: { action: string; reasoning: string }) { await this.enter("addStep", ws, { conv, ...step }); const id = `step-${this.recorded.length}`; this.recorded.push({ ws, conv, kind: "step", detail: { ...step, id } }); return { id }; }
   async addToolCall(ws: string, call: RecordedCall, stepId: string) { await this.enter("addToolCall", ws, { stepId }); this.recorded.push({ ws, conv: "", kind: "toolCall", detail: { ...call, stepId } }); }
   async waitExtracted(ws: string, convs: string[], signal: AbortSignal) { await this.enter("waitExtracted", ws, { convs }, signal); }
   async generateSkill(ws: string, req: { conversationIds: string[]; procedureFormat: "graph" | "prose"; nameHint?: string }) { await this.enter("generateSkill", ws, req); return { runId: "run-1" }; }

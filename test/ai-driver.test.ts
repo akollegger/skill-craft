@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DriverOptions } from "../src/harness/driver.js";
+import type { DriverOptions, DriverSink } from "../src/harness/driver.js";
 import { PROVIDERS, type ProviderRow } from "../src/harness/providers.js";
 import { installSkill } from "../src/harness/skill.js";
 import { readTrace, type RequestLine, type ToolLine } from "../src/trace/lines.js";
@@ -118,6 +118,54 @@ describe("aiDriver", () => {
     expect(r).not.toHaveProperty("skillInvoked");
     const model = control.model as InstanceType<typeof MockLanguageModelV4>;
     expect(JSON.stringify(model.doGenerateCalls[0]?.tools)).not.toContain("Skill");
+  }, 30_000);
+});
+
+const thinking = (result: Result, text: string): Result => ({ ...result, content: [{ type: "reasoning", text }, ...(result as { content: unknown[] }).content] }) as Result;
+
+describe("the turns the driver reports (spec 007 FR-028)", () => {
+  type Turn = { text: string; reasoning: string; calls: { id: string; tool: string }[] };
+  const withTurns = (recorder: TraceRecorder, turns: Turn[]): DriverSink => ({
+    onMessage: (m) => recorder.onMessage(m),
+    onToolStart: (c) => recorder.onToolStart(c),
+    onToolEnd: (c) => recorder.onToolEnd(c),
+    onTurn: (t) => void turns.push(t),
+  });
+
+  it("sends each model turn's text, reasoning and the ids and names of its calls, in order", async () => {
+    scripted(thinking(call("c1", "look"), "I will look first."), thinking(say("done"), "It is finished."));
+    const { opts, recorder } = setup();
+    const turns: Turn[] = [];
+    await aiDriver(opts, withTurns(recorder, turns));
+    expect(turns).toEqual([
+      { text: "", reasoning: "I will look first.", calls: [{ id: "c1", tool: "look" }] },
+      { text: "done", reasoning: "It is finished.", calls: [] },
+    ]);
+  }, 30_000);
+
+  it("reports empty reasoning for a model whose provider returned none, and never makes any up", async () => {
+    scripted(call("c1", "look"), say("done"));
+    const { opts, recorder } = setup();
+    const turns: Turn[] = [];
+    await aiDriver(opts, withTurns(recorder, turns));
+    expect(turns.map((t) => t.reasoning)).toEqual(["", ""]);
+  }, 30_000);
+
+  it("reports a turn whose only call was not valid, with that call's name", async () => {
+    scripted(call("n1", "no-such-tool"), say("done"));
+    const { opts, recorder } = setup();
+    const turns: Turn[] = [];
+    await aiDriver(opts, withTurns(recorder, turns));
+    expect(turns[0]?.calls).toEqual([{ id: "n1", tool: "no-such-tool" }]);
+  }, 30_000);
+
+  it("keeps the turns' text and reasoning out of the trace", async () => {
+    scripted(thinking(call("c1", "look"), "PRIVATE-REASONING-77"), say("PRIVATE-TEXT-88"));
+    const { opts, recorder, trace } = setup();
+    await aiDriver(opts, withTurns(recorder, []));
+    const text = readFileSync(trace, "utf8");
+    expect(text).not.toContain("PRIVATE-REASONING-77");
+    expect(text).not.toContain("PRIVATE-TEXT-88");
   }, 30_000);
 });
 

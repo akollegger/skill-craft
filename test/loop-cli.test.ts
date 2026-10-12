@@ -354,7 +354,7 @@ describe("the loop record's provenance, through the command (spec 007)", () => {
     const r = await run(["--runs", a, "--allow-workspace", "--critic-model", "claude-test-critic", "--reviser-model", "claude-test-reviser", "--label", "prov2"], [verdict("accept", "V1")], { ...base, nams: new FakeNams({ zip: zip() }), env: { NAMS_API_KEY: "test-key" } });
     expect(r.code).toBe(0);
     const rec = loopJson(r.loops, "prov2");
-    expect(rec.recordingFormat).toBe("placeholder");
+    expect(rec.recordingFormat).toBe("conversation"); // the scripted player reports its turns
     expect(rec.candidate.generation.request).toEqual({ scope: "conversations", conversations: 1, procedureFormat: "prose" });
   });
 
@@ -376,6 +376,6 @@ describe("the loop record's provenance, through the command (spec 007)", () => {
     const rec = loopJson(r.loops, "prov4");
     expect(rec.process).toEqual(info);
     expect(rec.recordedRuns).toHaveLength(1);
-    expect(rec.recordingFormat).toBe("placeholder");
+    expect(rec.recordingFormat).toBe("conversation");
   });
 });

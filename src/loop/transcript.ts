@@ -11,9 +11,12 @@ import { loadWorld } from "../sim/loader.js";
 import { canonical } from "../trace/measure.js";
 import { canonicalSpec } from "../harness/models.js";
 import type { RecordedSettings } from "../harness/run.js";
+import { CONVERSATION_FILE, readConversation, type ConversationTurn } from "../harness/conversation.js";
 
 export interface RecordedCall {
   seq: number;
+  /** The id the model's turn names this call by, from the run's trace. */
+  toolUseId: string;
   tool: string;
   args: Record<string, unknown>;
   ok: boolean;
@@ -40,6 +43,8 @@ export interface Recording {
   runLogSha256: string;
   scoreSha256: string;
   settings: RecordedSettings | null;
+  /** The model's turns, from the run's conversation file; null for a run that kept none (made before it existed). */
+  conversation: ConversationTurn[] | null;
   calls: RecordedCall[];
   callCount: number;
   finalAnswer: string;
@@ -82,7 +87,7 @@ async function replay(runDir: string, label: string): Promise<Recording> {
   const toolLines = readFileSync(join(runDir, "trace.jsonl"), "utf8")
     .split("\n")
     .filter(Boolean)
-    .map((l) => JSON.parse(l) as { kind: string; tool: string; args?: unknown; startMs: number; endMs: number })
+    .map((l) => JSON.parse(l) as { kind: string; toolUseId: string; tool: string; args?: unknown; startMs: number; endMs: number })
     .filter((l) => l.kind === "tool");
   if (toolLines.length !== entries.length) throw new ReplayFailed("the trace does not pair with the log");
 
@@ -109,10 +114,17 @@ async function replay(runDir: string, label: string): Promise<Recording> {
       if (ok !== entry.ok) throw new ReplayFailed(`entry ${entry.seq} (${entry.tool}): logged ok=${entry.ok}, replay gave ok=${ok}`);
       if (entry.error !== error) throw new ReplayFailed(`entry ${entry.seq} (${entry.tool}): the refusal differs from the log`);
       if (JSON.stringify(entry.crafted) !== JSON.stringify(crafted)) throw new ReplayFailed(`entry ${entry.seq} (${entry.tool}): what was crafted differs from the log`);
-      calls.push({ seq: entry.seq, tool: entry.tool, args: entry.args, ok, output, error, crafted, durationMs: duration });
+      calls.push({ seq: entry.seq, toolUseId: line.toolUseId, tool: entry.tool, args: entry.args, ok, output, error, crafted, durationMs: duration });
     }
   } finally {
     await client.close().catch(() => {});
+  }
+
+  const conversation = readConversation(join(runDir, CONVERSATION_FILE));
+  // Every call in the trace must be one a turn made, or the conversation belongs to another run.
+  if (conversation !== null) {
+    const named = new Set(conversation.flatMap((t) => t.calls.map((c) => c.id)));
+    if (!calls.every((c) => named.has(c.toolUseId))) throw new ReplayFailed("the conversation does not match the trace");
   }
 
   return {
@@ -126,6 +138,7 @@ async function replay(runDir: string, label: string): Promise<Recording> {
     runLogSha256: sha256(join(runDir, "run.jsonl")),
     scoreSha256: sha256(join(runDir, "score.json")),
     settings: score.settings ?? null,
+    conversation,
     calls,
     callCount: calls.length,
     finalAnswer: score.text ?? "",

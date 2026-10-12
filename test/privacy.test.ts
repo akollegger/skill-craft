@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runAgentCli } from "../src/harness/cli.js";
 import type { AgentDriver, DriverSink } from "../src/harness/driver.js";
+import { exportBundle } from "../src/harness/export.js";
 import { runExperiment } from "../src/harness/run.js";
 import { readTrace } from "../src/trace/lines.js";
 import { createLoopFolder, writeLoopRecord } from "../src/loop/record.js";
@@ -44,6 +45,7 @@ function spied(inner: AgentDriver, seen: string[]): AgentDriver {
       onMessage: (m) => { seen.push(JSON.stringify(m)); sink.onMessage(m); },
       onToolStart: (c) => { seen.push(JSON.stringify(c)); sink.onToolStart(c); },
       onToolEnd: (c) => { seen.push(JSON.stringify(c)); sink.onToolEnd(c); },
+      onTurn: (t) => { seen.push(JSON.stringify(t)); sink.onTurn?.(t); },
     };
     return inner(o, tee);
   };
@@ -67,7 +69,13 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
 
     const files = filesUnder(out);
     expect(Object.keys(files).length).toBeGreaterThan(10);
-    for (const [path, text] of Object.entries(files)) for (const secret of SECRETS) expect(text, `${path} holds ${secret}`).not.toContain(secret);
+    // The model's own words have one home, conversation.jsonl (ADR-003 §2.4, amended): it may hold the chatter, but never an identifier.
+    const conversation = (path: string) => path.endsWith("conversation.jsonl");
+    for (const [path, text] of Object.entries(files)) for (const secret of SECRETS) {
+      if (conversation(path) && secret === CHATTER) continue;
+      expect(text, `${path} holds ${secret}`).not.toContain(secret);
+    }
+    expect(Object.entries(files).some(([path, text]) => conversation(path) && text.includes(CHATTER))).toBe(true); // positive control: it is kept there
   });
 
   it("never writes the operator's PATH or environment into a run folder", async () => {
@@ -82,7 +90,7 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
     await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, agentText: CHATTER }) });
     expect(Object.keys(filesUnder(out)).sort()).toEqual(
-      ["p/001/mcp.json", "p/001/prompt.txt", "p/001/run.jsonl", "p/001/score.json", "p/001/trace.jsonl", "p/summary.json"].sort(),
+      ["p/001/conversation.jsonl", "p/001/mcp.json", "p/001/prompt.txt", "p/001/run.jsonl", "p/001/score.json", "p/001/trace.jsonl", "p/summary.json"].sort(),
     );
   });
 
@@ -194,5 +202,36 @@ describe("model-authored review text stays in the loop folder (spec 005, FR-018)
 
     const failed = await runWith([{ fail: `DriverFailed: the role reached its spend cap` }], out);
     expect(failed.r.reason).toBe("RoleFailed: a role call failed: DriverFailed: the role reached its spend cap");
+  });
+});
+
+describe("the conversation file (spec 007 FR-028)", () => {
+  it("is written only to its own file: not to the trace, score, summary or an exported bundle", async () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
+    const reasoning = "PRIVATE-REASONING-31337";
+    const r = await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "c", driver: fakePlayer({ mode: "solve", goal: GOAL, agentText: CHATTER, reasoning }) });
+    const run = join(out, "c", "001");
+    const own = readFileSync(join(run, "conversation.jsonl"), "utf8");
+    expect(own).toContain(reasoning);
+    expect(own).toContain(CHATTER);
+    for (const [path, text] of Object.entries(filesUnder(out))) {
+      if (path.endsWith("conversation.jsonl")) continue;
+      expect(text, path).not.toContain(reasoning);
+      expect(text, path).not.toContain(CHATTER);
+    }
+    expect(JSON.stringify(r.reports[0])).not.toContain(reasoning);
+    const dest = join(out, "bundle");
+    exportBundle(run, dest);
+    for (const [path, text] of Object.entries(filesUnder(dest))) {
+      expect(text, `bundle ${path}`).not.toContain(reasoning);
+      expect(text, `bundle ${path}`).not.toContain(CHATTER);
+    }
+    expect(Object.keys(filesUnder(dest))).not.toContain("conversation.jsonl");
+  });
+
+  it("is not made for a run whose player reports no turns", async () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "n", driver: fakePlayer({ mode: "solve", goal: GOAL, turns: false }) });
+    expect(Object.keys(filesUnder(out))).not.toContain("n/001/conversation.jsonl");
   });
 });

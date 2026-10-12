@@ -18,6 +18,15 @@ The loop as spec 005 built it, on the AI SDK runtime (ADR-005).
 
 What it cannot do: tell a necessary call from a wrong turn, since a step carries no reasoning.
 
-## Planned: v2
+## v2
 
-Recording per model turn: the model's messages and reasoning, a step for each tool-calling turn, tool names as the model saw them (ADR-003 §2.4, amended 2026-10-12; spec 007 FR-028 to FR-032). Not built; this entry is added when it is.
+Recording per model turn (ADR-003 §2.4, amended 2026-10-12; spec 007 FR-028 to FR-031). Everything else is as in v1.
+
+1. **Recording.** A teacher run that kept a conversation (`conversation.jsonl`, written by the driver) is recorded as the model lived it: the prompt, each assistant message in order, one reasoning step for each turn that called tools, and each call under its step. A step holds the reasoning the provider returned for that turn (a summary, for some models); when none came back it holds the turn's text, and when there is neither a fixed line says none was returned. Nothing is invented. Tool names are written as the model saw them (`place`). Calls the craft server never received (an unknown tool, arguments that did not parse) are not tool calls in the recording; their step is kept.
+2. **No harness judgement.** No score, solver path, extra-call count or label of which calls were needed is written.
+3. **Metadata.** Each conversation names the model, provider, pinned settings, the recording format and whether reasoning came back (`returned`, `partial` or `none`).
+4. **Older runs.** A run with no conversation file is recorded as in v1 (two messages, one step per distinct tool, the `mcp__craft__` prefix) with a fixed line saying no reasoning was recorded, and its conversation is marked `placeholder` and `not-kept`. A loop over a mix of the two records its format as `mixed`.
+
+What changes in the record: `recordingFormat` is `conversation`, `placeholder` or `mixed`, taken from the runs.
+
+Still true: whether the distiller uses a step's reasoning is not established. Distilling twice from the same runs (T085) is how to find out.

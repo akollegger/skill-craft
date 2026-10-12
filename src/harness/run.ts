@@ -10,6 +10,7 @@ import { readTrace } from "../trace/lines.js";
 import { measureRun, type Measured } from "../trace/measure.js";
 import { TraceRecorder } from "../trace/recorder.js";
 import { DriverAborted, type AgentDriver, type DriverSink, type PlayerResult, type RunLimits } from "./driver.js";
+import { CONVERSATION_FILE, ConversationWriter } from "./conversation.js";
 import { DriverFailed, HarnessError, LimitRefused, RunCancelled, RunFailed, RunFolderExists, RunTimedOut, SkillNotFound, UnknownGoalItem, reasonOf } from "./errors.js";
 import { toRepoPath } from "./paths.js";
 import { readLog, replayFailure } from "./read-log.js";
@@ -266,13 +267,21 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
   else o.signal?.addEventListener("abort", cancel, { once: true });
 
   const recorder = new TraceRecorder({ path: tracePath });
+  // The trace takes what it always took; the model's turns go to their own file and nowhere else.
+  const conversation = new ConversationWriter(join(dir, CONVERSATION_FILE));
+  const sink: DriverSink = {
+    onMessage: (m) => recorder.onMessage(m),
+    onToolStart: (c) => recorder.onToolStart(c),
+    onToolEnd: (c) => recorder.onToolEnd(c),
+    onTurn: (t) => conversation.onTurn(t),
+  };
   let result: PlayerResult | null = null;
   let aborted: PlayerResult | null = null; // what a driver had spent when its run was aborted
   let failure: HarnessError | null = null;
   try {
     result = await driver(
       { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, ...(o.settings === undefined ? {} : { settings: o.settings }), ...(o.limits === undefined ? {} : { limits: o.limits }), signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
-      recorder,
+      sink,
     );
   } catch (e) {
     if (e instanceof DriverAborted) aborted = e.partial;
