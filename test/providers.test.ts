@@ -99,10 +99,17 @@ describe("pinned settings", () => {
   it("become the provider's call options: temperature on the call, thinking and effort in the provider's block, beside the cache option", () => {
     expect(anthropic().callOptions({ temperature: 0, thinking: "adaptive", effort: "high" }, "claude-x")).toEqual({
       temperature: 0,
-      providerOptions: { anthropic: { cacheControl: { type: "ephemeral" }, thinking: { type: "adaptive" }, effort: "high" } },
+      providerOptions: { anthropic: { cacheControl: { type: "ephemeral" }, thinking: { type: "adaptive", display: "summarized" }, effort: "high" } },
     });
     expect(anthropic().callOptions({ thinking: "off" }, "claude-x").providerOptions?.["anthropic"]).toMatchObject({ thinking: { type: "disabled" } });
     expect(findProvider("fireworks")?.callOptions({ temperature: 0.2 }, "m")).toEqual({ temperature: 0.2 });
+  });
+
+  it("ask for adaptive thinking to be returned as a summary, because a newer Claude model omits it by default and the recording would hold none", () => {
+    expect(anthropic().callOptions({ thinking: "adaptive" }, "claude-sonnet-5-5").providerOptions?.["anthropic"]).toMatchObject({ thinking: { type: "adaptive", display: "summarized" } });
+    // A budget returns its thinking without being asked, and `off` has none to return.
+    expect((anthropic().callOptions({ thinking: 31999 }, "claude-haiku-4-5-20251001").providerOptions?.["anthropic"] as { thinking: object }).thinking).toEqual({ type: "enabled", budgetTokens: 31999 });
+    expect((anthropic().callOptions({ thinking: "off" }, "claude-x").providerOptions?.["anthropic"] as { thinking: object }).thinking).toEqual({ type: "disabled" });
   });
 
   it("leave unset settings out entirely, so the provider's own default applies", () => {

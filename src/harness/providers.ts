@@ -106,7 +106,7 @@ const anthropic: ProviderRow = {
     providerOptions: {
       anthropic: {
         cacheControl: { type: "ephemeral" },
-        ...(s.thinking === undefined ? {} : { thinking: typeof s.thinking === "number" ? { type: "enabled", budgetTokens: s.thinking } : { type: s.thinking === "adaptive" ? "adaptive" : "disabled" } }),
+        ...(s.thinking === undefined ? {} : { thinking: typeof s.thinking === "number" ? { type: "enabled", budgetTokens: s.thinking } : s.thinking === "adaptive" ? { type: "adaptive", display: "summarized" } : { type: "disabled" } }),
         ...(s.effort === undefined ? {} : { effort: s.effort }),
       },
     },
