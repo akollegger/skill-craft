@@ -5,6 +5,7 @@ import { loadWorld } from "../sim/loader.js";
 import type { AgentDriver, RunLimits } from "./driver.js";
 import { HarnessError, isUserError, UnknownGoalItem } from "./errors.js";
 import { DEFAULT_MODEL, loadSettings, parseModelSpec } from "./models.js";
+import { priceSource, type PriceResolver } from "./pricing.js";
 import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, planExperiment, runExperiment, type AgentRunOptions, type RunReport } from "./run.js";
 
 export interface CliDeps {
@@ -12,6 +13,8 @@ export interface CliDeps {
   driver?: AgentDriver | undefined;
   /** Aborting it ends the current run, writes the summary and returns 130. */
   signal?: AbortSignal | undefined;
+  /** Resolves the price a model's runs are costed with. Default: a pin, else a market quote for a model with an alias. */
+  pricing?: PriceResolver | undefined;
   out: (line: string) => void;
   err: (line: string) => void;
 }
@@ -116,6 +119,9 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
       ...(values["max-usd"] === undefined ? {} : { maxUsd: positiveNumber("max-usd", values["max-usd"]) }),
     };
 
+    // Resolved before anything is planned or run, so a dollar limit that cannot be applied is refused before any spend.
+    const price = await (deps.pricing ?? priceSource().resolve)(parseModelSpec(values.model ?? DEFAULT_MODEL).spec);
+
     const options: AgentRunOptions = {
       world: values.world as string,
       goal: { item, qty: positive("goal quantity", qty) },
@@ -127,6 +133,7 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
       ...(values.model ? { model: values.model } : {}),
       ...(settings === undefined ? {} : { settings }),
       ...(Object.keys(limits).length === 0 ? {} : { limits }),
+      ...(price === undefined ? {} : { price }),
       ...(values.skill ? { skill: values.skill } : {}),
       ...(note === undefined ? {} : { promptNote: note }),
       ...(template === undefined ? {} : { promptTemplate: template }),

@@ -153,6 +153,8 @@ const reviewSchema = z.object({ verdict: z.enum(["accept", "revise", "reject"]),
 /** What a run's score.json must hold. Parsed, not cast: a string "false" would otherwise count as a success. */
 const scoreSchema = z.object({
   costUsd: z.number().nullable(),
+  /** Where the cost came from; absent in a run from before sources were recorded. */
+  costSource: z.enum(["provider", "pin", "market-quote"]).nullable().optional(),
   priorFit: z.string().optional(),
   promptNote: z.string().optional(),
   score: z.object({ reached: z.boolean(), extraCalls: z.number().nullable() }),
@@ -186,6 +188,8 @@ interface Row {
   cost: number;
   /** Runs with no cost figure; a row's cost is the priced runs only. */
   unpriced: number;
+  /** Where the priced runs' costs came from, for runs that say. */
+  sources: Set<string>;
   priced: number;
   tokens: [number, number, number, number];
   skillRuns: number;
@@ -194,6 +198,8 @@ interface Row {
 }
 
 const STAGES = ["calibration", "T0", "S0", "S1", "S2"];
+/** How a cost's source is said in the report. A quote is a marketplace price, and is never called a charge. */
+const SOURCE_LABEL: Record<string, string> = { provider: "provider-reported", pin: "pin", "market-quote": "market quote" };
 const median = (xs: number[]): number => {
   const s = [...xs].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);
@@ -274,7 +280,7 @@ export function buildReport(input: ReportInput): string {
       const key = [stage, model, fit, goal].join("\u0000");
       let row = rows.get(key);
       if (row === undefined) {
-        row = { order: STAGES.indexOf(stage), stage, model, fit, goal, role, trials: 0, planned, reached: 0, extras: [], cost: 0, unpriced: 0, priced: 0, tokens: [0, 0, 0, 0], skillRuns: 0, loaded: [], skilled: arm?.skill === true };
+        row = { order: STAGES.indexOf(stage), stage, model, fit, goal, role, trials: 0, planned, reached: 0, extras: [], cost: 0, unpriced: 0, sources: new Set(), priced: 0, tokens: [0, 0, 0, 0], skillRuns: 0, loaded: [], skilled: arm?.skill === true };
         rows.set(key, row);
       }
       return row;
@@ -310,6 +316,7 @@ export function buildReport(input: ReportInput): string {
       else {
         row.cost += s.costUsd;
         row.priced += 1;
+        if (typeof s.costSource === "string") row.sources.add(s.costSource);
       }
       const t = s.measured?.total;
       if (t) {
@@ -363,9 +370,14 @@ export function buildReport(input: ReportInput): string {
     const skill = r.skilled ? `${r.loaded.length}/${r.skillRuns} loaded${r.loaded.length > 0 ? `, median ${num(median(r.loaded))}` : ""}` : "-";
     const [ti, to, tc, tw] = r.tokens;
     lines.push(
-      `| ${r.stage} | ${r.model} | ${r.fit} | ${goalCell(r)} | ${r.reached}/${r.trials} | [${pct2(lo)}, ${pct2(hi)}] | ${extras} | ${r.priced === 0 ? "-" : `$${r.cost.toFixed(2)}`} (${r.unpriced} unpriced) | ${ti} in / ${to} out / ${tc} cache read / ${tw} cache write | ${skill} | ${flags} |`,
+      `| ${r.stage} | ${r.model} | ${r.fit} | ${goalCell(r)} | ${r.reached}/${r.trials} | [${pct2(lo)}, ${pct2(hi)}] | ${extras} | ${r.priced === 0 ? "-" : `$${r.cost.toFixed(2)}`} (${r.unpriced} unpriced)${r.priced > 0 && r.sources.size > 0 ? ` [${[...r.sources].sort().map((x) => SOURCE_LABEL[x] ?? x).join(", ")}]` : ""} | ${ti} in / ${to} out / ${tc} cache read / ${tw} cache write | ${skill} | ${flags} |`,
     );
   }
+
+  // Costs from more than one source are not one comparable figure, and a quote is not a record of what any host charged.
+  const sources = [...new Set(sorted.flatMap((r) => [...r.sources]))].sort();
+  if (sources.length > 1) lines.push("", `Costs in this report come from more than one source (${sources.map((x) => SOURCE_LABEL[x] ?? x).join(", ")}) and are not one comparable figure.`);
+  if (sources.includes("market-quote")) lines.push("", "A market quote is a marketplace price read from OpenRouter's public model list: an estimate of a model's market rate, and not a record of any host's rate.");
 
   const verdict = (a: Row, b: Row): string => {
     const [alo, ahi] = wilson(a.reached, a.trials);

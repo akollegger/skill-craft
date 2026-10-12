@@ -52,6 +52,9 @@ export interface FakePlayerOptions {
   unpriced?: boolean;
   /** A per-run cost the provider itself reported, kept beside the computed one. */
   reportedCostUsd?: number;
+  /** Where the run's cost came from, and the rates it was computed with (a pin or a market quote), as the real driver reports them. */
+  costSource?: "provider" | "pin" | "market-quote";
+  priceQuote?: { source: "pin" | "market-quote"; openRouterId: string | null; fetchedAt: string | null; perMillion: { input: number; output: number; cacheRead?: number; cacheWrite?: number }; note?: string };
   /** The backend a routed provider reported for the run. */
   backend?: string;
   /** The retry setting and the attempts that failed, as a player that counts them reports them. */
@@ -196,6 +199,8 @@ export function fakePlayer(options: FakePlayerOptions = {}): AgentDriver {
       modelsUsed: reported && !options.omitModel ? used : [],
       text: mode === "solve" ? "I hold it." : "I could not find it.",
       ...(options.reportedCostUsd === undefined ? {} : { reportedCostUsd: options.reportedCostUsd }),
+      ...(options.costSource === undefined ? {} : { costSource: options.costSource }),
+      ...(options.priceQuote === undefined ? {} : { priceQuote: options.priceQuote }),
       ...(options.backend === undefined ? {} : { backend: options.backend }),
       ...(options.retries === undefined ? {} : { retries: options.retries }),
     };

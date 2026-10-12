@@ -13,7 +13,8 @@ function harness(driver: AgentDriver = fakePlayer({ mode: "solve", goal: GOAL })
   const out: string[] = [];
   const err: string[] = [];
   const dir = mkdtempSync(join(tmpdir(), "skill-craft-cli-"));
-  const run = (argv: string[]) => runAgentCli(["--world", WORLD, "--out", dir, ...argv], { driver, ...(signal ? { signal } : {}), out: (s) => out.push(s), err: (s) => err.push(s) });
+  // No test reaches the network for a price: a model has none unless a test gives it one.
+  const run = (argv: string[]) => runAgentCli(["--world", WORLD, "--out", dir, ...argv], { driver, pricing: async () => undefined, ...(signal ? { signal } : {}), out: (s) => out.push(s), err: (s) => err.push(s) });
   return { run, out, err, dir };
 }
 
@@ -144,5 +145,51 @@ describe("runAgentCli", () => {
     const h = harness(driver);
     expect(await h.run(["--goal", "c", "--runs", "2", "--label", "m"])).toBe(0);
     expect(h.out.join("\n")).toMatch(/warning.*different models.*fake-a.*fake-b/i);
+  });
+});
+
+describe("the price, resolved before any run (spec 007 FR-048)", () => {
+  const QUOTE = { source: "market-quote" as const, openRouterId: "anthropic/claude-haiku-4.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5 } };
+  const cli = (driver: AgentDriver, pricing: (spec: string) => Promise<typeof QUOTE | undefined>) => {
+    const out: string[] = [];
+    const err: string[] = [];
+    const dir = mkdtempSync(join(tmpdir(), "skill-craft-cli-"));
+    const run = (argv: string[]) => runAgentCli(["--world", WORLD, "--out", dir, ...argv], { driver, pricing, out: (s) => out.push(s), err: (s) => err.push(s) });
+    return { run, out, err, dir };
+  };
+
+  it("hands the player the price it resolved for the model, by its canonical spec", async () => {
+    let seen: unknown;
+    let asked = "";
+    const h = cli((o, s) => { seen = o.price; return fakePlayer({ mode: "solve", goal: GOAL })(o, s); }, async (spec) => { asked = spec; return QUOTE; });
+    expect(await h.run(["--goal", "c", "--runs", "1", "--label", "p", "--model", "claude-haiku-4-5-20251001"])).toBe(0);
+    expect(asked).toBe("anthropic/claude-haiku-4-5-20251001");
+    expect(seen).toEqual(QUOTE);
+  });
+
+  it("runs with no price at all when none can be resolved, and a dollar limit is then refused before any run", async () => {
+    let called = 0;
+    const h = cli((o, s) => { called++; return fakePlayer({ mode: "solve", goal: GOAL })(o, s); }, async () => undefined);
+    expect(await h.run(["--goal", "c", "--runs", "1", "--label", "a", "--model", "fireworks/gpt-oss-120b"])).toBe(0);
+    expect(called).toBe(1);
+    const g = cli((o, s) => { called++; return fakePlayer({ mode: "solve", goal: GOAL })(o, s); }, async () => undefined);
+    expect(await g.run(["--goal", "c", "--runs", "1", "--label", "b", "--model", "fireworks/gpt-oss-120b", "--max-usd", "1"])).toBe(1);
+    expect(g.err.join("\n")).toContain("has no price");
+    expect(called).toBe(1); // the second command never reached the player
+    expect(existsSync(join(g.dir, "b"))).toBe(false);
+  });
+
+  it("accepts a dollar limit when a price was resolved, even for a model with no pin", async () => {
+    const h = cli(fakePlayer({ mode: "solve", goal: GOAL }), async () => QUOTE);
+    expect(await h.run(["--goal", "c", "--runs", "1", "--label", "m", "--model", "fireworks/gpt-oss-120b", "--max-usd", "1"])).toBe(0);
+  });
+
+  it("shows the price source in the dry-run plan, and null when there is none", async () => {
+    const priced = cli(fakePlayer({ mode: "solve", goal: GOAL }), async () => QUOTE);
+    expect(await priced.run(["--goal", "c", "--runs", "1", "--dry-run", "--model", "claude-haiku-4-5-20251001"])).toBe(0);
+    expect(JSON.parse(priced.out.join("\n"))[0].options.price).toMatchObject({ source: "market-quote", openRouterId: "anthropic/claude-haiku-4.5" });
+    const none = cli(fakePlayer({ mode: "solve", goal: GOAL }), async () => undefined);
+    expect(await none.run(["--goal", "c", "--runs", "1", "--dry-run", "--model", "fireworks/gpt-oss-120b"])).toBe(0);
+    expect(JSON.parse(none.out.join("\n"))[0].options.price).toBeNull();
   });
 });

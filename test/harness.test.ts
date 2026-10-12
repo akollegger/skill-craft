@@ -149,6 +149,30 @@ describe("cost, and runs with no price", () => {
     expect(scoreOf(none.reports[0]?.dir as string)["model"]).not.toHaveProperty("backend");
   });
 
+  it("writes the cost source and the quote the player reported to score.json, and nothing for a player that reported none", async () => {
+    const quote = { source: "market-quote" as const, openRouterId: "anthropic/claude-haiku-4.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5 } };
+    const with_ = await runExperiment(options({ mode: "solve", costSource: "market-quote", priceQuote: quote }, { runs: 1 }));
+    expect(scoreOf(with_.reports[0]?.dir as string)).toMatchObject({ costSource: "market-quote", priceQuote: quote });
+    const without = await runExperiment(options({ mode: "solve" }, { runs: 1 }));
+    const s = scoreOf(without.reports[0]?.dir as string);
+    expect(s).not.toHaveProperty("costSource");
+    expect(s).not.toHaveProperty("priceQuote");
+  });
+
+  it("names the sources a label's costs came from, and says when they are more than one", () => {
+    const run = (costSource: RunReport["costSource"], costUsd: number | null) => report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd, ...(costSource === undefined ? {} : { costSource }) });
+    expect(aggregate([run("pin", 0.01), run("pin", 0.02)])).toMatchObject({ costSources: ["pin"], mixedCostSources: false });
+    expect(aggregate([run("pin", 0.01), run("market-quote", 0.02), run("provider", 0.03)])).toMatchObject({ costSources: ["market-quote", "pin", "provider"], mixedCostSources: true });
+    // An unpriced run has no source, and a run from before sources were recorded names none.
+    expect(aggregate([run("pin", 0.01), run(null, null), run(undefined, 0.02)])).toMatchObject({ costSources: ["pin"], mixedCostSources: false });
+    expect(aggregate([run(null, null)])).toMatchObject({ costSources: [], mixedCostSources: false });
+  });
+
+  it("counts a run with a provider-reported cost as priced", () => {
+    const a = aggregate([report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: 0.004, costSource: "provider" }), report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: null, costSource: null })]);
+    expect(a).toMatchObject({ pricedRuns: 1, unpricedRuns: 1 });
+  });
+
   it("keeps a provider-reported cost beside the computed one, and only when the provider reports one", async () => {
     const withReported = await runExperiment(options({ mode: "solve", reportedCostUsd: 0.5 }, { runs: 1 }));
     const s = scoreOf(withReported.reports[0]?.dir as string);

@@ -15,6 +15,7 @@ interface RunSpec {
   extra?: number;
   cost?: number;
   unpriced?: boolean; // the model had no price: the run's cost is null
+  source?: "provider" | "pin" | "market-quote"; // where the run's cost came from; absent for a run from before sources were recorded
   loadedAfter?: number | null; // undefined: no skill installed; null: installed, never loaded
   sha?: string;
   note?: string;
@@ -63,6 +64,7 @@ function fixture(summaryOver: Record<string, unknown> = {}) {
         JSON.stringify({
           ended: "stopped",
           costUsd: r.unpriced ? null : (r.cost ?? 0.1),
+          ...(r.source === undefined ? {} : { costSource: r.unpriced ? null : r.source }),
           text: SECRET,
           priorFit: fit,
           ...(r.note ? { promptNote: r.note } : {}),
@@ -646,5 +648,55 @@ describe("the cast (spec 007 FR-040 to FR-043)", () => {
       expect(text).not.toContain("e".repeat(64));
       expect(text).not.toContain("1".repeat(64));
     });
+  });
+});
+
+describe("where a cost came from, in the report (spec 007 FR-049)", () => {
+  const rowOf = (md: string, stage: string) => md.split("\n").find((l) => l.startsWith(`| ${stage} |`)) as string;
+
+  it("names the source beside a row's cost, and calls a quote a market quote", () => {
+    const f = fixture();
+    f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(2, 4, { source: "market-quote" }));
+    f.addLabel("s0", { arm: "S0" }, "iron", STUDENT, "faithful", wins(2, 4, { source: "provider" }));
+    f.addLabel("s1", { arm: "S1" }, "iron", STUDENT, "faithful", wins(2, 4, { source: "pin", loadedAfter: 2 }));
+    f.review();
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(rowOf(md, "calibration")).toContain("$0.40 (0 unpriced) [market quote]");
+    expect(rowOf(md, "S0")).toContain("[provider-reported]");
+    expect(rowOf(md, "S1")).toContain("[pin]");
+  });
+
+  it("says plainly when the report's costs came from more than one source, and does not present them as one figure", () => {
+    const f = fixture();
+    f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(2, 4, { source: "market-quote" }));
+    f.addLabel("s0", { arm: "S0" }, "iron", STUDENT, "faithful", wins(2, 4, { source: "provider" }));
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(md).toContain("more than one source");
+    expect(md).toContain("not one comparable figure");
+  });
+
+  it("says nothing about sources when there is one, or when the runs recorded none", () => {
+    const one = fixture();
+    one.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(2, 4, { source: "pin" }));
+    expect(buildReport({ experiment: one.write(), labels: one.labels })).not.toContain("more than one source");
+    const old = fixture();
+    old.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(2, 4));
+    const md = buildReport({ experiment: old.write(), labels: old.labels });
+    expect(md).not.toContain("more than one source");
+    expect(rowOf(md, "calibration")).not.toMatch(/\[(pin|market quote|provider-reported)/); // the interval has brackets too
+  });
+
+  it("never describes a quote as a charge or a bill", () => {
+    const f = fixture();
+    f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(2, 4, { source: "market-quote" }));
+    const md = buildReport({ experiment: f.write(), labels: f.labels }).toLowerCase();
+    for (const word of ["charged", "billed", "invoice", "you paid"]) expect(md).not.toContain(word);
+    expect(md).toContain("market quote");
+  });
+
+  it("gives an unpriced run no source", () => {
+    const f = fixture();
+    f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 3, { unpriced: true, source: "pin" }));
+    expect(rowOf(buildReport({ experiment: f.write(), labels: f.labels }), "calibration")).toContain("- (3 unpriced)");
   });
 });

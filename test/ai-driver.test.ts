@@ -596,3 +596,85 @@ describe("aiRoleDriver", () => {
     expect(await aiRoleDriver(role())).toMatchObject({ ok: false, reason: "DriverFailed: the role reported provider_unavailable" });
   });
 });
+
+describe("where a run's cost comes from (spec 007 FR-046, FR-048, FR-050)", () => {
+  const QUOTE = { source: "market-quote" as const, openRouterId: "anthropic/claude-haiku-4.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5, cacheRead: 0.1, cacheWrite: 1.25 } };
+  const row = (over: Partial<ProviderRow> = {}): ProviderRow => ({
+    prefix: "scripted", package: new URL("./helpers/scripted-provider.ts", import.meta.url).pathname, factory: "createScripted", keyEnv: "SCRIPTED_API_KEY",
+    shortPattern: /^[a-z0-9-]+$/, expand: (s) => s, normaliseId: (id) => `scripted/${id}`, usageReport: null, settings: { accepts: [] }, callOptions: () => ({}), ...over,
+  });
+  const reportedBy = row({ reportedCost: (meta) => (meta as { scripted?: { cost?: number } } | undefined)?.scripted?.cost });
+  const priced = (result: Result, cost: number): Result => ({ ...result, providerMetadata: { scripted: { cost } } }) as Result;
+  const withRow = async (r: ProviderRow, run: () => Promise<void>) => {
+    PROVIDERS.push(r);
+    try {
+      await run();
+    } finally {
+      PROVIDERS.splice(PROVIDERS.indexOf(r), 1);
+    }
+  };
+
+  it("is computed from a market quote the harness resolved before the run, which the result says it used", async () => {
+    scripted(say("done")); // 12 uncached, 3 out, 110 cache read
+    const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001", price: QUOTE });
+    const r = await aiDriver(opts, recorder);
+    expect(r.costUsd).toBeCloseTo((12 * 1 + 3 * 5 + 110 * 0.1) / 1e6, 12);
+    expect(r).toMatchObject({ costSource: "market-quote", priceQuote: QUOTE });
+  }, 30_000);
+
+  it("falls back to the pin in prices.json when no price was given, and says it is a pin", async () => {
+    scripted(say("done"));
+    const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001" });
+    const r = await aiDriver(opts, recorder);
+    expect(r.costUsd).toBeCloseTo(0.000038, 9);
+    expect(r).toMatchObject({ costSource: "pin", priceQuote: { source: "pin", openRouterId: null, fetchedAt: null, perMillion: { input: 1, output: 5 } } });
+  }, 30_000);
+
+  it("is none for a model with no price, with no source and no quote", async () => {
+    scripted(say("done"));
+    const { opts, recorder } = setup({ model: "fireworks/gpt-oss-120b" });
+    const r = await aiDriver(opts, recorder);
+    expect(r.costUsd).toBeNull();
+    expect(r.costSource).toBeNull();
+    expect(r).not.toHaveProperty("priceQuote");
+  }, 30_000);
+
+  it("is the provider's own figure when it reports one, even with a price, and then no quote is used", async () => {
+    const { scripted: s } = await import("./helpers/scripted-provider.js");
+    await withRow(reportedBy, async () => {
+      s.model = new MockLanguageModelV4({ modelId: "m", doGenerate: [priced(call("c1", "look"), 0.002), priced(say("done"), 0.003)] });
+      const { opts, recorder } = setup({ model: "scripted/m-1", price: { ...QUOTE, perMillion: { input: 100, output: 100 } } });
+      const r = await aiDriver(opts, recorder);
+      expect(r.costUsd).toBeCloseTo(0.005, 9);
+      expect(r).toMatchObject({ costSource: "provider" });
+      expect(r.reportedCostUsd).toBeCloseTo(0.005, 9);
+      expect(r).not.toHaveProperty("priceQuote");
+    });
+  }, 30_000);
+
+  it("is the provider's figure when it reports one and there is no price, so the run counts as priced", async () => {
+    const { scripted: s } = await import("./helpers/scripted-provider.js");
+    await withRow(reportedBy, async () => {
+      s.model = new MockLanguageModelV4({ modelId: "m", doGenerate: [priced(say("done"), 0.004)] });
+      const { opts, recorder } = setup({ model: "scripted/m-1" });
+      expect(await aiDriver(opts, recorder)).toMatchObject({ costUsd: 0.004, costSource: "provider" });
+    });
+  }, 30_000);
+
+  it("is none for a run that never got a response, whatever the price", async () => {
+    sequence_(stalling());
+    const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001", price: QUOTE, limits: { stepTimeoutMs: 300 } });
+    const r = await aiDriver(opts, recorder);
+    expect(r).toMatchObject({ costUsd: null, costSource: null });
+    expect(r).not.toHaveProperty("priceQuote");
+  }, 30_000);
+});
+
+/** A model whose one request never returns until it is aborted. */
+const stalling = () => (options: { abortSignal?: AbortSignal }) =>
+  new Promise<Result>((_, reject) => {
+    const stop = () => reject(options.abortSignal?.reason ?? Object.assign(new Error("aborted"), { name: "AbortError" }));
+    if (options.abortSignal?.aborted) stop();
+    else options.abortSignal?.addEventListener("abort", stop);
+  });
+const sequence_ = (step: ReturnType<typeof stalling>) => (control.model = new MockLanguageModelV4({ modelId: "m", doGenerate: step as never }));

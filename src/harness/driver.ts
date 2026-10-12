@@ -1,3 +1,4 @@
+import type { PriceQuote } from "./pricing.js";
 import type { ModelSettings } from "./providers.js";
 
 /**
@@ -72,6 +73,8 @@ export interface DriverOptions {
   settings?: ModelSettings | undefined;
   /** Limits on a step, a tool call and spend; see `RunLimits`. */
   limits?: RunLimits | undefined;
+  /** The price the run is costed with, resolved before it started (a pin or a market quote). Absent: the driver uses the pin for the model, if any. */
+  price?: PriceQuote | undefined;
   /** Aborting it must end the run promptly. */
   signal: AbortSignal;
   /** A skill to make available to the agent: a local plugin folder, and the skill's `plugin:skill` name. */
@@ -93,6 +96,10 @@ export interface PlayerResult {
   reason?: string | undefined;
   turns: number | null;
   costUsd: number | null;
+  /** Where `costUsd` came from: the provider's own figure, a pin or a market quote; null when there is none. Absent for a player that does not say. */
+  costSource?: "provider" | "pin" | "market-quote" | null | undefined;
+  /** The rates `costUsd` was computed with, for a pin or a quote. Absent when the cost is the provider's or there is none. */
+  priceQuote?: PriceQuote | undefined;
   /** A per-run cost the provider itself reported, in US dollars, kept beside the computed one. Absent when it reports none. */
   reportedCostUsd?: number | undefined;
   /** For a routed provider: the backend (or, sorted and joined by `+`, backends) the responses reported. Absent otherwise. */

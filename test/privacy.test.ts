@@ -139,7 +139,7 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
     const score = JSON.parse(readFileSync(join(out, "q", "001", "score.json"), "utf8")) as Record<string, unknown>;
     expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "limits", "measured", "model", "priorFit", "reportedCostUsd", "score", "settings", "text", "turns"].sort());
     const summary = JSON.parse(readFileSync(join(out, "q", "summary.json"), "utf8")) as { aggregate: Record<string, unknown> };
-    expect(Object.keys(summary.aggregate).sort()).toEqual(["errors", "gaveUp", "meanExtraCalls", "medianCallsToGoal", "mixedModels", "models", "outOfBudget", "pricedRuns", "reached", "runs", "successRate", "totalCostUsd", "unpricedRuns"].sort());
+    expect(Object.keys(summary.aggregate).sort()).toEqual(["costSources", "errors", "gaveUp", "meanExtraCalls", "medianCallsToGoal", "mixedCostSources", "mixedModels", "models", "outOfBudget", "pricedRuns", "reached", "runs", "successRate", "totalCostUsd", "unpricedRuns"].sort());
   });
 });
 
@@ -233,5 +233,17 @@ describe("the conversation file (spec 007 FR-028)", () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
     await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "n", driver: fakePlayer({ mode: "solve", goal: GOAL, turns: false }) });
     expect(Object.keys(filesUnder(out))).not.toContain("n/001/conversation.jsonl");
+  });
+});
+
+describe("the cost source and the quote in a score (spec 007 FR-048)", () => {
+  it("add only costSource and priceQuote to score.json, and the quote holds only an id, a time and numbers", async () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
+    const priceQuote = { source: "market-quote" as const, openRouterId: "anthropic/claude-haiku-4.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5, cacheRead: 0.1, cacheWrite: 1.25 }, note: "tiers ignored" };
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "s", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, costSource: "market-quote", priceQuote }) });
+    const score = JSON.parse(readFileSync(join(out, "s", "001", "score.json"), "utf8")) as Record<string, unknown>;
+    expect(Object.keys(score).sort()).toEqual(["costSource", "costUsd", "ended", "limits", "measured", "model", "priceQuote", "priorFit", "score", "settings", "text", "turns"].sort());
+    expect(Object.keys(score["priceQuote"] as object).sort()).toEqual(["fetchedAt", "note", "openRouterId", "perMillion", "source"]);
+    for (const secret of SECRETS) expect(JSON.stringify(score["priceQuote"])).not.toContain(secret);
   });
 });

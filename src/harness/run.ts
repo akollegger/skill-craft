@@ -18,6 +18,7 @@ import { installSkill, SKILL_PLUGIN, skillName } from "./skill.js";
 import { craftServer } from "./craft-server.js";
 import { canonicalSpec, checkSettings, DEFAULT_MODEL, parseModelSpec, priceFor, type ModelSettings } from "./models.js";
 import { resolveLimits, type ResolvedLimits } from "./ai-options.js";
+import { pinQuote, type PriceQuote } from "./pricing.js";
 
 export const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -41,6 +42,8 @@ export interface AgentRunOptions {
   timeoutMs?: number | undefined;
   /** Limits on a step, a tool call and spend. A dollar cap is refused for a model with no price. */
   limits?: RunLimits | undefined;
+  /** The price the runs are costed with, resolved before the first run (a pin or a market quote). Absent: the model's pin, if it has one. */
+  price?: PriceQuote | undefined;
   /** Aborting it ends the current run and starts no further one. */
   signal?: AbortSignal | undefined;
   /** A skill folder (with a SKILL.md) to make available to the agent. Each run gets its own copy. */
@@ -108,10 +111,10 @@ export interface RecordedSettings {
 }
 
 /** A dollar cap needs a price to compare against; refused before anything is spent, like a setting the provider does not take. */
-function checkLimits(model: string | undefined, limits: RunLimits | undefined): void {
+function checkLimits(model: string | undefined, limits: RunLimits | undefined, price: PriceQuote | undefined): void {
   if (limits?.maxUsd === undefined) return;
   const spec = parseModelSpec(model ?? DEFAULT_MODEL).spec;
-  if (priceFor(spec) === undefined) throw new LimitRefused(spec, "maxUsd");
+  if (price === undefined && priceFor(spec) === undefined) throw new LimitRefused(spec, "maxUsd");
 }
 
 export const recordedSettings = (s: ModelSettings | undefined): RecordedSettings => ({ temperature: s?.temperature ?? null, effort: s?.effort ?? null, thinking: s?.thinking ?? null });
@@ -150,6 +153,10 @@ export interface Aggregate {
   /** Runs with a cost figure, and runs without (a model with no price, or a run that never got a response). */
   pricedRuns: number;
   unpricedRuns: number;
+  /** Where the priced runs' costs came from, sorted; a run with no cost, or from before sources were recorded, names none. */
+  costSources: string[];
+  /** True when the costs came from more than one source, so their total is not one comparable figure. */
+  mixedCostSources: boolean;
   /** Every model any run used, sorted. */
   models: string[];
   /** True when runs used more than one model, so their figures are not one comparable set. */
@@ -164,6 +171,7 @@ export function aggregate(reports: readonly RunReport[]): Aggregate {
   const extras = wins.flatMap((r) => (r.score.extraCalls === null ? [] : [r.score.extraCalls]));
   const models = [...new Set(reports.flatMap((r) => r.model.resolved))].sort();
   const priced = reports.filter((r) => r.costUsd !== null);
+  const costSources = [...new Set(priced.flatMap((r) => (typeof r.costSource === "string" ? [r.costSource] : [])))].sort();
   // A routed provider can serve one model from different backends; runs that reached different backends are not one comparable set.
   const backends = new Set(reports.flatMap((r) => (r.model.backend === undefined ? [] : [r.model.backend])));
   return {
@@ -178,6 +186,8 @@ export function aggregate(reports: readonly RunReport[]): Aggregate {
     totalCostUsd: priced.length === 0 ? null : priced.reduce((sum, r) => sum + (r.costUsd as number), 0),
     pricedRuns: priced.length,
     unpricedRuns: reports.length - priced.length,
+    costSources,
+    mixedCostSources: costSources.length > 1,
     models,
     mixedModels: models.length > 1 || backends.size > 1,
   };
@@ -190,7 +200,7 @@ export function planExperiment(o: AgentRunOptions) {
   const priorFit = priorFitOf(o.world);
   const prompt = buildPrompt(o.goal, o.maxTurns, o.promptNote, o.promptTemplate);
   if (o.settings !== undefined) checkSettings(o.model ?? DEFAULT_MODEL, o.settings); // a setting the provider does not take is refused here, before any spend
-  checkLimits(o.model, o.limits);
+  checkLimits(o.model, o.limits, o.price);
   return Array.from({ length: o.runs }, (_, i) => {
     const dir = runDir(o, i + 1);
     const runLog = resolve(dir, "run.jsonl");
@@ -204,6 +214,8 @@ export function planExperiment(o: AgentRunOptions) {
       model: parseModelSpec(o.model ?? DEFAULT_MODEL).spec,
       settings: recordedSettings(o.settings),
       limits: resolveLimits(o.limits),
+      // The price a real run would be costed with: the one resolved before it, else the model's pin, else none.
+      price: o.price ?? ((p) => (p === undefined ? null : pinQuote(p)))(priceFor(parseModelSpec(o.model ?? DEFAULT_MODEL).spec)),
       maxTurns: o.maxTurns,
       tools: skill ? ["Skill"] : [],
       ...(skill ? { skills: [skill.qualifiedName] } : {}),
@@ -239,7 +251,7 @@ const failedResult = (requested: string | null, reason: string): PlayerResult =>
 const writeScore = (dir: string, r: RunReport): void =>
   writeFileSync(
     join(dir, "score.json"),
-    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, ...(r.retries === undefined ? {} : { retries: r.retries }), ...(r.reportedCostUsd === undefined ? {} : { reportedCostUsd: r.reportedCostUsd }), ...(r.invalidToolCalls === undefined ? {} : { invalidToolCalls: r.invalidToolCalls }), ...(r.limits === undefined ? {} : { limits: r.limits }), text: r.text, score: r.score, measured: r.measured, model: r.model, settings: r.settings, priorFit: r.priorFit, ...(r.promptNote === undefined ? {} : { promptNote: r.promptNote }), ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
+    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, ...(r.retries === undefined ? {} : { retries: r.retries }), ...(r.reportedCostUsd === undefined ? {} : { reportedCostUsd: r.reportedCostUsd }), ...(r.costSource === undefined ? {} : { costSource: r.costSource }), ...(r.priceQuote === undefined ? {} : { priceQuote: r.priceQuote }), ...(r.invalidToolCalls === undefined ? {} : { invalidToolCalls: r.invalidToolCalls }), ...(r.limits === undefined ? {} : { limits: r.limits }), text: r.text, score: r.score, measured: r.measured, model: r.model, settings: r.settings, priorFit: r.priorFit, ...(r.promptNote === undefined ? {} : { promptNote: r.promptNote }), ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
   );
 
 /** Run the agent once against a fresh server, then score and measure it. A failed player is a recorded error. */
@@ -280,7 +292,7 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
   let failure: HarnessError | null = null;
   try {
     result = await driver(
-      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, ...(o.settings === undefined ? {} : { settings: o.settings }), ...(o.limits === undefined ? {} : { limits: o.limits }), signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
+      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, ...(o.settings === undefined ? {} : { settings: o.settings }), ...(o.limits === undefined ? {} : { limits: o.limits }), ...(o.price === undefined ? {} : { price: o.price }), signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
       sink,
     );
   } catch (e) {
@@ -349,7 +361,7 @@ export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; 
   const priorFit = priorFitOf(o.world);
   if (o.skill && !existsSync(join(o.skill, "SKILL.md"))) throw new SkillNotFound(`${o.skill} has no SKILL.md`);
   if (o.settings !== undefined) checkSettings(o.model ?? DEFAULT_MODEL, o.settings); // before any folder is made or any model is called
-  checkLimits(o.model, o.limits);
+  checkLimits(o.model, o.limits, o.price);
   // Refuse before spending anything on a label that has already been used.
   for (let i = 1; i <= o.runs; i++) if (existsSync(runDir(o, i))) throw new RunFolderExists(runDir(o, i));
 

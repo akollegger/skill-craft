@@ -4,6 +4,7 @@ import { generateText, isStepCount, jsonSchema, Output, tool, wrapLanguageModel,
 import { craftServer } from "./craft-server.js";
 import { DriverAborted, type AgentDriver, type PlayerResult } from "./driver.js";
 import { DEFAULT_MODEL, costOf, parseModelSpec, priceFor, type ModelRef, type Tokens } from "./models.js";
+import { pinQuote, type PriceQuote } from "./pricing.js";
 import { findProvider, normaliseReported } from "./providers.js";
 import type { RoleDriver, RoleTokens } from "./role-driver.js";
 import { addRoleTokens, addTokens, classifyEnd, countInvalid, CRAFT_TOOL_PREFIX, droppedSetting, invalidStreak, longRetryAfter, MAX_INVALID_STEPS, MAX_RETRIES, MAX_ROLE_ATTEMPTS, failureCode, NO_TOKENS, overCap, readInstalledSkill, requestStart, requestStop, requestUsage, resolveLimits, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf, toolStop } from "./ai-options.js";
@@ -70,7 +71,10 @@ function failureReason(who: "player" | "role", e: unknown, keyEnv: string | unde
 
 export const aiDriver: AgentDriver = async (opts, sink) => {
   const ref = parseModelSpec(opts.model ?? DEFAULT_MODEL);
-  const price = priceFor(ref.spec);
+  // The price resolved before the run (a pin or a market quote), else the pin for the model, else none.
+  const pin = priceFor(ref.spec);
+  const quote: PriceQuote | undefined = opts.price ?? (pin === undefined ? undefined : pinQuote(pin));
+  const price = quote?.perMillion;
   const row = findProvider(ref.provider);
   const keyEnv = row?.keyEnv;
   const backends = new Set<string>(); // the backends a routed provider reported
@@ -95,10 +99,17 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
   let stopCode: string | undefined; // why the run was ended from inside it: the craft server died, a tool timed out, a streak of invalid calls
   let capHit = false;
   let seenSteps: readonly { toolCalls: readonly { invalid?: boolean | undefined }[] }[] = [];
-  const spent = () => ({
-    turns: completed === 0 ? null : completed,
+  // The cost so far: what the provider reported if it reports one, else the tokens at the price, else none.
+  const costNow = (): number | null => reportedCost ?? costOf(total, price);
+  const spent = () => {
     // No response came back: there is no cost figure to give, and a cost of zero would count the run as priced and free.
-    costUsd: completed === 0 ? null : costOf(total, price),
+    const cost = completed === 0 ? null : costNow();
+    const costSource: PlayerResult["costSource"] = cost === null ? null : reportedCost !== undefined ? "provider" : (quote?.source ?? null);
+    return {
+    turns: completed === 0 ? null : completed,
+    costUsd: cost,
+    costSource,
+    ...(quote !== undefined && (costSource === "pin" || costSource === "market-quote") ? { priceQuote: quote } : {}),
     durationMs: Math.round(performance.now() - started),
     usage: completed === 0 ? null : { inputTokens: total.input, outputTokens: total.output, cacheReadTokens: total.cacheRead, cacheCreationTokens: total.cacheWrite },
     requestedModel: opts.model ?? null,
@@ -108,7 +119,8 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
     ...(backendOf() === undefined ? {} : { backend: backendOf() }),
     retries: { max: MAX_RETRIES, failedAttempts: probe.failedAttempts },
     invalidToolCalls: countInvalid(seenSteps),
-  });
+    };
+  };
   try {
     const tools: ToolSet = await client.tools();
     for (const name of Object.keys(tools)) craftNames.add(name);
@@ -139,7 +151,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
             seenSteps = steps;
             if (stopCode !== undefined) return true;
             if (invalidStreak(steps) >= MAX_INVALID_STEPS) return (stopCode = "tool_loop"), true;
-            if (overCap(total, costOf(total, price), limits)) return (capHit = true);
+            if (overCap(total, costNow(), limits)) return (capHit = true);
             return false;
           },
           ({ steps }) => droppedSetting(steps.at(-1)?.warnings, opts.settings) !== undefined,
