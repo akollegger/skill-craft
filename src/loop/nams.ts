@@ -22,7 +22,17 @@ export interface RunStatus {
   failure?: string | undefined;
 }
 
+/** What the service says of itself, which identifies the deployment that did the work (the commit is the field that does). */
+export interface ServiceVersion {
+  version: string;
+  released: string;
+  commit: string;
+  environment: string;
+}
+
 export interface NamsApi {
+  /** The service's own version. Unauthenticated and not tied to a workspace. */
+  version(): Promise<ServiceVersion>;
   capabilities(ws: string): Promise<unknown>;
   createWorkspace(name: string): Promise<{ id: string }>;
   waitActive(id: string, signal: AbortSignal): Promise<void>;
@@ -65,6 +75,7 @@ export function guarded(inner: NamsApi, guard: WorkspaceGuard): NamsApi {
     return f.call(inner, ws, ...rest);
   };
   return {
+    version: () => inner.version(),
     capabilities: own(inner.capabilities),
     async createWorkspace(name) {
       const created = await inner.createWorkspace(name);
@@ -177,6 +188,21 @@ export function createNamsClient(o: NamsClientOptions): NamsApi {
   }
 
   return {
+    // Sent with neither the key nor a workspace: the service answers it to anyone, and it names no data of ours.
+    async version() {
+      let res: Response;
+      try {
+        res = await doFetch(`${base}/v1/version`, { ...(o.signal ? { signal: o.signal } : {}) });
+      } catch (e) {
+        if (o.signal?.aborted) throw new LoopCancelled();
+        throw new CandidateFailed("the service could not be reached for its version", e);
+      }
+      if (!res.ok) throw new CandidateFailed(`the service answered HTTP ${res.status} to GET /v1/version`);
+      const b = obj(await res.json().catch(() => ({})));
+      const [version, released, commit, environment] = [str(b["version"]), str(b["released"]), str(b["commit"]), str(b["environment"])];
+      if (!version || !released || !commit || !environment) throw new CandidateFailed("the service gave no version");
+      return { version, released, commit, environment };
+    },
     capabilities: (ws) => json("GET", "/v1/skills/capabilities", ws),
     async createWorkspace(name) {
       return o.tools.create(name, o.signal);

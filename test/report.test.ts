@@ -478,3 +478,173 @@ describe("the report command", () => {
     expect(reportCli([], deps)).toBe(1);
   });
 });
+
+describe("the cast (spec 007 FR-040 to FR-043)", () => {
+  const SONNET = "claude-sonnet-5-5";
+  const HAIKU = "claude-haiku-4-5-20251001";
+  const cast = (over: Record<string, unknown> = {}) => ({
+    teacher: { model: SONNET, settings: { thinking: "adaptive", effort: "high" } },
+    student: { model: HAIKU, settings: { thinking: 31999 } },
+    distiller: { service: "nams", critic: { model: SONNET, settings: { thinking: "adaptive", effort: "medium" } }, reviser: { model: SONNET, settings: {} } },
+    ...over,
+  });
+  const withCast = (c: Record<string, unknown> = cast(), over: Record<string, unknown> = {}) => fixture({ models: undefined, cast: c, ...over });
+
+  it("is read in place of `models`: the student's calibration trials give the role proposals and an arm's model resolves through it", () => {
+    const f = withCast(cast(), { roles: undefined });
+    f.addLabel("cal", { stage: "calibration" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(5, 5));
+    f.addLabel("cal-other", { stage: "calibration" }, "wooden", `anthropic/${SONNET}`, "faithful", wins(0, 5)); // the teacher's trials are not the student's
+    expect(buildReport({ experiment: f.write(), labels: f.labels })).toContain("- iron: solved (5/5)");
+    const g = withCast();
+    g.addLabel("s0", { arm: "S0" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(2, 3));
+    expect(buildReport({ experiment: g.write(), labels: g.labels })).toContain("anthropic/claude-haiku-4-5-20251001");
+  });
+
+  it("is read the same as the older `models` form that names the same models", () => {
+    const old = fixture({ models: { teacher: SONNET, student: HAIKU, settings: { [`anthropic/${SONNET}`]: { thinking: "adaptive", effort: "high" }, [`anthropic/${HAIKU}`]: { thinking: 31999 } } } });
+    const now = withCast(cast({ distiller: undefined }));
+    for (const f of [old, now]) f.addLabel("s0", { arm: "S0" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(2, 3));
+    const a = buildReport({ experiment: old.write(), labels: old.labels });
+    const b = buildReport({ experiment: now.write(), labels: now.labels });
+    expect(b).toBe(a);
+    expect(readFileSync(join(old.exp, "summary.json"), "utf8")).toContain('"models"'); // the older file is read, never rewritten
+    expect(a).toContain("- teacher: anthropic/claude-sonnet-5-5 (thinking adaptive, effort high)");
+    expect(a).toContain("- student: anthropic/claude-haiku-4-5-20251001 (thinking 31999)");
+  });
+
+  it("states each role's model and settings, and the distiller's service, critic and reviser", () => {
+    const f = withCast();
+    f.addLabel("s0", { arm: "S0" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(2, 3));
+    const text = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(text).toContain("- teacher: anthropic/claude-sonnet-5-5 (thinking adaptive, effort high)");
+    expect(text).toContain("- student: anthropic/claude-haiku-4-5-20251001 (thinking 31999)");
+    expect(text).toContain("- distiller: nams; critic anthropic/claude-sonnet-5-5 (thinking adaptive, effort medium); reviser anthropic/claude-sonnet-5-5 (unset)");
+  });
+
+  it("lets one model fill every role with different settings, keeps the settings apart and says the roles share it", () => {
+    const f = withCast({
+      teacher: { model: HAIKU, settings: { thinking: 31999 } },
+      student: { model: HAIKU, settings: { thinking: 2048 } },
+      distiller: { service: "nams", critic: { model: HAIKU, settings: {} }, reviser: { model: HAIKU, settings: { temperature: 1 } } },
+    });
+    f.addLabel("s0", { arm: "S0" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(2, 3));
+    const text = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(text).toContain("- teacher: anthropic/claude-haiku-4-5-20251001 (thinking 31999)");
+    expect(text).toContain("- student: anthropic/claude-haiku-4-5-20251001 (thinking 2048)");
+    expect(text).toContain("- shared model: teacher, student, critic, reviser: anthropic/claude-haiku-4-5-20251001");
+  });
+
+  it("says nothing about sharing when every role has its own model", () => {
+    const f = withCast(cast({ distiller: { service: "nams", critic: { model: "fireworks/gpt-oss-120b", settings: {} }, reviser: { model: "fireworks/glm-5p3", settings: {} } } }));
+    f.addLabel("s0", { arm: "S0" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(2, 3));
+    expect(buildReport({ experiment: f.write(), labels: f.labels })).not.toContain("shared model");
+  });
+
+  it("refuses an arm whose runs used a model other than the cast's student", () => {
+    const f = withCast();
+    f.addLabel("s0", { arm: "S0" }, "iron", `anthropic/${SONNET}`, "faithful", wins(2, 3));
+    expect(() => buildReport({ experiment: f.write(), labels: f.labels })).toThrow(ReportRefused);
+  });
+
+  it("refuses a summary that has both a cast and `models`, or neither, and a cast with a misspelt setting", () => {
+    for (const over of [{ models: { teacher: TEACHER, student: STUDENT } }, { cast: undefined }, { cast: cast({ student: { model: HAIKU, settings: { topK: 3 } } }) }]) {
+      const f = withCast(cast(), over);
+      f.addLabel("cal", { stage: "calibration" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(1, 2));
+      expect(() => buildReport({ experiment: f.write(), labels: f.labels })).toThrow(ReportRefused);
+    }
+  });
+
+  describe("and the loop record named by review.json", () => {
+    const sha = "c".repeat(64);
+    const loopRecord = (over: Record<string, unknown> = {}) => ({
+      label: "loop-1",
+      process: { version: "2", commit: "0123456789abcdef0123456789abcdef01234567", dirty: false, changesSha256: null },
+      recordedRuns: [{ label: "001", run: "runs/t0/001", runLogSha256: "1".repeat(64), scoreSha256: "2".repeat(64), models: [`anthropic/${SONNET}`], settings: { temperature: null, effort: "high", thinking: "adaptive" } }],
+      recordingFormat: "conversation",
+      roles: {
+        critic: { requested: SONNET, resolved: [`anthropic/${SONNET}`], settings: { temperature: null, effort: "medium", thinking: "adaptive" } },
+        reviser: { requested: SONNET, resolved: [`anthropic/${SONNET}`], settings: null },
+      },
+      distiller: { service: { name: "nams", version: "1.3.0", released: "2026-10-12", commit: "27263eb242308738644e4fbaa817d3f8fbd31574", environment: "production" } },
+      finalSkillSha256: sha,
+      outcome: "accept",
+      ...over,
+    });
+    const skillArm = (loop: Record<string, unknown> | undefined, reviewOver: Record<string, unknown> = {}, c = cast()) => {
+      const f = withCast(c);
+      f.addLabel("s1", { arm: "S1" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(2, 3, { loadedAfter: 2, sha }));
+      f.write();
+      const path = join(f.root, "loop.json");
+      if (loop !== undefined) writeFileSync(path, JSON.stringify(loop));
+      f.review({ skillSha256: sha, ...(loop === undefined ? {} : { loop: path }), ...reviewOver });
+      return f;
+    };
+
+    it("prints who made the skill: the process and commit, the teacher, the critic and reviser, and the service's version and commit", () => {
+      const f = skillArm(loopRecord());
+      const text = buildReport({ experiment: f.exp, labels: f.labels });
+      expect(text).toContain("Skill made by");
+      expect(text).toContain("process version 2, commit 0123456789ab, tree clean");
+      expect(text).toContain("teacher: anthropic/claude-sonnet-5-5 (thinking adaptive, effort high); 1 run, recording conversation");
+      expect(text).toContain("critic: anthropic/claude-sonnet-5-5 (thinking adaptive, effort medium); reviser: anthropic/claude-sonnet-5-5 (unset)");
+      expect(text).toContain("distiller service: nams 1.3.0, released 2026-10-12, commit 27263eb242308738644e4fbaa817d3f8fbd31574, production");
+    });
+
+    it("says so when the service's version was not known, with the code the record gave", () => {
+      const f = skillArm(loopRecord({ distiller: { service: { name: "nams", unknown: "version_unavailable" } } }));
+      expect(buildReport({ experiment: f.exp, labels: f.labels })).toContain("distiller service: nams, version unknown (version_unavailable)");
+    });
+
+    it("says so when the loop was given a candidate and no service made it", () => {
+      const f = skillArm(loopRecord({ distiller: null }));
+      expect(buildReport({ experiment: f.exp, labels: f.labels })).toContain("distiller service: none recorded");
+    });
+
+    it("prints nothing about the loop when review.json names none", () => {
+      const f = skillArm(undefined);
+      const text = buildReport({ experiment: f.exp, labels: f.labels });
+      expect(text).not.toContain("Skill made by");
+      expect(text).toContain("- teacher:"); // the cast is still stated
+    });
+
+    it("refuses a loop record whose final skill is not the reviewed one, or that never produced one", () => {
+      for (const over of [{ finalSkillSha256: "d".repeat(64) }, { finalSkillSha256: null }]) {
+        const f = skillArm(loopRecord(over));
+        expect(() => buildReport({ experiment: f.exp, labels: f.labels })).toThrow(ReportRefused);
+      }
+    });
+
+    it("refuses a loop record that contradicts the cast: another teacher, critic or reviser, or other settings", () => {
+      const contradictions: Record<string, unknown>[] = [
+        { recordedRuns: [{ ...loopRecord().recordedRuns[0], models: ["fireworks/gpt-oss-120b"] }] },
+        { recordedRuns: [{ ...loopRecord().recordedRuns[0], settings: { temperature: null, effort: "low", thinking: "adaptive" } }] },
+        { roles: { ...loopRecord().roles, critic: { ...loopRecord().roles.critic, requested: "fireworks/glm-5p3" } } },
+        { roles: { ...loopRecord().roles, reviser: { ...loopRecord().roles.reviser, settings: { temperature: 0.5, effort: null, thinking: null } } } },
+      ];
+      for (const over of contradictions) {
+        const f = skillArm(loopRecord(over));
+        expect(() => buildReport({ experiment: f.exp, labels: f.labels }), JSON.stringify(Object.keys(over))).toThrow(ReportRefused);
+      }
+    });
+
+    it("compares a bare Claude id in the loop record with the canonical one in the cast", () => {
+      const f = skillArm(loopRecord({ recordedRuns: [{ ...loopRecord().recordedRuns[0], models: [SONNET] }] }));
+      expect(() => buildReport({ experiment: f.exp, labels: f.labels })).not.toThrow();
+    });
+
+    it("refuses a loop path that does not exist or is not a loop record", () => {
+      const f = skillArm(undefined, { loop: "/no/such/loop.json" });
+      expect(() => buildReport({ experiment: f.exp, labels: f.labels })).toThrow(ReportRefused);
+      const g = skillArm({ not: "a loop" });
+      expect(() => buildReport({ experiment: g.exp, labels: g.labels })).toThrow(ReportRefused);
+    });
+
+    it("holds none of the recording's text, the loop's hashes of the runs or the commit of the changes", () => {
+      const f = skillArm(loopRecord({ process: { version: "2", commit: "0123456789abcdef0123456789abcdef01234567", dirty: true, changesSha256: "e".repeat(64) } }));
+      const text = buildReport({ experiment: f.exp, labels: f.labels });
+      expect(text).toContain("tree had changes");
+      expect(text).not.toContain("e".repeat(64));
+      expect(text).not.toContain("1".repeat(64));
+    });
+  });
+});

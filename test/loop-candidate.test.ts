@@ -275,3 +275,22 @@ describe("recording a run as the model lived it (spec 007 FR-029 to FR-031)", ()
     expect(JSON.stringify(fake.recorded)).not.toContain("Claude Code");
   }, 30_000);
 });
+
+describe("the service's version in the candidate step (spec 007 FR-042)", () => {
+  it("is read while generation runs, after it is requested and before its status is polled, and goes in the outcome", async () => {
+    const fake = new FakeNams({ zip: goodZip(), version: { version: "1.3.0", released: "2026-10-12", commit: "27263eb", environment: "production" } });
+    const r = await obtainCandidate(args(fake, [await run(MIRROR, { item: "c", qty: 1 }, "solve", "a")]).a);
+    expect(r.info.service).toEqual({ name: "nams", version: "1.3.0", released: "2026-10-12", commit: "27263eb", environment: "production" });
+    const order = fake.calls.map((c) => c.method);
+    expect(order.indexOf("version")).toBeGreaterThan(order.indexOf("generateSkill"));
+    expect(order.indexOf("version")).toBeLessThan(order.indexOf("getRun"));
+  }, 30_000);
+
+  it("is recorded as unknown with a fixed code when the call fails, and the step still finishes", async () => {
+    const fake = new FakeNams({ zip: goodZip(), failOn: ["version"] });
+    const r = await obtainCandidate(args(fake, [await run(MIRROR, { item: "c", qty: 1 }, "solve", "a")]).a);
+    expect(r.info.service).toEqual({ name: "nams", unknown: "version_unavailable" });
+    expect(JSON.stringify(r.info)).not.toContain(FAKE_SECRET);
+    expect(r.pkg["SKILL.md"]).toBeDefined();
+  }, 30_000);
+});

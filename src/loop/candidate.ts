@@ -8,7 +8,7 @@ import { basename, join } from "node:path";
 import { CandidateFailed, HarnessError, LoopCancelled, LoopRefused } from "../harness/errors.js";
 import { checkSizes } from "./inputs.js";
 import { packageFromFiles, writePackage, type SkillPackage } from "./package.js";
-import { guarded, WorkspaceGuard, type NamsApi, type RunStatus } from "./nams.js";
+import { guarded, WorkspaceGuard, type NamsApi, type RunStatus, type ServiceVersion } from "./nams.js";
 import { assertSameTask, type Recording } from "./transcript.js";
 import type { ConversationTurn } from "../harness/conversation.js";
 import { readZip } from "./zip.js";
@@ -38,6 +38,9 @@ export interface CandidateArgs {
   maxWaitMs?: number | undefined;
 }
 
+/** The memory service that distilled the skill: its own account of its version, or the fixed code for why that is not known. */
+export type DistillerService = ({ name: "nams" } & ServiceVersion) | { name: "nams"; unknown: "version_unavailable" };
+
 export interface CandidateOutcome {
   pkg: SkillPackage;
   stages: NamsStage[];
@@ -48,6 +51,7 @@ export interface CandidateOutcome {
     conversationIds: string[];
     generation: { runId: string; skillId: string; format: "graph" | "prose"; status: string; gates?: unknown; request: { scope: "conversations"; conversations: number; procedureFormat: "graph" | "prose" } };
     capabilities: unknown;
+    service: DistillerService;
   };
 }
 
@@ -121,9 +125,18 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
 
     await timed("wait-extraction", () => guard(nams.waitExtracted(id, conversationIds, a.signal)));
 
+    let service: DistillerService = { name: "nams", unknown: "version_unavailable" };
     const { runId, run } = await timed("generate", async () => {
       const { runId } = await guard(nams.generateSkill(id, { conversationIds, procedureFormat: a.format }));
       a.out(`generating skill (run ${runId})`);
+      // Read while generation runs, so it names the deployment that did the work. A failure is not a failed loop.
+      service = await guard(nams.version()).then(
+        (v): DistillerService => ({ name: "nams", version: v.version, released: v.released, commit: v.commit, environment: v.environment }),
+        (e: unknown): DistillerService => {
+          if (a.signal.aborted || e instanceof LoopCancelled) throw e;
+          return { name: "nams", unknown: "version_unavailable" };
+        },
+      );
       const deadline = Date.now() + (a.maxWaitMs ?? 15 * 60_000);
       for (;;) {
         const run = await guard(nams.getRun(id, runId));
@@ -150,7 +163,7 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
     outcome = {
       pkg,
       stages,
-      info: { workspace: { id, name }, runs: a.runs.map((r) => r.label), conversationIds, generation: { runId, skillId: run.skillId, format: a.format, status: run.status, gates: run.gates, request }, capabilities },
+      info: { workspace: { id, name }, runs: a.runs.map((r) => r.label), conversationIds, generation: { runId, skillId: run.skillId, format: a.format, status: run.status, gates: run.gates, request }, capabilities, service },
     };
   } catch (e) {
     failure = e;

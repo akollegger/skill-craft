@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, isAbsolute, join, resolve, sep } from "node:path";
 import { LoopRefused } from "../harness/errors.js";
 import { toRepoPath } from "../harness/paths.js";
-import type { NamsStage } from "./candidate.js";
+import type { DistillerService, NamsStage } from "./candidate.js";
 import type { LoopResult, Stage } from "./loop.js";
 import { skillSha256, writePackage } from "./package.js";
 import type { RecordedSettings } from "../harness/run.js";
@@ -34,6 +34,8 @@ export interface RecordOptions {
   recorded?: readonly RecordedRun[] | undefined;
   /** How the recording step wrote the runs, or null when the loop recorded none (a candidate was given). */
   recordingFormat?: string | null | undefined;
+  /** The memory service that made the candidate, named by its version call (FR-042); null when a candidate was given. */
+  distiller?: { service: DistillerService } | null | undefined;
   /** The settings pinned for each role's model, null when none were (FR-035). */
   roleSettings?: { critic?: RecordedSettings | null | undefined; reviser?: RecordedSettings | null | undefined } | undefined;
 }
@@ -107,6 +109,7 @@ export function writeLoopRecord(result: LoopResult, o: RecordOptions): void {
       process: o.process ?? null,
       recordedRuns: o.recorded ?? [],
       recordingFormat: o.recordingFormat ?? null,
+      distiller: o.distiller ?? null,
       rubric: result.rubric,
       roles: {
         critic: { requested: o.models.critic, resolved: resolved("critic"), settings: o.roleSettings?.critic ?? null },

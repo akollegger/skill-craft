@@ -17,6 +17,8 @@ export interface FakeNamsOptions {
   existing?: string[];
   /** The id the created workspace gets. */
   createdId?: string;
+  /** What `version` answers; a default deployment when not given. */
+  version?: { version: string; released: string; commit: string; environment: string };
 }
 
 export interface FakeCall {
@@ -54,6 +56,7 @@ export class FakeNams implements NamsApi {
     }
   }
 
+  async version() { await this.enter("version"); return this.o.version ?? { version: "1.3.0", released: "2026-10-12", commit: "fake-commit", environment: "test" }; }
   async capabilities(ws: string) { await this.enter("capabilities", ws); return { thresholds: { grounding: 0.9, coverage: 0.6 } }; }
   async createWorkspace(name: string) {
     await this.enter("createWorkspace", undefined, { name });

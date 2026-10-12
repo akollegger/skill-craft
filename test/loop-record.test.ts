@@ -260,3 +260,25 @@ describe("the provenance in loop.json (spec 007 FR-033 to FR-037)", () => {
     expect(Object.keys(filesUnder(join(dir, "skill"))).sort()).toEqual(["SKILL.md", "references/provenance.md"].sort());
   });
 });
+
+describe("the distiller in loop.json (spec 007 FR-042)", () => {
+  const read = (dir: string) => JSON.parse(readFileSync(join(dir, "loop.json"), "utf8")) as Record<string, any>;
+  const service = { name: "nams" as const, version: "1.3.0", released: "2026-10-12", commit: "27263eb242308738644e4fbaa817d3f8fbd31574", environment: "production" };
+
+  it("names the service's version, release date, commit and environment", async () => {
+    const r = await loop([verdict("accept", "V1")]);
+    const dir = createLoopFolder(tmp(), "demo", []);
+    writeLoopRecord(r, opts(dir, { distiller: { service } }));
+    expect(read(dir)["distiller"]).toEqual({ service });
+  });
+
+  it("names a service whose version was unknown by the code, and is null when no service made the candidate", async () => {
+    const r = await loop([verdict("accept", "V1")]);
+    const a = createLoopFolder(tmp(), "a", []);
+    writeLoopRecord(r, opts(a, { distiller: { service: { name: "nams", unknown: "version_unavailable" } } }));
+    expect(read(a)["distiller"]).toEqual({ service: { name: "nams", unknown: "version_unavailable" } });
+    const b = createLoopFolder(tmp(), "b", []);
+    writeLoopRecord(r, opts(b));
+    expect(read(b)["distiller"]).toBeNull();
+  });
+});

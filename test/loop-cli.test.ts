@@ -379,3 +379,25 @@ describe("the loop record's provenance, through the command (spec 007)", () => {
     expect(rec.recordingFormat).toBe("conversation");
   });
 });
+
+describe("the service's version, through the command (spec 007 FR-042)", () => {
+  const info = { version: "2", commit: null, dirty: null, changesSha256: null };
+  const zip = () => makeZip([{ name: "craft-thing/SKILL.md", data: skillText("DISTILLED") }]);
+  const base = { namsWait: { pollMs: 1, maxWaitMs: 2000 }, processInfo: () => info, env: { NAMS_API_KEY: "test-key" } };
+
+  it("writes the service block into loop.json when the candidate is distilled from the runs, and none when a candidate was given", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "v1");
+    const distilled = await run(["--runs", a, "--allow-workspace", "--critic-model", "claude-test-critic", "--reviser-model", "claude-test-reviser", "--label", "svc"], [verdict("accept", "V1")], { ...base, nams: new FakeNams({ zip: zip(), version: { version: "1.3.0", released: "2026-10-12", commit: "27263eb", environment: "production" } }) });
+    expect(distilled.code).toBe(0);
+    expect(JSON.parse(readFileSync(join(distilled.loops, "svc", "loop.json"), "utf8")).distiller).toEqual({ service: { name: "nams", version: "1.3.0", released: "2026-10-12", commit: "27263eb", environment: "production" } });
+    const given = await run(["--runs", a, "--candidate", candidateFolder(), "--critic-model", "claude-test-critic", "--reviser-model", "claude-test-reviser", "--label", "given"], [verdict("accept", "V1")], base);
+    expect(JSON.parse(readFileSync(join(given.loops, "given", "loop.json"), "utf8")).distiller).toBeNull();
+  });
+
+  it("writes the code when the version call failed, and the loop still runs", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "v2");
+    const r = await run(["--runs", a, "--allow-workspace", "--critic-model", "claude-test-critic", "--reviser-model", "claude-test-reviser", "--label", "unk"], [verdict("accept", "V1")], { ...base, nams: new FakeNams({ zip: zip(), failOn: ["version"] }) });
+    expect(r.code).toBe(0);
+    expect(JSON.parse(readFileSync(join(r.loops, "unk", "loop.json"), "utf8")).distiller).toEqual({ service: { name: "nams", unknown: "version_unavailable" } });
+  });
+});

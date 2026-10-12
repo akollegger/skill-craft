@@ -255,3 +255,30 @@ describe("aborting reaches every request", () => {
     expect(got).toEqual([{ op: "create", aborted: true }, { op: "list", aborted: false }, { op: "delete", aborted: false }]);
   });
 });
+
+describe("the service's version (spec 007 FR-042)", () => {
+  const make = (answers: Record<string, unknown>, status = 200) => {
+    const s = stub(answers, status);
+    return { ...s, nams: createNamsClient({ key: KEY, baseUrl: "https://nams.test", fetch: s.fetch, tools, pollMs: 1, maxWaitMs: 200 }) };
+  };
+
+  it("reads GET /v1/version without the key or a workspace, and returns the fields that identify the deployment", async () => {
+    const { nams, seen } = make({ "GET /v1/version": { version: "1.3.0", released: "2026-10-12", commit: "27263eb", environment: "production", extra: "ignored" } });
+    expect(await nams.version()).toEqual({ version: "1.3.0", released: "2026-10-12", commit: "27263eb", environment: "production" });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.url).toBe("https://nams.test/v1/version");
+    expect(seen[0]?.headers["Authorization"]).toBeUndefined();
+    expect(seen[0]?.headers["X-Workspace-Id"]).toBeUndefined();
+  });
+
+  it("fails with a fixed message when the answer is not a version, or the call fails", async () => {
+    await expect(make({ "GET /v1/version": { nothing: true } }).nams.version()).rejects.toBeInstanceOf(CandidateFailed);
+    await expect(make({ "GET /v1/version": {} }, 500).nams.version()).rejects.toBeInstanceOf(CandidateFailed);
+  });
+
+  it("is not a call that touches a workspace, so the guard lets it through", async () => {
+    const fake = new FakeNams();
+    const g = guarded(fake, new WorkspaceGuard({ forbidden: ["dev-ws"] }));
+    await expect(g.version()).resolves.toMatchObject({ version: expect.any(String) });
+  });
+});

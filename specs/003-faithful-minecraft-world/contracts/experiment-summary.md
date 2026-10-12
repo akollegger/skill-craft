@@ -42,7 +42,7 @@ without it. JSON.
 }
 ```
 
-_Amended 2026-10-12 (ADR-003 §2.1, spec 007 FR-040): a summary may declare `cast` instead of `models`: `{ "teacher": { "model": "...", "settings": {} }, "student": { ... }, "distiller": { "service": "nams", "critic": { "model": "...", "settings": {} }, "reviser": { ... } } }`. Settings belong to the role, and one model may fill several roles. The `models` form above is still read as the same cast. Not yet implemented._
+_Amended 2026-10-12 (ADR-003 §2.1, spec 007 FR-040): a summary may declare `cast` instead of `models`: `{ "teacher": { "model": "...", "settings": {} }, "student": { ... }, "distiller": { "service": "nams", "critic": { "model": "...", "settings": {} }, "reviser": { ... } } }`. Settings belong to the role, and one model may fill several roles. The `models` form above is still read as the same cast, and a summary gives exactly one of the two. The report prints the cast, and refuses an arm whose runs used a model other than the student's. If `review.json` has a `loop` field (the path of the loop record that made the skill, repository-relative or absolute) the report also checks that record's final skill hash against `skillSha256` and its teacher, critic and reviser (models and settings) against the cast, and prints who made the skill and which service version distilled it._
 
 Rules:
 - `counterpartGoals` maps each goal of the invented counterpart to the faithful goal it stands for (the renamer

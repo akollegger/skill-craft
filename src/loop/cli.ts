@@ -3,7 +3,7 @@ import { HarnessError, isUserError, LoopCancelled, LoopRefused, reasonOf, RunTim
 import { toRepoPath } from "../harness/paths.js";
 import type { RoleDriver } from "../harness/role-driver.js";
 import { checkSizes } from "./inputs.js";
-import { obtainCandidate, type NamsStage } from "./candidate.js";
+import { obtainCandidate, type DistillerService, type NamsStage } from "./candidate.js";
 import { endedLoopResult, runLoop, type LoopResult, type Stage } from "./loop.js";
 import { createMcpWorkspaceTools, createNamsClient, type NamsApi } from "./nams.js";
 import { packageFromFiles, readPackage, type SkillPackage } from "./package.js";
@@ -172,6 +172,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
       let pkg = candidate;
       let stages: NamsStage[] = [];
       let info: unknown;
+      let service: DistillerService | undefined;
       const models = { critic: criticModel, reviser: reviserModel };
       if (pkg === undefined) {
         const baseUrl = env["NAMS_BASE_URL"] || undefined;
@@ -183,6 +184,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
             forbiddenWorkspaceIds: [env["NAMS_WORKSPACE_ID"] ?? ""], ...(deps.namsWait ?? {}),
           });
           ({ pkg, stages, info } = got);
+          service = got.info.service;
           checkSizes(recordings, pkg);
         } catch (e) {
           // The step has already deleted its workspace. The loop ends with nothing to review, and says why.
@@ -211,7 +213,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
         signal: stop.signal,
         ...(deps.now ? { now: deps.now } : {}),
       });
-      writeLoopRecord(result, { dir, label, mode: candidate ? "candidate" : "runs", runs: runDirs, models, stages, ...provenance, ...(info === undefined ? {} : { candidate: info }) });
+      writeLoopRecord(result, { dir, label, mode: candidate ? "candidate" : "runs", runs: runDirs, models, stages, ...provenance, ...(service === undefined ? {} : { distiller: { service } }), ...(info === undefined ? {} : { candidate: info }) });
 
       for (const line of roundLines(result)) deps.out(line);
       if (timedOut) {

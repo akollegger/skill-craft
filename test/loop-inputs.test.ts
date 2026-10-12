@@ -74,3 +74,30 @@ describe("size limits", () => {
     expect(() => checkSizes(recs, candidate())).not.toThrow();
   });
 });
+
+describe("the roles' inputs when one model fills every role (spec 007 FR-044)", () => {
+  // A recording now carries the teacher's conversation, settings and hashes; none of it may reach the critic or the reviser.
+  const lived = {
+    ...recording("001"),
+    conversation: [{ seq: 0, text: "TEACHER-TEXT-MARK", reasoning: "TEACHER-REASONING-MARK", calls: [{ id: "toolu_001_0", tool: "place" }] }],
+    settings: { temperature: null, effort: "TEACHER-SETTING-MARK", thinking: null },
+    runLogSha256: "f".repeat(64),
+    scoreSha256: "9".repeat(64),
+    models: ["anthropic/claude-haiku-4-5-20251001"],
+  };
+  const inputs = { rubric, goals, recordings: [lived], pkg: candidate("CURRENT-TEXT") };
+
+  it("holds neither the teacher's conversation, reasoning, settings or model, nor the hashes of its files", () => {
+    const critic = criticPrompt(inputs);
+    const reviser = reviserPrompt({ ...inputs, verdict: verdict("revise", "V1") });
+    for (const p of [critic, reviser]) {
+      const t = all(p);
+      for (const mark of ["TEACHER-TEXT-MARK", "TEACHER-REASONING-MARK", "TEACHER-SETTING-MARK", "f".repeat(64), "9".repeat(64), "claude-haiku", "anthropic/"]) expect(t, mark).not.toContain(mark);
+      expect(t).toContain(recordingText(lived)); // what it does get is the calls and what came back
+    }
+  });
+
+  it("takes the model nowhere: the same inputs give the same prompt whichever model runs the role", () => {
+    expect(all(criticPrompt(inputs))).toBe(all(criticPrompt({ ...inputs, recordings: [{ ...lived, models: ["fireworks/gpt-oss-120b"] }] })));
+  });
+});
