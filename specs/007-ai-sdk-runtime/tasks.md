@@ -278,7 +278,8 @@ Work the live checks and probes showed was needed, done test-first and recorded 
 - [X] T083 [US8] `src/loop/transcript.ts`, `src/loop/candidate.ts`, `src/loop/nams.ts`: the recording step reads the file and writes the conversation as FR-029 to FR-031 say, and falls back to the earlier shape when the file is absent.
 - [X] T084 [US8] Update `specs/005-critic-loop-harness/contracts/` and `quickstart.md` if they describe the recording, and `AGENTS.md`'s line on the conversation file once it exists.
   - Done 2026-10-12: `nams-seam.md` (the `addStep` signature), `AGENTS.md`, and `design/notes/skill-process.md` (v2, `PROCESS_VERSION` 2). Built and tested with the scripted player and the mock model; no real provider has yet returned reasoning to this code, so what `onStepEnd` reports for Claude's thinking and for gpt-oss is unverified (a few cents on each, to be run with T085).
-- [ ] T085 [US8] FR-032, gated and spending: record new teacher runs, distil twice from the same runs (placeholder steps, then real reasoning) and record the comparison in `design/notes/`. Only on the owner's go-ahead.
+- [X] T085 [US8] FR-032, gated and spending: record new teacher runs, distil twice from the same runs (placeholder steps, then real reasoning) and record the comparison in `design/notes/`. Only on the owner's go-ahead.
+  - Done 2026-10-12, about US$1.25: see `design/notes/distillation-with-reasoning.md`. The real service accepted the per-turn recording and the loop recorded its version and provenance. One pair: the skill distilled with reasoning states the recipe, the one from placeholder steps is the generic routine. Found and fixed two defects on the way (non-string metadata rejected by the service; Sonnet adaptive thinking returning no reasoning).
 
 ---
 
