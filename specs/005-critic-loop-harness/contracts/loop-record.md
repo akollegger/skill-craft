@@ -20,6 +20,8 @@ loops/<label>/
     └── references/provenance.md
 ```
 
+_Amended 2026-10-12: `loop.json` gains the fields of spec 007 FR-033 to FR-035 (process version, commit, run hashes, teacher and role settings, recording format, cost) and still holds no recorded text. The list below is the original._
+
 ## loop.json
 
 ```json

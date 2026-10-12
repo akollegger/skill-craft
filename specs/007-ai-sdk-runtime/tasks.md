@@ -280,6 +280,20 @@ Work the live checks and probes showed was needed, done test-first and recorded 
 
 ---
 
+## Phase 13: User Story 9 - Know how a skill was made (added 2026-10-12, not built)
+
+**Goal**: `loop.json` records how a skill was made, FR-033 to FR-038, and a process version with a changelog says what the procedure was. Decided in ADR-003 §2.6 (amended). It needs nothing from the memory service's team, and its recording-format field becomes `conversation` once Phase 12 exists.
+
+**Independent Test**: scripted roles and a scripted service produce a record with every field, no recorded text in it, and the changelog guard fails for an unlisted version.
+
+- [ ] T086 [P] [US9] Tests first: `test/loop-record.test.ts` (every field of FR-033 to FR-035 present: process version, commit, dirty flag and hash, run hashes and teacher model and settings, recording format, distiller request, gates and capabilities, role models and settings, cost, round and final hashes), `test/process.test.ts` (the constant has a changelog entry, and a version with none fails), `test/privacy.test.ts` (no recorded text, reasoning or key in `loop.json`, and nothing written inside the accepted skill's folder).
+- [ ] T087 [US9] `src/loop/process.ts` (the version constant) and `design/notes/skill-process.md` (the changelog): v1 is the loop as spec 005 built it, with placeholder-step recording; say what the next version (per-turn reasoning, Phase 12) will change. State the bump rule from FR-036 in the note.
+- [ ] T088 [US9] `src/loop/record.ts`, `src/loop/cli.ts`: write the new fields into `loop.json`; the commit and the changes' hash come through an injected function so tests do not run git.
+- [ ] T089 [US9] `src/loop/candidate.ts`, `src/loop/transcript.ts`: carry each run's hashes, teacher model and settings (from `score.json`) and the recording format to the record, and the roles' settings from the loop's options.
+- [ ] T090 [US9] Update `specs/005-critic-loop-harness/contracts/loop-record.md` for the new fields, and document in `AGENTS.md` and the quickstart how a student run's skill hash finds its record (`grep` the `skillSha256` and `finalSha256` fields of `loops/*/loop.json`).
+
+---
+
 ## Dependencies and order
 
 - **Phase 1** first. **Phase 2** blocks everything: the table and canonical names.

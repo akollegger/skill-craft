@@ -225,6 +225,32 @@ as the model saw them, and nothing the harness concluded about the run.
 
 ---
 
+### User Story 9 - Know how a skill was made (Priority: P2)
+
+*(Added 2026-10-12; ADR-003 §2.6, amended.)* The experiment runner, or a reader of the results, takes a skill and finds
+out what process produced it: which recordings, which teacher and settings, how the distiller was asked, which roles
+reviewed it with which settings, and which version of the procedure and the code ran. Two skills made by different
+procedures can be told apart and compared.
+
+**Why this priority**: A skill arm's result is only interpretable against the skill's provenance. Today the loop record
+names the roles' models and the rubric but not the recordings' content, the roles' settings or the code, so a skill's origin
+cannot be reconstructed from it. P2 because skills can be made and tried without it.
+
+**Independent Test**: Run the loop with scripted roles and a scripted memory service, then read `loop.json`: every field
+named below is present and none holds recorded text; change the process version without a changelog entry and the test fails.
+
+**Acceptance Scenarios**:
+
+1. **Given** a finished loop, **When** its record is read, **Then** it names the process version, the commit and whether the
+   tree had changes, each recorded run with hashes of its log and score and its teacher's model and settings, the recording
+   format, the distiller's request, gates and capabilities, each role's model and settings, and each round's and the final skill's hash.
+2. **Given** a student run that installed a skill, **When** its skill hash is searched for among the loop records, **Then** it
+   finds the record that produced it.
+3. **Given** a change to the process version with no changelog entry, **When** the tests run, **Then** they fail.
+4. **Given** any loop record, **When** it is searched for recorded text, reasoning or a key, **Then** none is found.
+
+---
+
 ### Edge Cases
 
 - A provider substitutes another model for the one requested, mid-experiment.
@@ -340,6 +366,22 @@ as the model saw them, and nothing the harness concluded about the run.
 - **FR-032**: The effect of real reasoning on distillation SHOULD be measured: distil twice from the same recorded runs, once
   with placeholder steps and once with real reasoning, and compare the two skills. This is a gated check that spends on teacher
   runs and the memory service, and it stays outside the first build.
+- **FR-033**: A loop's record MUST name the process version, the git commit and whether the tree had changes (with a hash of
+  the changes when it did), so a skill can be tied to the code that made it.
+- **FR-034**: The record MUST name each recorded run with a hash of its `run.jsonl` and `score.json`, the teacher's canonical
+  model, provider and pinned settings, and the recording format (placeholder steps, or per-turn reasoning once FR-028 to
+  FR-031 exist), and the candidate step's distiller request, the gates it returned and the service's capabilities response.
+- **FR-035**: The record MUST name each role's requested and resolved model and its pinned settings, and what the loop spent
+  (tokens and cost, unpriced stated as such), besides the rubric's version and hash and each round's hashes it already holds.
+- **FR-036**: The process version MUST be one constant in the repository, and a changelog in `design/notes/` MUST have an entry
+  for it saying what that version means. A test MUST fail when the constant has no entry. Bump it when what is recorded, what the
+  distiller is asked, the rubric or roles' instructions, the number of rounds or the roles' pinned settings change, and not for a
+  change in no behaviour.
+- **FR-037**: The record MUST hold hashes, settings and identifiers only, never recorded text, a role's free text, reasoning or a
+  key, and the privacy test MUST cover it. It lives in `loops/<label>/loop.json`, never inside the accepted skill's folder, so a
+  student that is given the skill is not given its provenance.
+- **FR-038**: A student run that installs a skill already stores the skill's hash; the documents MUST say how that hash finds the
+  loop record that produced it.
 - **FR-018**: No key MUST appear in any file, log, trace, score, summary, reason or command line, and agent
   text and reasoning MUST NOT be written to any of them (constitution Principle VI; ADR-002 §2.3).
 
@@ -383,6 +425,7 @@ as the model saw them, and nothing the harness concluded about the run.
 - **SC-011**: A search of the overview, agent guidance and specs 002 and 005 for the previous runtime and the
   removed recording flag finds only mentions marked as history.
 - **SC-014**: A scripted run recorded through the scripted memory service produces a conversation with its messages, a step per tool-calling turn and every call, with no harness-derived content; the privacy test passes with the conversation file in place.
+- **SC-015**: A loop run with scripted roles and a scripted service writes a record with every field FR-033 to FR-035 names, the privacy test finds no recorded text in it, and the changelog guard fails for a version with no entry.
 - **SC-012**: The live checks together cost under US$10, and no key appears in any file the feature writes.
 - **SC-013**: The faithful world's calibration is rerun and its results recorded with the runtime named, for under
   US$5, and each goal's role (gap, solved or ambiguous) is stated under the unchanged rule.
