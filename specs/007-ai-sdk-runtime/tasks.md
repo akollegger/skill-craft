@@ -263,7 +263,8 @@ Work the live checks and probes showed was needed, done test-first and recorded 
 - [X] T076 `src/harness/ai-driver.ts`: step and tool timeouts, caps and output ceiling, fail-fast on a long retry-after, `server_lost`, `tool_loop`, `output_limit`, partial usage on abort.
 - [X] T077 `src/harness/run.ts`, `src/harness/cli.ts`, `src/harness/errors.ts`, `scripts/run-agent.ts`: keep a driver's partial result under the timeout or cancel reason, `--step-timeout-seconds`, `--tool-timeout-seconds`, `--max-output-tokens`, `--max-total-tokens`, `--max-usd`, `limits` and `invalidToolCalls` in `score.json`, `LimitRefused` for a dollar cap on an unpriced model.
 - [X] T078 Docs: this spec, research R12, ADR-005 Consequences and an amendment, `AGENTS.md`, `design/notes/operational-robustness.md`.
-- [ ] T079 Live check (a few cents on Haiku, only on the owner's go-ahead): a 2,000-token cap ends a real run as a budget stop, and a one-second step timeout ends one as `step_timeout` with its cost recorded, with no craft server left running.
+- [X] T079 Live check (a few cents on Haiku, only on the owner's go-ahead): a 2,000-token cap ends a real run as a budget stop, and a one-second step timeout ends one as `step_timeout` with its cost recorded, with no craft server left running.
+  - Done 2026-10-12, US$0.08: see `design/notes/live-check-operational-limits.md`. A 2,000-token cap ended a real run as a budget stop; a one-second step timeout ended one as `step_timeout`; no craft server was left. It found and fixed one defect (a run with no response recorded a cost of zero). The tool timeout and a dead server were not run live.
 
 ## Phase 12: User Story 8 - Record a run as the model lived it (added 2026-10-12; T080 to T084 built, T085 not run)
 
