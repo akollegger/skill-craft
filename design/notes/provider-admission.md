@@ -11,7 +11,7 @@ spike (`spikes/fireworks/log.md`, step 2) and are confirmed here through the har
 |---|---|
 | Tool calls | `claude-haiku-4-5-20251001` called `look` and `inventory` together in one turn, then answered. All seven craft tools are reachable |
 | Schema answers | critic and reviser answers both parsed against the real schemas (cost about US$0.005 each) |
-| Reasoning | no separate reasoning field on Haiku 4.5 (thinking is off by default) |
+| Reasoning | with thinking on (budget 31,999, as calibrated), reasoning came back on the **first turn only** of a six-turn run (215 characters); the five later turns, which called tools, returned none and held only text (checked 2026-10-12, one run, about US$0.02). With thinking off there is none. Whether interleaved thinking would return it every turn was not tried |
 | Usage fields | `input`, `noCache`, `cacheRead`, `cacheWrite` and `out` reported; cache fields were 0 in the probe because it does not set the cache option (a real run does: 94% cache reads, T037) |
 | Model that answered | reported as `claude-haiku-4-5-20251001`, recorded `anthropic/claude-haiku-4-5-20251001` |
 | Usage report | none used. The table's `usageReport` is null, so the billing check does not apply |
@@ -37,7 +37,7 @@ the table does not know.
 |---|---|
 | Tool calls | `gpt-oss-120b` called the tools one per turn and answered; `glm-5p3` called two at once (spike). All seven craft tools are reachable |
 | Schema answers | critic and reviser answers both parsed (`gpt-oss-120b`); `nemotron-lightning-3p5-30b-a3b` and `glm-5p3` returned valid JSON in the spike |
-| Reasoning | arrives in a separate field and is counted, never stored (`reasoning` tokens reported; 55 on the first turn of the probe) |
+| Reasoning | `gpt-oss-120b` returned reasoning on **every** tool-calling turn of a six-turn run (14 to 219 characters, terse) and no text on those turns (checked 2026-10-12, one run). Other Fireworks models were not checked |
 | Usage fields | `input`, `noCache`, `cacheRead` and `out` reported; no cache-write figure (recorded as zero, as the trace holds it); cache reads grow turn to turn without being asked for |
 | Model that answered | reported as `accounts/fireworks/models/gpt-oss-120b`, recorded `fireworks/gpt-oss-120b` |
 | Usage report | `firectl billing get-usage`: tokens per model and API key; no per-model cost. The harness's counts matched it exactly over about 1.95M prompt tokens (spike) and again in the baseline batch |
