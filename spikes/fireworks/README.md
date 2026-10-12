@@ -111,15 +111,19 @@ The probes here are how a provider enters the harness's provider table (`src/har
    provider says answered. It counts text and reasoning and prints neither.
 2. **Probe the schemas.** `pnpm dev spikes/fireworks/probe-schema.ts <provider>/<model>` runs a critic and a reviser call through
    the harness's role driver with the real schemas and reports whether each answer parsed.
-3. **Record the findings** in `design/notes/provider-admission.md`: tool calls, schema answers, the settings the provider refused
-   (temperature, effort, thinking), how reasoning arrives (and whether it must be sent back between turns), the usage fields
+3. **Probe the reasoning.** `pnpm dev spikes/fireworks/probe-reasoning.ts worlds/generated/forge-7.json glirol <provider>/<model> [--settings <file>]`
+   plays one short run, capped at 60,000 tokens, through the harness's own path and reports, per turn, the characters of text and of
+   reasoning that reached the conversation file and the tools called, then the state a recording would give it (`returned`, `partial`
+   or `none`). It prints counts only and deletes the run folder. A model may reason on every turn, on the first only, or not at all.
+4. **Record the findings** in `design/notes/provider-admission.md`: tool calls, schema answers, the settings the provider refused
+   (temperature, effort, thinking), how reasoning arrives (every turn, first only or none, and whether it must be sent back between turns), the usage fields
    reported, and whether the provider has a usage report.
-4. **Check the billing** where the provider has a usage report: `reconcile.ts snapshot`, run a batch, `reconcile.ts compare`, and
+5. **Check the billing** where the provider has a usage report: `reconcile.ts snapshot`, run a batch, `reconcile.ts compare`, and
    require the harness's token counts to equal the billed ones. A provider with no usage report is admitted without this step. The
    check is a procedure a person runs and records; the harness does not enforce it.
-5. **Add the row.** The package in `package.json`, one row in the table, the key's name in `.env.example`, and price entries in
+6. **Add the row.** The package in `package.json`, one row in the table, the key's name in `.env.example`, and price entries in
    `prices.json`. Nothing else changes.
-6. **A router** (one model name served from several backends) is admitted only with its backend pinned in the row: fallbacks off,
+7. **A router** (one model name served from several backends) is admitted only with its backend pinned in the row: fallbacks off,
    the order fixed, and a `backend(meta)` hook that reads the backend a response reports. Without that the table refuses it.
 
 Keys come from the environment (`set -a; source ./.env; set +a`). The probes read only whether a key variable is set, never its value.

@@ -175,7 +175,7 @@ const NO_REASONING_TURN = "No reasoning was returned for this turn.";
 const NO_REASONING_RUN = "No reasoning was recorded for this run.";
 
 /** How much of a conversation's tool-calling turns came with reasoning from the provider. */
-function reasoningState(turns: readonly ConversationTurn[]): "returned" | "partial" | "none" {
+export function reasoningState(turns: readonly ConversationTurn[]): "returned" | "partial" | "none" {
   const calling = turns.filter((t) => t.calls.length > 0);
   const given = calling.filter((t) => t.reasoning.trim() !== "").length;
   return given === 0 ? "none" : given === calling.length ? "returned" : "partial";
