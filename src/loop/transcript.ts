@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -9,6 +10,7 @@ import { createCraftServer } from "../mcp/server.js";
 import { loadWorld } from "../sim/loader.js";
 import { canonical } from "../trace/measure.js";
 import { canonicalSpec } from "../harness/models.js";
+import type { RecordedSettings } from "../harness/run.js";
 
 export interface RecordedCall {
   seq: number;
@@ -34,10 +36,16 @@ export interface Recording {
   /** The models that ran, from the run's score. */
   models: string[];
   prompt: string;
+  /** Hashes of the run's log and score as they were read, and the settings the run recorded (null for a run that recorded none), for the loop's record. */
+  runLogSha256: string;
+  scoreSha256: string;
+  settings: RecordedSettings | null;
   calls: RecordedCall[];
   callCount: number;
   finalAnswer: string;
 }
+
+const sha256 = (path: string): string => createHash("sha256").update(readFileSync(path)).digest("hex");
 
 const readJson = <T>(path: string): T => JSON.parse(readFileSync(path, "utf8")) as T;
 
@@ -64,6 +72,7 @@ async function replay(runDir: string, label: string): Promise<Recording> {
     measured?: { trace?: string };
     score?: { goal?: { item: string; qty: number } };
     model?: { requested?: string | null; resolved?: string[] };
+    settings?: RecordedSettings;
   }>(join(runDir, "score.json"));
   if (score.measured?.trace !== "matched") throw new ReplayFailed("the run's trace does not match its log");
   const goal = score.score?.goal;
@@ -114,6 +123,9 @@ async function replay(runDir: string, label: string): Promise<Recording> {
     // A bare Claude id in an earlier run is read as anthropic/<id>; the file is not rewritten.
     models: (score.model?.resolved?.length ? score.model.resolved : score.model?.requested ? [score.model.requested] : []).map(canonicalSpec),
     prompt: readFileSync(join(runDir, "prompt.txt"), "utf8"),
+    runLogSha256: sha256(join(runDir, "run.jsonl")),
+    scoreSha256: sha256(join(runDir, "score.json")),
+    settings: score.settings ?? null,
     calls,
     callCount: calls.length,
     finalAnswer: score.text ?? "",

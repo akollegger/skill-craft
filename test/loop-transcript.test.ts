@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -31,6 +32,23 @@ describe("replayRun", () => {
     expect(rec.calls.every((c) => c.output.length > 0)).toBe(true);
     expect(rec.calls.at(-1)?.crafted).toBeDefined();
     expect(typeof rec.finalAnswer).toBe("string");
+  });
+
+  it("carries the hashes of the run's log and score and the settings it ran under, for the loop's record", async () => {
+    const run = await made("solve", "h");
+    const rec = await replayRun(run, "001");
+    const sha = (f: string) => createHash("sha256").update(readFileSync(join(run, f))).digest("hex");
+    expect(rec.runLogSha256).toBe(sha("run.jsonl"));
+    expect(rec.scoreSha256).toBe(sha("score.json"));
+    expect(rec.settings).toEqual({ temperature: null, effort: null, thinking: null }); // the scripted player pinned none
+  });
+
+  it("reads a run made before settings were recorded as having none recorded", async () => {
+    const run = await made("solve", "old");
+    const score = JSON.parse(readFileSync(join(run, "score.json"), "utf8"));
+    delete score.settings;
+    writeFileSync(join(run, "score.json"), JSON.stringify(score));
+    expect((await replayRun(run, "001")).settings).toBeNull();
   });
 
   it("marks a refusal as refused, with the engine's own error code", async () => {

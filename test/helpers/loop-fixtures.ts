@@ -13,6 +13,9 @@ export function recording(label: string, calls = 4, goal = { item: "thing", qty:
     world: "worlds/test.json",
     models: ["claude-test-teacher"],
     prompt: `Your goal: end up holding one ${goal.item}. (run ${label} prompt)`,
+    runLogSha256: label.padEnd(64, "0"),
+    scoreSha256: label.padEnd(64, "1"),
+    settings: null,
     calls: Array.from({ length: calls }, (_, i) => ({
       seq: i + 1,
       tool: i === calls - 1 ? "craft" : "place",

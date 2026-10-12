@@ -34,7 +34,7 @@ async function run(args: string[], script: ScriptedAnswer[] = [], deps: Partial<
   const out: string[] = [];
   const err: string[] = [];
   const role = fakeRole(script);
-  const code = await runCriticLoopCli(["--out", loops, ...args], { role: role.driver, env: {}, out: (l) => out.push(l), err: (l) => err.push(l), ...deps });
+  const code = await runCriticLoopCli(["--out", loops, ...args], { role: role.driver, env: {}, processInfo: () => ({ version: "1", commit: null, dirty: null, changesSha256: null }), out: (l) => out.push(l), err: (l) => err.push(l), ...deps });
   return { code, out, err, role, loops };
 }
 
@@ -329,3 +329,53 @@ describe("the candidate step's typed errors and a call-free plan", () => {
   });
 });
 
+describe("the loop record's provenance, through the command (spec 007)", () => {
+  const info = { version: "1", commit: "1".repeat(40), dirty: false, changesSha256: null };
+  const zip = () => makeZip([{ name: "craft-thing/SKILL.md", data: skillText("DISTILLED") }]);
+  const base = { namsWait: { pollMs: 1, maxWaitMs: 2000 }, processInfo: () => info };
+  const loopJson = (loops: string, label: string) => JSON.parse(readFileSync(join(loops, label, "loop.json"), "utf8"));
+
+  it("writes the process, the runs with their hashes and settings, and no recording format for a given candidate", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "p1");
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--critic-model", "fireworks/gpt-oss-120b", "--reviser-model", "fireworks/gpt-oss-120b", "--label", "prov"], [verdict("accept", "V1")], base);
+    expect(r.code).toBe(0);
+    const rec = loopJson(r.loops, "prov");
+    expect(rec.process).toEqual(info);
+    expect(rec.recordedRuns).toHaveLength(1);
+    expect(rec.recordedRuns[0].runLogSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(rec.recordedRuns[0].scoreSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(rec.recordedRuns[0].settings).toEqual({ temperature: null, effort: null, thinking: null });
+    expect(rec.recordingFormat).toBeNull(); // a candidate was given, so this loop recorded nothing
+    expect(rec.roles.critic.settings).toBeNull();
+  });
+
+  it("records the format the recording step wrote, and the request made to the distiller, when the candidate is distilled from the runs", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "p2");
+    const r = await run(["--runs", a, "--allow-workspace", "--critic-model", "claude-test-critic", "--reviser-model", "claude-test-reviser", "--label", "prov2"], [verdict("accept", "V1")], { ...base, nams: new FakeNams({ zip: zip() }), env: { NAMS_API_KEY: "test-key" } });
+    expect(r.code).toBe(0);
+    const rec = loopJson(r.loops, "prov2");
+    expect(rec.recordingFormat).toBe("placeholder");
+    expect(rec.candidate.generation.request).toEqual({ scope: "conversations", conversations: 1, procedureFormat: "prose" });
+  });
+
+  it("records a pinned setting for a role by its model, and null for a role with none", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "p3");
+    const file = join(mkdtempSync(join(tmpdir(), "skill-craft-set-")), "s.json");
+    writeFileSync(file, JSON.stringify({ "fireworks/gpt-oss-120b": { temperature: 0.2 } }));
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--critic-model", "fireworks/gpt-oss-120b", "--reviser-model", "claude-haiku-4-5-20251001", "--settings", file, "--label", "prov3"], [verdict("accept", "V1")], base);
+    expect(r.code).toBe(0);
+    const rec = loopJson(r.loops, "prov3");
+    expect(rec.roles.critic.settings).toEqual({ temperature: 0.2, effort: null, thinking: null });
+    expect(rec.roles.reviser.settings).toBeNull();
+  });
+
+  it("writes the same provenance for a loop that ended before any role ran", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "p4");
+    const r = await run(["--runs", a, "--allow-workspace", "--critic-model", "claude-test-critic", "--reviser-model", "claude-test-reviser", "--label", "prov4"], [], { ...base, nams: new FakeNams({ failOn: ["generateSkill"] }), env: { NAMS_API_KEY: "test-key" } });
+    expect(r.code).toBe(1);
+    const rec = loopJson(r.loops, "prov4");
+    expect(rec.process).toEqual(info);
+    expect(rec.recordedRuns).toHaveLength(1);
+    expect(rec.recordingFormat).toBe("placeholder");
+  });
+});

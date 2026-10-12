@@ -10,7 +10,10 @@ import { LoopRefused } from "../harness/errors.js";
 import { toRepoPath } from "../harness/paths.js";
 import type { NamsStage } from "./candidate.js";
 import type { LoopResult, Stage } from "./loop.js";
-import { writePackage } from "./package.js";
+import { skillSha256, writePackage } from "./package.js";
+import type { RecordedSettings } from "../harness/run.js";
+import { addRoleTokens } from "../harness/ai-options.js";
+import type { ProcessInfo } from "./process.js";
 
 export interface RecordOptions {
   /** The folder made by `createLoopFolder`. */
@@ -25,10 +28,28 @@ export interface RecordOptions {
   stages?: ReadonlyArray<Stage | NamsStage> | undefined;
   /** What the candidate step produced: run ids, the format, the service's thresholds. Runs mode only. */
   candidate?: unknown;
+  /** Which procedure and which code ran (FR-033); null in the record when not given. */
+  process?: ProcessInfo | null | undefined;
+  /** Each recorded run with the hashes of its log and score, its models and its settings (FR-034). */
+  recorded?: readonly RecordedRun[] | undefined;
+  /** How the recording step wrote the runs, or null when the loop recorded none (a candidate was given). */
+  recordingFormat?: string | null | undefined;
+  /** The settings pinned for each role's model, null when none were (FR-035). */
+  roleSettings?: { critic?: RecordedSettings | null | undefined; reviser?: RecordedSettings | null | undefined } | undefined;
+}
+
+/** A recorded run as the loop's record names it: hashes and identifiers, never what the run held. */
+export interface RecordedRun {
+  label: string;
+  run: string;
+  runLogSha256: string;
+  scoreSha256: string;
+  models: string[];
+  settings: RecordedSettings | null;
 }
 
 /** A run folder as recorded: repository-relative inside the repository, and only its name outside it (an absolute path holds a user name). */
-const runPath = (path: string): string => {
+export const runPath = (path: string): string => {
   const p = toRepoPath(path);
   return isAbsolute(p) ? `(outside the repository)/${basename(path)}` : p;
 };
@@ -47,6 +68,14 @@ export function createLoopFolder(out: string, label: string, runs: readonly stri
   if (existsSync(dir)) throw new LoopRefused(`${toRepoPath(dir)} already exists; choose a new --label`);
   mkdirSync(dir, { recursive: true });
   return dir;
+}
+
+/** What the roles spent: tokens where reported, the cost of the stages that have a price, and how many had none. */
+function spendOf(result: LoopResult) {
+  const priced = result.stages.filter((s) => s.costUsd !== null);
+  let tokens = { input: null, output: null, cacheRead: null, cacheCreation: null } as ReturnType<typeof addRoleTokens>;
+  for (const s of result.stages) tokens = addRoleTokens(tokens, s.tokens);
+  return { costUsd: priced.length === 0 ? null : priced.reduce((sum, s) => sum + (s.costUsd as number), 0), pricedStages: priced.length, unpricedStages: result.stages.length - priced.length, tokens };
 }
 
 export function writeLoopRecord(result: LoopResult, o: RecordOptions): void {
@@ -75,7 +104,16 @@ export function writeLoopRecord(result: LoopResult, o: RecordOptions): void {
       label: o.label,
       mode: o.mode,
       runs: o.runs.map(runPath),
+      process: o.process ?? null,
+      recordedRuns: o.recorded ?? [],
+      recordingFormat: o.recordingFormat ?? null,
       rubric: result.rubric,
+      roles: {
+        critic: { requested: o.models.critic, resolved: resolved("critic"), settings: o.roleSettings?.critic ?? null },
+        reviser: { requested: o.models.reviser, resolved: resolved("reviser"), settings: o.roleSettings?.reviser ?? null },
+      },
+      spend: spendOf(result),
+      finalSkillSha256: result.outcome === "accept" && result.final ? skillSha256(result.final) : null,
       models: {
         critic: { requested: o.models.critic, resolved: resolved("critic") },
         reviser: { requested: o.models.reviser, resolved: resolved("reviser") },

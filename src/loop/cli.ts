@@ -7,7 +7,9 @@ import { obtainCandidate, type NamsStage } from "./candidate.js";
 import { endedLoopResult, runLoop, type LoopResult, type Stage } from "./loop.js";
 import { createMcpWorkspaceTools, createNamsClient, type NamsApi } from "./nams.js";
 import { packageFromFiles, readPackage, type SkillPackage } from "./package.js";
-import { createLoopFolder, writeLoopRecord } from "./record.js";
+import { createLoopFolder, runPath, writeLoopRecord, type RecordOptions } from "./record.js";
+import { currentProcessInfo, RECORDING_FORMAT, type ProcessInfo } from "./process.js";
+import { recordedSettings } from "../harness/run.js";
 import { loadRubric } from "./rubric.js";
 import { assertSameTask, recordingsChars, replayRun, type Recording } from "./transcript.js";
 import { existsSync } from "node:fs";
@@ -25,6 +27,8 @@ export interface LoopCliDeps {
   signal?: AbortSignal | undefined;
   env?: Record<string, string | undefined> | undefined;
   now?: (() => number) | undefined;
+  /** Which procedure and code ran. Default: read from git. Tests pass a fixed answer. */
+  processInfo?: (() => ProcessInfo) | undefined;
   out: (line: string) => void;
   err: (line: string) => void;
 }
@@ -125,6 +129,19 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
       if (pinned !== undefined) checkSettings(model, pinned);
     }
 
+    // What the record says about how this skill is made (spec 007 FR-033 to FR-035): hashes, settings and identifiers only.
+    const roleSettings = (model: string) => {
+      const pinned = settings?.[canonicalSpec(model)];
+      return pinned === undefined ? null : recordedSettings(pinned);
+    };
+    const provenance: Pick<RecordOptions, "process" | "recorded" | "recordingFormat" | "roleSettings"> = {
+      process: (deps.processInfo ?? currentProcessInfo)(),
+      recorded: recordings.map((r) => ({ label: r.label, run: runPath(r.runDir), runLogSha256: r.runLogSha256, scoreSha256: r.scoreSha256, models: r.models, settings: r.settings })),
+      // A given candidate means this loop recorded nothing; otherwise the candidate step writes the runs in the current format.
+      recordingFormat: candidateFolder === undefined ? RECORDING_FORMAT : null,
+      roleSettings: { critic: roleSettings(criticModel), reviser: roleSettings(reviserModel) },
+    };
+
     const rubric = loadRubric();
     const candidate = candidateFolder === undefined ? undefined : readPackage(candidateFolder);
     if (recordingsChars(recordings) > 0) checkSizes(recordings, candidate ?? packageFromFiles({ "SKILL.md": "---\nname: placeholder\ndescription: d\n---\nbody\n" }));
@@ -171,7 +188,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
           // The step has already deleted its workspace. The loop ends with nothing to review, and says why.
           if (!(e instanceof HarnessError)) throw e; // every typed error from this step ends the loop with a record
           const cancelled = e instanceof LoopCancelled || stop.signal.aborted;
-          writeLoopRecord(endedLoopResult(rubric, reasonOf(e), { failed: !cancelled, cancelled }), { dir, label, mode: "runs", runs: runDirs, models });
+          writeLoopRecord(endedLoopResult(rubric, reasonOf(e), { failed: !cancelled, cancelled }), { dir, label, mode: "runs", runs: runDirs, models, ...provenance });
           if (timedOut) deps.err(reasonOf(new RunTimedOut(timeoutMs)));
           else deps.err(reasonOf(e));
           deps.out(`files: ${toRepoPath(dir)}`);
@@ -194,7 +211,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
         signal: stop.signal,
         ...(deps.now ? { now: deps.now } : {}),
       });
-      writeLoopRecord(result, { dir, label, mode: candidate ? "candidate" : "runs", runs: runDirs, models, stages, ...(info === undefined ? {} : { candidate: info }) });
+      writeLoopRecord(result, { dir, label, mode: candidate ? "candidate" : "runs", runs: runDirs, models, stages, ...provenance, ...(info === undefined ? {} : { candidate: info }) });
 
       for (const line of roundLines(result)) deps.out(line);
       if (timedOut) {

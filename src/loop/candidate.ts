@@ -45,7 +45,7 @@ export interface CandidateOutcome {
     workspace: { id: string; name: string };
     runs: string[];
     conversationIds: string[];
-    generation: { runId: string; skillId: string; format: "graph" | "prose"; status: string; gates?: unknown };
+    generation: { runId: string; skillId: string; format: "graph" | "prose"; status: string; gates?: unknown; request: { scope: "conversations"; conversations: number; procedureFormat: "graph" | "prose" } };
     capabilities: unknown;
   };
 }
@@ -137,7 +137,8 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
       }
     });
 
-    const generation = { runId, skillId: run.skillId ?? null, format: a.format, status: run.status, failure: run.failure ?? null, gates: run.gates ?? null, capabilities };
+    const request = { scope: "conversations" as const, conversations: conversationIds.length, procedureFormat: a.format };
+    const generation = { runId, skillId: run.skillId ?? null, format: a.format, request, status: run.status, failure: run.failure ?? null, gates: run.gates ?? null, capabilities };
     // Beside the package folder, not in it: the archive is untrusted and may hold a file of the same name.
     writeFileSync(join(a.loopDir, "generation.json"), `${JSON.stringify(generation, null, 2)}\n`);
     if (classify(run) === "failed") {
@@ -153,7 +154,7 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
     outcome = {
       pkg,
       stages,
-      info: { workspace: { id, name }, runs: a.runs.map((r) => r.label), conversationIds, generation: { runId, skillId: run.skillId, format: a.format, status: run.status, gates: run.gates }, capabilities },
+      info: { workspace: { id, name }, runs: a.runs.map((r) => r.label), conversationIds, generation: { runId, skillId: run.skillId, format: a.format, status: run.status, gates: run.gates, request }, capabilities },
     };
   } catch (e) {
     failure = e;

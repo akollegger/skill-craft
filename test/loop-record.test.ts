@@ -7,7 +7,7 @@ import { REPO } from "../src/harness/paths.js";
 import { installSkill } from "../src/harness/skill.js";
 import { runLoop, type LoopInput, type LoopResult } from "../src/loop/loop.js";
 import { hasCitation, readPackage, skillSha256 } from "../src/loop/package.js";
-import { createLoopFolder, writeLoopRecord, type RecordOptions } from "../src/loop/record.js";
+import { createLoopFolder, writeLoopRecord, type RecordedRun, type RecordOptions } from "../src/loop/record.js";
 import { fakeRole, type ScriptedAnswer } from "./helpers/fake-role.js";
 import { candidate, recording, revision, rubric, verdict } from "./helpers/loop-fixtures.js";
 
@@ -173,5 +173,90 @@ describe("run paths outside the repository", () => {
     const loopJson = JSON.parse(readFileSync(join(dir, "loop.json"), "utf8"));
     expect(loopJson.runs).toEqual(["(outside the repository)/my-run-001", "runs/faithful-1-t0-stone/001"]);
     expect(readFileSync(join(dir, "loop.json"), "utf8")).not.toContain(tmpdir());
+  });
+});
+
+describe("the provenance in loop.json (spec 007 FR-033 to FR-037)", () => {
+  const recorded: RecordedRun[] = [
+    { label: "001", run: "runs/t0/001", runLogSha256: "a".repeat(64), scoreSha256: "b".repeat(64), models: ["anthropic/claude-sonnet-5-5"], settings: { temperature: null, effort: "medium", thinking: "adaptive" } },
+    { label: "002", run: "runs/t0/002", runLogSha256: "c".repeat(64), scoreSha256: "d".repeat(64), models: ["anthropic/claude-sonnet-5-5"], settings: null },
+  ];
+  const provenance = (over: Partial<RecordOptions> = {}): Partial<RecordOptions> => ({
+    process: { version: "1", commit: "f".repeat(40), dirty: true, changesSha256: "e".repeat(64) },
+    recorded,
+    recordingFormat: "placeholder",
+    roleSettings: { critic: { temperature: null, effort: "medium", thinking: "adaptive" }, reviser: null },
+    ...over,
+  });
+  const read = (dir: string) => JSON.parse(readFileSync(join(dir, "loop.json"), "utf8")) as Record<string, any>;
+
+  it("names the process version, the commit, whether the tree had changes and a hash of them", async () => {
+    const r = await loop([verdict("accept", "V1")]);
+    const dir = createLoopFolder(tmp(), "demo", []);
+    writeLoopRecord(r, opts(dir, provenance()));
+    expect(read(dir)["process"]).toEqual({ version: "1", commit: "f".repeat(40), dirty: true, changesSha256: "e".repeat(64) });
+  });
+
+  it("names each recorded run with the hashes of its log and score, its models and its settings, and the recording format", async () => {
+    const r = await loop([verdict("accept", "V1")]);
+    const dir = createLoopFolder(tmp(), "demo", []);
+    writeLoopRecord(r, opts(dir, provenance()));
+    const rec = read(dir);
+    expect(rec["recordedRuns"]).toEqual(recorded);
+    expect(rec["recordingFormat"]).toBe("placeholder");
+  });
+
+  it("names each role's requested and resolved model and its pinned settings, null when none were pinned", async () => {
+    const r = await loop([verdict("accept", "V1")]);
+    const dir = createLoopFolder(tmp(), "demo", []);
+    writeLoopRecord(r, opts(dir, provenance()));
+    const roles = read(dir)["roles"];
+    expect(roles["critic"]).toMatchObject({ requested: "claude-test-critic", settings: { effort: "medium", thinking: "adaptive" } });
+    expect(roles["reviser"]).toMatchObject({ requested: "claude-test-reviser", settings: null });
+    expect(Array.isArray(roles["critic"].resolved)).toBe(true);
+  });
+
+  it("totals what the roles spent, and says how many stages had no cost figure", async () => {
+    const r = await loop([verdict("revise", "V1"), revision("TEXT-1"), verdict("accept", "V2")]);
+    const dir = createLoopFolder(tmp(), "demo", []);
+    writeLoopRecord(r, opts(dir, provenance()));
+    const spend = read(dir)["spend"];
+    expect(spend).toHaveProperty("costUsd");
+    expect(spend).toHaveProperty("tokens");
+    expect(spend.pricedStages + spend.unpricedStages).toBe(r.stages.length);
+    const priced = r.stages.filter((s) => s.costUsd !== null);
+    expect(spend.pricedStages).toBe(priced.length);
+    expect(spend.costUsd).toBe(priced.length === 0 ? null : priced.reduce((a, s) => a + (s.costUsd as number), 0));
+  });
+
+  it("names the final skill's hash when the loop accepted, and null when it did not", async () => {
+    const accepted = await loop([verdict("accept", "V1")]);
+    const dirA = createLoopFolder(tmp(), "a", []);
+    writeLoopRecord(accepted, opts(dirA, provenance()));
+    expect(read(dirA)["finalSkillSha256"]).toBe(skillSha256(accepted.final!));
+    const rejected = await loop([verdict("reject", "V1")]);
+    const dirR = createLoopFolder(tmp(), "r", []);
+    writeLoopRecord(rejected, opts(dirR, provenance()));
+    expect(read(dirR)["finalSkillSha256"]).toBeNull();
+  });
+
+  it("stays a record of the loop when no provenance is given, naming each field as unknown", async () => {
+    const r = await loop([verdict("accept", "V1")]);
+    const dir = createLoopFolder(tmp(), "demo", []);
+    writeLoopRecord(r, opts(dir));
+    const rec = read(dir);
+    expect(rec["process"]).toBeNull();
+    expect(rec["recordedRuns"]).toEqual([]);
+    expect(rec["recordingFormat"]).toBeNull();
+    expect(rec["roles"]["critic"].settings).toBeNull();
+  });
+
+  it("holds no recorded text and no role text, and writes nothing into the accepted skill's folder but the skill", async () => {
+    const r = await loop([verdict("revise", "V1-MARK"), revision("TEXT-1"), verdict("accept", "V2-MARK")]);
+    const dir = createLoopFolder(tmp(), "demo", []);
+    writeLoopRecord(r, opts(dir, provenance()));
+    const text = readFileSync(join(dir, "loop.json"), "utf8");
+    for (const mark of ["output of call", "I hold the thing", "prompt)", "V1-MARK", "V2-MARK", "reason V1", "Add the chain"]) expect(text).not.toContain(mark);
+    expect(Object.keys(filesUnder(join(dir, "skill"))).sort()).toEqual(["SKILL.md", "references/provenance.md"].sort());
   });
 });
