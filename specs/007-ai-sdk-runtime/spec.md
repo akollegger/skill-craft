@@ -472,7 +472,7 @@ that does not depend on upkeep and a plain way of being absent. P3 because token
   MUST say so and MUST NOT present them as one comparable figure. A quote MUST be labelled as a market quote, never as a charge.
 - **FR-050**: A run with a provider-reported cost and no price entry MUST count as priced, from `costSource: provider`.
 - **FR-051**: The aliases MUST be data and not code, hold ids and no rates, and the alias for each Claude model in use MUST be chosen by
-  checking OpenRouter's entries against the model (`claude-sonnet-5` and `claude-sonnet-5.5` differ in cache-read rate). A Fireworks model
+  checking OpenRouter's entries against the model (`claude-sonnet-5` and `claude-sonnet-5.5` are different models, with different cache-read rates). A Fireworks model
   is aliased only where its OpenRouter id is unambiguous; the others stay unpriced.
 - **FR-018**: No key MUST appear in any file, log, trace, score, summary, reason or command line, and agent
   text and reasoning MUST NOT be written to any of them (constitution Principle VI; ADR-002 §2.3).

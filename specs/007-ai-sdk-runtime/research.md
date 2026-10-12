@@ -171,7 +171,9 @@ per token as strings (`prompt`, `completion`, `input_cache_read`, `input_cache_w
 variants as separate entries, and for some models long-prompt `overrides`. Its Claude rates match the table's (Haiku 4.5: $1, $5, $0.10 read,
 $1.25 write). For `openai/gpt-oss-120b` it lists 25 endpoints with input rates from $0.03 to $0.35 per million tokens and none from Fireworks, so
 the model-level figure is a marketplace price and not any host's. `claude-sonnet-5` and `claude-sonnet-5.5` are separate entries with different
-cache-read rates ($0.20 and $0.10), so mapping `anthropic/claude-sonnet-5-5` needs a decision, not a rule.
+cache-read rates ($0.20 and $0.10), so mapping `anthropic/claude-sonnet-5-5` needs a check, not a rule. *(Checked the same day, T101: they are different models,
+Sonnet 5 and its successor Sonnet 5.5, so `claude-sonnet-5-5` maps to `anthropic/claude-sonnet-5.5`. Our hand-entered pin gave it a cache-read rate of $0.20, a guess
+of 0.1x of input, where the list says $0.10; which is right is not known here.)*
 
 **Rationale**: hand-entered rates go stale and a provider's own rates are on web pages, not in APIs, so nothing should depend on them; a market
 quote needs no upkeep except an id mapping that changes slowly, and it is the comparable figure for an experiment about a cheaper model. It is
