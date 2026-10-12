@@ -77,6 +77,16 @@ describe("pinned settings", () => {
     expect(anthropic().callOptions({ thinking: 31999 }, "claude-haiku-4-5-20251001").providerOptions?.["anthropic"]).toMatchObject({ thinking: { type: "enabled", budgetTokens: 31999 } });
   });
 
+  it("ask for interleaved thinking when a thinking budget is pinned, so the model reasons between tool results and not only before the first call", () => {
+    const opts = anthropic().callOptions({ thinking: 31999 }, "claude-haiku-4-5-20251001");
+    expect(opts.headers).toEqual({ "anthropic-beta": "interleaved-thinking-2025-05-14" });
+  });
+
+  it("send no beta header for adaptive thinking, thinking off, or no thinking setting", () => {
+    for (const s of [{ thinking: "adaptive" as const }, { thinking: "off" as const }, {}]) expect(anthropic().callOptions(s, "claude-x").headers).toBeUndefined();
+    expect(findProvider("fireworks")?.callOptions({ temperature: 0.2 }, "m").headers).toBeUndefined();
+  });
+
   it("are checked against a model's row before anything is spent, with a fixed message naming the model and the setting", () => {
     expect(() => checkSettings("claude-sonnet-5-5", { temperature: 0 })).toThrow(SettingRefused);
     expect(() => checkSettings("claude-sonnet-5-5", { temperature: 0 })).toThrow("model 'anthropic/claude-sonnet-5-5' does not take setting 'temperature'");

@@ -182,6 +182,18 @@ describe("the prompt cache", () => {
     for (const c of model().doGenerateCalls) expect(c.providerOptions?.["anthropic"]).toEqual({ cacheControl: { type: "ephemeral" } });
   }, 30_000);
 
+  it("sends the interleaved-thinking beta with a pinned thinking budget, on every call, and not without one", async () => {
+    scripted(call("c1", "look"), say("done"));
+    const budgeted = setup({ model: "claude-haiku-4-5-20251001", settings: { thinking: 31999 } });
+    await aiDriver(budgeted.opts, budgeted.recorder);
+    expect(model().doGenerateCalls).toHaveLength(2);
+    for (const c of model().doGenerateCalls) expect(c.headers?.["anthropic-beta"]).toContain("interleaved-thinking-2025-05-14");
+    scripted(say("done"));
+    const plain = setup({ model: "claude-haiku-4-5-20251001" });
+    await aiDriver(plain.opts, plain.recorder);
+    expect(model().doGenerateCalls[0]?.headers?.["anthropic-beta"]).toBeUndefined();
+  }, 30_000);
+
   it("is not asked for on a Fireworks model, which caches without being asked", async () => {
     scripted(say("done"));
     const { opts, recorder } = setup({ model: "fireworks/gpt-oss-120b" });

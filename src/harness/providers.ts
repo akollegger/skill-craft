@@ -21,6 +21,8 @@ export interface ModelSettings {
 /** What a row turns a model's settings into: the call's own temperature and the provider's option block. */
 export interface CallOptions {
   temperature?: number;
+  /** Request headers, such as a provider's beta flags. */
+  headers?: Record<string, string>;
   providerOptions?: Record<string, Record<string, JSONValue>>;
 }
 
@@ -98,6 +100,9 @@ const anthropic: ProviderRow = {
   // every turn; without this the spike's Claude runs read 0% of their input from the cache. Pinned settings ride beside it.
   callOptions: (s) => ({
     ...(s.temperature === undefined ? {} : { temperature: s.temperature }),
+    // With a thinking budget a model reasons once, before its first tool call, unless this beta lets it think between tool
+    // results too. The runtime this one replaced sent it, and a model's reasoning on every turn is what a recording needs.
+    ...(typeof s.thinking === "number" ? { headers: { "anthropic-beta": "interleaved-thinking-2025-05-14" } } : {}),
     providerOptions: {
       anthropic: {
         cacheControl: { type: "ephemeral" },
