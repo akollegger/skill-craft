@@ -38,7 +38,8 @@ export interface NamsApi {
   waitActive(id: string, signal: AbortSignal): Promise<void>;
   listWorkspaceIds(): Promise<string[]>;
   deleteWorkspace(id: string): Promise<void>;
-  addConversation(ws: string, metadata: object): Promise<{ id: string }>;
+  /** The service takes metadata as an object of strings only; the type says so. */
+  addConversation(ws: string, metadata: Record<string, string>): Promise<{ id: string }>;
   addMessage(ws: string, conv: string, role: "user" | "assistant", content: string): Promise<void>;
   /** One reasoning step: the action taken and the reasoning behind it, as the model gave it. */
   addStep(ws: string, conv: string, step: { action: string; reasoning: string }): Promise<{ id: string }>;

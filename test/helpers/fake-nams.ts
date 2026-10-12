@@ -68,7 +68,15 @@ export class FakeNams implements NamsApi {
   async waitActive(id: string, signal: AbortSignal) { await this.enter("waitActive", id, undefined, signal); }
   async listWorkspaceIds() { await this.enter("listWorkspaceIds"); return [...this.accounts]; }
   async deleteWorkspace(id: string) { await this.enter("deleteWorkspace", id); this.deleted.push(id); this.accounts.delete(id); }
-  async addConversation(ws: string, metadata: object) { await this.enter("addConversation", ws, metadata); const id = `conv-${++this.convCount}`; this.recorded.push({ ws, conv: id, kind: "conversation", detail: metadata }); return { id }; }
+  /** The service's schema for a conversation's metadata: an object whose every value is a string (anything else is a 400). */
+  async addConversation(ws: string, metadata: Record<string, string>) {
+    await this.enter("addConversation", ws, metadata);
+    const bad = Object.entries(metadata).find(([, v]) => typeof v !== "string");
+    if (bad !== undefined) throw new Error(`HTTP 400: metadata.${bad[0]} must be a string`);
+    const id = `conv-${++this.convCount}`;
+    this.recorded.push({ ws, conv: id, kind: "conversation", detail: metadata });
+    return { id };
+  }
   async addMessage(ws: string, conv: string, role: "user" | "assistant", content: string) { await this.enter("addMessage", ws, { conv, role }); this.recorded.push({ ws, conv, kind: "message", detail: { role, content } }); }
   async addStep(ws: string, conv: string, step: { action: string; reasoning: string }) { await this.enter("addStep", ws, { conv, ...step }); const id = `step-${this.recorded.length}`; this.recorded.push({ ws, conv, kind: "step", detail: { ...step, id } }); return { id }; }
   async addToolCall(ws: string, call: RecordedCall, stepId: string) { await this.enter("addToolCall", ws, { stepId }); this.recorded.push({ ws, conv: "", kind: "toolCall", detail: { ...call, stepId } }); }

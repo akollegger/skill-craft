@@ -250,12 +250,25 @@ describe("recording a run as the model lived it (spec 007 FR-029 to FR-031)", ()
     const all = await written(lived([turn("", "r1", [0, "help"], [1, "place"], [2, "craft"]), turn("FINAL-ANSWER", "")]));
     expect(all.recorded.find((r) => r.kind === "conversation")!.detail).toMatchObject({
       source: "critic-loop", run: "001", recordingFormat: "conversation", reasoning: "returned",
-      model: "anthropic/claude-haiku-4-5-20251001", provider: "anthropic", settings: { temperature: null, effort: null, thinking: 31999 },
+      model: "anthropic/claude-haiku-4-5-20251001", provider: "anthropic", settings: '{"temperature":null,"effort":null,"thinking":31999}',
     });
     const some = await written(lived([turn("", "r1", [0, "help"]), turn("", "", [1, "place"], [2, "craft"]), turn("FINAL-ANSWER", "")]));
     expect((some.recorded.find((r) => r.kind === "conversation")!.detail as any).reasoning).toBe("partial");
     const none = await written(lived([turn("", "", [0, "help"], [1, "place"], [2, "craft"]), turn("FINAL-ANSWER", "")]));
     expect((none.recorded.find((r) => r.kind === "conversation")!.detail as any).reasoning).toBe("none");
+  }, 60_000);
+
+  it("sends metadata whose every value is a string, as the service requires, for a recording with settings, with none, and with several models", async () => {
+    const withSettings = await written(lived([turn("", "r", [0, "help"], [1, "place"], [2, "craft"]), turn("FINAL-ANSWER", "")]));
+    const noSettings = await written(lived([turn("", "r", [0, "help"], [1, "place"], [2, "craft"]), turn("FINAL-ANSWER", "")], { settings: null }));
+    const several = await written(lived([turn("", "r", [0, "help"], [1, "place"], [2, "craft"]), turn("FINAL-ANSWER", "")], { models: ["anthropic/claude-sonnet-5-5", "fireworks/gpt-oss-120b"] }));
+    const none = await written(lived([], { conversation: null, models: [], settings: null }));
+    for (const f of [withSettings, noSettings, several, none]) for (const v of Object.values(f.recorded.find((r) => r.kind === "conversation")!.detail as Record<string, unknown>)) expect(typeof v).toBe("string");
+    expect((noSettings.recorded.find((r) => r.kind === "conversation")!.detail as any).settings).toBe("none recorded");
+    const d = several.recorded.find((r) => r.kind === "conversation")!.detail as any;
+    expect(d.model).toBe("anthropic/claude-sonnet-5-5+fireworks/gpt-oss-120b");
+    expect(d.provider).toBe("anthropic+fireworks");
+    expect((none.recorded.find((r) => r.kind === "conversation")!.detail as any).model).toBe("unknown");
   }, 60_000);
 
   it("holds nothing the harness concluded: no score, solver path, extra-call count or label of which calls were needed", async () => {

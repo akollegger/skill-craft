@@ -228,7 +228,7 @@ describe("pinned settings", () => {
     await aiDriver(opts, recorder);
     const call0 = model().doGenerateCalls[0];
     expect(call0?.temperature).toBe(0);
-    expect(call0?.providerOptions?.["anthropic"]).toEqual({ cacheControl: { type: "ephemeral" }, thinking: { type: "adaptive" }, effort: "high" });
+    expect(call0?.providerOptions?.["anthropic"]).toEqual({ cacheControl: { type: "ephemeral" }, thinking: { type: "adaptive", display: "summarized" }, effort: "high" });
   }, 30_000);
 
   it("are left out when none are given, so the provider's own defaults apply", async () => {

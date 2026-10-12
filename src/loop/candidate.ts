@@ -194,18 +194,21 @@ export function reasoningState(turns: readonly ConversationTurn[]): "returned" |
   return given === 0 ? "none" : given === calling.length ? "returned" : "partial";
 }
 
-/** What the conversation says about who wrote it, so a skill traces to the model and settings behind its recording. */
-function conversationMetadata(rec: Recording): Record<string, unknown> {
-  const model = rec.models[0] ?? null;
+/**
+ * What the conversation says about who wrote it, so a skill traces to the model and settings behind its recording. The service
+ * takes a conversation's metadata as an object of strings only (any other value is a 400), so the models and settings are
+ * written as strings: `+`-joined names, and the settings as JSON text, as a tool call's input is.
+ */
+function conversationMetadata(rec: Recording): Record<string, string> {
+  const providers = [...new Set(rec.models.map((m) => m.split("/")[0] as string))];
   return {
     source: "critic-loop",
     run: rec.label,
     recordingFormat: rec.conversation === null ? "placeholder" : "conversation",
     reasoning: rec.conversation === null ? "not-kept" : reasoningState(rec.conversation),
-    model,
-    models: rec.models,
-    provider: model === null ? null : model.split("/")[0],
-    settings: rec.settings,
+    model: rec.models.length === 0 ? "unknown" : rec.models.join("+"),
+    provider: providers.length === 0 ? "unknown" : providers.join("+"),
+    settings: rec.settings === null ? "none recorded" : JSON.stringify(rec.settings),
   };
 }
 
