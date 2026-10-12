@@ -149,10 +149,14 @@ zebra-space project with the RFC requirement removed.
   `AgentDriver` seam, and `src/harness/ai-options.ts` holds the mapping that is tested without them. Keys come from
   the environment (`ANTHROPIC_API_KEY`, `FIREWORKS_API_KEY`). A model is `<provider>/<model>` (a bare `claude-<id>` is shorthand for `anthropic/<id>`) and every record holds the canonical form; the providers are
   rows of the table in `src/harness/providers.ts`, and adding one is a row and its package (`spikes/fireworks/README.md`).
-  Cost is provider-dependent and may be unavailable (ADR-005 §2.4, amended 2026-10-12): tokens are what is measured, and a dollar figure is recorded only
-  when one can be had, from a cost the provider reports, else a pin in `prices.json` (optional, hand-entered, may be stale), else (once built, spec 007
-  FR-046 to FR-051) a market quote from OpenRouter's public model list for a model with an alias, else it is null and never zero. Today only the pin and
-  `reportedCostUsd` exist. A quote is a marketplace price and not a bill. Totals state how many runs were unpriced. Do not hand-enter rates to make a number appear. A skill is offered as a `Skill` tool that returns its text,
+  Cost is provider-dependent and may be unavailable (ADR-005 §2.4, amended 2026-10-12; spec 007 FR-046 to FR-051): tokens are what is measured, and a dollar figure is
+  recorded only when one can be had, from the first of a cost the provider reports, a pin in `prices.json` (an operator's choice; none ship, since a hand-entered rate
+  goes stale), or a market quote from OpenRouter's public model list for a model with an alias in `src/harness/price-aliases.json`, else it is null and never zero.
+  `costSource` and, for a pin or a quote, `priceQuote` (the OpenRouter id, when the list was read, the rates) are recorded in `score.json`. The CLIs resolve the price before
+  any run or role call (`src/harness/pricing.ts`, which caches the list in `.cache/`); the drivers look none up, and `--max-usd` is refused when none resolves. A quote is a
+  marketplace price and not a record of any host's rate, and the report labels it so. To add an alias, check the OpenRouter entry against the model (name, description,
+  canonical slug) and never match by name; `spikes/fireworks/probe-prices.ts` shows what a model would be costed with. Totals state how many runs were unpriced and when
+  their costs came from different sources. Do not hand-enter rates to make a number appear. A skill is offered as a `Skill` tool that returns its text,
   not as a native Claude Code skill, so the comparison is the same for every provider. `--step-timeout-seconds`, `--tool-timeout-seconds`, `--max-output-tokens`, `--max-total-tokens` and `--max-usd` limit a run (a dollar cap is refused for a model with no price; a token cap works for every model); a run that times out or is cancelled keeps the spend it had, and the driver ends a run with a fixed code when a step or tool stalls (`step_timeout`, `tool_timeout`), the craft server dies (`server_lost`) or five steps in a row make only invalid tool calls (`tool_loop`). `--settings <file>` pins a model's thinking, effort and temperature (refused before any spend where the table knows the model does not take one); `score.json` records them (`null` is unset) beside `retries` (the stated maximum and the attempts that failed, kept out of the trace) and, when a provider reports them, `reportedCostUsd` and `model.backend`. The driver reports the trace
   events in the shape `TraceRecorder` has always read, so `trace.jsonl` is unchanged, and tests use the scripted player in `test/helpers/fake-player.ts`.
 - Time, tokens and cost live in `trace.jsonl` and `score.json`, measured by the harness. Never add a clock

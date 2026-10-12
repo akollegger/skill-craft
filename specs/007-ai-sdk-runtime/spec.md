@@ -337,14 +337,10 @@ that does not depend on upkeep and a plain way of being absent. P3 because token
 - **FR-005**: Each run MUST record the model it asked for and the model the provider's response reports, and an
   experiment whose runs differ in the model that ran, or for a routed provider in the backend that served it, MUST be
   flagged as mixing models.
-- **FR-006**: A run's cost is recorded only where it can be known and is otherwise absent, never zero. *(Amended 2026-10-12: the earlier
-  wording made a hand-kept price entry the way to cost a run, and kept a provider-reported cost beside a computed one as a cross-check.
-  FR-046 to FR-051 set the order in which a cost is resolved and what is recorded with it; until they are built, `costUsd` is computed from
-  `prices.json` alone and `reportedCostUsd` is kept beside it, as before.)*
-  from its token counts and a price entry when the model has one, and a cost the provider reports is kept beside it as
-  `reportedCostUsd`. A price entry is optional and hand-kept, so a figure computed from it is an estimate; a provider that reports
-  no cost and a model with no entry give none, and that is accepted. *(Amended 2026-10-12: the first wording made a price entry
-  the way to cost a run and the reported cost the figure of record; ADR-005 §2.4's amendment says cost is provider-dependent.)*
+- **FR-006**: A run's cost is recorded only where it can be known and is otherwise absent, never zero. FR-046 to FR-051 set the order in which
+  it is resolved (a provider-reported cost, a pin, a market quote) and what is recorded with it. *(Amended 2026-10-12: the first wording made a
+  hand-kept price entry the way to cost a run and kept a provider-reported cost beside it as a cross-check; ADR-005 §2.4's amendment says cost is
+  provider-dependent, and the hand-entered Claude pins were then removed.)*
 - **FR-007**: Every total, summary and report that sums cost MUST state how many runs were unpriced and MUST NOT
   count them as zero.
 - **FR-008**: Claude requests MUST use the provider's prompt cache, and a cache figure a provider does not

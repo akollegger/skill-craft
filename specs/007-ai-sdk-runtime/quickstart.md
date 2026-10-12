@@ -98,3 +98,12 @@ grep -l "\"finalSkillSha256\": \"$SHA\"" loops/*/loop.json
 ```
 
 Expected: one `loop.json`. Its `distiller.service` names the memory service's version and build commit when the skill was distilled from the runs. Its `process` names the version and commit, `recordedRuns` the teacher runs with their hashes and settings, `roles` the models and settings that reviewed it, and `process.version` is explained in `design/notes/skill-process.md`. If `dirty` is true the code was not exactly the commit.
+
+## F. What a model would be costed with (free)
+
+```bash
+pnpm dev spikes/fireworks/probe-prices.ts claude-haiku-4-5-20251001 claude-sonnet-5-5 fireworks/gpt-oss-120b fireworks/glm-5p3
+```
+
+Expected: a market quote for each model with an alias, naming the OpenRouter id, when the list was read and the rates per million tokens, and `no price` for a model with no alias (`glm-5p3`). The one request is a public `GET` to OpenRouter's model list with no key, and it is cached in `.cache/` (ignored by git) for a day. A model with a pin in `prices.json` shows the pin.
+
