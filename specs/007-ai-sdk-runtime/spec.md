@@ -195,6 +195,36 @@ mention is marked as history.
 
 ---
 
+### User Story 8 - Record a run as the model lived it (Priority: P2)
+
+*(Added 2026-10-12; ADR-003 §2.4, amended.)* The experiment runner records a teacher's finished run to the memory
+service, and the service receives the conversation the model had: its messages, and for each turn that called tools the
+model's reasoning, the action it took and what came back. The memory service's distiller can then see why one call
+followed another, not only that it did.
+
+**Why this priority**: The recording written today holds two messages and a step per tool whose reasoning is a fixed
+placeholder, so distillation sees a flat list of calls. The skill it produced replayed the teacher's exploration
+routine, and whether real reasoning changes that is the question this answers. It is P2 because a skill can be built
+without it.
+
+**Independent Test**: Record a scripted run through the scripted memory service and read back what was written: every
+assistant message, a step per tool-calling turn with the turn's reasoning, calls under their steps in order, tool names
+as the model saw them, and nothing the harness concluded about the run.
+
+**Acceptance Scenarios**:
+
+1. **Given** a finished run that has a conversation file, **When** it is recorded, **Then** the service receives the prompt
+   and each assistant message in order, one step per tool-calling turn holding that turn's reasoning, and each call under
+   its own step.
+2. **Given** a model whose provider returns no reasoning, **When** its run is recorded, **Then** each step holds the
+   turn's text, or a fixed line saying none was returned, and never a made-up account.
+3. **Given** a run recorded, **When** every write to the service is inspected, **Then** none holds a score, a solver path,
+   an extra-call count or a label of which calls were needed.
+4. **Given** a run made before this feature, with no conversation file, **When** it is recorded, **Then** it is written as
+   before and its metadata says no reasoning was kept.
+
+---
+
 ### Edge Cases
 
 - A provider substitutes another model for the one requested, mid-experiment.
@@ -293,6 +323,23 @@ mention is marked as history.
 - **FR-027**: Tool calls that are not valid (malformed arguments, an unknown tool) MUST be counted in the score as
   `invalidToolCalls`, and a run MUST end as an error with the fixed code `tool_loop` after five consecutive steps whose calls were
   all invalid. *(FR-022 to FR-027 added 2026-10-11 from a review of the driver's failure handling.)*
+- **FR-028**: The driver MUST report, for each model turn, its text, its reasoning (as the provider returned it) and the ids of the
+  tool calls it made, and the harness MUST write them in order to `conversation.jsonl` in the run folder. No trace, score,
+  summary, bundle, export or reason may hold them, and only the recording step reads the file; the privacy test MUST cover the
+  new file on both sides. *(Added 2026-10-12 with ADR-003 §2.4's amendment.)*
+- **FR-029**: A recording MUST write the prompt and each assistant message in order; one reasoning step per tool-calling turn
+  with the turn's reasoning as its reasoning, the tool action as its action and the result; and each call under its step with
+  input, output, status and duration. A turn with no returned reasoning MUST hold its text, or a fixed line saying none was
+  returned, and a step's text MUST never be invented (the earlier fixed line naming Claude Code is removed). Tool names MUST be the
+  names the model saw. Refused calls keep status `failure`.
+- **FR-030**: A recording MUST contain nothing the harness concluded about the run: no score, solver path, extra-call count or
+  label of which calls were needed. A test MUST show that no write to the memory service is derived from the scorer or the solver.
+  *(The oracle is for judging an agent, not for helping one.)*
+- **FR-031**: A conversation's metadata MUST name the model (canonical spec), its provider, its pinned settings and whether
+  reasoning was returned. A run with no conversation file MUST still be recorded as before, with metadata saying no reasoning was kept.
+- **FR-032**: The effect of real reasoning on distillation SHOULD be measured: distil twice from the same recorded runs, once
+  with placeholder steps and once with real reasoning, and compare the two skills. This is a gated check that spends on teacher
+  runs and the memory service, and it stays outside the first build.
 - **FR-018**: No key MUST appear in any file, log, trace, score, summary, reason or command line, and agent
   text and reasoning MUST NOT be written to any of them (constitution Principle VI; ADR-002 §2.3).
 
@@ -335,6 +382,7 @@ mention is marked as history.
   counts for the checked batch.
 - **SC-011**: A search of the overview, agent guidance and specs 002 and 005 for the previous runtime and the
   removed recording flag finds only mentions marked as history.
+- **SC-014**: A scripted run recorded through the scripted memory service produces a conversation with its messages, a step per tool-calling turn and every call, with no harness-derived content; the privacy test passes with the conversation file in place.
 - **SC-012**: The live checks together cost under US$10, and no key appears in any file the feature writes.
 - **SC-013**: The faithful world's calibration is rerun and its results recorded with the runtime named, for under
   US$5, and each goal's role (gap, solved or ambiguous) is stated under the unchanged rule.

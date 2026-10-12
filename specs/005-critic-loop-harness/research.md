@@ -51,6 +51,8 @@ and that no assistant text leaks into the error reason.
 
 ## R4. Recording runs to NAMS: move the spike's REST write into the module
 
+_Amended 2026-10-12: the recording's content is now decided by ADR-003 §2.4 (amended) and spec 007 FR-028 to FR-032: the model's messages and reasoning, a step per model turn, tool names as the model saw them. The paragraph below describes what this step first did._
+
 **Decision**: `candidate.ts` replays each run on a fresh game through the in-memory craft server, then writes, for each
 run, one conversation with two messages (prompt, final answer), one reasoning step per distinct tool and one tool call per
 call with input, output, status and duration, all into the one workspace the harness created. It is the behaviour of
