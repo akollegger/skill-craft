@@ -114,7 +114,7 @@ describe("Story 2: only crafting spends stock", () => {
     };
     walk([]);
     expect(sequences).toBe(1 + 13 + 13 ** 2 + 13 ** 3 + 13 ** 4);
-  });
+  }, 30_000); // enumerates every short sequence; slow enough to pass 5 s when the whole suite runs in parallel
 
   it("a refusal leaves inventory, table and preview unchanged", () => {
     const game = new Game(makeWorld());

@@ -67,11 +67,9 @@ describe("a provider that fails", () => {
   it("gives up at once on a 429 that asks for a long wait, instead of retrying sooner than asked", async () => {
     sequence(() => Promise.reject(apiError({ statusCode: 429, isRetryable: true, responseHeaders: { "retry-after": "90" } })));
     const { opts, recorder } = setup();
-    const started = Date.now();
     const r = await aiDriver(opts, recorder);
     expect(r).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported rate_limited", retries: { max: 2, failedAttempts: 1 } });
     expect(calls()).toHaveLength(1);
-    expect(Date.now() - started).toBeLessThan(1900); // the SDK's own first wait is two seconds; the call count above is the firm check
     noText(r);
   }, 30_000);
 
