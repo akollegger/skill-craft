@@ -59,7 +59,7 @@ the unpriced count is stated.
 ### User Story 2 - Add a provider without touching the run loop (Priority: P1)
 
 The provider integrator adds a provider (for example OpenAI, OpenRouter or Google) by adding one entry to a
-provider table and the price entries for its models. The player, the review roles, the trace, the scoring and
+provider table (a price entry for its models is optional: cost may not be available). The player, the review roles, the trace, the scoring and
 the export need no change. A provider is admitted only after it passes a probe, a router that serves one model
 name from several backends is admitted only with its backend fixed, and a provider's billing check is required
 only if it has a usage report.
@@ -280,6 +280,28 @@ every role, could not be declared. P2 because an experiment can run with the fir
 
 ---
 
+### User Story 11 - A cost with a stated source, or none (Priority: P3)
+
+*(Added 2026-10-12; ADR-005 §2.4, amended.)* The auditor reads a run's cost and sees where it came from: the provider's own figure, a pin, or a
+market quote, or sees that there is none. An experiment mixing sources says so, and a quote is never presented as a charge.
+
+**Why this priority**: Hand-entered rates are neither reliable nor sustainable and a provider may report no cost, so a cost needs a source
+that does not depend on upkeep and a plain way of being absent. P3 because tokens, which are always measured, carry the comparison.
+
+**Independent Test**: With a scripted fetch, cost a run by each source in turn and read the score and the report.
+
+**Acceptance Scenarios**:
+
+1. **Given** a provider that reports a cost, **When** a run finishes, **Then** `costUsd` is that figure, `costSource` is `provider` and the run counts as priced.
+2. **Given** no reported cost and a pin, **When** a run finishes, **Then** `costSource` is `pin` and the score records the rates.
+3. **Given** neither and a model with an alias, **When** a run starts, **Then** its price is resolved from the cached public list before the run, and the score
+   records the source, the OpenRouter id, the fetch time and the rates.
+4. **Given** a model with no alias, or no cache and no network, **When** a run finishes, **Then** `costUsd` is `null` and the run is counted unpriced.
+5. **Given** runs costed from different sources, **When** the report is built, **Then** it says so, and labels a quote as a market quote.
+6. **Given** a dollar limit and a model whose price cannot be resolved, **When** the run is planned, **Then** it is refused before any spend.
+
+---
+
 ### Edge Cases
 
 - A provider substitutes another model for the one requested, mid-experiment.
@@ -306,7 +328,7 @@ every role, could not be declared. P2 because an experiment can run with the fir
   provider is not in the provider table MUST be refused before any spend.
 - **FR-002**: A provider table entry MUST hold the provider's prefix, how its models are created, the name of
   the environment variable that holds its key, and how a short model name expands to the provider's id. Adding
-  a provider MUST need no change outside the table and the price entries.
+  a provider MUST need no change outside the table; a price entry is optional and never required.
 - **FR-003**: A provider MUST NOT be admitted until a probe shows that a model there drives the craft tools and
   returns answers that validate against the critic and reviser schemas, and the probe's findings (settings
   refused, reasoning handling) MUST be recorded.
@@ -315,9 +337,14 @@ every role, could not be declared. P2 because an experiment can run with the fir
 - **FR-005**: Each run MUST record the model it asked for and the model the provider's response reports, and an
   experiment whose runs differ in the model that ran, or for a routed provider in the backend that served it, MUST be
   flagged as mixing models.
-- **FR-006**: A run's cost MUST be computed from its token counts and a price entry, MUST be absent for a model
-  with no entry, and MUST be the figure of record when a provider also reports one; a provider-reported cost
-  MUST be kept beside it.
+- **FR-006**: A run's cost is recorded only where it can be known and is otherwise absent, never zero. *(Amended 2026-10-12: the earlier
+  wording made a hand-kept price entry the way to cost a run, and kept a provider-reported cost beside a computed one as a cross-check.
+  FR-046 to FR-051 set the order in which a cost is resolved and what is recorded with it; until they are built, `costUsd` is computed from
+  `prices.json` alone and `reportedCostUsd` is kept beside it, as before.)*
+  from its token counts and a price entry when the model has one, and a cost the provider reports is kept beside it as
+  `reportedCostUsd`. A price entry is optional and hand-kept, so a figure computed from it is an estimate; a provider that reports
+  no cost and a model with no entry give none, and that is accepted. *(Amended 2026-10-12: the first wording made a price entry
+  the way to cost a run and the reported cost the figure of record; ADR-005 §2.4's amendment says cost is provider-dependent.)*
 - **FR-007**: Every total, summary and report that sums cost MUST state how many runs were unpriced and MUST NOT
   count them as zero.
 - **FR-008**: Claude requests MUST use the provider's prompt cache, and a cache figure a provider does not
@@ -431,6 +458,22 @@ every role, could not be declared. P2 because an experiment can run with the fir
 - **FR-045**: *(A constraint on a later decision, not built here.)* A harness-based distiller, when one is decided, MUST take only
   what the model and the world produced (the locally stored conversations and tool calls) and MUST NOT take solver output, scores
   or any label of which calls were needed.
+- **FR-046**: A run's `costUsd` MUST come from the first of these that applies, and `costSource` MUST name it: a cost the provider reports
+  with its responses (`provider`), a local pin in `prices.json` (`pin`), a market quote (`market-quote`). When none applies `costUsd` MUST be
+  `null`. A provider-reported cost MUST also be kept as `reportedCostUsd`. A price entry MUST NOT be required for any provider.
+- **FR-047**: A market quote MUST be read from OpenRouter's public model list without a key, once per session, and cached in a git-ignored
+  file; without a cache and a network it MUST be absent and the run unpriced. Only a model with an explicit alias from its canonical spec
+  to an OpenRouter id MAY be quoted, and a model with no alias MUST NOT be matched by name. The base entry is used: a `:batch` or
+  `:free` variant is not, the five-minute cache-write rate is, and a tier that applies only above a long prompt is ignored and said so.
+- **FR-048**: A run costed from a pin or a quote MUST record `priceQuote` in its `score.json`: the source, the OpenRouter id (for a quote),
+  the fetch time and the rates per million tokens used, so a cost does not change after the run. The price MUST be resolved before the run
+  starts, so a dollar limit is refused when it cannot be resolved, as for an unpriced model today.
+- **FR-049**: A total, summary or report MUST state how many runs were unpriced and, when its runs' costs came from more than one source,
+  MUST say so and MUST NOT present them as one comparable figure. A quote MUST be labelled as a market quote, never as a charge.
+- **FR-050**: A run with a provider-reported cost and no price entry MUST count as priced, from `costSource: provider`.
+- **FR-051**: The aliases MUST be data and not code, hold ids and no rates, and the alias for each Claude model in use MUST be chosen by
+  checking OpenRouter's entries against the model (`claude-sonnet-5` and `claude-sonnet-5.5` differ in cache-read rate). A Fireworks model
+  is aliased only where its OpenRouter id is unambiguous; the others stay unpriced.
 - **FR-018**: No key MUST appear in any file, log, trace, score, summary, reason or command line, and agent
   text and reasoning MUST NOT be written to any of them (constitution Principle VI; ADR-002 §2.3).
 
@@ -441,7 +484,7 @@ every role, could not be declared. P2 because an experiment can run with the fir
 - **Model spec**: `<provider>/<model>`, recorded in canonical form whichever form the run was asked with.
 - **Model record**: for a run, the model asked for, the model the provider reports as having run, and the
   backend when the provider routes.
-- **Price entry**: dollars per million tokens for a model's input, output, cache reads and cache writes.
+- **Price entry** *(an optional pin)*: dollars per million tokens for a model's input, output, cache reads and cache writes, entered by hand. A model need not have one. **Market quote**: the same rates read from OpenRouter's public model list for a model with an alias, recorded in the run with its source and fetch time.
 - **Pinned settings**: a model's thinking, effort and temperature, fixed in the experiment summary.
 - **Retry record**: the retry setting and the count of retried attempts for a run.
 - **Probe finding**: what a provider accepted or refused when it was admitted.
@@ -455,7 +498,7 @@ every role, could not be declared. P2 because an experiment can run with the fir
   requested and the reported model, and the experiment is flagged.
 - **SC-002**: In a scripted experiment with priced and unpriced runs, every summary and report states the
   unpriced count, and no total counts an unpriced run as zero.
-- **SC-003**: A scripted provider is added through the provider table and price entries alone: a player and a
+- **SC-003**: A scripted provider is added through the provider table alone (a price source is optional): a player and a
   role run on it, and no other source file changes.
 - **SC-004**: A 40-turn Claude run reports at least 80% of its input tokens as cache reads, against 0% in the
   spike.
@@ -476,6 +519,7 @@ every role, could not be declared. P2 because an experiment can run with the fir
 - **SC-014**: A scripted run recorded through the scripted memory service produces a conversation with its messages, a step per tool-calling turn and every call, with no harness-derived content; the privacy test passes with the conversation file in place.
 - **SC-015**: A loop run with scripted roles and a scripted service writes a record with every field FR-033 to FR-035 names, the privacy test finds no recorded text in it, and the changelog guard fails for a version with no entry.
 - **SC-016**: The report reads a summary with a cast, one with one model in every role, and one in the older form, states the cast of each skill arm with the service version and commit, and refuses an arm whose runs used another student model.
+- **SC-017**: With a scripted fetch, a run is costed from a provider-reported cost when there is one, else a pin, else a quote for an aliased model, else `null`; its score records the source and the rates; a report over runs with different sources says so; and a model with no alias is unpriced and never matched by name.
 - **SC-012**: The live checks together cost under US$10, and no key appears in any file the feature writes.
 - **SC-013**: The faithful world's calibration is rerun and its results recorded with the runtime named, for under
   US$5, and each goal's role (gap, solved or ambiguous) is stated under the unchanged rule.

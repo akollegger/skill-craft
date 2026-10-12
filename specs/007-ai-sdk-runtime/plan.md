@@ -103,7 +103,7 @@ src/trace/
 spikes/fireworks/
 ├── probe-tools.ts, probe-schema.ts   # becomes the admission probe: one command per provider
 └── reconcile.ts                      # unchanged
-prices.json            # CHANGED: Fireworks entries added as measured
+prices.json            # CHANGED: canonical keys; entries are optional pins. Cost sources, aliases and the quote cache: Phase 16 (not built)
 test/
 ├── providers.test.ts          # NEW
 ├── ai-driver.test.ts          # EXTENDED: reported model, retries, caching option, settings

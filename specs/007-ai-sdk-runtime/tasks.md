@@ -91,7 +91,7 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 
 ## Phase 4: User Story 2 - Add a provider without touching the run loop (Priority: P1)
 
-**Goal**: a provider is one table row, its package and price entries; refusals and the admission probe are in place.
+**Goal**: a provider is one table row and its package (cost is optional, from the provider, a pin or a market quote); refusals and the admission probe are in place.
 
 **Independent Test**: add a scripted provider through the table alone; a player and a role run on it and no other source file changes.
 
@@ -238,8 +238,7 @@ Tasks marked **(spends)** call a real model. Get the user's go-ahead before the 
 - [X] T067 Run `quickstart.md` section A (free) and confirm the stated outputs.
 - [X] T068 [P] **HELD until the role parse-rate eval (T052) is done.** Run `quickstart.md` section D for one Fireworks batch (the billing check): harness and billed tokens equal for every model (SC-010). **(spends, cap US$1)**
   - Done 2026-10-11 (a few cents): a fresh batch of 3 `gpt-oss-120b` runs, harness against billed tokens: prompt 398,073 / 398,073, cached 343,836 / 343,836, completion 5,704 / 5,704, an exact match (SC-010).
-- [ ] T069 [P] Add Fireworks entries to `prices.json` for the models used in the calibration or checks, from measured usage and the published rate, and say so in the file's note.
-  - **Not done, and why:** `firectl billing get-usage` reports tokens per model but no per-model cost, and its cost export is blocked for an agent (T068), so there is no measured rate to enter. Fireworks models stay unpriced (reported as such everywhere). Add entries to `prices.json` when a rate is supplied, for example from the Fireworks dashboard.
+- [X] T069 [P] ~~Add Fireworks entries to `prices.json`~~ **Superseded 2026-10-12** by Phase 16: hand-entered rates are not reliable or sustainable, so no entries are added; a cost comes from the provider, a pin, or a labelled market quote (ADR-005 §2.4 amendment, FR-046 to FR-051), and is otherwise absent. `firectl billing get-usage` still checks tokens.
 - [X] T070 Confirm FR-017 and FR-018: `git diff main -- src/sim src/mcp` is empty, no key appears in any file the feature wrote (`grep` the new notes, run folders and `design/notes/` for the key prefixes without printing them), and `.env` is untouched.
 - [X] T071 Update ADR-005's Consequences: remove the items this feature closed (reported model, unpriced totals, caching, retries, live checks, glossary) and keep what remains open. Keep `status: accepted`; add an Amendments line only if a decision changed.
   - Done 2026-10-11: closed items removed (caching, retries, live checks, reported model, unpriced totals); open items kept as the follow-up list.
@@ -317,6 +316,21 @@ Work the live checks and probes showed was needed, done test-first and recorded 
 - [X] T095 [US10] `src/harness/report.ts`: read the loop record that `review.json` names, check its final hash, print the cast of each skill arm, refuse a contradiction.
 - [X] T096 [US10] Docs: `AGENTS.md`, `specs/005-critic-loop-harness/contracts/loop-record.md` (the `distiller` block), `design/notes/skill-process.md` if what is recorded changes (bump `PROCESS_VERSION` only if the loop's behaviour does), and `design/notes/nams-meeting-brief.md` (does generation use a model, and can it be chosen; the version endpoint).
   - Done 2026-10-12: `AGENTS.md` (the cast and the service version), `contracts/loop-record.md` (the `distiller` block and the `recordingFormat` values), `design/notes/skill-process.md` (the record names the service; no version bump, since no procedure changed), the quickstart, and the NAMS brief's question about a model and the version call (added with the draft). `PROCESS_VERSION` stays 2.
+
+---
+
+## Phase 16: User Story 11 - A cost with a stated source, or none (added 2026-10-12, not built)
+
+**Goal**: `costUsd` comes from the first available of a provider-reported cost, a pin or an OpenRouter market quote, is otherwise null, and says which, FR-046 to FR-051. Decided in ADR-005 §2.4 (amended). Until built, cost comes from `prices.json` alone.
+
+**Independent Test**: with a scripted fetch, a run is costed by the first source that applies, its score records the source and the rates, and a report over mixed sources says so (SC-017).
+
+- [ ] T097 [P] [US11] Tests first: `test/pricing.test.ts` (the order provider, pin, quote, none; the alias map, with an unaliased model never matched by name; `:batch`, `:free` and tier entries; the cache, a stale cache and no network; the request carries no key; a model with a price but no cache rates), `test/harness.test.ts` and `test/ai-driver.test.ts` (`costSource` and `priceQuote` in the score, a provider-reported cost with no entry counted as priced, a dollar limit refused when no price can be resolved before the run), `test/report.test.ts` (the source named, mixed sources flagged, a quote never called a charge), `test/privacy.test.ts` (the new score keys).
+- [ ] T098 [US11] `src/harness/pricing.ts` (new), `src/harness/models.ts`: the price source seam, the OpenRouter fetch with an injected `fetch`, the cache file, the alias file; `costOf` keeps its arithmetic.
+- [ ] T099 [US11] `src/harness/ai-driver.ts`, `src/harness/run.ts`, `src/harness/cli.ts`: resolve the price before the run, record `costSource` and `priceQuote`, take a provider-reported cost first, and refuse a dollar limit that cannot be resolved.
+- [ ] T100 [US11] `src/harness/report.ts`, `contracts/run-record.md`: print the source beside every cost, flag mixed sources, label a quote as a market quote.
+- [ ] T101 [US11] The aliases as data (`src/harness/price-aliases.json`, ids only): choose the Claude ones by checking OpenRouter's entries (`claude-sonnet-5` against `claude-sonnet-5.5` differ in cache-read rate), alias a Fireworks model only where its OpenRouter id is unambiguous (`gpt-oss-120b` is; the nemotron and glm ids need checking), leave the rest unpriced. Add the cache file to `.gitignore`.
+- [ ] T102 [US11] Docs: `AGENTS.md`, `spikes/fireworks/README.md`, the `prices.json` note (an optional pin), the quickstart (a free check against the live public list), and close ADR-005's follow-up on reported-only runs.
 
 ---
 

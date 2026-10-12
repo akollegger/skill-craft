@@ -7,7 +7,7 @@ Fields are in [data-model.md](../data-model.md).
 
 1. Add the provider's package to `package.json`.
 2. Add one row to the table in `src/harness/providers.ts`.
-3. Add price entries to `prices.json` for the models in use (or leave them unpriced).
+3. Nothing is needed for cost. A cost comes from the provider if it reports one, else from a pin in `prices.json` if there is one, else from a market quote if the model has an alias to an OpenRouter id (FR-046, FR-051), else it is absent and the run records `costUsd: null` and its tokens.
 4. Add the key's name to `.env.example`.
 
 Nothing else changes: not the player, the roles, the trace, the scorer or the exporter (SC-003).

@@ -35,7 +35,7 @@ sorted. An experiment whose runs' `resolved` sets differ is `mixedModels` (uncha
 ## Price entry (`prices.json`)
 
 Unchanged: `{ input, output, cacheRead?, cacheWrite? }` in US dollars per million tokens, keyed by canonical spec (`anthropic/claude-sonnet-5-5`). A model with
-no entry is unpriced. Entries for Fireworks models are added from measured usage.
+no entry is unpriced. An entry is an optional pin, entered by hand, and may go stale. A run's `costSource` (`provider`, `pin` or `market-quote`) and, for a pin or a quote, `priceQuote` (`{ source, openRouterId, fetchedAt, perMillion: { input, output, cacheRead?, cacheWrite? } }`) are recorded in `score.json` (ADR-005 §2.4, amended 2026-10-12; FR-046 to FR-048). Aliases from a canonical spec to an OpenRouter id are data and hold no rates (FR-051).
 
 ## Pinned settings
 

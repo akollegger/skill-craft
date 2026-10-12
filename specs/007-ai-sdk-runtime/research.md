@@ -12,7 +12,7 @@ SDK (`ai` 7.0.133) with its scripted model; their results are stated where they 
 creates a model with `await import(row.package)` and calls the named factory. The module has no SDK import, so
 spec parsing and the dry run stay light and ADR-005 §2.1 (one file imports the SDK) holds.
 
-**Rationale**: SC-003 asks for a provider through the table and price entries alone. A table of factory functions
+**Rationale**: SC-003 asks for a provider through the table alone. A table of factory functions
 would import every provider package wherever the table is read. Holding the package and factory names as strings
 keeps the table readable by pure code and still one row per provider. The package is declared in `package.json`
 when the row is added, which is a dependency and not a source change.
@@ -49,7 +49,7 @@ tested with a scripted provider and filled when a provider that reports (OpenRou
 `aggregate()` adds `pricedRuns` and `unpricedRuns`, `totalCostUsd` sums priced runs only, and the report prints the
 unpriced count beside every cost.
 
-**Rationale**: computed cost is comparable across providers; a reported figure is a cross-check, not a replacement.
+**Rationale**: computed cost is comparable across providers where entries exist; a reported figure is a cross-check, not a replacement. *(Superseded 2026-10-12 by R12's successor below: a provider-reported cost is what was charged and now comes first, then a pin, then a market quote, else none, with the source recorded; ADR-005 §2.4 as amended, FR-046 to FR-051.)*
 Counting an unpriced run as zero is the spike's defect (a Fireworks total read `$0.000`).
 
 ## R4. Anthropic prompt caching through the provider's call option
@@ -160,3 +160,24 @@ code uses `generateText`, so a stream that drops mid-response cannot occur and `
 
 **Left open**: whether `MAX_RETRIES = 2` is enough under parallel Fireworks runs; no pruning of a long run's history; the role
 driver has a spend cap but no per-call stall timeout.
+
+## R13. Cost sources: reported, pinned, market-quoted, or absent (added 2026-10-12)
+
+**Decision**: a run's `costUsd` is the first available of a provider-reported cost, a local pin in `prices.json`, and a market quote from
+OpenRouter's public model list; otherwise `null`. The source and, for a pin or a quote, the rates and fetch time are recorded in `score.json`.
+
+**Read from the API (checked 2026-10-12, no key)**: `GET https://openrouter.ai/api/v1/models` lists 458 models with `pricing` in dollars
+per token as strings (`prompt`, `completion`, `input_cache_read`, `input_cache_write`, `input_cache_write_1h`), `:batch` and `:free`
+variants as separate entries, and for some models long-prompt `overrides`. Its Claude rates match the table's (Haiku 4.5: $1, $5, $0.10 read,
+$1.25 write). For `openai/gpt-oss-120b` it lists 25 endpoints with input rates from $0.03 to $0.35 per million tokens and none from Fireworks, so
+the model-level figure is a marketplace price and not any host's. `claude-sonnet-5` and `claude-sonnet-5.5` are separate entries with different
+cache-read rates ($0.20 and $0.10), so mapping `anthropic/claude-sonnet-5-5` needs a decision, not a rule.
+
+**Rationale**: hand-entered rates go stale and a provider's own rates are on web pages, not in APIs, so nothing should depend on them; a market
+quote needs no upkeep except an id mapping that changes slowly, and it is the comparable figure for an experiment about a cheaper model. It is
+labelled as a quote because it is not a bill. A provider-reported cost is what was charged, so it comes first.
+
+**Alternatives**: keep scraping or hand-entering provider rates (rejected: not sustainable); match OpenRouter ids by name (rejected: the sonnet
+case shows a near-match can be the wrong model); use OpenRouter's per-provider endpoints (not now: for a host it does not list, such as Fireworks,
+there is nothing to find).
+

@@ -121,8 +121,9 @@ The probes here are how a provider enters the harness's provider table (`src/har
 5. **Check the billing** where the provider has a usage report: `reconcile.ts snapshot`, run a batch, `reconcile.ts compare`, and
    require the harness's token counts to equal the billed ones. A provider with no usage report is admitted without this step. The
    check is a procedure a person runs and records; the harness does not enforce it.
-6. **Add the row.** The package in `package.json`, one row in the table, the key's name in `.env.example`, and price entries in
-   `prices.json`. Nothing else changes.
+6. **Add the row.** The package in `package.json`, one row in the table and the key's name in `.env.example`. Nothing else changes.
+   Nothing is needed for cost: a provider's own reported cost is used if it gives one, then an optional pin in `prices.json`, then (once built,
+   spec 007 FR-046 to FR-051) a market quote from OpenRouter for a model with an alias, and otherwise the run is unpriced, with tokens.
 7. **A router** (one model name served from several backends) is admitted only with its backend pinned in the row: fallbacks off,
    the order fixed, and a `backend(meta)` hook that reads the backend a response reports. Without that the table refuses it.
 

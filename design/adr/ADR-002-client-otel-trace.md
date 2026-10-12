@@ -212,7 +212,7 @@ mirror could be added later without changing the viewer.
 - **2026-10-09, the trace source is the AI SDK (proposed in [ADR-005](ADR-005-ai-sdk-runtime.md)).** Section 2.2's
   source, the Claude Agent SDK's `query()` stream and its tool hooks, is replaced by a driver on the AI SDK that
   reports the same events to the recorder. The trace keeps the shape in 2.4 except that `ttftMs` is `null` (calls are
-  not streamed), and `costUsd` is computed from token counts and a price table, since the player reports no cost. The
+  not streamed), and `costUsd` is computed from token counts and a price table where one exists, since the player reports no cost (ADR-005 §2.4 and its 2026-10-12 amendment: a price entry is optional and a cost may be unavailable). The
   allowlist in 2.3 and the join in 2.5 are unchanged. The consequence about a pre-1.0 package that bundles the Claude
   Code binary no longer applies. `--record` (loading user settings so that the NAMS hooks record) is removed.
 - **2026-10-12**: §2.3's allowlist describes `trace.jsonl` and is unchanged: the trace still never holds the agent's text or
