@@ -27,12 +27,16 @@ validation, an exact solver that scores runs, a run log, and a world re-skinner.
 Claude Code against it, measures each run's time, tokens and cost, and exports a run as a replay bundle
 ([ADR-002](design/adr/ADR-002-client-otel-trace.md)).
 
-Not built yet: the record, distill and compare workflow, and the observer. Those wait on a decision about
-which agent plays and how arms are compared (see [design/notes/agent-player-options.md](design/notes/agent-player-options.md)).
+The skillcraft visualizer is built ([ADR-004](design/adr/ADR-004-skillcraft-visualizer.md), spec
+[004](specs/004-skillcraft-visualizer/spec.md)): a read-only page that shows what the runs in any folder did and
+what they cost. See "Seeing the runs" below.
+
+Not built yet: the record, distill and compare workflow. It waits on a decision about which agent plays and how arms are
+compared (see [design/notes/agent-player-options.md](design/notes/agent-player-options.md)).
 
 ## Requirements
 
-- Node 22 or newer and [pnpm](https://pnpm.io).
+- Node 22.12 or newer and [pnpm](https://pnpm.io).
 - For the NAMS steps: a NAMS account, an API key, and the `nams-hooks` Claude Code plugin.
 
 ## Setup
@@ -112,6 +116,22 @@ with no world file, no recipes and nothing that identifies whoever ran it:
 ```bash
 pnpm dev scripts/export-run.ts runs/baseline/001 /tmp/baseline-001
 ```
+
+### Seeing the runs
+
+The visualizer reads a folder of runs (run folders, exported bundles, or both) and shows them: which worlds, the runs
+of each, a run's table over time, and two runs together. It only reads; it writes nothing into the folder.
+
+```bash
+pnpm build:viz                          # build the page once (output: dist-viz/)
+pnpm dev scripts/viz.ts runs            # serve the folder and the page on http://127.0.0.1:4747/
+pnpm dev:viz runs                       # the same with hot reload, while working on the page
+
+pnpm dev scripts/viz-export.ts runs /tmp/site    # a static copy: catalog.json, bundles/<id>/, and the page
+```
+
+The page works with no network. The static copy can be served by any file host, and shows the same list and tables as
+the local process. Bundles carry the item names a run used, and frames show every craft a run made.
 
 The score counts **action calls**: `place`, `remove`, `clear` and `craft`. `help`, `inventory` and
 `look` are free. `callsToGoal` is the action calls up to the moment the goal was first held, and

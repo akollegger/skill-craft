@@ -4,7 +4,7 @@ Status: 2026-10-12, with the old runtime's extra text captured (see "What the ex
 
 | Field | Claude Code runtime (old) | AI SDK runtime (new) | Note |
 |---|---|---|---|
-| System prompt | 2 blocks, 143 chars: a billing/version header line and "You are a Claude agent, built on Anthropic's Claude Agent SDK." | none | Known and recorded in ADR-005 Consequences |
+| System prompt | 2 blocks, 143 chars: a billing/version header line and "You are a Claude agent, built on Anthropic's Claude Agent SDK." | none | Known and recorded in ADR-006 Consequences |
 | First user message | Sonnet: 2 text blocks (570 + 468). Haiku: 6 blocks (983 + 176 + 86 + 569 + 65 + 468) | 1 block (468 = the base prompt) | The 468-char block is our prompt in both. The rest is Claude Code's own context, listed below |
 | Tool names | `mcp__craft__look` ... | `look` ... | The model sees different names |
 | Tool schemas | `{"type":"object","properties":{}}` (33 chars) | same plus `additionalProperties:false` (62) | Harmless |
@@ -37,5 +37,5 @@ Done: the extra blocks were captured. What remains is a test, a real spend: Haik
 
 ## Addendum 2026-10-12: the request headers
 
-The shapes above left out headers. The old runtime's `anthropic-beta` header (feature names only) held, for Haiku: `interleaved-thinking-2025-05-14`, `thinking-token-count-2026-05-13`, `context-management-2025-06-27`, `extended-cache-ttl-2025-04-11`, `prompt-caching-scope-2026-01-05` and Claude Code's own flags; for Sonnet the same plus `effort-2025-11-24`, `mid-conversation-system-2026-04-07` and `per-turn-control-2026-07-01`. The AI SDK sent none of them. The first matters for behaviour: with a thinking budget, Haiku reasons between tool results only when `interleaved-thinking-2025-05-14` is sent, and it is now sent (ADR-005 amendment; `design/notes/runtime-recalibration.md`). The others are untried here.
+The shapes above left out headers. The old runtime's `anthropic-beta` header (feature names only) held, for Haiku: `interleaved-thinking-2025-05-14`, `thinking-token-count-2026-05-13`, `context-management-2025-06-27`, `extended-cache-ttl-2025-04-11`, `prompt-caching-scope-2026-01-05` and Claude Code's own flags; for Sonnet the same plus `effort-2025-11-24`, `mid-conversation-system-2026-04-07` and `per-turn-control-2026-07-01`. The AI SDK sent none of them. The first matters for behaviour: with a thinking budget, Haiku reasons between tool results only when `interleaved-thinking-2025-05-14` is sent, and it is now sent (ADR-006 amendment; `design/notes/runtime-recalibration.md`). The others are untried here.
 

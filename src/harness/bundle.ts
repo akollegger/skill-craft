@@ -4,6 +4,7 @@ import type { Frame } from "../sim/frames.js";
 import type { RunScore } from "../sim/score.js";
 import { linesAfter, readTrace, type TraceLine } from "../trace/lines.js";
 import type { Measured } from "../trace/measure.js";
+import type { WorldArt } from "../viz/contract.js";
 import type { ModelInfo } from "./run.js";
 
 export interface BundleManifest {
@@ -17,6 +18,14 @@ export interface BundleManifest {
   frames: number;
   trace: "matched" | "mismatch" | "absent";
   model: ModelInfo;
+  /** The world's prior fit as the run recorded it. Absent in bundles exported before the visualizer. */
+  priorFit?: string;
+  /** The fixed sentence added to the prompt, when the run had one. */
+  promptNote?: string;
+  /** The skill the run had installed: its name, whether the agent loaded it and after how many calls. */
+  skill?: { name: string; loaded: boolean; loadedAfter: number | null };
+  /** How the items of this run's frames and goal are drawn. Absent in bundles exported before item art. */
+  art?: WorldArt;
 }
 
 /** The run's result without the agent's own text. */

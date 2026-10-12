@@ -6,5 +6,6 @@ dist/
 *.tsbuildinfo
 .DS_Store
 runs/
+dist-viz/
 loops/
 .cache/

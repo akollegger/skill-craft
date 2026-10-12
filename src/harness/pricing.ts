@@ -5,7 +5,7 @@ import { canonicalSpec, loadPrices, type Price, type PriceTable } from "./models
 import { REPO } from "./paths.js";
 
 /**
- * Where a price comes from when the provider does not report a cost (ADR-005 §2.4, amended 2026-10-12): a pin in
+ * Where a price comes from when the provider does not report a cost (ADR-006 §2.4, amended 2026-10-12): a pin in
  * `prices.json`, else a market quote read from OpenRouter's public model list for a model with an explicit alias, else none.
  * A provider-reported cost is read from the responses by the driver and never reaches this file.
  */

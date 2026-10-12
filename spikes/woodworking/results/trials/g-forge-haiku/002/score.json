@@ -1,0 +1,58 @@
+{
+  "ended": "stopped",
+  "turns": 34,
+  "costUsd": 0.0678724,
+  "text": "I hold one glirol.",
+  "score": {
+    "goal": {
+      "item": "glirol",
+      "qty": 1
+    },
+    "reached": true,
+    "totalCalls": 33,
+    "actionCalls": 29,
+    "callsToGoal": 29,
+    "craftsMade": 1,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 1,
+      "minCalls": 3,
+      "slack": 2
+    },
+    "extraCalls": 26,
+    "extraCrafts": 0,
+    "reachedSeq": 32
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 37345,
+      "inputTokens": 16959,
+      "outputTokens": 3191,
+      "cacheReadTokens": 145824,
+      "cacheCreationTokens": 10188,
+      "costUsd": 0.0678724
+    },
+    "toGoal": {
+      "durationMs": 34050,
+      "inputTokens": 16935,
+      "outputTokens": 2991,
+      "cacheReadTokens": 116580,
+      "cacheCreationTokens": 9386
+    }
+  },
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "resolved": [
+      "claude-haiku-4-5-20251001"
+    ]
+  },
+  "priorFit": "invented",
+  "skill": {
+    "name": "glirol-two-lugli",
+    "sha256": "8422490840680498363483799e621ffebd8261eb9452a7552c1fa35330169aa6",
+    "invoked": false,
+    "loadedAfterCalls": null
+  }
+}

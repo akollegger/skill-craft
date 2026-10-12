@@ -21,8 +21,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 22 is the floor in package.json "engines"; 24 is what the project is developed on.
-        node: [22, 24]
+        # 22.13 is the floor in package.json "engines": Vite 8 needs 22.12 and the pinned pnpm needs 22.13. 24 is what the project is
+        # developed on.
+        node: ["22.13", 24]
     steps:
       - uses: actions/checkout@v4
 
@@ -40,3 +41,5 @@ jobs:
       - run: pnpm typecheck
 
       - run: pnpm test
+
+      - run: pnpm build:viz

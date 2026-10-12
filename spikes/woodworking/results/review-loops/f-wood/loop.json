@@ -1,0 +1,55 @@
+{
+  "label": "f-wood",
+  "mode": "candidate",
+  "runs": [
+    "runs/b-wood-sonnet/001",
+    "runs/b-wood-sonnet/003",
+    "runs/b-wood-sonnet/004"
+  ],
+  "rubric": {
+    "version": "1",
+    "sha256": "a6e33cf720e4b20e8cc767666d49f29375452d86beec3e1e1cf8e8c2cadc5c5e"
+  },
+  "models": {
+    "critic": {
+      "requested": "claude-sonnet-5-5",
+      "resolved": [
+        "claude-sonnet-5-5"
+      ]
+    },
+    "reviser": {
+      "requested": "claude-sonnet-5-5",
+      "resolved": []
+    }
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "skillSha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+      "overall": "accept"
+    }
+  ],
+  "outcome": "accept",
+  "reason": "the critic accepted the skill",
+  "failed": false,
+  "stages": [
+    {
+      "stage": "critic-1",
+      "startedAt": 1791113878066,
+      "endedAt": 1791113891917,
+      "durationMs": 13851,
+      "model": {
+        "requested": "claude-sonnet-5-5",
+        "resolved": "claude-sonnet-5-5"
+      },
+      "tokens": {
+        "input": 2,
+        "output": 1531,
+        "cacheRead": 1551,
+        "cacheCreation": 27421
+      },
+      "costUsd": 0.1253082
+    }
+  ],
+  "cancelled": false
+}

@@ -2,7 +2,7 @@ import type { JSONValue } from "ai";
 import { BackendNotPinned } from "./errors.js";
 
 /**
- * The provider table: one row per source of models (ADR-005 §2.2). It is data. A row names the package and factory
+ * The provider table: one row per source of models (ADR-006 §2.2). It is data. A row names the package and factory
  * that create its models as strings, and `ai-driver.ts` imports them, so this file loads no provider package and no
  * SDK at run time (a type-only import is erased). Spec parsing, the dry run and the report all read it without paying for either.
  */

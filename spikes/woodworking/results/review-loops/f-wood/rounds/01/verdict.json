@@ -1,0 +1,40 @@
+{
+  "rubric": {
+    "version": "1",
+    "sha256": "a6e33cf720e4b20e8cc767666d49f29375452d86beec3e1e1cf8e8c2cadc5c5e"
+  },
+  "verdict": {
+    "overall": "accept",
+    "questions": {
+      "generality": {
+        "value": "one recipe chain, right level",
+        "reason": "It gives exact layouts for this stool chain. Every recipe the recordings show is covered. That is the right level for a single-goal task. It also carries the lesson that layout position matters."
+      },
+      "scope": {
+        "value": "single task",
+        "reason": "It covers only getting a wooden_stool from 3 logs."
+      },
+      "decomposable": {
+        "value": "no, not worth splitting",
+        "reason": "The chain is short and sequential. Splitting it would leave pieces too small to be worth loading."
+      },
+      "leads_with_fact": {
+        "value": "yes, leads with the recipe",
+        "reason": "It opens with the step-by-step crafting chain with the exact cell layouts. The null-preview hazards come after. It does not replay the teacher's trial and error."
+      },
+      "common_knowledge": {
+        "value": "cannot_determine",
+        "reason": "The recordings do not show what the teacher knew beforehand. Recipes such as 1 log giving 4 planks and 3 planks in a row giving a seat are world-specific and are shown."
+      },
+      "description_load": {
+        "value": "good",
+        "reason": "The description names the goal, the 3x3 workbench and the 3-log start. That matches the body. A 'shortest' claim is slightly unproven, but the provenance file admits this."
+      }
+    },
+    "reasons": "Every recipe fact checks against the recordings. A log gives 4 planks. Two planks stacked vertically give 2 rods. Three planks in row 0 give a seat. A seat at (0,1) with rods across row 1 gives the stool. The inventory counts are correct. The null-preview list matches the observed layouts. The one unproven point is the \"shortest\" wording: no run tried fewer crafts, and the provenance file says so. The skill would let a weaker model reach the goal directly.",
+    "proposedRevisions": [
+      "Optional: change the title wording 'shortest chain' to 'working chain (6 crafts, all three runs)', since fewer crafts was never tested.",
+      "Optional: state in the body that the ingredient counts (3 rods needed, 7 planks used) come from layouts and inventory counts, not from an observed failure."
+    ]
+  }
+}

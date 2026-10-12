@@ -19,7 +19,7 @@ Added keys, all after the existing ones:
 
 - Every model name is canonical `<provider>/<model>` (a bare Claude id is recorded as `anthropic/<id>`); `requested` is `null` when the run named none. Earlier records with a bare Claude id are read as `anthropic/<id>` and not rewritten.
 - `model.resolved` is what the provider reported, normalised through the table (research R2). Runs whose `backend` values differ make an experiment `mixedModels`, as differing `resolved` models do. `backend` appears only for a routed provider.
-- `costUsd` is the first available of a provider-reported cost, a pin in `prices.json` and a market quote, and `null` when none applies, never zero, and `null` for a run that never got a response. `costSource` is `provider`, `pin`, `market-quote` or `null`, and is absent from a run made before sources were recorded. `reportedCostUsd` is present only when the provider reports a cost. `priceQuote` is present when the cost was computed (a pin or a quote): `{ source, openRouterId (null for a pin), fetchedAt (null for a pin; for a quote the time the list was read, which is the cache's when the cache was used), perMillion: { input, output, cacheRead?, cacheWrite? }, note? }` (ADR-005 §2.4 as amended; FR-046 to FR-048).
+- `costUsd` is the first available of a provider-reported cost, a pin in `prices.json` and a market quote, and `null` when none applies, never zero, and `null` for a run that never got a response. `costSource` is `provider`, `pin`, `market-quote` or `null`, and is absent from a run made before sources were recorded. `reportedCostUsd` is present only when the provider reports a cost. `priceQuote` is present when the cost was computed (a pin or a quote): `{ source, openRouterId (null for a pin), fetchedAt (null for a pin; for a quote the time the list was read, which is the cache's when the cache was used), perMillion: { input, output, cacheRead?, cacheWrite? }, note? }` (ADR-006 §2.4 as amended; FR-046 to FR-048).
 - `settings` records the pinned settings the run used; `null` means unset (the provider's default applied).
 - `retries.failedAttempts` counts attempts that threw before the request that succeeded, and a final failure.
 - The privacy test's allowed keys for `score.json` gain `reportedCostUsd`, `settings`, `retries`, `costSource` and `priceQuote`. No field holds agent text or reasoning.
@@ -41,5 +41,5 @@ Every cost it prints carries the unpriced count: `$3.28 (0 unpriced)`, or `$0.41
 
 ## Calibration results
 
-`design/notes/runtime-recalibration.md` states the runtime (`ai-sdk, ADR-005`), the base prompt wording, the pinned settings,
+`design/notes/runtime-recalibration.md` states the runtime (`ai-sdk, ADR-006`), the base prompt wording, the pinned settings,
 and each goal's role under the ADR-003 §2.1 rule.

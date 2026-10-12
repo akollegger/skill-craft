@@ -6,7 +6,7 @@
 
 ## Summary
 
-Finish what ADR-005 decides on top of the spike's code. The player and the critic and reviser roles already run
+Finish what ADR-006 decides on top of the spike's code. The player and the critic and reviser roles already run
 through the AI SDK for Claude and Fireworks models. This feature turns the hard-coded provider pair into a
 data-only **provider table**, makes a run record the model the provider reports and the cost honestly (computed,
 with the unpriced runs counted and any provider-reported cost kept beside it), turns on Anthropic prompt caching,
@@ -43,7 +43,7 @@ check under `test/live-*.test.ts`. No default test calls the network or a model
 
 **Performance Goals**: none new. A 40-turn Claude run reads at least 80% of its input from cache (SC-004)
 
-**Constraints**: provider and AI SDK packages imported only in `src/harness/ai-driver.ts` (ADR-005 §2.1); no clock or
+**Constraints**: provider and AI SDK packages imported only in `src/harness/ai-driver.ts` (ADR-006 §2.1); no clock or
 measurement in the engine, the server or `run.jsonl`; agent text and reasoning never reach a trace, summary, score,
 bundle or `reason`; a `reason` is `code: fixed message`; keys only from the environment; live spend under US$10
 for the checks and US$5 for the calibration rerun
@@ -62,10 +62,10 @@ for the checks and US$5 for the calibration rerun
 | IV. Test-first rules | Pass | Each requirement gets its test before its code (tasks order this). Live checks are gated tests with recorded results, not a substitute for the scripted tests |
 | V. Simplicity | Pass | The provider table is data (one row per provider) read by existing code, not a plug-in framework. Retries are one wrapper and one count. Nothing is added that the comparison does not need |
 | VI. Secrets hygiene | Pass | Keys come from the environment; a missing key ends a run with a fixed reason that names the variable and never shows a value; probes and live checks print no key (FR-018) |
-| VII. Decisions before specs | Pass | ADR-005 is accepted and lists this feature as its spec |
+| VII. Decisions before specs | Pass | ADR-006 is accepted and lists this feature as its spec |
 
 Re-check after Phase 1: still passes. The one design tension, a table that would import provider packages and so
-break ADR-005 §2.1, is avoided by holding package and factory names as data that `ai-driver.ts` imports (R1).
+break ADR-006 §2.1, is avoided by holding package and factory names as data that `ai-driver.ts` imports (R1).
 
 ## Project Structure
 

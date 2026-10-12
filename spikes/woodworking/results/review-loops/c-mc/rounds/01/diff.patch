@@ -1,0 +1,82 @@
+--- round-1/SKILL.md
++++ round-2/SKILL.md
+@@ -1,26 +1,24 @@
+ ---
+ name: mcp-craft-tool-use
+-description: "mcp crafting: use the craft tool sequence to inspect an unfamiliar crafting table, prepare inputs, commit to crafting, and verify the requested item. Use when an agent must produce and hold a target item through MCP craft tools."
+-version: 1.0.0
+-source-workspace-hash: ws_a45204da269527bb
+-distilled-at: 2026-10-04T09:34:38Z
+-grounding-score: 1.00
+-nams-provenance-id: prov_run-38212926-9aa0-45af-9452-df6e9730378d
+-source-memory-types: [short-term, long-term, reasoning]
+-procedure-format: prose
++description: Load when you must end up holding a wooden_pickaxe using the workshop's 3x3 crafting table (help/inventory/look/place/remove/clear/craft tools) starting from oak_log. Gives the exact log -> planks -> sticks -> pickaxe recipe and grid layouts.
+ ---
+ 
+-# Mcp Craft Tool Use
++# wooden_pickaxe on the 3x3 workshop table
+ 
+-mcp crafting: use the craft tool sequence to inspect an unfamiliar crafting table, prepare inputs, commit to crafting, and verify the requested item. Use when an agent must produce and hold a target item through MCP craft tools.
++Recipes are shaped by position, and one oak_log is enough for two intermediate crafts. A proven 15-call path starts with inventory of 6 cobblestone, 6 iron_ingot, 3 oak_log. It uses only 2 logs; the third is spare.
+ 
+-## When to use
+-See `references/procedures.md` for the decision rules and the evidence behind them.
++## Use
++When the goal is wooden_pickaxe (or its planks/sticks intermediates) on this table.
+ 
+-## Domain model
+-Key entities and terms are defined in `references/domain-model.md`.
++## Steps
++Coordinates are (row, col), zero-based, with row 0 at the top. Before each craft, check that the `craftable` field in the place/look output names what you want.
+ 
+-## Worked examples
+-Representative (redacted) cases are in `references/exemplars.md`.
++1. Place 1 oak_log at (0,0). `craftable` shows oak_planks. Craft: you get 4 oak_planks.
++2. Place oak_planks at (0,0) and (1,0), stacked vertically. `craftable` shows stick. Craft: you get 4 sticks. A single plank previews null.
++3. The table is empty after each craft. Place the second oak_log at (0,0) and craft: you get 4 more oak_planks. You now hold 2 planks (left over from step 2) and 4 new ones.
++4. Place oak_planks at (0,0), (0,1) and (0,2). `craftable` shows oak_slab. This is the wrong item, so do not craft; keep building.
++5. Place a stick at (1,1) and a stick at (2,1). `craftable` shows wooden_pickaxe. Craft: you get 1 wooden_pickaxe, and the task is done.
+ 
+-> Distilled from NAMS workspace memory. Every claim is grounded — see `provenance.json`.
++## Notes
++- `craftable` is null for partial layouts (for example 1 or 2 planks in a row). That does not mean you are on the wrong path.
++- If a layout previews the wrong item, use remove or clear. Both are free; only craft consumes items.
+--- round-1/references/provenance.md
++++ round-2/references/provenance.md
+@@ -0,0 +1,35 @@
++# Provenance
++
++Sources: runs 001, 002 and 003. All three followed the identical 15-call path and ended with crafted wooden_pickaxe qty 1.
++
++- Starting inventory (6 cobblestone, 6 iron_ingot, 3 oak_log): run 001 call 2.
++- 1 oak_log gives 4 oak_planks: run 001 calls 3-4.
++- 2 planks stacked at (0,0) and (1,0) give 4 sticks: run 001 calls 5-7. One plank alone previews null (call 5).
++- A second log gives 4 more planks: run 001 calls 8-9.
++- Planks at row 0 preview oak_slab: run 001 call 12.
++- Sticks at (1,1) and (2,1) below the planks preview wooden_pickaxe, and craft gives 1: run 001 calls 13-15.
++- Runs 002 and 003 repeat the same calls and results.
++
++Not known (cheap ways to find out):
++- Whether other cells work for the log or other layouts for planks and sticks: use place and read `craftable` (free).
++- Whether the pickaxe layout can be mirrored or shifted: try it with place and look.
++- Whether cobblestone or iron_ingot craft anything useful here: they were never used. Place them and read `craftable`.
++- Whether the final inventory shows the pickaxe: the runs never called inventory after crafting. Call inventory to check.
++- What happens when a layout is wrong and you craft anyway: never tried, so it is not known.
++
++## Change record
++
++Every change, with the sources the harness checked against the recordings.
++
++- Replaced the generic boilerplate with the full recipe chain: log -> 4 planks, 2 stacked planks -> 4 sticks, second log -> 4 planks, and the pickaxe layout (planks on row 0, sticks at (1,1) and (2,1)).: run 001 call 3, run 001 call 4, run 001 call 6, run 001 call 7, run 001 call 9, run 001 call 14, run 001 call 15
++- Added the starting inventory and the log budget (2 of 3 logs used).: run 001 call 2
++- Added a note that the craftable preview can show the wrong item (oak_slab for 3 planks in a row) or null for partial layouts.: run 001 call 5, run 001 call 12
++- Removed the unshown claim that inventory is checked at the end, the reference-file pointers and the generic advice. Rewrote the description to name wooden_pickaxe, the 3x3 table and the recipe chain.: no source
++- Replaced the provenance file with run citations and an explicit list of what is not known.: no source
++
++## Uncited changes
++
++These changes have no recorded source.
++
++- Removed the unshown claim that inventory is checked at the end, the reference-file pointers and the generic advice. Rewrote the description to name wooden_pickaxe, the 3x3 table and the recipe chain. (Those claims were unsupported or generic, and the old description was vague.)
++- Replaced the provenance file with run citations and an explicit list of what is not known. (Rule 4 puts sources and unknowns in the provenance file.)

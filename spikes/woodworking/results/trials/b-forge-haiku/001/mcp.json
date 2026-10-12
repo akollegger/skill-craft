@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "craft": {
+      "type": "stdio",
+      "command": "node_modules/.bin/tsx",
+      "args": [
+        "src/mcp/server.ts"
+      ],
+      "env": {
+        "SIM_WORLD": "worlds/generated/forge-7.json",
+        "SIM_RUN_LOG": "runs/b-forge-haiku/001/run.jsonl"
+      }
+    }
+  }
+}

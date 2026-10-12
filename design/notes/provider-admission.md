@@ -1,7 +1,7 @@
 # Provider admission findings
 
 Findings for the two providers in the table (`src/harness/providers.ts`), by the procedure in
-[spikes/fireworks/README.md](../../spikes/fireworks/README.md) (spec 007, ADR-005 §2.2). Probed 2026-10-11 with
+[spikes/fireworks/README.md](../../spikes/fireworks/README.md) (spec 007, ADR-006 §2.2). Probed 2026-10-11 with
 `probe-tools.ts`, `probe-schema.ts` and `probe-settings.ts`; the Fireworks tool and schema findings were first made in the
 spike (`spikes/fireworks/log.md`, step 2) and are confirmed here through the harness's own runtime.
 

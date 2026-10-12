@@ -1,0 +1,5 @@
+You are at a crafting table in an unfamiliar workshop. Your goal: end up holding one wooden_stool.
+Use only the craft tools, and start with help.
+Nobody can answer questions or give hints, so do not ask for any. Keep trying on your own until you hold wooden_stool, or until your budget of 80 turns is used up.
+craft is irreversible and uses up whatever is on the table, so explore with place, remove, clear and look before you commit.
+When you hold it, say so in one line and stop.

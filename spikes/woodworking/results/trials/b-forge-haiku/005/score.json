@@ -1,0 +1,52 @@
+{
+  "ended": "stopped",
+  "turns": 37,
+  "costUsd": 0.07227229999999998,
+  "text": "I'm holding one glirol.",
+  "score": {
+    "goal": {
+      "item": "glirol",
+      "qty": 1
+    },
+    "reached": true,
+    "totalCalls": 36,
+    "actionCalls": 32,
+    "callsToGoal": 32,
+    "craftsMade": 1,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 1,
+      "minCalls": 3,
+      "slack": 2
+    },
+    "extraCalls": 29,
+    "extraCrafts": 0,
+    "reachedSeq": 35
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 42423,
+      "inputTokens": 21881,
+      "outputTokens": 3246,
+      "cacheReadTokens": 139333,
+      "cacheCreationTokens": 10114,
+      "costUsd": 0.07227229999999998
+    },
+    "toGoal": {
+      "durationMs": 38801,
+      "inputTokens": 21857,
+      "outputTokens": 3064,
+      "cacheReadTokens": 110277,
+      "cacheCreationTokens": 9327
+    }
+  },
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "resolved": [
+      "claude-haiku-4-5-20251001"
+    ]
+  },
+  "priorFit": "invented"
+}

@@ -1,0 +1,45 @@
+{
+  "ended": "stopped",
+  "turns": 165,
+  "costUsd": 0.5166837999999998,
+  "text": "I don't hold glirol, and I couldn't find a recipe for it. I'm stopping here rather than spending more turns on guesses.\n\nI found three recipes:\n- doudrur on its own makes glavruzael.\n- lugli on its own makes naeviozhum.\n- tepitil, thegen, tepitil placed in an L shape make drinefoun.\n\nI crafted one of each, but none of the combinations I tried with them produced glirol.",
+  "score": {
+    "goal": {
+      "item": "glirol",
+      "qty": 1
+    },
+    "reached": false,
+    "totalCalls": 164,
+    "actionCalls": 161,
+    "callsToGoal": 161,
+    "craftsMade": 3,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 1,
+      "minCalls": 3,
+      "slack": 2
+    },
+    "extraCalls": null,
+    "extraCrafts": null,
+    "reachedSeq": null
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 156995,
+      "inputTokens": 122,
+      "outputTokens": 15526,
+      "cacheReadTokens": 1042719,
+      "cacheCreationTokens": 38159,
+      "costUsd": 0.5166837999999998
+    }
+  },
+  "model": {
+    "requested": "claude-sonnet-5-5",
+    "resolved": [
+      "claude-sonnet-5-5"
+    ]
+  },
+  "priorFit": "invented"
+}

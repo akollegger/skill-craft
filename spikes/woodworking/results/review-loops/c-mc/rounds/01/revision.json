@@ -1,0 +1,43 @@
+{
+  "changes": [
+    {
+      "what": "Replaced the generic boilerplate with the full recipe chain: log -> 4 planks, 2 stacked planks -> 4 sticks, second log -> 4 planks, and the pickaxe layout (planks on row 0, sticks at (1,1) and (2,1)).",
+      "why": "The recordings show these facts and the old skill had none of them.",
+      "sourceCalls": [
+        "run 001 call 3",
+        "run 001 call 4",
+        "run 001 call 6",
+        "run 001 call 7",
+        "run 001 call 9",
+        "run 001 call 14",
+        "run 001 call 15"
+      ]
+    },
+    {
+      "what": "Added the starting inventory and the log budget (2 of 3 logs used).",
+      "why": "The student needs to know that the resources suffice.",
+      "sourceCalls": [
+        "run 001 call 2"
+      ]
+    },
+    {
+      "what": "Added a note that the craftable preview can show the wrong item (oak_slab for 3 planks in a row) or null for partial layouts.",
+      "why": "This keeps the student from crafting the wrong item.",
+      "sourceCalls": [
+        "run 001 call 5",
+        "run 001 call 12"
+      ]
+    },
+    {
+      "what": "Removed the unshown claim that inventory is checked at the end, the reference-file pointers and the generic advice. Rewrote the description to name wooden_pickaxe, the 3x3 table and the recipe chain.",
+      "why": "Those claims were unsupported or generic, and the old description was vague.",
+      "sourceCalls": []
+    },
+    {
+      "what": "Replaced the provenance file with run citations and an explicit list of what is not known.",
+      "why": "Rule 4 puts sources and unknowns in the provenance file.",
+      "sourceCalls": []
+    }
+  ],
+  "revisedSha256": "e4582f8afe425f3a22c5ecbd36027905e9b45e8a0ce94fc2d2b1d7021586808e"
+}

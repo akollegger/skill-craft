@@ -1,0 +1,5 @@
+{"seq":1,"tool":"help","args":{},"ok":true}
+{"seq":2,"tool":"clear","args":{},"ok":true}
+{"seq":3,"tool":"place","args":{"item":"lugli","row":0,"col":0},"ok":true}
+{"seq":4,"tool":"place","args":{"item":"lugli","row":0,"col":1},"ok":true}
+{"seq":5,"tool":"craft","args":{},"ok":true,"crafted":{"item":"glirol","qty":1}}

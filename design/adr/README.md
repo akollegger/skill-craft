@@ -53,7 +53,7 @@ looking one up. The last column names where the term is decided.
 | **run log** | `run.jsonl`: every tool call of a run, refusals included, with no timestamps. Replaying it gives the score | ADR-001 |
 | **trace** | `trace.jsonl`: the time, tokens and cost of a run, measured by the harness | ADR-002 |
 | **replay bundle** | An exported run (frames, trace and score) that a static viewer plays back | ADR-002 |
-| **harness** | The program that runs a model against a world, scores and measures the run (through the AI SDK since ADR-005; through Claude Code before) | ADR-002, ADR-005 |
+| **harness** | The program that runs a model against a world, scores and measures the run (through the AI SDK since ADR-006; through Claude Code before) | ADR-002, ADR-006 |
 | **action call** | A tool call that changes the world (`place`, `remove`, `clear`, `craft`), as opposed to `help`, `inventory` and `look` | ADR-001 |
 | **arm** | One experimental condition: a model with a given kind of help (none, a skill, memory) | ADR-003 |
 | **trial** | One run of one arm | ADR-003 |
@@ -72,7 +72,7 @@ looking one up. The last column names where the term is decided.
 | **notes file** | `<world>.notes.json`: a world's declared prior fit, a note per recipe for a faithful world, and what it leaves out. Read by tests, the generator and the harness, never by the engine or the agent | constitution III, spec 003 |
 | **experiment summary** | `runs/<experiment>/summary.json`, fixed before the first teacher or arm trial: route, primary measure, goal roles, arms, trial counts, turn budget, spend limit and the list of steps done by hand | spec 003 |
 | **workspace** | An isolated NAMS store. Experiments record to a workspace no development session uses | ADR-003 |
-| **hooks / recall** | The `nams-hooks` plugin records a Claude Code session to NAMS; at a session's start it also recalls entities that match the first prompt. Harness runs do not load it | ADR-003, ADR-005 |
+| **hooks / recall** | The `nams-hooks` plugin records a Claude Code session to NAMS; at a session's start it also recalls entities that match the first prompt. Harness runs do not load it | ADR-003, ADR-006 |
 | **skill** | A folder an agent can load: a `SKILL.md` plus reference files | ADR-003 |
 | **distillation** | NAMS deriving a skill from recorded runs. Its grounding score checks that steps trace back to the memory, its coverage score that the recorded work is represented | ADR-003 |
 
@@ -83,5 +83,6 @@ looking one up. The last column names where the term is decided.
 | [ADR-001](ADR-001-crafting-table-world.md) | Grid-based crafting table as the distillation demo world | accepted | specs/001-crafting-table-sim |
 | [ADR-002](ADR-002-client-otel-trace.md) | Measure run time and tokens on the client | accepted | specs/002-client-otel-trace |
 | [ADR-003](ADR-003-experiment-protocol.md) | Experiment protocol: arms, models, isolation and skill review | accepted | specs/003-faithful-minecraft-world, specs/005-critic-loop-harness |
-| [ADR-004](ADR-004-run-observer.md) | The observer: a read-only view of a folder of runs | proposed | |
-| [ADR-005](ADR-005-ai-sdk-runtime.md) | The AI SDK as the runtime for players and review roles | accepted | specs/007-ai-sdk-runtime |
+| [ADR-004](ADR-004-skillcraft-visualizer.md) | The skillcraft visualizer: a read-only view of a folder of runs | accepted | specs/004-skillcraft-visualizer |
+| [ADR-005](ADR-005-per-world-item-art.md) | Per-world item art: drawn icons where a world has them, allocated glyphs where it does not | accepted | specs/006-sprite-library |
+| [ADR-006](ADR-006-ai-sdk-runtime.md) | The AI SDK as the runtime for players and review roles | accepted | specs/007-ai-sdk-runtime |

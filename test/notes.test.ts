@@ -92,7 +92,7 @@ describe("priorFitOf and loadNotes", () => {
 });
 
 describe("generated worlds", () => {
-  const worlds = readdirSync("worlds/generated").filter((f) => f.endsWith(".json") && !f.endsWith(".goals.json") && !f.endsWith(".notes.json"));
+  const worlds = readdirSync("worlds/generated").filter((f) => f.endsWith(".json") && !f.endsWith(".goals.json") && !f.endsWith(".notes.json") && !f.endsWith(".art.json"));
 
   it("finds generated worlds", () => {
     expect(worlds.length).toBeGreaterThan(0);

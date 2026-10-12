@@ -1,0 +1,58 @@
+{
+  "ended": "stopped",
+  "turns": 23,
+  "costUsd": 0.04766139999999999,
+  "text": "I now hold one wooden_stool.",
+  "score": {
+    "goal": {
+      "item": "wooden_stool",
+      "qty": 1
+    },
+    "reached": true,
+    "totalCalls": 20,
+    "actionCalls": 19,
+    "callsToGoal": 19,
+    "craftsMade": 6,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 6,
+      "minCalls": 19,
+      "slack": 5
+    },
+    "extraCalls": 0,
+    "extraCrafts": 0,
+    "reachedSeq": 20
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 18146,
+      "inputTokens": 18,
+      "outputTokens": 1510,
+      "cacheReadTokens": 42987,
+      "cacheCreationTokens": 5982,
+      "costUsd": 0.04766139999999999
+    },
+    "toGoal": {
+      "durationMs": 15894,
+      "inputTokens": 14,
+      "outputTokens": 1464,
+      "cacheReadTokens": 28829,
+      "cacheCreationTokens": 4894
+    }
+  },
+  "model": {
+    "requested": "claude-sonnet-5-5",
+    "resolved": [
+      "claude-sonnet-5-5"
+    ]
+  },
+  "priorFit": "perturbed",
+  "skill": {
+    "name": "wooden-stool-chain",
+    "sha256": "3923bfd3fa21e92e442ce023283082b66a568be345d061387e2fb9fd4b445b79",
+    "invoked": true,
+    "loadedAfterCalls": 0
+  }
+}

@@ -1,6 +1,6 @@
 # Research: Complete the AI SDK Runtime
 
-Decisions for the questions the spec and ADR-005 left to the plan. Two probes were run against the installed
+Decisions for the questions the spec and ADR-006 left to the plan. Two probes were run against the installed
 SDK (`ai` 7.0.133) with its scripted model; their results are stated where they matter.
 
 ## R1. The provider table is data that `ai-driver.ts` reads
@@ -10,7 +10,7 @@ SDK (`ai` 7.0.133) with its scripted model; their results are stated where they 
 `routed` (true for a router) with `pinnedBackend` required when routed, `usageReport` (a name or null), and
 `settings` (which of thinking, effort and temperature the provider accepts, with per-model exceptions). `ai-driver.ts`
 creates a model with `await import(row.package)` and calls the named factory. The module has no SDK import, so
-spec parsing and the dry run stay light and ADR-005 §2.1 (one file imports the SDK) holds.
+spec parsing and the dry run stay light and ADR-006 §2.1 (one file imports the SDK) holds.
 
 **Rationale**: SC-003 asks for a provider through the table alone. A table of factory functions
 would import every provider package wherever the table is read. Holding the package and factory names as strings
@@ -49,7 +49,7 @@ tested with a scripted provider and filled when a provider that reports (OpenRou
 `aggregate()` adds `pricedRuns` and `unpricedRuns`, `totalCostUsd` sums priced runs only, and the report prints the
 unpriced count beside every cost.
 
-**Rationale**: computed cost is comparable across providers where entries exist; a reported figure is a cross-check, not a replacement. *(Superseded 2026-10-12 by R12's successor below: a provider-reported cost is what was charged and now comes first, then a pin, then a market quote, else none, with the source recorded; ADR-005 §2.4 as amended, FR-046 to FR-051.)*
+**Rationale**: computed cost is comparable across providers where entries exist; a reported figure is a cross-check, not a replacement. *(Superseded 2026-10-12 by R12's successor below: a provider-reported cost is what was charged and now comes first, then a pin, then a market quote, else none, with the source recorded; ADR-006 §2.4 as amended, FR-046 to FR-051.)*
 Counting an unpriced run as zero is the spike's defect (a Fireworks total read `$0.000`).
 
 ## R4. Anthropic prompt caching through the provider's call option
@@ -140,7 +140,7 @@ test suite free and offline, as the existing live tests do.
 ## R9. Documents
 
 **Decision**: README and AGENTS already describe the runtime. Specs 002 and 005 and the design notes that name the
-Agent SDK or `--record` get a one-line history marker pointing at ADR-005, as ADR-002 and ADR-003 already carry
+Agent SDK or `--record` get a one-line history marker pointing at ADR-006, as ADR-002 and ADR-003 already carry
 amendments. No spec's requirements are rewritten.
 
 ## R12. Operational limits and failure codes (added 2026-10-11)

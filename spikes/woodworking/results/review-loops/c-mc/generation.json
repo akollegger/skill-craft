@@ -1,0 +1,19 @@
+{
+  "runId": "run-38212926-9aa0-45af-9452-df6e9730378d",
+  "skillId": "sk-run-38212926-9aa0-45af-9452-df6e9730378d",
+  "format": "prose",
+  "status": "succeeded",
+  "failure": null,
+  "gates": {
+    "grounding": 1,
+    "coverage": 1
+  },
+  "capabilities": {
+    "attestationConfigured": false,
+    "autosuggest": false,
+    "composition": false,
+    "coverageThreshold": 0.6,
+    "distillation": true,
+    "groundingThreshold": 0.9
+  }
+}

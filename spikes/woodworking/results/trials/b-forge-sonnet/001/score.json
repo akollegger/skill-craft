@@ -1,0 +1,45 @@
+{
+  "ended": "stopped",
+  "turns": 160,
+  "costUsd": 0.40161700000000006,
+  "text": "I don't hold glirol. I couldn't find a recipe for it in about 30 turns of testing.\n\nOnly two crafts worked, and I made both:\n- **doudrur:** one on the table makes 2 glavruzael.\n- **lugli:** one on the table makes 3 naeviozhum.\n\nTepitil and thegen made nothing on their own. I also tried pairs and larger layouts of the raw items and of glavruzael and naeviozhum, in different cell positions, and none of them matched anything.\n\nI'm stopping here. I now hold 2 doudrur, 2 glavruzael, 3 lugli, 3 naeviozhum, 4 tepitil and 4 thegen.",
+  "score": {
+    "goal": {
+      "item": "glirol",
+      "qty": 1
+    },
+    "reached": false,
+    "totalCalls": 159,
+    "actionCalls": 156,
+    "callsToGoal": 156,
+    "craftsMade": 2,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 1,
+      "minCalls": 3,
+      "slack": 2
+    },
+    "extraCalls": null,
+    "extraCrafts": null,
+    "reachedSeq": null
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 117755,
+      "inputTokens": 60,
+      "outputTokens": 15689,
+      "cacheReadTokens": 461555,
+      "cacheCreationTokens": 38074,
+      "costUsd": 0.40161700000000006
+    }
+  },
+  "model": {
+    "requested": "claude-sonnet-5-5",
+    "resolved": [
+      "claude-sonnet-5-5"
+    ]
+  },
+  "priorFit": "invented"
+}

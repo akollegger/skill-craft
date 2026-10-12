@@ -1,0 +1,18 @@
+{
+  "format": 1,
+  "items": {
+    "oak_log": "log",
+    "cobblestone": "cobblestone",
+    "iron_ingot": "ingot",
+    "oak_planks": "planks",
+    "stick": "stick",
+    "crafting_table": "crafting-table",
+    "oak_slab": "slab",
+    "wooden_pickaxe": "pickaxe/wooden",
+    "stone_pickaxe": "pickaxe/stone",
+    "iron_pickaxe": "pickaxe/iron",
+    "wooden_sword": "sword/wooden",
+    "stone_sword": "sword/stone",
+    "iron_sword": "sword/iron"
+  }
+}

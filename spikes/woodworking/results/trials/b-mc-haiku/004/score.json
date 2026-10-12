@@ -1,0 +1,54 @@
+{
+  "ended": "stopped",
+  "turns": 75,
+  "costUsd": 0.1400398,
+  "text": "I'm holding wooden_pickaxe.",
+  "score": {
+    "goal": {
+      "item": "wooden_pickaxe",
+      "qty": 1
+    },
+    "reached": true,
+    "totalCalls": 74,
+    "actionCalls": 65,
+    "callsToGoal": 65,
+    "craftsMade": 5,
+    "failedCrafts": 0,
+    "refusals": {
+      "not_in_inventory": 5
+    },
+    "best": {
+      "minCrafts": 4,
+      "minCalls": 13,
+      "slack": 3
+    },
+    "extraCalls": 52,
+    "extraCrafts": 1,
+    "reachedSeq": 73
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 78014,
+      "inputTokens": 25328,
+      "outputTokens": 7677,
+      "cacheReadTokens": 391908,
+      "cacheCreationTokens": 18568,
+      "costUsd": 0.1400398
+    },
+    "toGoal": {
+      "durationMs": 74965,
+      "inputTokens": 25304,
+      "outputTokens": 7465,
+      "cacheReadTokens": 338264,
+      "cacheCreationTokens": 17058
+    }
+  },
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "resolved": [
+      "claude-haiku-4-5-20251001"
+    ]
+  },
+  "priorFit": "faithful"
+}

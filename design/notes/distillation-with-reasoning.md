@@ -11,7 +11,7 @@ The loop recorded to the real memory service for the first time in the new forma
 - **The record named what ran:** process version 2, the commit and a dirty flag with the hash of the changes, the recording format (`conversation` against `placeholder`), the distiller request (3 conversations, prose), the gates, and the critic's cost ($0.077 each, none unpriced).
 - **A failed attempt cleans up and records itself.** The first attempt (labels `t085-*`) failed on every conversation with HTTP 400 and still deleted its workspaces and wrote a loop record with the failure.
 
-Two defects were found and fixed on the way. The service takes a conversation's metadata as an object of strings only, and the recording sent arrays, objects and nulls (the scripted service accepted them; it now rejects them as the real one does). And Sonnet 5.5 with adaptive thinking returned no reasoning at all until `display: "summarized"` was requested (ADR-005 amendment).
+Two defects were found and fixed on the way. The service takes a conversation's metadata as an object of strings only, and the recording sent arrays, objects and nulls (the scripted service accepted them; it now rejects them as the real one does). And Sonnet 5.5 with adaptive thinking returned no reasoning at all until `display: "summarized"` was requested (ADR-006 amendment).
 
 ## Setup
 

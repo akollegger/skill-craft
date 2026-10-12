@@ -1,0 +1,16 @@
+{
+  "priorFit": "perturbed",
+  "inspiration": "everyday woodworking, and the familiar idea of a crafting table",
+  "recipes": {
+    "r-planks": "Planks from a log: one log makes four planks.",
+    "r-rods": "Rods from two planks stacked in a column. Familiar shape, but a craft makes only two rods, fewer than a model may expect.",
+    "r-seat": "A seat from a row of three planks, one seat. A flat row of planks is a familiar shape; the item is new.",
+    "r-wooden_stool": "A stool: a seat centred over a bottom row of three rods, which a model can reason to from what a stool is. The goal's name discloses that a stool has a seat and legs, by vocabulary and not by any tool."
+  },
+  "omissions": [
+    "Gathering raw materials: the stock is given",
+    "Joinery, glue, finishing and drying",
+    "Tools and their wear",
+    "Stools of other designs, and furniture other than a stool"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "ended": "stopped",
+  "turns": 20,
+  "costUsd": 0.047274899999999995,
+  "text": "I successfully crafted and now hold one wooden_pickaxe.",
+  "score": {
+    "goal": {
+      "item": "wooden_pickaxe",
+      "qty": 1
+    },
+    "reached": true,
+    "totalCalls": 17,
+    "actionCalls": 13,
+    "callsToGoal": 13,
+    "craftsMade": 4,
+    "failedCrafts": 0,
+    "refusals": {},
+    "best": {
+      "minCrafts": 4,
+      "minCalls": 13,
+      "slack": 3
+    },
+    "extraCalls": 0,
+    "extraCrafts": 0,
+    "reachedSeq": 16
+  },
+  "measured": {
+    "trace": "matched",
+    "total": {
+      "durationMs": 28815,
+      "inputTokens": 9363,
+      "outputTokens": 2635,
+      "cacheReadTokens": 86769,
+      "cacheCreationTokens": 8030,
+      "costUsd": 0.047274899999999995
+    },
+    "toGoal": {
+      "durationMs": 25680,
+      "inputTokens": 9339,
+      "outputTokens": 2438,
+      "cacheReadTokens": 63837,
+      "cacheCreationTokens": 7419
+    }
+  },
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "resolved": [
+      "claude-haiku-4-5-20251001"
+    ]
+  },
+  "priorFit": "faithful",
+  "skill": {
+    "name": "wooden-pickaxe-crafting",
+    "sha256": "7351511ed5527a2e750d679fd13f64f3aa02b7f284f6c3b912a08bca83d82021",
+    "invoked": true,
+    "loadedAfterCalls": 3
+  }
+}

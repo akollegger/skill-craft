@@ -1,8 +1,9 @@
-import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runAgentCli } from "../src/harness/cli.js";
+import { buildBundle } from "../src/harness/export.js";
 import type { AgentDriver, DriverSink } from "../src/harness/driver.js";
 import { exportBundle } from "../src/harness/export.js";
 import { runExperiment } from "../src/harness/run.js";
@@ -10,6 +11,7 @@ import { readTrace } from "../src/trace/lines.js";
 import { createLoopFolder, writeLoopRecord } from "../src/loop/record.js";
 import { runLoop } from "../src/loop/loop.js";
 import { fakePlayer, type FakePersonal } from "./helpers/fake-player.js";
+import { finishedRun, stampScore } from "./helpers/finished-run.js";
 import { fakeRole } from "./helpers/fake-role.js";
 import { candidate, recording, revision, rubric, verdict } from "./helpers/loop-fixtures.js";
 
@@ -150,6 +152,28 @@ describe("retries in a score (spec 007)", () => {
     const score = JSON.parse(readFileSync(join(out, "r", "001", "score.json"), "utf8")) as Record<string, unknown>;
     expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "limits", "measured", "model", "priorFit", "retries", "score", "settings", "text", "turns"].sort());
     expect(score["retries"]).toEqual({ max: 2, failedAttempts: 1 });
+  });
+});
+
+describe("a bundle's manifest fields for the visualizer", () => {
+  const SKILL_TEXT = "SKILL-BODY-SECRET-recipe-steps-9931";
+  const FINGERPRINT = "f1ngerpr1nt0000";
+
+  it("hold the prior fit, the fixed prompt sentence and the skill's name and counts, and nothing from the skill", async () => {
+    const { runDir } = await finishedRun({ player: { personal: PERSONAL, agentText: CHATTER } });
+    const skillDir = join(runDir, "skill-plugin", "skills", "demo-skill");
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(join(skillDir, "SKILL.md"), `---\nname: demo-skill\n---\n${SKILL_TEXT}\n`);
+    stampScore(runDir, {
+      priorFit: "perturbed",
+      promptNote: "A skill is available.",
+      skill: { name: "demo-skill", sha256: FINGERPRINT, invoked: true, loadedAfterCalls: 3 },
+    });
+    const bundle = buildBundle(runDir);
+    expect(Object.keys(bundle.manifest).sort()).toEqual(["art", "best", "format", "frames", "goal", "label", "model", "priorFit", "promptNote", "skill", "trace", "world"].sort());
+    expect(Object.keys(bundle.manifest.skill ?? {}).sort()).toEqual(["loaded", "loadedAfter", "name"]);
+    const text = JSON.stringify(bundle);
+    for (const secret of [...SECRETS, SKILL_TEXT, FINGERPRINT]) expect(text, secret).not.toContain(secret);
   });
 });
 

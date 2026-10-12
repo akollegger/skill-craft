@@ -1,6 +1,6 @@
 # Research: Critic Loop in the Harness
 
-> **History note (2026-10-10):** where this document describes the player as Claude Code run through the Claude Agent SDK, or the `--record` flag, that was the design at the time. The harness now runs every model through the AI SDK and has no `--record` ([ADR-005](../../design/adr/ADR-005-ai-sdk-runtime.md), spec 007). Read the affected passages as the record of the earlier design.
+> **History note (2026-10-10):** where this document describes the player as Claude Code run through the Claude Agent SDK, or the `--record` flag, that was the design at the time. The harness now runs every model through the AI SDK and has no `--record` ([ADR-006](../../design/adr/ADR-006-ai-sdk-runtime.md), spec 007). Read the affected passages as the record of the earlier design.
 
 Decisions that shape the plan. Each has the decision, why, and what was rejected. Evidence from the spike is in
 `design/notes/critic-loop-findings.md` and `spikes/critic-loop/log.md`. Items marked **probe** cannot be settled

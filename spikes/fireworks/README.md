@@ -100,7 +100,7 @@ Load it in a script with `set -a; source ./.env; set +a`. Do not `cat` `.env`.
 
 ---
 
-## Admitting a provider (spec 007, ADR-005 §2.2)
+## Admitting a provider (spec 007, ADR-006 §2.2)
 
 The probes here are how a provider enters the harness's provider table (`src/harness/providers.ts`). The full contract is
 [specs/007-ai-sdk-runtime/contracts/provider-table.md](../../specs/007-ai-sdk-runtime/contracts/provider-table.md).

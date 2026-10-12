@@ -9,7 +9,7 @@ Bump it when any of these change: what a recorded run sends to the memory servic
 
 ## v1
 
-The loop as spec 005 built it, on the AI SDK runtime (ADR-005).
+The loop as spec 005 built it, on the AI SDK runtime (ADR-006).
 
 1. **Recording.** Each finished teacher run that reached its goal is replayed on a fresh game through the craft server and written to a workspace the harness creates: one conversation, two messages (the prompt and the final answer), one reasoning step per distinct tool whose text is a fixed placeholder, and one tool call per call with input, output, status and duration. The recording format is `placeholder`. Tool names are written with the `mcp__craft__` prefix.
 2. **Distillation.** One skill is requested from all the conversations together (`scope` conversations), in the format given on the command line (`prose` by default). The service's gates and capabilities are recorded.

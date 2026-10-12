@@ -1,0 +1,43 @@
+{
+  "rubric": {
+    "version": "1",
+    "sha256": "a6e33cf720e4b20e8cc767666d49f29375452d86beec3e1e1cf8e8c2cadc5c5e"
+  },
+  "verdict": {
+    "overall": "revise",
+    "questions": {
+      "generality": {
+        "value": "One recipe; right level but unlabeled",
+        "reason": "Content is the exact wooden_pickaxe sequence. Fine for this goal, but it doesn't state the reusable rules (1 log→4 planks; 2 stacked planks→4 sticks; 3 planks top + 2 sticks center column→pickaxe)."
+      },
+      "scope": {
+        "value": "One task",
+        "reason": "Only the wooden_pickaxe chain: planks, sticks, pickaxe."
+      },
+      "decomposable": {
+        "value": "No",
+        "reason": "Short single chain; splitting wouldn't help."
+      },
+      "leads_with_fact": {
+        "value": "No, replays the run steps",
+        "reason": "Opens with inventory and a numbered replay. The key recipe layout appears only at the end. It should lead with the pickaxe layout and the prerequisite chain."
+      },
+      "common_knowledge": {
+        "value": "cannot_determine",
+        "reason": "Recordings don't show what the teacher knew beforehand. Layout resembles standard crafting, but the world's specifics (4 planks per log, 4 sticks, slab preview) are shown."
+      },
+      "description_load": {
+        "value": "Adequate",
+        "reason": "Description names the goal and tools and matches the body. It could be more about the recipe, but would trigger correctly."
+      }
+    },
+    "reasons": "Facts match the recordings: inventory, 1 log→4 planks, 2 vertically stacked planks→4 sticks, the top-row 3 planks preview oak_slab, sticks at (1,1) and (2,1) preview wooden_pickaxe, craft gives 1. Problems: (1) the \"trap: slab wastes planks\" claim is unshown, since no run crafted the slab; the provenance file admits this, but SKILL.md states it as fact. (2) \"Do not spend logs on anything else\" is inferred. (3) The skill replays the sequence rather than leading with the key layout and rules. (4) It doesn't note that the preview is null at intermediate states, which is normal and no cause for alarm. (5) It doesn't say that placing a single log at (0,0) is enough for planks, and that the planks must be re-placed because craft consumes the table.",
+    "proposedRevisions": [
+      "Lead with the final layout: planks in row 0 (all three cells), sticks at (1,1) and (2,1) -> wooden_pickaxe x1.",
+      "State the prerequisite rules: 1 oak_log anywhere → 4 oak_planks; 2 planks stacked vertically at (0,0),(1,0) → 4 sticks. Needs 2 logs total, 3 are held.",
+      "Reword the slab line to what was seen: three planks in the top row preview oak_slab; keep adding sticks and the preview changes to wooden_pickaxe. Remove the claim that the slab wastes planks, or label it as unverified.",
+      "Remove 'do not spend logs on anything else' or mark it as an inference.",
+      "Note that cobblestone and iron_ingot are unused, and that craft consumes the whole table, so clear and re-place items between crafts."
+    ]
+  }
+}

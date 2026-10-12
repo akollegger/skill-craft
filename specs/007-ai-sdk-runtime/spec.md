@@ -6,15 +6,15 @@
 
 **Status**: Draft
 
-**Input**: User description: "ADR-005: Complete the AI SDK runtime for players and review roles"
+**Input**: User description: "ADR-006: Complete the AI SDK runtime for players and review roles"
 
-**Derived From**: ADR-005 (design/adr/ADR-005-ai-sdk-runtime.md)
+**Derived From**: ADR-006 (design/adr/ADR-006-ai-sdk-runtime.md)
 
 ## Clarifications
 
 ### Session 2026-10-10
 
-- Q: How much of the calibration rerun (ADR-005 §2.8) does this feature complete? → A: The faithful world's calibration is rerun on this runtime and recorded (about 30 runs; roughly US$4 by the earlier cost). The invented world and a full 60-run calibration are not part of this feature.
+- Q: How much of the calibration rerun (ADR-006 §2.8) does this feature complete? → A: The faithful world's calibration is rerun on this runtime and recorded (about 30 runs; roughly US$4 by the earlier cost). The invented world and a full 60-run calibration are not part of this feature.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -25,7 +25,7 @@ and the **provider integrator**, who adds another source of models.
 A feasibility spike moved the harness from a runtime that only runs one vendor's models to one that runs any
 admitted provider's models the same way, and ran twenty games across four models (`spikes/fireworks/log.md`).
 The player and the two review roles (a critic and a reviser, which review and edit a distilled skill) now run
-through it, and ADR-005 records the decision. The spike left the work below undone. In this document a
+through it, and ADR-006 records the decision. The spike left the work below undone. In this document a
 **provider** is a source of models; a **model spec** names a model as `<provider>/<model>`; a **run** is one
 player session on one goal; a **trial** is one run counted in an experiment; **calibration** is the set of
 unaided trials that decides which goals have room for a skill to help (ADR-003 §2.1).
@@ -114,7 +114,7 @@ recorded as unset, never silently dropped. Calibration is rerun on this runtime 
 role, because earlier results were measured under a different runtime.
 
 **Why this priority**: Without pinned settings two runs of the same model on the same goal may differ for
-reasons nobody recorded. ADR-005 §2.8 requires it.
+reasons nobody recorded. ADR-006 §2.8 requires it.
 
 **Independent Test**: Start an experiment with settings for two models and read the summary. Each run's score
 shows the settings it used.
@@ -191,7 +191,7 @@ mention is marked as history.
 
 1. **Given** the overview, agent guidance and specs 002 and 005, **When** they are searched for the previous
    runtime and the removed recording flag, **Then** every remaining mention is marked as history or points to
-   ADR-005.
+   ADR-006.
 
 ---
 
@@ -282,7 +282,7 @@ every role, could not be declared. P2 because an experiment can run with the fir
 
 ### User Story 11 - A cost with a stated source, or none (Priority: P3)
 
-*(Added 2026-10-12; ADR-005 §2.4, amended.)* The auditor reads a run's cost and sees where it came from: the provider's own figure, a pin, or a
+*(Added 2026-10-12; ADR-006 §2.4, amended.)* The auditor reads a run's cost and sees where it came from: the provider's own figure, a pin, or a
 market quote, or sees that there is none. An experiment mixing sources says so, and a quote is never presented as a charge.
 
 **Why this priority**: Hand-entered rates are neither reliable nor sustainable and a provider may report no cost, so a cost needs a source
@@ -339,7 +339,7 @@ that does not depend on upkeep and a plain way of being absent. P3 because token
   flagged as mixing models.
 - **FR-006**: A run's cost is recorded only where it can be known and is otherwise absent, never zero. FR-046 to FR-051 set the order in which
   it is resolved (a provider-reported cost, a pin, a market quote) and what is recorded with it. *(Amended 2026-10-12: the first wording made a
-  hand-kept price entry the way to cost a run and kept a provider-reported cost beside it as a cross-check; ADR-005 §2.4's amendment says cost is
+  hand-kept price entry the way to cost a run and kept a provider-reported cost beside it as a cross-check; ADR-006 §2.4's amendment says cost is
   provider-dependent, and the hand-entered Claude pins were then removed.)*
 - **FR-007**: Every total, summary and report that sums cost MUST state how many runs were unpriced and MUST NOT
   count them as zero.
@@ -522,7 +522,7 @@ that does not depend on upkeep and a plain way of being absent. P3 because token
 
 ## Assumptions
 
-- ADR-005 is accepted and is the source for the decisions: one runtime for every model, the provider table,
+- ADR-006 is accepted and is the source for the decisions: one runtime for every model, the provider table,
   pinning, and the skill as a tool. This feature builds them and does not reopen them.
 - The billing check (FR-014) is a procedure recorded in the admission notes and run by a person before a model is
   used in an experiment. The harness does not enforce it in code.
@@ -539,6 +539,6 @@ that does not depend on upkeep and a plain way of being absent. P3 because token
   60 runs cost about $16.62, of which a faithful-world rerun is about 30 runs and $3.60.
 - The calibration rerun uses the teacher and student models fixed in ADR-003 §2.1 and the base prompt wording in
   place when it runs, and it records which wording that was.
-- Which base prompt wording the experiment uses stays a separate open decision (ADR-005 §2.8).
+- Which base prompt wording the experiment uses stays a separate open decision (ADR-006 §2.8).
 - Keys for each provider are supplied by the operator in the environment; a provider whose key is absent is
   skipped, not an error, in the checks that need it.
