@@ -155,7 +155,7 @@ zebra-space project with the RFC requirement removed.
 - Time, tokens and cost live in `trace.jsonl` and `score.json`, measured by the harness. Never add a clock
   or a measurement to the engine, the server or `run.jsonl`. Agent text and reasoning are never written to
   a trace, a summary or a bundle; the privacy test enforces it, so keep it passing.
-  The model's messages and reasoning have one home, decided in ADR-003 §2.4 (amended 2026-10-12) and not yet built (spec 007 FR-028 to FR-032): `conversation.jsonl` in a run folder, kept only for the NAMS recording and read only by it. A NAMS recording holds what the model and the world produced and no harness judgement (no score, solver path or label of which calls were needed): those are for judging an agent, not helping one.
+  The model's messages and reasoning have one home, decided in ADR-003 §2.4 (amended 2026-10-12) and built (spec 007 FR-028 to FR-031): `conversation.jsonl` in a run folder (one line per model turn: its text, the reasoning the provider returned and its calls), kept only for the NAMS recording and read only by it. A run made before it existed is recorded with placeholder steps and marked so. A NAMS recording holds what the model and the world produced and no harness judgement (no score, solver path or label of which calls were needed): those are for judging an agent, not helping one.
 - A run's `reason` is `code: fixed message`; never write a wrapped error's own text to disk.
 - Scoring replays a run log on a fresh game. A log that does not replay is an error, not a score.
 - `look`, `help`, `inventory` and every refusal must reveal no recipe; `test/tools-orient.test.ts`
