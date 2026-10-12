@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { runAgentCli } from "../src/harness/cli.js";
 import { buildBundle } from "../src/harness/export.js";
 import type { AgentDriver, DriverSink } from "../src/harness/driver.js";
+import { exportBundle } from "../src/harness/export.js";
 import { runExperiment } from "../src/harness/run.js";
 import { readTrace } from "../src/trace/lines.js";
 import { createLoopFolder, writeLoopRecord } from "../src/loop/record.js";
@@ -46,6 +47,7 @@ function spied(inner: AgentDriver, seen: string[]): AgentDriver {
       onMessage: (m) => { seen.push(JSON.stringify(m)); sink.onMessage(m); },
       onToolStart: (c) => { seen.push(JSON.stringify(c)); sink.onToolStart(c); },
       onToolEnd: (c) => { seen.push(JSON.stringify(c)); sink.onToolEnd(c); },
+      onTurn: (t) => { seen.push(JSON.stringify(t)); sink.onTurn?.(t); },
     };
     return inner(o, tee);
   };
@@ -61,7 +63,7 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
       return spied(fakePlayer({ mode, goal: GOAL, personal: PERSONAL, agentText: CHATTER, models: ["fake-a"] }), seen)(o, s);
     };
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 3, maxTurns: 12, out, label: "p", record: false, driver });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 3, maxTurns: 12, out, label: "p", driver });
 
     // Positive control: the player really did send every secret, so finding none on disk means something.
     const sent = seen.join("\n");
@@ -69,12 +71,18 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
 
     const files = filesUnder(out);
     expect(Object.keys(files).length).toBeGreaterThan(10);
-    for (const [path, text] of Object.entries(files)) for (const secret of SECRETS) expect(text, `${path} holds ${secret}`).not.toContain(secret);
+    // The model's own words have one home, conversation.jsonl (ADR-003 §2.4, amended): it may hold the chatter, but never an identifier.
+    const conversation = (path: string) => path.endsWith("conversation.jsonl");
+    for (const [path, text] of Object.entries(files)) for (const secret of SECRETS) {
+      if (conversation(path) && secret === CHATTER) continue;
+      expect(text, `${path} holds ${secret}`).not.toContain(secret);
+    }
+    expect(Object.entries(files).some(([path, text]) => conversation(path) && text.includes(CHATTER))).toBe(true); // positive control: it is kept there
   });
 
   it("never writes the operator's PATH or environment into a run folder", async () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "solve", goal: GOAL }) });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "solve", goal: GOAL }) });
     const path = process.env["PATH"] as string;
     expect(path.length).toBeGreaterThan(10);
     for (const [name, text] of Object.entries(filesUnder(out))) expect(text, name).not.toContain(path);
@@ -82,15 +90,15 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
 
   it("writes only the files the design names, and no copy of the player's messages", async () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, agentText: CHATTER }) });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, agentText: CHATTER }) });
     expect(Object.keys(filesUnder(out)).sort()).toEqual(
-      ["p/001/mcp.json", "p/001/prompt.txt", "p/001/run.jsonl", "p/001/score.json", "p/001/trace.jsonl", "p/summary.json"].sort(),
+      ["p/001/conversation.jsonl", "p/001/mcp.json", "p/001/prompt.txt", "p/001/run.jsonl", "p/001/score.json", "p/001/trace.jsonl", "p/summary.json"].sort(),
     );
   });
 
   it("writes only allowlisted keys in trace lines", async () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, agentText: CHATTER }) });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, agentText: CHATTER }) });
     const request = ["seq", "kind", "requestId", "model", "turn", "startMs", "endMs", "ttftMs", "inputTokens", "outputTokens", "cacheReadTokens", "cacheCreationTokens"].sort();
     const tool = ["seq", "kind", "toolUseId", "tool", "args", "startMs", "endMs"].sort();
     const lines = readTrace(join(out, "p", "001", "trace.jsonl"));
@@ -100,7 +108,7 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
 
   it("keeps identifiers out of the error reasons, even when the player's error message carries them", async () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    const r = await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "crash", personal: PERSONAL }) });
+    const r = await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "crash", personal: PERSONAL }) });
     expect(r.reports[0]?.reason).toBe("DriverFailed: the player failed");
     for (const secret of SECRETS) expect(JSON.stringify(r.reports[0])).not.toContain(secret);
   });
@@ -119,12 +127,31 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
 
   it("keeps score.json and summary.json to the keys the design names", async () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 2, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "crash", personal: PERSONAL }) });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 2, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "crash", personal: PERSONAL }) });
     const score = JSON.parse(readFileSync(join(out, "p", "001", "score.json"), "utf8")) as Record<string, unknown>;
-    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "measured", "model", "priorFit", "reason", "score", "text", "turns"].sort());
+    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "limits", "measured", "model", "priorFit", "reason", "score", "settings", "text", "turns"].sort());
     const summary = JSON.parse(readFileSync(join(out, "p", "summary.json"), "utf8")) as { runs: Record<string, unknown>[] } & Record<string, unknown>;
-    expect(Object.keys(summary).sort()).toEqual(["aggregate", "cancelled", "goal", "maxTurns", "mixedModels", "models", "priorFit", "record", "runs", "timeoutMs", "world"].sort());
+    expect(Object.keys(summary).sort()).toEqual(["aggregate", "cancelled", "goal", "maxTurns", "mixedModels", "models", "priorFit", "runs", "timeoutMs", "world"].sort());
     for (const run of summary.runs) expect(run).not.toHaveProperty("text"); // the agent's final message stays in score.json only
+  });
+
+  it("adds only reportedCostUsd to score.json, and pricedRuns and unpricedRuns to the aggregate (spec 007)", async () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "q", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, reportedCostUsd: 0.5 }) });
+    const score = JSON.parse(readFileSync(join(out, "q", "001", "score.json"), "utf8")) as Record<string, unknown>;
+    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "limits", "measured", "model", "priorFit", "reportedCostUsd", "score", "settings", "text", "turns"].sort());
+    const summary = JSON.parse(readFileSync(join(out, "q", "summary.json"), "utf8")) as { aggregate: Record<string, unknown> };
+    expect(Object.keys(summary.aggregate).sort()).toEqual(["costSources", "errors", "gaveUp", "meanExtraCalls", "medianCallsToGoal", "mixedCostSources", "mixedModels", "models", "outOfBudget", "pricedRuns", "reached", "runs", "successRate", "totalCostUsd", "unpricedRuns"].sort());
+  });
+});
+
+describe("retries in a score (spec 007)", () => {
+  it("add only a retries key to score.json, holding two numbers", async () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "r", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, retries: { max: 2, failedAttempts: 1 } }) });
+    const score = JSON.parse(readFileSync(join(out, "r", "001", "score.json"), "utf8")) as Record<string, unknown>;
+    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "limits", "measured", "model", "priorFit", "retries", "score", "settings", "text", "turns"].sort());
+    expect(score["retries"]).toEqual({ max: 2, failedAttempts: 1 });
   });
 });
 
@@ -174,7 +201,7 @@ describe("model-authored review text stays in the loop folder (spec 005, FR-018)
   it("puts review text under rounds/ and skill/ only, and none in the run folders the loop read", async () => {
     // A run folder the loop read, made by the scripted player.
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
-    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", record: false, driver: fakePlayer({ mode: "solve", goal: GOAL }) });
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "solve", goal: GOAL }) });
     const runDir = join(out, "p", "001");
     const before = filesUnder(runDir);
 
@@ -199,5 +226,48 @@ describe("model-authored review text stays in the loop folder (spec 005, FR-018)
 
     const failed = await runWith([{ fail: `DriverFailed: the role reached its spend cap` }], out);
     expect(failed.r.reason).toBe("RoleFailed: a role call failed: DriverFailed: the role reached its spend cap");
+  });
+});
+
+describe("the conversation file (spec 007 FR-028)", () => {
+  it("is written only to its own file: not to the trace, score, summary or an exported bundle", async () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
+    const reasoning = "PRIVATE-REASONING-31337";
+    const r = await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "c", driver: fakePlayer({ mode: "solve", goal: GOAL, agentText: CHATTER, reasoning }) });
+    const run = join(out, "c", "001");
+    const own = readFileSync(join(run, "conversation.jsonl"), "utf8");
+    expect(own).toContain(reasoning);
+    expect(own).toContain(CHATTER);
+    for (const [path, text] of Object.entries(filesUnder(out))) {
+      if (path.endsWith("conversation.jsonl")) continue;
+      expect(text, path).not.toContain(reasoning);
+      expect(text, path).not.toContain(CHATTER);
+    }
+    expect(JSON.stringify(r.reports[0])).not.toContain(reasoning);
+    const dest = join(out, "bundle");
+    exportBundle(run, dest);
+    for (const [path, text] of Object.entries(filesUnder(dest))) {
+      expect(text, `bundle ${path}`).not.toContain(reasoning);
+      expect(text, `bundle ${path}`).not.toContain(CHATTER);
+    }
+    expect(Object.keys(filesUnder(dest))).not.toContain("conversation.jsonl");
+  });
+
+  it("is not made for a run whose player reports no turns", async () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "n", driver: fakePlayer({ mode: "solve", goal: GOAL, turns: false }) });
+    expect(Object.keys(filesUnder(out))).not.toContain("n/001/conversation.jsonl");
+  });
+});
+
+describe("the cost source and the quote in a score (spec 007 FR-048)", () => {
+  it("add only costSource and priceQuote to score.json, and the quote holds only an id, a time and numbers", async () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
+    const priceQuote = { source: "market-quote" as const, openRouterId: "anthropic/claude-haiku-4.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5, cacheRead: 0.1, cacheWrite: 1.25 }, note: "tiers ignored" };
+    await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "s", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, costSource: "market-quote", priceQuote }) });
+    const score = JSON.parse(readFileSync(join(out, "s", "001", "score.json"), "utf8")) as Record<string, unknown>;
+    expect(Object.keys(score).sort()).toEqual(["costSource", "costUsd", "ended", "limits", "measured", "model", "priceQuote", "priorFit", "score", "settings", "text", "turns"].sort());
+    expect(Object.keys(score["priceQuote"] as object).sort()).toEqual(["fetchedAt", "note", "openRouterId", "perMillion", "source"]);
+    for (const secret of SECRETS) expect(JSON.stringify(score["priceQuote"])).not.toContain(secret);
   });
 });

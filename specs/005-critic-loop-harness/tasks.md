@@ -1,5 +1,7 @@
 # Tasks: Critic Loop in the Harness
 
+> **History note (2026-10-10):** where this document describes the player as Claude Code run through the Claude Agent SDK, or the `--record` flag, that was the design at the time. The harness now runs every model through the AI SDK and has no `--record` ([ADR-006](../../design/adr/ADR-006-ai-sdk-runtime.md), spec 007). Read the affected passages as the record of the earlier design.
+
 **Input**: Design documents from `/specs/005-critic-loop-harness/`
 
 **Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md), [data-model.md](data-model.md), [contracts/](contracts/), [quickstart.md](quickstart.md)

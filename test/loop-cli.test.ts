@@ -18,7 +18,7 @@ const CHAIN = "test/fixtures/valid/chain-three.json";
 /** Finished runs made with the scripted player; the calls they hold are enough for citations like `run 001 call 2`. */
 async function makeRun(world: string, goal: { item: string; qty: number }, label: string, models?: string[]): Promise<string> {
   const out = mkdtempSync(join(tmpdir(), "skill-craft-clirun-"));
-  const { dir } = await runExperiment({ world, goal, runs: 1, maxTurns: 12, out, label, record: false, driver: fakePlayer({ mode: "solve", goal, ...(models ? { models } : {}) }) });
+  const { dir } = await runExperiment({ world, goal, runs: 1, maxTurns: 12, out, label, driver: fakePlayer({ mode: "solve", goal, ...(models ? { models } : {}) }) });
   return join(dir, "001");
 }
 
@@ -34,7 +34,7 @@ async function run(args: string[], script: ScriptedAnswer[] = [], deps: Partial<
   const out: string[] = [];
   const err: string[] = [];
   const role = fakeRole(script);
-  const code = await runCriticLoopCli(["--out", loops, ...args], { role: role.driver, env: {}, out: (l) => out.push(l), err: (l) => err.push(l), ...deps });
+  const code = await runCriticLoopCli(["--out", loops, ...args], { role: role.driver, env: {}, processInfo: () => ({ version: "1", commit: null, dirty: null, changesSha256: null }), out: (l) => out.push(l), err: (l) => err.push(l), ...deps });
   return { code, out, err, role, loops };
 }
 
@@ -129,6 +129,54 @@ describe("--dry-run", () => {
     expect(text).toMatch(/no NAMS call/);
     expect(r.role.calls).toHaveLength(0);
     expect(existsSync(join(r.loops, "plan"))).toBe(false);
+  });
+});
+
+describe("--settings for the roles", () => {
+  const settingsFile = (map: object) => {
+    const f = join(mkdtempSync(join(tmpdir(), "skill-craft-lsettings-")), "settings.json");
+    writeFileSync(f, JSON.stringify(map));
+    return f;
+  };
+
+  it("hands each role the settings pinned for its model", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    const file = settingsFile({ "claude-haiku-4-5-20251001": { thinking: 31999 } });
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", "s", "--critic-model", "claude-haiku-4-5-20251001", "--reviser-model", "claude-haiku-4-5-20251001", "--settings", file], [verdict("accept", "A")]);
+    expect(r.code).toBe(0);
+    expect(r.role.calls[0]?.settings).toEqual({ thinking: 31999 });
+  });
+
+  it("refuses a setting a role's model does not take, before any call", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    const file = settingsFile({ "claude-sonnet-5-5": { temperature: 0 } });
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", "s", "--critic-model", "claude-sonnet-5-5", "--reviser-model", "claude-sonnet-5-5", "--settings", file]);
+    expect(r.code).toBe(1);
+    expect(r.err.join("\n")).toContain("model 'anthropic/claude-sonnet-5-5' does not take setting 'temperature'");
+    expect(r.role.calls).toHaveLength(0);
+  });
+
+  it("shows the settings in a dry run", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    const file = settingsFile({ "claude-haiku-4-5-20251001": { thinking: 31999 } });
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", "s", "--critic-model", "claude-haiku-4-5-20251001", "--reviser-model", "claude-haiku-4-5-20251001", "--settings", file, "--dry-run"]);
+    expect(r.code).toBe(0);
+    expect(r.out.join("\n")).toMatch(/settings .*thinking.*31999/);
+  });
+});
+
+describe("models recorded in earlier runs", () => {
+  it("reads a bare Claude id in an old score as anthropic/<id>, so the roles default to the canonical spec", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a", ["claude-sonnet-5-5"]);
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", "old", "--dry-run"]);
+    expect(r.code).toBe(0);
+    expect(r.out.join("\n")).toContain("critic anthropic/claude-sonnet-5-5, reviser anthropic/claude-sonnet-5-5");
+  });
+
+  it("leaves a canonical id as it is", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a", ["fireworks/gpt-oss-120b"]);
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", "new", "--dry-run"]);
+    expect(r.out.join("\n")).toContain("critic fireworks/gpt-oss-120b, reviser fireworks/gpt-oss-120b");
   });
 });
 
@@ -281,3 +329,104 @@ describe("the candidate step's typed errors and a call-free plan", () => {
   });
 });
 
+describe("the loop record's provenance, through the command (spec 007)", () => {
+  const info = { version: "1", commit: "1".repeat(40), dirty: false, changesSha256: null };
+  const zip = () => makeZip([{ name: "craft-thing/SKILL.md", data: skillText("DISTILLED") }]);
+  const base = { namsWait: { pollMs: 1, maxWaitMs: 2000 }, processInfo: () => info };
+  const loopJson = (loops: string, label: string) => JSON.parse(readFileSync(join(loops, label, "loop.json"), "utf8"));
+
+  it("writes the process, the runs with their hashes and settings, and no recording format for a given candidate", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "p1");
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--critic-model", "fireworks/gpt-oss-120b", "--reviser-model", "fireworks/gpt-oss-120b", "--label", "prov"], [verdict("accept", "V1")], base);
+    expect(r.code).toBe(0);
+    const rec = loopJson(r.loops, "prov");
+    expect(rec.process).toEqual(info);
+    expect(rec.recordedRuns).toHaveLength(1);
+    expect(rec.recordedRuns[0].runLogSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(rec.recordedRuns[0].scoreSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(rec.recordedRuns[0].settings).toEqual({ temperature: null, effort: null, thinking: null });
+    expect(rec.recordingFormat).toBeNull(); // a candidate was given, so this loop recorded nothing
+    expect(rec.roles.critic.settings).toBeNull();
+  });
+
+  it("records the format the recording step wrote, and the request made to the distiller, when the candidate is distilled from the runs", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "p2");
+    const r = await run(["--runs", a, "--allow-workspace", "--critic-model", "claude-test-critic", "--reviser-model", "claude-test-reviser", "--label", "prov2"], [verdict("accept", "V1")], { ...base, nams: new FakeNams({ zip: zip() }), env: { NAMS_API_KEY: "test-key" } });
+    expect(r.code).toBe(0);
+    const rec = loopJson(r.loops, "prov2");
+    expect(rec.recordingFormat).toBe("conversation"); // the scripted player reports its turns
+    expect(rec.candidate.generation.request).toEqual({ scope: "conversations", conversations: 1, procedureFormat: "prose" });
+  });
+
+  it("records a pinned setting for a role by its model, and null for a role with none", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "p3");
+    const file = join(mkdtempSync(join(tmpdir(), "skill-craft-set-")), "s.json");
+    writeFileSync(file, JSON.stringify({ "fireworks/gpt-oss-120b": { temperature: 0.2 } }));
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--critic-model", "fireworks/gpt-oss-120b", "--reviser-model", "claude-haiku-4-5-20251001", "--settings", file, "--label", "prov3"], [verdict("accept", "V1")], base);
+    expect(r.code).toBe(0);
+    const rec = loopJson(r.loops, "prov3");
+    expect(rec.roles.critic.settings).toEqual({ temperature: 0.2, effort: null, thinking: null });
+    expect(rec.roles.reviser.settings).toBeNull();
+  });
+
+  it("writes the same provenance for a loop that ended before any role ran", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "p4");
+    const r = await run(["--runs", a, "--allow-workspace", "--critic-model", "claude-test-critic", "--reviser-model", "claude-test-reviser", "--label", "prov4"], [], { ...base, nams: new FakeNams({ failOn: ["generateSkill"] }), env: { NAMS_API_KEY: "test-key" } });
+    expect(r.code).toBe(1);
+    const rec = loopJson(r.loops, "prov4");
+    expect(rec.process).toEqual(info);
+    expect(rec.recordedRuns).toHaveLength(1);
+    expect(rec.recordingFormat).toBe("conversation");
+  });
+});
+
+describe("the service's version, through the command (spec 007 FR-042)", () => {
+  const info = { version: "2", commit: null, dirty: null, changesSha256: null };
+  const zip = () => makeZip([{ name: "craft-thing/SKILL.md", data: skillText("DISTILLED") }]);
+  const base = { namsWait: { pollMs: 1, maxWaitMs: 2000 }, processInfo: () => info, env: { NAMS_API_KEY: "test-key" } };
+
+  it("writes the service block into loop.json when the candidate is distilled from the runs, and none when a candidate was given", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "v1");
+    const distilled = await run(["--runs", a, "--allow-workspace", "--critic-model", "claude-test-critic", "--reviser-model", "claude-test-reviser", "--label", "svc"], [verdict("accept", "V1")], { ...base, nams: new FakeNams({ zip: zip(), version: { version: "1.3.0", released: "2026-10-12", commit: "27263eb", environment: "production" } }) });
+    expect(distilled.code).toBe(0);
+    expect(JSON.parse(readFileSync(join(distilled.loops, "svc", "loop.json"), "utf8")).distiller).toEqual({ service: { name: "nams", version: "1.3.0", released: "2026-10-12", commit: "27263eb", environment: "production" } });
+    const given = await run(["--runs", a, "--candidate", candidateFolder(), "--critic-model", "claude-test-critic", "--reviser-model", "claude-test-reviser", "--label", "given"], [verdict("accept", "V1")], base);
+    expect(JSON.parse(readFileSync(join(given.loops, "given", "loop.json"), "utf8")).distiller).toBeNull();
+  });
+
+  it("writes the code when the version call failed, and the loop still runs", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "v2");
+    const r = await run(["--runs", a, "--allow-workspace", "--critic-model", "claude-test-critic", "--reviser-model", "claude-test-reviser", "--label", "unk"], [verdict("accept", "V1")], { ...base, nams: new FakeNams({ zip: zip(), failOn: ["version"] }) });
+    expect(r.code).toBe(0);
+    expect(JSON.parse(readFileSync(join(r.loops, "unk", "loop.json"), "utf8")).distiller).toEqual({ service: { name: "nams", unknown: "version_unavailable" } });
+  });
+});
+
+describe("the roles' prices, through the command (spec 007 FR-046, FR-048)", () => {
+  const info = { version: "2", commit: null, dirty: null, changesSha256: null };
+  const quote = (id: string) => ({ source: "market-quote" as const, openRouterId: id, fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5 } });
+
+  it("resolves a price for the critic's model and the reviser's before any call, hands it to the roles and records it", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "rp1");
+    const asked: string[] = [];
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--critic-model", "claude-haiku-4-5-20251001", "--reviser-model", "fireworks/gpt-oss-120b", "--label", "prices"], [verdict("revise", "V1"), revision("TEXT-1"), verdict("accept", "V2")], {
+      processInfo: () => info,
+      pricing: async (spec) => { asked.push(spec); return spec.startsWith("anthropic/") ? quote("anthropic/claude-haiku-4.5") : undefined; },
+    });
+    expect(r.code).toBe(0);
+    expect(asked.sort()).toEqual(["anthropic/claude-haiku-4-5-20251001", "fireworks/gpt-oss-120b"]);
+    expect(r.role.calls[0]?.price).toEqual(quote("anthropic/claude-haiku-4.5"));
+    expect(r.role.calls[1]?.price).toBeUndefined();
+    const rec = JSON.parse(readFileSync(join(r.loops, "prices", "loop.json"), "utf8"));
+    expect(rec.roles.critic.priceQuote).toEqual(quote("anthropic/claude-haiku-4.5"));
+    expect(rec.roles.reviser.priceQuote).toBeNull();
+  });
+
+  it("asks once for a model that fills both roles", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "rp2");
+    const asked: string[] = [];
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--critic-model", "claude-haiku-4-5-20251001", "--reviser-model", "claude-haiku-4-5-20251001", "--label", "one"], [verdict("accept", "V1")], { processInfo: () => info, pricing: async (spec) => { asked.push(spec); return undefined; } });
+    expect(r.code).toBe(0);
+    expect(asked).toEqual(["anthropic/claude-haiku-4-5-20251001"]);
+  });
+});

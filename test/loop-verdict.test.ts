@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RevisionInvalid, VerdictInvalid } from "../src/harness/errors.js";
 import { loadRubric } from "../src/loop/rubric.js";
-import { parseRevision, parseVerdict, revisionSchema, toJsonSchema, verdictSchema, withChangeRecord, withUncitedSection, type RevisionContext } from "../src/loop/verdict.js";
+import { describeIssues, parseRevision, parseVerdict, revisionSchema, toJsonSchema, verdictSchema, withChangeRecord, withUncitedSection, type RevisionContext } from "../src/loop/verdict.js";
 
 const rubric = loadRubric();
 const answers = () => Object.fromEntries(rubric.questions.map((q) => [q.id, { value: "no", reason: "because" }]));
@@ -87,6 +87,30 @@ describe("Revision", () => {
 
   it("accepts a change with no source", () => {
     expect(() => parseRevision(rev({ changes: [{ what: "w", why: "y", sourceCalls: [] }] }), ctx)).not.toThrow();
+  });
+});
+
+describe("describeIssues", () => {
+  it("names a limit by path and kind and never quotes the answer", () => {
+    const miss = verdictSchema(rubric).safeParse(verdict({ reasons: "SECRET-WORDS ".repeat(100) }));
+    expect(miss.success).toBe(false);
+    const text = describeIssues((miss as { error: import("zod").ZodError }).error);
+    expect(text).toContain("reasons: too_big (max 800)");
+    expect(text).not.toContain("SECRET-WORDS");
+  });
+
+  it("states a custom rule the schema checks, in the schema's own fixed words, without quoting the answer", () => {
+    const miss = revisionSchema(ctx).safeParse(rev({ skillMd: SKILL + "\nSecret-source: run 001 call 4.\n" }));
+    expect(miss.success).toBe(false);
+    const text = describeIssues((miss as { error: import("zod").ZodError }).error);
+    expect(text).toContain("custom");
+    expect(text).toContain("SKILL.md holds a citation");
+    expect(text).not.toContain("Secret-source");
+  });
+
+  it("says how many more there are when it shows only the first few", () => {
+    const miss = verdictSchema(rubric).safeParse({ overall: "x", questions: {}, reasons: 1, proposedRevisions: "no", extra: 1 });
+    expect(describeIssues((miss as { error: import("zod").ZodError }).error)).toMatch(/and \d+ more$/);
   });
 });
 

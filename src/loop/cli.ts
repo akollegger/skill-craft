@@ -3,15 +3,19 @@ import { HarnessError, isUserError, LoopCancelled, LoopRefused, reasonOf, RunTim
 import { toRepoPath } from "../harness/paths.js";
 import type { RoleDriver } from "../harness/role-driver.js";
 import { checkSizes } from "./inputs.js";
-import { obtainCandidate, type NamsStage } from "./candidate.js";
+import { obtainCandidate, type DistillerService, type NamsStage } from "./candidate.js";
 import { endedLoopResult, runLoop, type LoopResult, type Stage } from "./loop.js";
 import { createMcpWorkspaceTools, createNamsClient, type NamsApi } from "./nams.js";
 import { packageFromFiles, readPackage, type SkillPackage } from "./package.js";
-import { createLoopFolder, writeLoopRecord } from "./record.js";
+import { createLoopFolder, runPath, writeLoopRecord, type RecordOptions } from "./record.js";
+import { currentProcessInfo, recordingFormatOf, type ProcessInfo } from "./process.js";
+import { recordedSettings } from "../harness/run.js";
+import { priceSource, type PriceQuote, type PriceResolver } from "../harness/pricing.js";
 import { loadRubric } from "./rubric.js";
 import { assertSameTask, recordingsChars, replayRun, type Recording } from "./transcript.js";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { canonicalSpec, checkSettings, loadSettings } from "../harness/models.js";
 
 export interface LoopCliDeps {
   /** The role driver. Default: the Claude Agent SDK, loaded only when a loop actually runs. */
@@ -24,6 +28,10 @@ export interface LoopCliDeps {
   signal?: AbortSignal | undefined;
   env?: Record<string, string | undefined> | undefined;
   now?: (() => number) | undefined;
+  /** Resolves the price a role's model is costed with. Default: a pin, else a market quote for a model with an alias. */
+  pricing?: PriceResolver | undefined;
+  /** Which procedure and code ran. Default: read from git. Tests pass a fixed answer. */
+  processInfo?: (() => ProcessInfo) | undefined;
   out: (line: string) => void;
   err: (line: string) => void;
 }
@@ -31,7 +39,7 @@ export interface LoopCliDeps {
 const USAGE =
   "usage: critic-loop.ts --runs <run folder> [<run folder>...] (--candidate <folder> | --allow-workspace)\n" +
   "       [--format graph|prose] [--critic-model m] [--reviser-model m] [--max-rounds 1-3] [--max-role-usd n]\n" +
-  "       [--timeout-minutes n] [--out loops] [--label name] [--dry-run]";
+  "       [--timeout-minutes n] [--out loops] [--label name] [--settings <file>] [--dry-run]";
 
 class UsageError extends Error {}
 
@@ -79,6 +87,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
         "timeout-minutes": { type: "string", default: "45" },
         out: { type: "string", default: "loops" },
         label: { type: "string" },
+        settings: { type: "string" },
         "dry-run": { type: "boolean", default: false },
       },
     });
@@ -115,6 +124,34 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
       throw new LoopRefused(`the recordings come from ${teacherModels.length === 0 ? "no named model" : "more than one model"}; set --critic-model and --reviser-model`);
     }
 
+    // Settings pinned per model (thinking, effort, temperature), as for a player: a role runs the way its model was calibrated.
+    // A setting the model's provider does not take is refused here, before any call.
+    const settings = values.settings === undefined ? undefined : loadSettings(values.settings);
+    for (const model of new Set([criticModel, reviserModel])) {
+      const pinned = settings?.[canonicalSpec(model)];
+      if (pinned !== undefined) checkSettings(model, pinned);
+    }
+
+    // The roles' prices are resolved before any call, once for a model that fills both roles. A model with none has no cost figure.
+    const resolvePrice = deps.pricing ?? priceSource().resolve;
+    const quotes = new Map<string, PriceQuote | undefined>();
+    for (const model of new Set([criticModel, reviserModel])) quotes.set(model, await resolvePrice(canonicalSpec(model)));
+    const rolePrices: { critic?: PriceQuote | undefined; reviser?: PriceQuote | undefined } = { critic: quotes.get(criticModel), reviser: quotes.get(reviserModel) };
+
+    // What the record says about how this skill is made (spec 007 FR-033 to FR-035): hashes, settings and identifiers only.
+    const roleSettings = (model: string) => {
+      const pinned = settings?.[canonicalSpec(model)];
+      return pinned === undefined ? null : recordedSettings(pinned);
+    };
+    const provenance: Pick<RecordOptions, "process" | "recorded" | "recordingFormat" | "roleSettings" | "rolePrices"> = {
+      process: (deps.processInfo ?? currentProcessInfo)(),
+      recorded: recordings.map((r) => ({ label: r.label, run: runPath(r.runDir), runLogSha256: r.runLogSha256, scoreSha256: r.scoreSha256, models: r.models, settings: r.settings })),
+      // A given candidate means this loop recorded nothing; otherwise the candidate step writes the runs in the current format.
+      recordingFormat: candidateFolder === undefined ? recordingFormatOf(recordings) : null,
+      roleSettings: { critic: roleSettings(criticModel), reviser: roleSettings(reviserModel) },
+      rolePrices,
+    };
+
     const rubric = loadRubric();
     const candidate = candidateFolder === undefined ? undefined : readPackage(candidateFolder);
     if (recordingsChars(recordings) > 0) checkSizes(recordings, candidate ?? packageFromFiles({ "SKILL.md": "---\nname: placeholder\ndescription: d\n---\nbody\n" }));
@@ -124,6 +161,9 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
       deps.out(`plan: ${recordings.length} run(s) of ${goal.item} x${goal.qty}`);
       recordings.forEach((r, i) => deps.out(`  run ${r.label}: ${toRepoPath(runDirs[i]!)}`));
       deps.out(`critic ${criticModel}, reviser ${reviserModel}; rubric version ${rubric.version}; at most ${maxRounds} rounds; spend cap ${cost(maxUsd)} per call`);
+      if (settings !== undefined) {
+        for (const model of new Set([criticModel, reviserModel])) deps.out(`settings ${canonicalSpec(model)}: ${JSON.stringify(settings[canonicalSpec(model)] ?? {})}`);
+      }
       deps.out(candidate ? `candidate: ${toRepoPath(candidateFolder!)} (no NAMS call will be made)` : `candidate: distilled from the runs (NAMS: create a workspace, record, generate, download, delete; format ${format})`);
       deps.out(`loop folder: ${toRepoPath(resolve(out, label))}`);
       return 0;
@@ -142,6 +182,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
       let pkg = candidate;
       let stages: NamsStage[] = [];
       let info: unknown;
+      let service: DistillerService | undefined;
       const models = { critic: criticModel, reviser: reviserModel };
       if (pkg === undefined) {
         const baseUrl = env["NAMS_BASE_URL"] || undefined;
@@ -153,12 +194,13 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
             forbiddenWorkspaceIds: [env["NAMS_WORKSPACE_ID"] ?? ""], ...(deps.namsWait ?? {}),
           });
           ({ pkg, stages, info } = got);
+          service = got.info.service;
           checkSizes(recordings, pkg);
         } catch (e) {
           // The step has already deleted its workspace. The loop ends with nothing to review, and says why.
           if (!(e instanceof HarnessError)) throw e; // every typed error from this step ends the loop with a record
           const cancelled = e instanceof LoopCancelled || stop.signal.aborted;
-          writeLoopRecord(endedLoopResult(rubric, reasonOf(e), { failed: !cancelled, cancelled }), { dir, label, mode: "runs", runs: runDirs, models });
+          writeLoopRecord(endedLoopResult(rubric, reasonOf(e), { failed: !cancelled, cancelled }), { dir, label, mode: "runs", runs: runDirs, models, ...provenance });
           if (timedOut) deps.err(reasonOf(new RunTimedOut(timeoutMs)));
           else deps.err(reasonOf(e));
           deps.out(`files: ${toRepoPath(dir)}`);
@@ -167,7 +209,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
           await tools?.close?.();
         }
       }
-      const role = deps.role ?? (await import("../harness/sdk-driver.js")).sdkRoleDriver;
+      const role = deps.role ?? (await import("../harness/ai-driver.js")).aiRoleDriver;
       const result = await runLoop({
         candidate: pkg,
         recordings,
@@ -177,10 +219,12 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
         role,
         maxRounds,
         maxUsd,
+        ...(settings === undefined ? {} : { settings }),
+        prices: Object.fromEntries([...quotes].flatMap(([model, q]) => (q === undefined ? [] : [[model, q] as const]))),
         signal: stop.signal,
         ...(deps.now ? { now: deps.now } : {}),
       });
-      writeLoopRecord(result, { dir, label, mode: candidate ? "candidate" : "runs", runs: runDirs, models, stages, ...(info === undefined ? {} : { candidate: info }) });
+      writeLoopRecord(result, { dir, label, mode: candidate ? "candidate" : "runs", runs: runDirs, models, stages, ...provenance, ...(service === undefined ? {} : { distiller: { service } }), ...(info === undefined ? {} : { candidate: info }) });
 
       for (const line of roundLines(result)) deps.out(line);
       if (timedOut) {

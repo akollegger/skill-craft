@@ -12,7 +12,7 @@ export interface NamsApi {
   deleteWorkspace(id: string): Promise<void>;                      // MCP workspace_delete
   addConversation(ws: string, metadata: object): Promise<{ id: string }>;                       // POST /v1/conversations
   addMessage(ws: string, conv: string, role: "user" | "assistant", content: string): Promise<void>;  // POST /v1/conversations/{id}/messages
-  addStep(ws: string, conv: string, tool: string): Promise<{ id: string }>;                     // POST /v1/reasoning/steps
+  addStep(ws: string, conv: string, step: { action: string; reasoning: string }): Promise<{ id: string }>; // POST /v1/reasoning/steps (amended 2026-10-12, was a tool name)
   addToolCall(ws: string, call: RecordedCall, stepId: string): Promise<void>;                   // POST /v1/reasoning/tool-calls
   waitExtracted(ws: string, convs: string[], signal: AbortSignal): Promise<void>;               // GET /v1/conversations/{id}/extraction-status
   generateSkill(ws: string, req: { conversationIds: string[]; procedureFormat: "graph" | "prose"; nameHint?: string }): Promise<{ runId: string }>;  // POST /v1/skills/generate
@@ -20,6 +20,8 @@ export interface NamsApi {
   downloadSkill(ws: string, skillId: string): Promise<Uint8Array>;  // GET /v1/skills/{id}/download
 }
 ```
+
+_Amended 2026-10-12 (spec 007 FR-029): `addStep` takes the action and the reasoning, and the candidate step writes the model's own reasoning, not a fixed line (ADR-003 §2.4, amended). What a recording holds is in `design/notes/skill-process.md`._
 
 Every REST request carries the loop's abort signal, so a stalled call cannot hold up a cancellation; listing and deleting a workspace, which
 must still run after an abort, get their own signal with a time limit (60 s by default). Every data call sends `Authorization: Bearer <NAMS_API_KEY>` and `X-Workspace-Id: <ws>`; the key is read from the

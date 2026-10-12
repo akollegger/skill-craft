@@ -8,8 +8,9 @@ import { basename, join } from "node:path";
 import { CandidateFailed, HarnessError, LoopCancelled, LoopRefused } from "../harness/errors.js";
 import { checkSizes } from "./inputs.js";
 import { packageFromFiles, writePackage, type SkillPackage } from "./package.js";
-import { guarded, WorkspaceGuard, type NamsApi, type RunStatus } from "./nams.js";
+import { guarded, WorkspaceGuard, type NamsApi, type RunStatus, type ServiceVersion } from "./nams.js";
 import { assertSameTask, type Recording } from "./transcript.js";
+import type { ConversationTurn } from "../harness/conversation.js";
 import { readZip } from "./zip.js";
 
 /** A step that happened before the roles ran. Roles' stages are in `loop.ts`. */
@@ -37,6 +38,9 @@ export interface CandidateArgs {
   maxWaitMs?: number | undefined;
 }
 
+/** The memory service that distilled the skill: its own account of its version, or the fixed code for why that is not known. */
+export type DistillerService = ({ name: "nams" } & ServiceVersion) | { name: "nams"; unknown: "version_unavailable" };
+
 export interface CandidateOutcome {
   pkg: SkillPackage;
   stages: NamsStage[];
@@ -45,8 +49,9 @@ export interface CandidateOutcome {
     workspace: { id: string; name: string };
     runs: string[];
     conversationIds: string[];
-    generation: { runId: string; skillId: string; format: "graph" | "prose"; status: string; gates?: unknown };
+    generation: { runId: string; skillId: string; format: "graph" | "prose"; status: string; gates?: unknown; request: { scope: "conversations"; conversations: number; procedureFormat: "graph" | "prose" } };
     capabilities: unknown;
+    service: DistillerService;
   };
 }
 
@@ -108,26 +113,30 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
     const conversationIds: string[] = [];
     for (const rec of a.runs) {
       await timed(`record-run-${rec.label}`, async () => {
-        const conv = (await guard(nams.addConversation(id, { source: "critic-loop", run: rec.label }))).id;
+        const conv = (await guard(nams.addConversation(id, conversationMetadata(rec)))).id;
         conversationIds.push(conv);
         await guard(nams.addMessage(id, conv, "user", rec.prompt));
-        // One step per distinct tool, as the hooks make, so the recording has the same shape.
-        const steps = new Map<string, string>();
-        for (const tool of new Set(rec.calls.map((c) => `mcp__craft__${c.tool}`))) steps.set(tool, (await guard(nams.addStep(id, conv, tool))).id);
-        for (const c of rec.calls) {
-          const tool = `mcp__craft__${c.tool}`;
-          await guard(nams.addToolCall(id, { tool, input: JSON.stringify(c.args), output: c.output, status: c.ok ? "success" : "failure", durationMs: c.durationMs }, steps.get(tool)!));
-        }
-        await guard(nams.addMessage(id, conv, "assistant", rec.finalAnswer));
+        const write = { id, conv, nams, guard };
+        if (rec.conversation === null) await recordPlaceholder(write, rec);
+        else await recordConversation(write, rec, rec.conversation);
       });
       a.out(`recorded run ${rec.label}`);
     }
 
     await timed("wait-extraction", () => guard(nams.waitExtracted(id, conversationIds, a.signal)));
 
+    let service: DistillerService = { name: "nams", unknown: "version_unavailable" };
     const { runId, run } = await timed("generate", async () => {
       const { runId } = await guard(nams.generateSkill(id, { conversationIds, procedureFormat: a.format }));
       a.out(`generating skill (run ${runId})`);
+      // Read while generation runs, so it names the deployment that did the work. A failure is not a failed loop.
+      service = await guard(nams.version()).then(
+        (v): DistillerService => ({ name: "nams", version: v.version, released: v.released, commit: v.commit, environment: v.environment }),
+        (e: unknown): DistillerService => {
+          if (a.signal.aborted || e instanceof LoopCancelled) throw e;
+          return { name: "nams", unknown: "version_unavailable" };
+        },
+      );
       const deadline = Date.now() + (a.maxWaitMs ?? 15 * 60_000);
       for (;;) {
         const run = await guard(nams.getRun(id, runId));
@@ -137,7 +146,8 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
       }
     });
 
-    const generation = { runId, skillId: run.skillId ?? null, format: a.format, status: run.status, failure: run.failure ?? null, gates: run.gates ?? null, capabilities };
+    const request = { scope: "conversations" as const, conversations: conversationIds.length, procedureFormat: a.format };
+    const generation = { runId, skillId: run.skillId ?? null, format: a.format, request, status: run.status, failure: run.failure ?? null, gates: run.gates ?? null, capabilities };
     // Beside the package folder, not in it: the archive is untrusted and may hold a file of the same name.
     writeFileSync(join(a.loopDir, "generation.json"), `${JSON.stringify(generation, null, 2)}\n`);
     if (classify(run) === "failed") {
@@ -153,7 +163,7 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
     outcome = {
       pkg,
       stages,
-      info: { workspace: { id, name }, runs: a.runs.map((r) => r.label), conversationIds, generation: { runId, skillId: run.skillId, format: a.format, status: run.status, gates: run.gates }, capabilities },
+      info: { workspace: { id, name }, runs: a.runs.map((r) => r.label), conversationIds, generation: { runId, skillId: run.skillId, format: a.format, status: run.status, gates: run.gates, request }, capabilities, service },
     };
   } catch (e) {
     failure = e;
@@ -172,6 +182,69 @@ export async function obtainCandidate(a: CandidateArgs): Promise<CandidateOutcom
   }
   if (failure !== undefined) throw wrap(failure, a.signal);
   return { ...outcome!, stages };
+}
+
+const NO_REASONING_TURN = "No reasoning was returned for this turn.";
+const NO_REASONING_RUN = "No reasoning was recorded for this run.";
+
+/** How much of a conversation's tool-calling turns came with reasoning from the provider. */
+export function reasoningState(turns: readonly ConversationTurn[]): "returned" | "partial" | "none" {
+  const calling = turns.filter((t) => t.calls.length > 0);
+  const given = calling.filter((t) => t.reasoning.trim() !== "").length;
+  return given === 0 ? "none" : given === calling.length ? "returned" : "partial";
+}
+
+/**
+ * What the conversation says about who wrote it, so a skill traces to the model and settings behind its recording. The service
+ * takes a conversation's metadata as an object of strings only (any other value is a 400), so the models and settings are
+ * written as strings: `+`-joined names, and the settings as JSON text, as a tool call's input is.
+ */
+function conversationMetadata(rec: Recording): Record<string, string> {
+  const providers = [...new Set(rec.models.map((m) => m.split("/")[0] as string))];
+  return {
+    source: "critic-loop",
+    run: rec.label,
+    recordingFormat: rec.conversation === null ? "placeholder" : "conversation",
+    reasoning: rec.conversation === null ? "not-kept" : reasoningState(rec.conversation),
+    model: rec.models.length === 0 ? "unknown" : rec.models.join("+"),
+    provider: providers.length === 0 ? "unknown" : providers.join("+"),
+    settings: rec.settings === null ? "none recorded" : JSON.stringify(rec.settings),
+  };
+}
+
+interface Write {
+  id: string;
+  conv: string;
+  nams: NamsApi;
+  guard: <T>(p: Promise<T>) => Promise<T>;
+}
+
+/** The recording as the model lived it: its messages, a step for each turn that called tools, and each call under its step. */
+async function recordConversation(w: Write, rec: Recording, turns: readonly ConversationTurn[]): Promise<void> {
+  const byId = new Map(rec.calls.map((c) => [c.toolUseId, c]));
+  for (const turn of turns) {
+    if (turn.text.trim() !== "") await w.guard(w.nams.addMessage(w.id, w.conv, "assistant", turn.text));
+    if (turn.calls.length === 0) continue;
+    // The provider's reasoning; else what the model wrote that turn; else a fixed line. Never an account the harness made up.
+    const reasoning = turn.reasoning.trim() !== "" ? turn.reasoning : turn.text.trim() !== "" ? turn.text : NO_REASONING_TURN;
+    const step = await w.guard(w.nams.addStep(w.id, w.conv, { action: turn.calls.map((c) => c.tool).join(", "), reasoning }));
+    for (const made of turn.calls) {
+      const c = byId.get(made.id);
+      if (c === undefined) continue; // a call that was not valid never reached the craft server, so it has no outcome to record
+      await w.guard(w.nams.addToolCall(w.id, { tool: c.tool, input: JSON.stringify(c.args), output: c.output, status: c.ok ? "success" : "failure", durationMs: c.durationMs }, step.id));
+    }
+  }
+}
+
+/** A run made before conversations were kept: two messages and one step per distinct tool, with no reasoning, as the hooks recorded it. */
+async function recordPlaceholder(w: Write, rec: Recording): Promise<void> {
+  const steps = new Map<string, string>();
+  for (const tool of new Set(rec.calls.map((c) => `mcp__craft__${c.tool}`))) steps.set(tool, (await w.guard(w.nams.addStep(w.id, w.conv, { action: tool, reasoning: NO_REASONING_RUN }))).id);
+  for (const c of rec.calls) {
+    const tool = `mcp__craft__${c.tool}`;
+    await w.guard(w.nams.addToolCall(w.id, { tool, input: JSON.stringify(c.args), output: c.output, status: c.ok ? "success" : "failure", durationMs: c.durationMs }, steps.get(tool)!));
+  }
+  await w.guard(w.nams.addMessage(w.id, w.conv, "assistant", rec.finalAnswer));
 }
 
 /** Anything that is not already a typed harness error becomes one with fixed text; an abort becomes a cancellation. */

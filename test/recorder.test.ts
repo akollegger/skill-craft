@@ -39,6 +39,35 @@ function request(at: (t: number) => TraceRecorder, id: string, from: number, to:
   at(to).onMessage(stop);
 }
 
+describe("a request's model", () => {
+  const deltaNaming = (model: unknown) => ({ type: "stream_event", event: { type: "message_delta", usage: USAGE, model } });
+  const lineFor = (startModel: string | null, deltaModel: unknown | undefined) => {
+    const { path, at } = setup();
+    at(0).onMessage(init);
+    at(100).onMessage(start("msg_1", 0, startModel));
+    at(150).onMessage(deltaModel === undefined ? delta() : deltaNaming(deltaModel));
+    at(200).onMessage(stop);
+    return (readTrace(path) as RequestLine[])[0] as RequestLine;
+  };
+
+  it("is the last model a start or usage event names, so the model the provider reports wins", () => {
+    expect(lineFor("requested-m", "reported-m").model).toBe("reported-m");
+  });
+
+  it("stays the start event's when the usage event names none", () => {
+    expect(lineFor("requested-m", undefined).model).toBe("requested-m");
+  });
+
+  it("comes from the usage event when the start event names none", () => {
+    expect(lineFor(null, "reported-m").model).toBe("reported-m");
+  });
+
+  it("ignores a model that is not a non-empty string", () => {
+    expect(lineFor("requested-m", 42).model).toBe("requested-m");
+    expect(lineFor("requested-m", "").model).toBe("requested-m");
+  });
+});
+
 describe("request lines", () => {
   it("write a request at message_stop, with offsets from init and the start moved back by the first-token wait", () => {
     const { path, at } = setup();
@@ -214,7 +243,7 @@ async function recordSession(player: FakePlayerOptions = {}, pause?: () => Promi
   const dir = mkdtempSync(join(tmpdir(), "rec-live-"));
   const tracePath = join(dir, "trace.jsonl");
   const recorder = new TraceRecorder({ path: tracePath });
-  const opts: DriverOptions = { prompt: "p", world: "test/fixtures/valid/mirror-pair.json", runLog: join(dir, "run.jsonl"), runDir: dir, maxTurns: 12, record: false, signal: new AbortController().signal };
+  const opts: DriverOptions = { prompt: "p", world: "test/fixtures/valid/mirror-pair.json", runLog: join(dir, "run.jsonl"), runDir: dir, maxTurns: 12, signal: new AbortController().signal };
   await fakePlayer({ mode: "solve", goal: { item: "c", qty: 1 }, ...player, ...(pause ? { pause } : {}) })(opts, recorder);
   return { tracePath, recorder, dir, opts };
 }
@@ -248,7 +277,7 @@ describe("a recorded session", () => {
     const dir = mkdtempSync(join(tmpdir(), "rec-grow-"));
     path = join(dir, "trace.jsonl");
     const recorder = new TraceRecorder({ path });
-    const opts: DriverOptions = { prompt: "p", world: "test/fixtures/valid/mirror-pair.json", runLog: join(dir, "run.jsonl"), runDir: dir, maxTurns: 12, record: false, signal: new AbortController().signal };
+    const opts: DriverOptions = { prompt: "p", world: "test/fixtures/valid/mirror-pair.json", runLog: join(dir, "run.jsonl"), runDir: dir, maxTurns: 12, signal: new AbortController().signal };
     await fakePlayer({ mode: "solve", goal: { item: "c", qty: 1 }, pause: async () => { counts.push(readTrace(path).length); } })(opts, recorder);
     const final = readTrace(path).length;
     expect(counts.some((c) => c > 0 && c < final)).toBe(true); // lines existed while the run was still going

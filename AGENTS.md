@@ -32,7 +32,7 @@ pnpm dev <file>    # run a TypeScript file with tsx
 
 Scripts (run with `pnpm dev`): `scripts/solve.ts` (best run for a goal), `scripts/make-world.ts`
 (re-skinned world plus goals), `scripts/smoke.ts` (replay a best run over stdio),
-`scripts/run-agent.ts` (Claude Code runs through the Claude Agent SDK, scored and measured; `--dry-run`
+`scripts/run-agent.ts` (runs through the AI SDK, with a Claude model or `fireworks/<model>` via `--model`, scored and measured; `--dry-run`
 spends nothing; `--prompt-note` adds one fixed sentence to the prompt; `--prompt-file` replaces the base prompt, with `{what}`, `{item}` and `{turns}` filled in, to test a reworded one: every arm of an experiment must use the same base prompt), `scripts/report.ts` (run folders to the
 experiment results table), `scripts/score.ts` (score run logs against the best run) and `scripts/export-run.ts`
 (export a finished run as a replay bundle), `scripts/critic-loop.ts` (finished runs, or a candidate skill, to
@@ -126,7 +126,7 @@ zebra-space project with the RFC requirement removed.
 | `src/sim/` | Schema, matcher, engine, run log, solver, loader, goals, re-skinner; no MCP dependency |
 | `src/mcp/server.ts` | MCP server exposing a world to an agent (`SIM_WORLD` selects the file, `SIM_RUN_LOG` the log) |
 | `worlds/` | World, goals and notes JSON files (the notes file declares the world's prior fit); `worlds/README.md` explains them and credits the faithful world's inspiration; `worlds/generated/` holds re-skinned examples |
-| `src/harness/` | Interim run harness (prompt, SDK options and driver, errors, the command, export, bundle reader, the `RoleDriver` seam for the critic loop) |
+| `src/harness/` | Interim run harness (prompt, the AI SDK driver and its helpers, model specs and prices, errors, the command, export, bundle reader, the `RoleDriver` seam for the critic loop) |
 | `src/trace/` | Run measurement: recorder, trace lines, join of trace to run log; no dependency on the SDK or `src/mcp` |
 | `src/sim/notes.ts` | The world notes file: prior fit, per-recipe notes and omissions; never imported by the engine or server |
 | `src/viz/` | The visualizer's backend: folder scanner, catalog, bundle supply, local server, static export, commands, and item art (`art/`: the sprite library, a world's art file, glyph allocation, world art, the contact sheet); `glyphs.ts` is shared with the page; no SDK and no `src/mcp` |
@@ -154,15 +154,29 @@ zebra-space project with the RFC requirement removed.
   `SIM_RUN_LOG` file that already has data; give each run a new path.
 - Tests never use randomness. Use fixed or exhaustively enumerated sequences. `src/sim/prng.ts` is
   for world generation only.
-- `run-agent.ts` costs real Claude usage. Use `--dry-run` first, keep `--runs` small, and never
-  point it at `worlds/forge.json` (neutral names). Built-in tools stay removed so the agent cannot
-  read world files. `--record` sends the session to NAMS; only pass it when asked. A world with no notes
+- `run-agent.ts` costs real model usage. Use `--dry-run` first, keep `--runs` small, and never
+  point it at `worlds/forge.json` (neutral names). The player has only the craft tools (and the skill tool when
+  a skill is installed) so it cannot read world files. Runs are not recorded to NAMS by hooks: the AI SDK has no
+  Claude Code hooks, and a finished run is written through the REST API. A world with no notes
   file is stamped `undeclared` in every score and summary; an experimental world carries one.
-- The Claude Agent SDK is imported only in `src/harness/sdk-driver.ts`; everything else talks to the
-  `AgentDriver` seam, and tests use the scripted player in `test/helpers/fake-player.ts`.
+- The AI SDK and its provider packages are imported only in `src/harness/ai-driver.ts`; everything else talks to the
+  `AgentDriver` seam, and `src/harness/ai-options.ts` holds the mapping that is tested without them. Keys come from
+  the environment (`ANTHROPIC_API_KEY`, `FIREWORKS_API_KEY`). A model is `<provider>/<model>` (a bare `claude-<id>` is shorthand for `anthropic/<id>`) and every record holds the canonical form; the providers are
+  rows of the table in `src/harness/providers.ts`, and adding one is a row and its package (`spikes/fireworks/README.md`).
+  Cost is provider-dependent and may be unavailable (ADR-006 §2.4, amended 2026-10-12; spec 007 FR-046 to FR-051): tokens are what is measured, and a dollar figure is
+  recorded only when one can be had, from the first of a cost the provider reports, a pin in `prices.json` (an operator's choice; none ship, since a hand-entered rate
+  goes stale), or a market quote from OpenRouter's public model list for a model with an alias in `src/harness/price-aliases.json`, else it is null and never zero.
+  `costSource` and, for a pin or a quote, `priceQuote` (the OpenRouter id, when the list was read, the rates) are recorded in `score.json`. The CLIs resolve the price before
+  any run or role call (`src/harness/pricing.ts`, which caches the list in `.cache/`); the drivers look none up, and `--max-usd` is refused when none resolves. A quote is a
+  marketplace price and not a record of any host's rate, and the report labels it so. To add an alias, check the OpenRouter entry against the model (name, description,
+  canonical slug) and never match by name; `spikes/fireworks/probe-prices.ts` shows what a model would be costed with. Totals state how many runs were unpriced and when
+  their costs came from different sources. Do not hand-enter rates to make a number appear. A skill is offered as a `Skill` tool that returns its text,
+  not as a native Claude Code skill, so the comparison is the same for every provider. `--step-timeout-seconds`, `--tool-timeout-seconds`, `--max-output-tokens`, `--max-total-tokens` and `--max-usd` limit a run (a dollar cap is refused for a model with no price; a token cap works for every model); a run that times out or is cancelled keeps the spend it had, and the driver ends a run with a fixed code when a step or tool stalls (`step_timeout`, `tool_timeout`), the craft server dies (`server_lost`) or five steps in a row make only invalid tool calls (`tool_loop`). `--settings <file>` pins a model's thinking, effort and temperature (refused before any spend where the table knows the model does not take one); `score.json` records them (`null` is unset) beside `retries` (the stated maximum and the attempts that failed, kept out of the trace) and, when a provider reports them, `reportedCostUsd` and `model.backend`. The driver reports the trace
+  events in the shape `TraceRecorder` has always read, so `trace.jsonl` is unchanged, and tests use the scripted player in `test/helpers/fake-player.ts`.
 - Time, tokens and cost live in `trace.jsonl` and `score.json`, measured by the harness. Never add a clock
   or a measurement to the engine, the server or `run.jsonl`. Agent text and reasoning are never written to
   a trace, a summary or a bundle; the privacy test enforces it, so keep it passing.
+  The model's messages and reasoning have one home, decided in ADR-003 §2.4 (amended 2026-10-12) and built (spec 007 FR-028 to FR-031): `conversation.jsonl` in a run folder (one line per model turn: its text, the reasoning the provider returned and its calls), kept only for the NAMS recording and read only by it. A run made before it existed is recorded with placeholder steps and marked so. A NAMS recording holds what the model and the world produced and no harness judgement (no score, solver path or label of which calls were needed): those are for judging an agent, not helping one.
 - A run's `reason` is `code: fixed message`; never write a wrapped error's own text to disk.
 - Scoring replays a run log on a fresh game. A log that does not replay is an error, not a score.
 - `look`, `help`, `inventory` and every refusal must reveal no recipe; `test/tools-orient.test.ts`
@@ -189,7 +203,7 @@ zebra-space project with the RFC requirement removed.
   only (rubric, goals, recordings, the current skill, and for the reviser the current verdict), so they cannot read
   the world, the goals file, the solver's output, a held-out goal or an earlier verdict (they are given only the goals the
   recordings cover). Keep it that way; `test/loop-inputs.test.ts` checks it.
-- Roles run through `RoleDriver`; the SDK is still imported only in `src/harness/sdk-driver.ts`, and tests use the
+- Roles run through `RoleDriver`; the SDK is still imported only in `src/harness/ai-driver.ts`, and tests use the
   scripted role in `test/helpers/fake-role.ts` and the scripted service in `test/helpers/fake-nams.ts`.
 - Model-authored review text (verdicts, change lists, revised skills) lives only under `loops/<label>/`, as the
   schema's fields only. It never goes into a run folder, trace, summary, score, bundle or `reason`; the privacy test
@@ -198,6 +212,17 @@ zebra-space project with the RFC requirement removed.
   variant of `SKILL.md` (macOS ignores case), so only an accepted loop's `skill/` folder installs through `--skill`.
 - The loop touches only a NAMS workspace it created, never one named in `NAMS_WORKSPACE_ID`, and the key comes from
   the environment only. Run the live steps in a subshell that unsets `NAMS_WORKSPACE_ID` (see the spec's quickstart).
+- Each loop's `loop.json` records how its skill was made: the process version (`PROCESS_VERSION` in `src/loop/process.ts`, explained in
+  `design/notes/skill-process.md`, with a test that fails when the changelog has no entry for it), the commit and whether the tree had
+  changes, the recorded runs with hashes and settings, the roles' models and settings, the memory service's version and build commit (read from its unauthenticated `/v1/version` while generation runs), the spend and the final skill's hash. It holds no
+  recorded text and never goes inside `skill/`. A student run's `skill.sha256` finds it (`grep` for `finalSkillSha256` in `loops/*/loop.json`).
+  Bump `PROCESS_VERSION` and add a changelog entry when what is recorded, what the distiller is asked, the rubric, the roles' instructions,
+  the round limit or the roles' default settings change.
+- An experiment declares a cast, not a fixed pair (ADR-003 §2.1, amended 2026-10-12; spec 007 FR-040): `cast` in `summary.json` gives the
+  teacher, student and distiller (the memory service, with the critic and reviser as its review stage), each with a model and settings,
+  one model may fill several roles, and the older `models` form is still read. The report prints the cast and which roles share a model,
+  and when `review.json` has a `loop` path it checks that loop record against the reviewed skill and the cast and says who made the skill.
+  Harness-based distillation is a later ADR; it must take only what the model and the world produced, never solver output or scores.
 - `critic-loop.ts` costs real Claude usage (and `--allow-workspace` writes to the NAMS account). Use `--dry-run` first,
   and keep `--max-role-usd` and `--max-rounds` small.
 

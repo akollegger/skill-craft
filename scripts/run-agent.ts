@@ -1,8 +1,9 @@
 /**
- * Run the agent against the craft server through the Claude Agent SDK, score and measure each run, and summarise.
+ * Run the agent against the craft server through the AI SDK (Claude or Fireworks models), score and measure each run, and summarise.
  * Usage: pnpm dev scripts/run-agent.ts --goal <item>[:<qty>] [--world <world.json>] [--runs 3] [--max-turns 40]
- *        [--timeout-minutes 30] [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--record] [--dry-run]
- * By default the session is kept out of NAMS; --record lets nams-hooks record it. Ctrl-C ends the current
+ *        [--timeout-minutes 30] [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--settings <file>] [--dry-run]
+ *        [--step-timeout-seconds n] [--tool-timeout-seconds n] [--max-output-tokens n] [--max-total-tokens n] [--max-usd n]
+ * --model takes <provider>/<model> (or a bare Claude id). --settings maps a model to the settings pinned for it. Ctrl-C ends the current
  * run, writes the summary and exits 130. The work is in src/harness/cli.ts.
  */
 import { runAgentCli } from "../src/harness/cli.js";

@@ -9,6 +9,7 @@ import type { Bundle, BundleManifest, BundleResult } from "./bundle.js";
 import { ExportRefused } from "./errors.js";
 import { fromRepoPath } from "./paths.js";
 import { readLog, replayFailure } from "./read-log.js";
+import { canonicalSpec } from "./models.js";
 
 const jsonl = (rows: readonly unknown[]): string => rows.map((r) => `${JSON.stringify(r)}\n`).join("");
 
@@ -59,7 +60,8 @@ export function buildBundle(runDir: string): Bundle {
     best: saved.score.best,
     frames: frames.length,
     trace: saved.measured.trace,
-    model: saved.model,
+    // A bare Claude id in an earlier run is read as anthropic/<id>; the run folder is not rewritten.
+    model: { ...saved.model, requested: saved.model.requested === null ? null : canonicalSpec(saved.model.requested), resolved: saved.model.resolved.map(canonicalSpec) },
     ...(saved.priorFit === undefined ? {} : { priorFit: saved.priorFit }),
     ...(saved.promptNote === undefined ? {} : { promptNote: saved.promptNote }),
     ...(saved.skill === undefined ? {} : { skill: { name: saved.skill.name, loaded: saved.skill.invoked, loadedAfter: saved.skill.loadedAfterCalls } }),

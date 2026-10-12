@@ -84,7 +84,7 @@ export function reasonOf(e: unknown): string {
 
 /** Mistakes the operator can fix, as opposed to a run that failed. Matched by class, never by message text. */
 export function isUserError(e: unknown): boolean {
-  return e instanceof LoopRefused || e instanceof WorkspaceRefused || e instanceof RunFolderExists || e instanceof ExportRefused || e instanceof SkillNotFound || e instanceof ReportRefused || e instanceof UnknownGoalItem || e instanceof WorldError || e instanceof RunLogInUseError;
+  return e instanceof LoopRefused || e instanceof WorkspaceRefused || e instanceof RunFolderExists || e instanceof ExportRefused || e instanceof SkillNotFound || e instanceof ReportRefused || e instanceof UnknownGoalItem || e instanceof UnknownModel || e instanceof UnknownProvider || e instanceof BackendNotPinned || e instanceof SettingRefused || e instanceof LimitRefused || e instanceof PriceAliasesInvalid || e instanceof SettingsInvalid || e instanceof WorldError || e instanceof RunLogInUseError;
 }
 
 /** A results report that cannot be trusted or built: a missing summary, a stray folder, a mismatched skill or note. */
@@ -143,3 +143,53 @@ export class LoopCancelled extends HarnessError {
     super("LoopCancelled", "the loop was cancelled");
   }
 }
+
+/** A `--model` value that names no provider or model the harness can call. */
+export class UnknownModel extends HarnessError {
+  constructor(spec: string) {
+    super("UnknownModel", `model '${spec}' is not supported; use <provider>/<model> or a Claude id`);
+  }
+}
+
+/** A `--model` whose provider prefix is not a row of the provider table. */
+export class UnknownProvider extends HarnessError {
+  constructor(prefix: string, available: readonly string[]) {
+    super("UnknownProvider", `provider '${prefix}' is not available; the providers are ${available.join(", ")}`);
+  }
+}
+
+/** A pinned setting the model's provider does not take for that model (known from its table row). */
+export class SettingRefused extends HarnessError {
+  constructor(model: string, setting: string) {
+    super("SettingRefused", `model '${model}' does not take setting '${setting}'`);
+  }
+}
+
+/** A settings file that cannot be read as settings. The message is fixed text and never quotes the file. */
+export class SettingsInvalid extends HarnessError {
+  constructor(why: string) {
+    super("SettingsInvalid", `settings file: ${why}`);
+  }
+}
+
+/** A provider that routes one model name across several backends, without a pinned backend in its table row. */
+export class BackendNotPinned extends HarnessError {
+  constructor(prefix: string) {
+    super("BackendNotPinned", `provider '${prefix}' routes one model across backends; its table entry must pin the backend`);
+  }
+}
+
+/** A limit that cannot be applied to the model: a dollar cap needs a price, and the model has none. */
+export class LimitRefused extends HarnessError {
+  constructor(model: string, limit: string) {
+    super("LimitRefused", `model '${model}' has no price, so limit '${limit}' cannot be applied; use a token limit`);
+  }
+}
+
+/** The file of aliases from model specs to OpenRouter ids is not one: it holds ids and nothing else. The message never quotes it. */
+export class PriceAliasesInvalid extends HarnessError {
+  constructor(why: string) {
+    super("PriceAliasesInvalid", `price aliases file: ${why}`);
+  }
+}
+

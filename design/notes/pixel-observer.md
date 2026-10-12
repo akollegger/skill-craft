@@ -1,5 +1,7 @@
 # Design note: the visualizer
 
+> **History note (2026-10-10):** where this document describes the player as Claude Code run through the Claude Agent SDK, or the `--record` flag, that was the design at the time. The harness now runs every model through the AI SDK and has no `--record` ([ADR-006](../adr/ADR-006-ai-sdk-runtime.md), spec 007). Read the affected passages as the record of the earlier design.
+
 Status: scope settled (see "Scope and user goals"); the design inside that scope is still exploratory, and the
 earlier choices below are held loosely.
 Date: 2026-09-30, reframed 2026-10-02 after the first experiments and two rounds of feedback.

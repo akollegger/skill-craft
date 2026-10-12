@@ -9,7 +9,11 @@ without it. JSON.
   "priorFit": "faithful",
   "world": "worlds/minecraft-inspired.json",
   "counterpart": "worlds/generated/minecraft-inspired-7.json",
-  "models": { "teacher": "claude-sonnet-5-5", "student": "claude-haiku-4-5-20251001" },
+  "models": {
+    "teacher": "claude-sonnet-5-5",
+    "student": "claude-haiku-4-5-20251001",
+    "settings": { "anthropic/claude-sonnet-5-5": { "thinking": "adaptive", "effort": "high" }, "anthropic/claude-haiku-4-5-20251001": { "thinking": "off", "temperature": 0 } }
+  },
   "route": "escalating",
   "primary": "repair",
   "goals": { "set": ["wooden_pickaxe", "stone_pickaxe", "iron_pickaxe"], "heldOut": ["iron_pickaxe"] },
@@ -38,13 +42,15 @@ without it. JSON.
 }
 ```
 
+_Amended 2026-10-12 (ADR-003 §2.1, spec 007 FR-040): a summary may declare `cast` instead of `models`: `{ "teacher": { "model": "...", "settings": {} }, "student": { ... }, "distiller": { "service": "nams", "critic": { "model": "...", "settings": {} }, "reviser": { ... } } }`. Settings belong to the role, and one model may fill several roles. The `models` form above is still read as the same cast, and a summary gives exactly one of the two. The report prints the cast, and refuses an arm whose runs used a model other than the student's. If `review.json` has a `loop` field (the path of the loop record that made the skill, repository-relative or absolute) the report also checks that record's final skill hash against `skillSha256` and its teacher, critic and reviser (models and settings) against the cast, and prints who made the skill and which service version distilled it._
+
 Rules:
 - `counterpartGoals` maps each goal of the invented counterpart to the faithful goal it stands for (the renamer
   keeps goal order). The report shows and compares counterpart rows under the faithful goal.
 - `labels` maps every run label folder the report may read to its stage (`calibration`) or its arm. The
   report refuses a folder that is not listed, so a stray folder cannot change a result. The world a row ran on
   comes from the prior fit stamped in each run, not from the label.
-- Fixed before calibration: `experiment`, `priorFit`, `world`, `counterpart`, `models`, `arms` (with the
+- Fixed before calibration: `experiment`, `priorFit`, `world`, `counterpart`, `models` (with the optional `models.settings`: thinking, effort and temperature pinned per model, added by spec 007; absent means none were pinned), `arms` (with the
   prompt note), `labels`, `counterpartGoals`, `goals`, the calibration trial count, `turnBudget`,
   `spendLimitUsd` and `manualSteps`.
 - Added after calibration and before the first teacher or arm trial: `roles` (from the calibration rule in

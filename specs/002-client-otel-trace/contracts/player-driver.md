@@ -1,5 +1,7 @@
 # Contract: the player driver and the recorder's inputs
 
+> **History note (2026-10-10):** where this document describes the player as Claude Code run through the Claude Agent SDK, or the `--record` flag, that was the design at the time. The harness now runs every model through the AI SDK and has no `--record` ([ADR-006](../../../design/adr/ADR-006-ai-sdk-runtime.md), spec 007). Read the affected passages as the record of the earlier design.
+
 ## The seam
 
 `src/harness/driver.ts` defines the types only:

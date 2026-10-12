@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { parseArgs } from "node:util";
 import { loadWorld } from "../sim/loader.js";
-import type { AgentDriver } from "./driver.js";
+import type { AgentDriver, RunLimits } from "./driver.js";
 import { HarnessError, isUserError, UnknownGoalItem } from "./errors.js";
+import { DEFAULT_MODEL, loadSettings, parseModelSpec } from "./models.js";
+import { priceSource, type PriceResolver } from "./pricing.js";
 import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, planExperiment, runExperiment, type AgentRunOptions, type RunReport } from "./run.js";
 
 export interface CliDeps {
@@ -11,13 +13,16 @@ export interface CliDeps {
   driver?: AgentDriver | undefined;
   /** Aborting it ends the current run, writes the summary and returns 130. */
   signal?: AbortSignal | undefined;
+  /** Resolves the price a model's runs are costed with. Default: a pin, else a market quote for a model with an alias. */
+  pricing?: PriceResolver | undefined;
   out: (line: string) => void;
   err: (line: string) => void;
 }
 
 const USAGE =
   "usage: run-agent.ts --goal <item>[:<qty>] [--world <world.json>] [--runs n] [--max-turns n] [--timeout-minutes n]\n" +
-  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--prompt-file <file>] [--record] [--dry-run]";
+  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--prompt-file <file>] [--settings <file>]\n" +
+  "       [--step-timeout-seconds n] [--tool-timeout-seconds n] [--max-output-tokens n] [--max-total-tokens n] [--max-usd n] [--dry-run]";
 
 class UsageError extends Error {}
 
@@ -36,6 +41,12 @@ function readTemplate(path: string): string {
 const positive = (name: string, text: string | undefined): number => {
   const n = Number(text);
   if (!Number.isInteger(n) || n < 1) throw new UsageError(`--${name} must be a whole number of at least 1`);
+  return n;
+};
+
+const positiveNumber = (name: string, text: string | undefined): number => {
+  const n = Number(text);
+  if (!Number.isFinite(n) || n <= 0) throw new UsageError(`--${name} must be a number greater than 0`);
   return n;
 };
 
@@ -76,7 +87,12 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
         skill: { type: "string" },
         "prompt-note": { type: "string" },
         "prompt-file": { type: "string" },
-        record: { type: "boolean", default: false },
+        settings: { type: "string" },
+        "step-timeout-seconds": { type: "string" },
+        "tool-timeout-seconds": { type: "string" },
+        "max-output-tokens": { type: "string" },
+        "max-total-tokens": { type: "string" },
+        "max-usd": { type: "string" },
         "dry-run": { type: "boolean", default: false },
       },
     });
@@ -88,10 +104,23 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
     if (note !== undefined && note.trim() === "") throw new UsageError("--prompt-note must not be empty");
     const promptFile = values["prompt-file"];
     const template = promptFile === undefined ? undefined : readTemplate(promptFile);
+    // The settings pinned for the run's model: a settings file maps model specs to settings, and a model with no entry runs unset.
+    const settings = values.settings === undefined ? undefined : loadSettings(values.settings)[parseModelSpec(values.model ?? DEFAULT_MODEL).spec];
     const minutes = Number(values["timeout-minutes"]);
     if (!Number.isFinite(minutes) || minutes <= 0 || minutes * 60_000 > MAX_TIMEOUT_MS) {
       throw new UsageError(`--timeout-minutes must be a number greater than 0 and at most ${Math.floor(MAX_TIMEOUT_MS / 60_000)}`);
     }
+
+    const limits: RunLimits = {
+      ...(values["step-timeout-seconds"] === undefined ? {} : { stepTimeoutMs: positiveNumber("step-timeout-seconds", values["step-timeout-seconds"]) * 1000 }),
+      ...(values["tool-timeout-seconds"] === undefined ? {} : { toolTimeoutMs: positiveNumber("tool-timeout-seconds", values["tool-timeout-seconds"]) * 1000 }),
+      ...(values["max-output-tokens"] === undefined ? {} : { maxOutputTokens: positive("max-output-tokens", values["max-output-tokens"]) }),
+      ...(values["max-total-tokens"] === undefined ? {} : { maxTotalTokens: positive("max-total-tokens", values["max-total-tokens"]) }),
+      ...(values["max-usd"] === undefined ? {} : { maxUsd: positiveNumber("max-usd", values["max-usd"]) }),
+    };
+
+    // Resolved before anything is planned or run, so a dollar limit that cannot be applied is refused before any spend.
+    const price = await (deps.pricing ?? priceSource().resolve)(parseModelSpec(values.model ?? DEFAULT_MODEL).spec);
 
     const options: AgentRunOptions = {
       world: values.world as string,
@@ -102,10 +131,12 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
       out: values.out as string,
       label: values.label ?? `${basename(values.world as string, ".json")}-${item}-${new Date().toISOString().replace(/[:.]/g, "-")}`,
       ...(values.model ? { model: values.model } : {}),
+      ...(settings === undefined ? {} : { settings }),
+      ...(Object.keys(limits).length === 0 ? {} : { limits }),
+      ...(price === undefined ? {} : { price }),
       ...(values.skill ? { skill: values.skill } : {}),
       ...(note === undefined ? {} : { promptNote: note }),
       ...(template === undefined ? {} : { promptTemplate: template }),
-      record: values.record ?? false,
       driver: deps.driver,
       signal: deps.signal,
     };
@@ -119,9 +150,9 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
     for (const r of reports) deps.out(line(r));
     deps.out(
       `${aggregate.runs} runs: ${aggregate.reached} reached (${Math.round(aggregate.successRate * 100)}%), ${aggregate.gaveUp} gave up, ${aggregate.outOfBudget} out of budget, ${aggregate.errors} errors; ` +
-        `median calls to goal ${aggregate.medianCallsToGoal ?? "-"}; mean extra calls ${aggregate.meanExtraCalls === null ? "-" : aggregate.meanExtraCalls.toFixed(1)}; cost $${aggregate.totalCostUsd.toFixed(3)}`,
+        `median calls to goal ${aggregate.medianCallsToGoal ?? "-"}; mean extra calls ${aggregate.meanExtraCalls === null ? "-" : aggregate.meanExtraCalls.toFixed(1)}; cost ${aggregate.totalCostUsd === null ? "-" : `$${aggregate.totalCostUsd.toFixed(3)}`} (${aggregate.unpricedRuns} unpriced)`,
     );
-    if (aggregate.mixedModels) deps.out(`warning: runs used different models (${aggregate.models.join(", ")}); their figures are not one comparable set`);
+    if (aggregate.mixedModels) deps.out(`warning: runs used different models or backends (${aggregate.models.join(", ")}); their figures are not one comparable set`);
     deps.out(`files: ${dir}`);
     return cancelled ? 130 : 0;
   } catch (e) {

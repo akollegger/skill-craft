@@ -1,0 +1,4 @@
+{
+  "anthropic/claude-sonnet-5-5": { "thinking": "adaptive", "effort": "medium" },
+  "anthropic/claude-haiku-4-5-20251001": { "thinking": 31999 }
+}

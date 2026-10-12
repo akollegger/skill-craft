@@ -48,6 +48,21 @@ export interface FakePlayerOptions {
   malformedLog?: boolean;
   /** Leave the model out of the init message and the usage keys. */
   omitModel?: boolean;
+  /** Report no cost, as a player does for a model with no price. */
+  unpriced?: boolean;
+  /** A per-run cost the provider itself reported, kept beside the computed one. */
+  reportedCostUsd?: number;
+  /** Where the run's cost came from, and the rates it was computed with (a pin or a market quote), as the real driver reports them. */
+  costSource?: "provider" | "pin" | "market-quote";
+  priceQuote?: { source: "pin" | "market-quote"; openRouterId: string | null; fetchedAt: string | null; perMillion: { input: number; output: number; cacheRead?: number; cacheWrite?: number }; note?: string };
+  /** The backend a routed provider reported for the run. */
+  backend?: string;
+  /** The retry setting and the attempts that failed, as a player that counts them reports them. */
+  retries?: { max: number; failedAttempts: number };
+  /** Report each model turn (its text, reasoning and calls) as the real driver does. Default true; `silent` mode never does. */
+  turns?: boolean;
+  /** The reasoning each turn reports; empty (none returned) by default. */
+  reasoning?: string;
 }
 
 export const FAKE_TOKENS = { input: 2, output: 10, cacheRead: 100, cacheCreation: 50 };
@@ -107,7 +122,7 @@ export function fakePlayer(options: FakePlayerOptions = {}): AgentDriver {
       await say({ type: "stream_event", event: { type: "message_stop" } });
     };
 
-    const callTool = async (step: Step) => {
+    const callTool = async (step: Step): Promise<string> => {
       const n = toolCalls++;
       const id = `toolu_${n}`;
       if (mode !== "silent") sink.onToolStart({ toolName: `mcp__craft__${step.tool}`, toolUseId: id, input: step.args });
@@ -121,6 +136,11 @@ export function fakePlayer(options: FakePlayerOptions = {}): AgentDriver {
       else game.craft();
       if (mode !== "silent" && n !== options.dropToolEnd) sink.onToolEnd({ toolUseId: id });
       await options.pause?.();
+      return id;
+    };
+    const reporting = mode !== "silent" && options.turns !== false;
+    const turn = (text: string, calls: { id: string; tool: string }[]) => {
+      if (reporting) sink.onTurn?.({ text, reasoning: options.reasoning ?? "", calls });
     };
 
     const held = Object.keys(world.stock); // read from the world, so the run log holds only scripted calls
@@ -140,9 +160,11 @@ export function fakePlayer(options: FakePlayerOptions = {}): AgentDriver {
 
     for (const step of plan) {
       await request();
-      await callTool(step);
+      const id = await callTool(step);
+      turn(options.agentText ?? "", [{ id, tool: step.tool }]);
     }
     await request();
+    turn(mode === "solve" ? "I hold it." : "I could not find it.", []);
 
     if (mode === "hang") {
       await new Promise<never>((_, reject) => {
@@ -162,7 +184,7 @@ export function fakePlayer(options: FakePlayerOptions = {}): AgentDriver {
     return {
       ended: mode === "budget" ? "budget" : "stopped",
       turns: reported ? requests : null,
-      costUsd: reported ? 0.01 * requests : null,
+      costUsd: reported && options.unpriced !== true ? 0.01 * requests : null,
       durationMs: reported ? 1000 + 100 * requests : null,
       usage: reported
         ? {
@@ -176,6 +198,11 @@ export function fakePlayer(options: FakePlayerOptions = {}): AgentDriver {
       initModel,
       modelsUsed: reported && !options.omitModel ? used : [],
       text: mode === "solve" ? "I hold it." : "I could not find it.",
+      ...(options.reportedCostUsd === undefined ? {} : { reportedCostUsd: options.reportedCostUsd }),
+      ...(options.costSource === undefined ? {} : { costSource: options.costSource }),
+      ...(options.priceQuote === undefined ? {} : { priceQuote: options.priceQuote }),
+      ...(options.backend === undefined ? {} : { backend: options.backend }),
+      ...(options.retries === undefined ? {} : { retries: options.retries }),
     };
   };
 }

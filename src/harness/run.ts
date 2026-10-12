@@ -9,12 +9,16 @@ import type { World } from "../sim/schema.js";
 import { readTrace } from "../trace/lines.js";
 import { measureRun, type Measured } from "../trace/measure.js";
 import { TraceRecorder } from "../trace/recorder.js";
-import type { AgentDriver, DriverSink, PlayerResult } from "./driver.js";
-import { DriverFailed, HarnessError, RunCancelled, RunFailed, RunFolderExists, RunTimedOut, SkillNotFound, UnknownGoalItem, reasonOf } from "./errors.js";
+import { DriverAborted, type AgentDriver, type DriverSink, type PlayerResult, type RunLimits } from "./driver.js";
+import { CONVERSATION_FILE, ConversationWriter } from "./conversation.js";
+import { DriverFailed, HarnessError, LimitRefused, RunCancelled, RunFailed, RunFolderExists, RunTimedOut, SkillNotFound, UnknownGoalItem, reasonOf } from "./errors.js";
 import { toRepoPath } from "./paths.js";
 import { readLog, replayFailure } from "./read-log.js";
 import { installSkill, SKILL_PLUGIN, skillName } from "./skill.js";
-import { craftServer, sdkOptionsFor } from "./sdk-options.js";
+import { craftServer } from "./craft-server.js";
+import { canonicalSpec, checkSettings, DEFAULT_MODEL, parseModelSpec, type ModelSettings } from "./models.js";
+import { resolveLimits, type ResolvedLimits } from "./ai-options.js";
+import type { PriceQuote } from "./pricing.js";
 
 export const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -32,10 +36,14 @@ export interface AgentRunOptions {
   out: string;
   label: string;
   model?: string | undefined;
-  /** Let user-level settings apply, so `nams-hooks` records the session to NAMS. */
-  record: boolean;
+  /** The settings pinned for this run's model, checked against its provider before anything is spent. */
+  settings?: ModelSettings | undefined;
   /** Time limit for one run. Default 30 minutes. */
   timeoutMs?: number | undefined;
+  /** Limits on a step, a tool call and spend. A dollar cap is refused for a model with no price. */
+  limits?: RunLimits | undefined;
+  /** The price the runs are costed with, resolved before the first run (a pin or a market quote). Absent: no cost figure and no dollar limit. */
+  price?: PriceQuote | undefined;
   /** Aborting it ends the current run and starts no further one. */
   signal?: AbortSignal | undefined;
   /** A skill folder (with a SKILL.md) to make available to the agent. Each run gets its own copy. */
@@ -91,7 +99,25 @@ export function mcpConfigFor(worldPath: string, runLog: string) {
 export interface ModelInfo {
   requested: string | null;
   resolved: string[];
+  /** For a routed provider: the backend the responses reported. */
+  backend?: string;
 }
+
+/** What a score records of the pinned settings: `null` for one that was not given, so the provider's own default applied. */
+export interface RecordedSettings {
+  temperature: number | null;
+  effort: string | null;
+  thinking: string | number | null;
+}
+
+/** A dollar cap needs a price to compare against; refused before anything is spent, like a setting the provider does not take. */
+function checkLimits(model: string | undefined, limits: RunLimits | undefined, price: PriceQuote | undefined): void {
+  if (limits?.maxUsd === undefined) return;
+  const spec = parseModelSpec(model ?? DEFAULT_MODEL).spec;
+  if (price === undefined) throw new LimitRefused(spec, "maxUsd");
+}
+
+export const recordedSettings = (s: ModelSettings | undefined): RecordedSettings => ({ temperature: s?.temperature ?? null, effort: s?.effort ?? null, thinking: s?.thinking ?? null });
 
 export interface RunReport extends PlayerResult {
   index: number;
@@ -105,6 +131,10 @@ export interface RunReport extends PlayerResult {
   promptNote?: string | undefined;
   /** The skill this run had available, when one was installed. */
   skill?: { name: string; sha256: string; invoked: boolean; loadedAfterCalls: number | null } | undefined;
+  /** The settings this run used. */
+  settings: RecordedSettings;
+  /** The limits this run ran under, defaults filled in. */
+  limits?: ResolvedLimits | undefined;
 }
 
 export interface Aggregate {
@@ -118,7 +148,15 @@ export interface Aggregate {
   errors: number;
   medianCallsToGoal: number | null;
   meanExtraCalls: number | null;
-  totalCostUsd: number;
+  /** The cost of the runs that have one; null when none do, never zero for "no figure". */
+  totalCostUsd: number | null;
+  /** Runs with a cost figure, and runs without (a model with no price, or a run that never got a response). */
+  pricedRuns: number;
+  unpricedRuns: number;
+  /** Where the priced runs' costs came from, sorted; a run with no cost, or from before sources were recorded, names none. */
+  costSources: string[];
+  /** True when the costs came from more than one source, so their total is not one comparable figure. */
+  mixedCostSources: boolean;
   /** Every model any run used, sorted. */
   models: string[];
   /** True when runs used more than one model, so their figures are not one comparable set. */
@@ -132,6 +170,10 @@ export function aggregate(reports: readonly RunReport[]): Aggregate {
   const median = sorted.length === 0 ? null : sorted.length % 2 ? (sorted[mid] as number) : ((sorted[mid - 1] as number) + (sorted[mid] as number)) / 2;
   const extras = wins.flatMap((r) => (r.score.extraCalls === null ? [] : [r.score.extraCalls]));
   const models = [...new Set(reports.flatMap((r) => r.model.resolved))].sort();
+  const priced = reports.filter((r) => r.costUsd !== null);
+  const costSources = [...new Set(priced.flatMap((r) => (typeof r.costSource === "string" ? [r.costSource] : [])))].sort();
+  // A routed provider can serve one model from different backends; runs that reached different backends are not one comparable set.
+  const backends = new Set(reports.flatMap((r) => (r.model.backend === undefined ? [] : [r.model.backend])));
   return {
     runs: reports.length,
     reached: wins.length,
@@ -141,20 +183,24 @@ export function aggregate(reports: readonly RunReport[]): Aggregate {
     errors: reports.filter((r) => r.ended === "error").length,
     medianCallsToGoal: median,
     meanExtraCalls: extras.length === 0 ? null : extras.reduce((a, b) => a + b, 0) / extras.length,
-    totalCostUsd: reports.reduce((sum, r) => sum + (r.costUsd ?? 0), 0),
+    totalCostUsd: priced.length === 0 ? null : priced.reduce((sum, r) => sum + (r.costUsd as number), 0),
+    pricedRuns: priced.length,
+    unpricedRuns: reports.length - priced.length,
+    costSources,
+    mixedCostSources: costSources.length > 1,
     models,
-    mixedModels: models.length > 1,
+    mixedModels: models.length > 1 || backends.size > 1,
   };
 }
 
 const runDir = (o: AgentRunOptions, index: number): string => join(o.out, o.label, String(index).padStart(3, "0"));
 
-const noSink: DriverSink = { onMessage: () => {}, onToolStart: () => {}, onToolEnd: () => {} };
-
 /** What a run would do, without running or creating anything (a dry run). */
 export function planExperiment(o: AgentRunOptions) {
   const priorFit = priorFitOf(o.world);
   const prompt = buildPrompt(o.goal, o.maxTurns, o.promptNote, o.promptTemplate);
+  if (o.settings !== undefined) checkSettings(o.model ?? DEFAULT_MODEL, o.settings); // a setting the provider does not take is refused here, before any spend
+  checkLimits(o.model, o.limits, o.price);
   return Array.from({ length: o.runs }, (_, i) => {
     const dir = runDir(o, i + 1);
     const runLog = resolve(dir, "run.jsonl");
@@ -162,10 +208,18 @@ export function planExperiment(o: AgentRunOptions) {
     const skill = o.skill
       ? { pluginDir: join(resolve(dir), "skill-plugin"), qualifiedName: `${SKILL_PLUGIN}:${skillName(readFileSync(join(o.skill, "SKILL.md"), "utf8"))}` }
       : undefined;
-    const { hooks: _hooks, abortController: _abort, ...options } = sdkOptionsFor(
-      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, record: o.record, signal: new AbortController().signal, skill },
-      noSink,
-    );
+    // What a real run would pass the driver: the model as it will be called (a bad one is refused here, before any
+    // spend), the turn limit, and the tools. With a skill the agent gets the skill tool besides the craft tools.
+    const options = {
+      model: parseModelSpec(o.model ?? DEFAULT_MODEL).spec,
+      settings: recordedSettings(o.settings),
+      limits: resolveLimits(o.limits),
+      // The price a real run would be costed with: the one resolved before it, or none.
+      price: o.price ?? null,
+      maxTurns: o.maxTurns,
+      tools: skill ? ["Skill"] : [],
+      ...(skill ? { skills: [skill.qualifiedName] } : {}),
+    };
     // Show the plan as it will be recorded: repository-relative paths, and without the PATH the live call adds.
     return { run: i + 1, dir, priorFit, prompt, runLog: toRepoPath(runLog), ...(o.skill ? { skill: toRepoPath(resolve(o.skill)) } : {}), options: { ...options, cwd: toRepoPath(resolve(dir)), ...mcpConfigFor(resolve(o.world), runLog) } };
   });
@@ -181,9 +235,11 @@ function scoreLog(world: World, goal: SolverGoal, entries: readonly RunLogEntry[
   }
 }
 
+/** A run's model names are recorded in canonical form (`<provider>/<model>`), whichever way the model was asked for. */
 const modelInfo = (requested: string | null, result: PlayerResult | null): ModelInfo => ({
-  requested,
-  resolved: result === null ? [] : result.modelsUsed.length > 0 ? [...result.modelsUsed] : result.initModel !== null ? [result.initModel] : [],
+  requested: requested === null ? null : canonicalSpec(requested),
+  resolved: (result === null ? [] : result.modelsUsed.length > 0 ? [...result.modelsUsed] : result.initModel !== null ? [result.initModel] : []).map(canonicalSpec),
+  ...(result?.backend === undefined ? {} : { backend: result.backend }),
 });
 
 /** The result recorded for a run whose player never returned one. */
@@ -195,7 +251,7 @@ const failedResult = (requested: string | null, reason: string): PlayerResult =>
 const writeScore = (dir: string, r: RunReport): void =>
   writeFileSync(
     join(dir, "score.json"),
-    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, text: r.text, score: r.score, measured: r.measured, model: r.model, priorFit: r.priorFit, ...(r.promptNote === undefined ? {} : { promptNote: r.promptNote }), ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
+    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, ...(r.retries === undefined ? {} : { retries: r.retries }), ...(r.reportedCostUsd === undefined ? {} : { reportedCostUsd: r.reportedCostUsd }), ...(r.costSource === undefined ? {} : { costSource: r.costSource }), ...(r.priceQuote === undefined ? {} : { priceQuote: r.priceQuote }), ...(r.invalidToolCalls === undefined ? {} : { invalidToolCalls: r.invalidToolCalls }), ...(r.limits === undefined ? {} : { limits: r.limits }), text: r.text, score: r.score, measured: r.measured, model: r.model, settings: r.settings, priorFit: r.priorFit, ...(r.promptNote === undefined ? {} : { promptNote: r.promptNote }), ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
   );
 
 /** Run the agent once against a fresh server, then score and measure it. A failed player is a recorded error. */
@@ -223,14 +279,24 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
   else o.signal?.addEventListener("abort", cancel, { once: true });
 
   const recorder = new TraceRecorder({ path: tracePath });
+  // The trace takes what it always took; the model's turns go to their own file and nowhere else.
+  const conversation = new ConversationWriter(join(dir, CONVERSATION_FILE));
+  const sink: DriverSink = {
+    onMessage: (m) => recorder.onMessage(m),
+    onToolStart: (c) => recorder.onToolStart(c),
+    onToolEnd: (c) => recorder.onToolEnd(c),
+    onTurn: (t) => conversation.onTurn(t),
+  };
   let result: PlayerResult | null = null;
+  let aborted: PlayerResult | null = null; // what a driver had spent when its run was aborted
   let failure: HarnessError | null = null;
   try {
     result = await driver(
-      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, record: o.record, signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
-      recorder,
+      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, ...(o.settings === undefined ? {} : { settings: o.settings }), ...(o.limits === undefined ? {} : { limits: o.limits }), ...(o.price === undefined ? {} : { price: o.price }), signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
+      sink,
     );
   } catch (e) {
+    if (e instanceof DriverAborted) aborted = e.partial;
     failure = e instanceof HarnessError ? e : timedOut ? new RunTimedOut(limit) : o.signal?.aborted ? new RunCancelled() : new DriverFailed(e);
   } finally {
     clearTimeout(timer);
@@ -250,15 +316,18 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
   }
 
   const problem = failure ?? replayFailure;
-  const base = result ?? failedResult(requested, problem ? reasonOf(problem) : "");
+  const finished = result ?? aborted;
+  const base = finished ?? failedResult(requested, problem ? reasonOf(problem) : "");
   const player: PlayerResult = problem ? { ...base, ended: "error", reason: reasonOf(problem) } : base;
   const report: RunReport = {
     ...player,
     index,
     dir,
     score,
-    measured: measureRun(entries, readTrace(tracePath), result, score, recorder.skipped),
-    model: modelInfo(requested, result),
+    measured: measureRun(entries, readTrace(tracePath), finished, score, recorder.skipped),
+    model: modelInfo(requested, finished),
+    settings: recordedSettings(o.settings),
+    limits: resolveLimits(o.limits),
     priorFit,
     ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }),
     ...(skill ? { skill: { name: skill.name, sha256: skill.sha256, invoked: result?.skillInvoked === true, loadedAfterCalls: result?.skillLoadedAfterCalls ?? null } } : {}),
@@ -273,7 +342,7 @@ function brokenRun(o: AgentRunOptions, index: number, world: World, priorFit: De
   const reason = reasonOf(e instanceof HarnessError ? e : new RunFailed(e));
   const report: RunReport = {
     ...failedResult(o.model ?? null, reason),
-    index, dir, score: scoreRun(world, o.goal, []), measured: { trace: "absent" }, model: modelInfo(o.model ?? null, null), priorFit,
+    index, dir, score: scoreRun(world, o.goal, []), measured: { trace: "absent" }, model: modelInfo(o.model ?? null, null), settings: recordedSettings(o.settings), limits: resolveLimits(o.limits), priorFit,
     ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }),
   };
   try {
@@ -291,10 +360,12 @@ export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; 
   // An invalid notes file ends the batch here, before anything is created or spent.
   const priorFit = priorFitOf(o.world);
   if (o.skill && !existsSync(join(o.skill, "SKILL.md"))) throw new SkillNotFound(`${o.skill} has no SKILL.md`);
+  if (o.settings !== undefined) checkSettings(o.model ?? DEFAULT_MODEL, o.settings); // before any folder is made or any model is called
+  checkLimits(o.model, o.limits, o.price);
   // Refuse before spending anything on a label that has already been used.
   for (let i = 1; i <= o.runs; i++) if (existsSync(runDir(o, i))) throw new RunFolderExists(runDir(o, i));
 
-  const driver = o.driver ?? (await import("./sdk-driver.js")).sdkDriver;
+  const driver = o.driver ?? (await import("./ai-driver.js")).aiDriver;
   const dir = join(o.out, o.label);
   mkdirSync(dir, { recursive: true });
 
@@ -318,7 +389,7 @@ export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; 
   const agg = aggregate(reports);
   writeFileSync(
     join(dir, "summary.json"),
-    `${JSON.stringify({ world: o.world, priorFit, ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }), goal: o.goal, maxTurns: o.maxTurns, record: o.record, timeoutMs: o.timeoutMs ?? DEFAULT_TIMEOUT_MS, cancelled, aggregate: agg, models: agg.models, mixedModels: agg.mixedModels, runs: reports.map(({ text: _text, ...r }) => r) }, null, 2)}\n`,
+    `${JSON.stringify({ world: o.world, priorFit, ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }), goal: o.goal, maxTurns: o.maxTurns, timeoutMs: o.timeoutMs ?? DEFAULT_TIMEOUT_MS, cancelled, aggregate: agg, models: agg.models, mixedModels: agg.mixedModels, runs: reports.map(({ text: _text, ...r }) => r) }, null, 2)}\n`,
   );
   return { dir, reports, aggregate: agg, cancelled };
 }

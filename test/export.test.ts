@@ -31,7 +31,7 @@ async function finishedRun(player: FakePlayerOptions = {}) {
   const world = worldFile(dir);
   const out = join(dir, "runs");
   const res = await runExperiment({
-    world, goal: GOAL, runs: 1, maxTurns: 12, out, label: "lab", record: false,
+    world, goal: GOAL, runs: 1, maxTurns: 12, out, label: "lab",
     driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, agentText: CHATTER, models: ["fake-a"], ...player }),
   });
   const runDir = res.reports[0]?.dir as string;
@@ -47,6 +47,14 @@ describe("exportBundle", () => {
     const res = exportBundle(runDir, dest);
     expect(filesOf(dest)).toEqual(["bundle.json", "frames.jsonl", "score.json", "trace.jsonl"]);
     expect(res.dest).toBe(dest);
+  });
+
+  it("reads a bare Claude id in an old run as anthropic/<id> in the bundle, and leaves the run folder alone", async () => {
+    const { runDir, dest } = await finishedRun({ models: ["claude-haiku-4-5-20251001"] });
+    const before = readFileSync(join(runDir, "score.json"), "utf8");
+    exportBundle(runDir, dest);
+    expect(readBundle(dest).manifest.model).toEqual({ requested: null, resolved: ["anthropic/claude-haiku-4-5-20251001"] });
+    expect(readFileSync(join(runDir, "score.json"), "utf8")).toBe(before);
   });
 
   it("has one frame per logged call plus the start, and carries the run's labels and model", async () => {
@@ -127,7 +135,7 @@ describe("exportBundle with a repository-relative world", () => {
   it("finds a world that mcp.json records relative to the repository", async () => {
     const dir = mkdtempSync(join(tmpdir(), "skill-craft-export-rel-"));
     const goal = { item: "c", qty: 1 };
-    const res = await runExperiment({ world: "test/fixtures/valid/mirror-pair.json", goal, runs: 1, maxTurns: 12, out: join(dir, "runs"), label: "lab", record: false, driver: fakePlayer({ mode: "solve", goal }) });
+    const res = await runExperiment({ world: "test/fixtures/valid/mirror-pair.json", goal, runs: 1, maxTurns: 12, out: join(dir, "runs"), label: "lab", driver: fakePlayer({ mode: "solve", goal }) });
     const runDir = res.reports[0]?.dir as string;
     const recorded = (JSON.parse(readFileSync(join(runDir, "mcp.json"), "utf8")) as { mcpServers: { craft: { env: Record<string, string> } } }).mcpServers.craft.env["SIM_WORLD"];
     expect(recorded).toBe("test/fixtures/valid/mirror-pair.json");

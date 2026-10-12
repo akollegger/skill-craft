@@ -3,6 +3,8 @@ import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
 import { z } from "zod";
 import { HarnessError, isUserError, ReportRefused } from "./errors.js";
+import { canonicalSpec } from "./models.js";
+import { fromRepoPath } from "./paths.js";
 
 export { ReportRefused };
 
@@ -20,12 +22,38 @@ export function wilson(successes: number, n: number): [number, number] {
   return [Math.max(0, center - half), Math.min(1, center + half)];
 }
 
+/** The settings pinned for a role: the same names and limits as `ModelSettings`, and nothing else. */
+const settingsSchema = z.object({ temperature: z.number().min(0).optional(), effort: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(), thinking: z.union([z.enum(["adaptive", "off"]), z.number().int().min(1024)]).optional() }).strict();
+type Settings = z.infer<typeof settingsSchema>;
+
+const roleSchema = z.object({ model: z.string(), settings: settingsSchema.default({}) }).strict();
+
+/** Who plays each role in an experiment (ADR-003 §2.1, amended): settings belong to the role, and one model may fill several. */
+const castSchema = z
+  .object({
+    teacher: roleSchema,
+    student: roleSchema,
+    /** The memory service distils; the critic and reviser are its review stage. Absent in an experiment that does not say. */
+    distiller: z.object({ service: z.string(), critic: roleSchema, reviser: roleSchema }).strict().optional(),
+  })
+  .strict();
+type Cast = z.infer<typeof castSchema>;
+
 const summarySchema = z.object({
   experiment: z.string(),
   priorFit: z.string(),
   route: z.enum(["escalating", "preemptive"]),
   primary: z.enum(["repair", "transfer"]),
-  models: z.object({ teacher: z.string(), student: z.string() }),
+  /** The cast of the experiment. Exactly one of `cast` and the older `models` is given. */
+  cast: castSchema.optional(),
+  models: z
+    .object({
+      teacher: z.string(),
+      student: z.string(),
+      /** The settings pinned for each model, keyed by model spec (a bare Claude id is read as `anthropic/<id>`); absent means none were pinned. */
+      settings: z.record(z.string(), settingsSchema).default({}),
+    })
+    .optional(),
   /** The goal set, and the goals set aside before any trial. */
   goals: z.object({ set: z.array(z.string()), heldOut: z.array(z.string()) }),
   /** Each goal's role from calibration; absent until calibration has been read. */
@@ -39,11 +67,98 @@ const summarySchema = z.object({
 });
 type Summary = z.infer<typeof summarySchema>;
 
-const reviewSchema = z.object({ verdict: z.enum(["accept", "revise", "reject"]), skillSha256: z.string() });
+/** The cast of a summary, reading the older `models` form as the same cast (its settings are looked up by canonical model name). */
+function castOf(summary: Summary): Cast {
+  if ((summary.cast === undefined) === (summary.models === undefined)) throw new ReportRefused("the experiment summary must give exactly one of `cast` and `models`");
+  if (summary.cast !== undefined) return summary.cast;
+  const m = summary.models!;
+  const byModel = new Map(Object.entries(m.settings).map(([k, v]) => [canonicalSpec(k), v]));
+  return { teacher: { model: m.teacher, settings: byModel.get(canonicalSpec(m.teacher)) ?? {} }, student: { model: m.student, settings: byModel.get(canonicalSpec(m.student)) ?? {} } };
+}
+
+/** A role's settings as one comparable shape, `null` for each one that is not pinned. */
+const normal = (s: { temperature?: number | null | undefined; effort?: string | null | undefined; thinking?: string | number | null | undefined } | null | undefined) => ({ temperature: s?.temperature ?? null, effort: s?.effort ?? null, thinking: s?.thinking ?? null });
+const sameSettings = (a: Parameters<typeof normal>[0], b: Parameters<typeof normal>[0]): boolean => JSON.stringify(normal(a)) === JSON.stringify(normal(b));
+const settingsText = (s: Parameters<typeof normal>[0]): string => {
+  const n = normal(s);
+  const parts = [n.thinking === null ? "" : `thinking ${n.thinking}`, n.effort === null ? "" : `effort ${n.effort}`, n.temperature === null ? "" : `temperature ${n.temperature}`].filter(Boolean);
+  return parts.length === 0 ? "unset" : parts.join(", ");
+};
+const roleText = (r: { model: string; settings?: Parameters<typeof normal>[0] }): string => `${canonicalSpec(r.model)} (${settingsText(r.settings)})`;
+
+/** The lines that state the cast, and which roles share a model. */
+function castLines(cast: Cast): string[] {
+  const roles: [string, { model: string; settings?: Settings }][] = [["teacher", cast.teacher], ["student", cast.student], ...(cast.distiller === undefined ? [] : ([["critic", cast.distiller.critic], ["reviser", cast.distiller.reviser]] as [string, { model: string; settings?: Settings }][]))];
+  const lines = ["Cast", `- teacher: ${roleText(cast.teacher)}`, `- student: ${roleText(cast.student)}`];
+  if (cast.distiller !== undefined) lines.push(`- distiller: ${cast.distiller.service}; critic ${roleText(cast.distiller.critic)}; reviser ${roleText(cast.distiller.reviser)}`);
+  const byModel = new Map<string, string[]>();
+  for (const [name, r] of roles) byModel.set(canonicalSpec(r.model), [...(byModel.get(canonicalSpec(r.model)) ?? []), name]);
+  for (const [model, names] of byModel) if (names.length > 1) lines.push(`- shared model: ${names.join(", ")}: ${model}`);
+  return lines;
+}
+
+/** A loop record, as much of it as the report reads. Parsed, so a file that is not one is refused. */
+const loopSchema = z.object({
+  finalSkillSha256: z.string().nullable(),
+  process: z.object({ version: z.string(), commit: z.string().nullable(), dirty: z.boolean().nullable() }).nullable().optional(),
+  recordedRuns: z.array(z.object({ models: z.array(z.string()), settings: settingsSchema.partial().extend({ temperature: z.number().nullable().optional(), effort: z.string().nullable().optional(), thinking: z.union([z.string(), z.number()]).nullable().optional() }).nullable() }).passthrough()),
+  recordingFormat: z.string().nullable().optional(),
+  roles: z.object({
+    critic: z.object({ requested: z.string(), resolved: z.array(z.string()), settings: z.any().nullable() }).passthrough(),
+    reviser: z.object({ requested: z.string(), resolved: z.array(z.string()), settings: z.any().nullable() }).passthrough(),
+  }),
+  distiller: z
+    .object({ service: z.union([z.object({ name: z.string(), version: z.string(), released: z.string(), commit: z.string(), environment: z.string() }), z.object({ name: z.string(), unknown: z.string() })]) })
+    .nullable()
+    .optional(),
+});
+type Loop = z.infer<typeof loopSchema>;
+
+/**
+ * Read the loop record that made a skill, check it against the reviewed skill and the cast, and say who made it. A record
+ * that contradicts either is refused: the table would otherwise be read against a skill it did not use.
+ */
+function skillMadeBy(path: string, reviewSha: string, cast: Cast): string[] {
+  const parsed = loopSchema.safeParse(readJson(fromRepoPath(path), "loop record named by review.json"));
+  if (!parsed.success) throw new ReportRefused("the loop record named by review.json is not a loop record");
+  const loop: Loop = parsed.data;
+  if (loop.finalSkillSha256 !== reviewSha) throw new ReportRefused("the loop record's final skill is not the reviewed skill");
+  const teacher = canonicalSpec(cast.teacher.model);
+  for (const r of loop.recordedRuns) {
+    // Exactly the cast's teacher: a run a substituted model also served is not the teacher's, and one that names no model cannot be checked.
+    const ran = r.models.map(canonicalSpec);
+    if (ran.length === 0 || !ran.every((m) => m === teacher)) throw new ReportRefused(`the loop record's runs were not made by the cast's teacher (${teacher}) alone`);
+    if (!sameSettings(r.settings, cast.teacher.settings)) throw new ReportRefused("the loop record's runs used settings other than the cast's teacher's");
+  }
+  if (cast.distiller !== undefined) {
+    for (const [name, want, got] of [["critic", cast.distiller.critic, loop.roles.critic], ["reviser", cast.distiller.reviser, loop.roles.reviser]] as const) {
+      if (canonicalSpec(got.requested) !== canonicalSpec(want.model)) throw new ReportRefused(`the loop record's ${name} is not the cast's`);
+      // What the provider reported as having answered must be the cast's model too, or a substitution would pass for the cast.
+      if (got.resolved.length === 0 || !got.resolved.every((m) => canonicalSpec(m) === canonicalSpec(want.model))) throw new ReportRefused(`the loop record's ${name} was served by a model other than the cast's`);
+      if (!sameSettings(got.settings, want.settings)) throw new ReportRefused(`the loop record's ${name} used settings other than the cast's`);
+    }
+  }
+  const p = loop.process;
+  const processLine = p == null ? "process: not recorded" : `process version ${p.version}, commit ${p.commit === null ? "unknown" : p.commit.slice(0, 12)}, ${p.dirty === null ? "tree unknown" : p.dirty ? "tree had changes" : "tree clean"}`;
+  const models = [...new Set(loop.recordedRuns.flatMap((r) => r.models.map(canonicalSpec)))].join("+") || "unknown";
+  const n = loop.recordedRuns.length;
+  const svc = loop.distiller?.service;
+  return [
+    "Skill made by (from the loop record named in review.json)",
+    `- ${processLine}`,
+    `- teacher: ${models} (${settingsText(loop.recordedRuns[0]?.settings)}); ${n} run${n === 1 ? "" : "s"}, recording ${loop.recordingFormat ?? "none"}`,
+    `- critic: ${roleText({ model: loop.roles.critic.requested, settings: loop.roles.critic.settings })}; reviser: ${roleText({ model: loop.roles.reviser.requested, settings: loop.roles.reviser.settings })}`,
+    svc === undefined || svc === null ? "- distiller service: none recorded" : "unknown" in svc ? `- distiller service: ${svc.name}, version unknown (${svc.unknown})` : `- distiller service: ${svc.name} ${svc.version}, released ${svc.released}, commit ${svc.commit}, ${svc.environment}`,
+  ];
+}
+
+const reviewSchema = z.object({ verdict: z.enum(["accept", "revise", "reject"]), skillSha256: z.string(), /** The loop record that made the skill: a path, repository-relative or absolute. */ loop: z.string().optional() });
 
 /** What a run's score.json must hold. Parsed, not cast: a string "false" would otherwise count as a success. */
 const scoreSchema = z.object({
   costUsd: z.number().nullable(),
+  /** Where the cost came from; absent in a run from before sources were recorded. */
+  costSource: z.enum(["provider", "pin", "market-quote"]).nullable().optional(),
   priorFit: z.string().optional(),
   promptNote: z.string().optional(),
   score: z.object({ reached: z.boolean(), extraCalls: z.number().nullable() }),
@@ -75,6 +190,11 @@ interface Row {
   reached: number;
   extras: number[];
   cost: number;
+  /** Runs with no cost figure; a row's cost is the priced runs only. */
+  unpriced: number;
+  /** Where the priced runs' costs came from, for runs that say. */
+  sources: Set<string>;
+  priced: number;
   tokens: [number, number, number, number];
   skillRuns: number;
   loaded: number[];
@@ -82,6 +202,8 @@ interface Row {
 }
 
 const STAGES = ["calibration", "T0", "S0", "S1", "S2"];
+/** How a cost's source is said in the report. A quote is a marketplace price, and is never called a charge. */
+const SOURCE_LABEL: Record<string, string> = { provider: "provider-reported", pin: "pin", "market-quote": "market quote" };
 const median = (xs: number[]): number => {
   const s = [...xs].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);
@@ -102,6 +224,7 @@ export function buildReport(input: ReportInput): string {
   const parsed = summarySchema.safeParse(readJson(join(input.experiment, "summary.json"), "experiment summary"));
   if (!parsed.success) throw new ReportRefused(`the experiment summary does not match the contract: ${parsed.error.issues[0]?.path.join(".") ?? ""}`);
   const summary: Summary = parsed.data;
+  const cast = castOf(summary);
 
   if (summary.roles !== undefined) {
     for (const goal of summary.goals.set) if (summary.roles[goal] === undefined) throw new ReportRefused(`the summary has no role for goal ${goal}`);
@@ -115,12 +238,14 @@ export function buildReport(input: ReportInput): string {
     return tag !== undefined && "arm" in tag && summary.arms.find((a) => a.label === tag.arm)?.skill === true;
   });
   let reviewSha: string | undefined;
+  let loopPath: string | undefined;
   if (skillArmUsed) {
     const review = reviewSchema.safeParse(readJson(join(input.experiment, "review.json"), "review record (review.json)"));
     if (!review.success) throw new ReportRefused("review.json needs a verdict (accept, revise or reject) and skillSha256");
     // Only a skill that cleared review may reach a student arm.
     if (review.data.verdict !== "accept") throw new ReportRefused(`the skill's review verdict is ${review.data.verdict}; only an accepted skill reaches the student arms, so there are no skill-arm results to report`);
     reviewSha = review.data.skillSha256;
+    loopPath = review.data.loop;
   }
 
   for (const dir of dirs) {
@@ -151,13 +276,15 @@ export function buildReport(input: ReportInput): string {
                 : null;
 
     // The model an arm declares ("teacher" or "student") resolved through the summary; a calibration folder declares none.
-    const expectedModel = arm === undefined ? undefined : summary.models[arm.model as "teacher" | "student"];
-    if (arm !== undefined && expectedModel === undefined) throw new ReportRefused(`arm ${arm.label} names model "${arm.model}", which the summary's models do not define`);
+    const declaredModel = arm === undefined ? undefined : cast[arm.model as "teacher" | "student"]?.model;
+    // Declared and recorded names are compared in canonical form, so a bare Claude id in an old summary or run still matches.
+    const expectedModel = declaredModel === undefined ? undefined : canonicalSpec(declaredModel);
+    if (arm !== undefined && expectedModel === undefined) throw new ReportRefused(`arm ${arm.label} names model "${arm.model}", which the summary's cast does not define`);
     const rowFor = (model: string, fit: string): Row => {
       const key = [stage, model, fit, goal].join("\u0000");
       let row = rows.get(key);
       if (row === undefined) {
-        row = { order: STAGES.indexOf(stage), stage, model, fit, goal, role, trials: 0, planned, reached: 0, extras: [], cost: 0, tokens: [0, 0, 0, 0], skillRuns: 0, loaded: [], skilled: arm?.skill === true };
+        row = { order: STAGES.indexOf(stage), stage, model, fit, goal, role, trials: 0, planned, reached: 0, extras: [], cost: 0, unpriced: 0, sources: new Set(), priced: 0, tokens: [0, 0, 0, 0], skillRuns: 0, loaded: [], skilled: arm?.skill === true };
         rows.set(key, row);
       }
       return row;
@@ -180,7 +307,7 @@ export function buildReport(input: ReportInput): string {
       if ((s.promptNote ?? undefined) !== (arm?.promptNote ?? undefined)) {
         throw new ReportRefused(`${name}/${rd} has a different prompt note from its arm's`);
       }
-      const model = s.model.resolved.length > 0 ? s.model.resolved.join("+") : "unknown";
+      const model = s.model.resolved.length > 0 ? s.model.resolved.map(canonicalSpec).join("+") : "unknown";
       if (expectedModel !== undefined && model !== expectedModel) throw new ReportRefused(`${name}/${rd} ran model ${model}, but arm ${arm?.label} declares ${expectedModel}`);
       const fit = s.priorFit ?? "undeclared";
       const row = rowFor(model, fit);
@@ -189,7 +316,12 @@ export function buildReport(input: ReportInput): string {
         row.reached += 1;
         if (s.score.extraCalls !== null) row.extras.push(s.score.extraCalls);
       }
-      row.cost += s.costUsd ?? 0;
+      if (s.costUsd === null) row.unpriced += 1;
+      else {
+        row.cost += s.costUsd;
+        row.priced += 1;
+        if (typeof s.costSource === "string") row.sources.add(s.costSource);
+      }
       const t = s.measured?.total;
       if (t) {
         row.tokens[0] += t.inputTokens;
@@ -213,7 +345,7 @@ export function buildReport(input: ReportInput): string {
   if (summary.roles === undefined) {
     const proposal = [`# Role proposals: ${summary.experiment}`, "", "From the student's unaided calibration trials in this world (at most 20% is a gap, at least 80% is solved, otherwise ambiguous):", ""];
     for (const goal of summary.goals.set) {
-      const r = sorted.find((x) => x.stage === "calibration" && x.model === summary.models.student && x.fit === summary.priorFit && x.goal === goal);
+      const r = sorted.find((x) => x.stage === "calibration" && x.model === canonicalSpec(cast.student.model) && x.fit === summary.priorFit && x.goal === goal);
       if (r === undefined || r.trials === 0) proposal.push(`- ${goal}: no student trials`);
       else {
         const rate = r.reached / r.trials;
@@ -229,6 +361,9 @@ export function buildReport(input: ReportInput): string {
     `World prior fit: ${summary.priorFit}. Rows are stamped with the prior fit recorded in each run.`,
     `Route: ${summary.route}; primary measure: ${summary.primary}.${summary.route === "escalating" ? " Both were declared after calibration, which this route needs: the gaps are found first." : ""}`,
     "",
+    ...castLines(cast),
+    ...(loopPath === undefined ? [] : ["", ...skillMadeBy(loopPath, reviewSha as string, cast)]),
+    "",
     "| Arm | Model | Prior fit | Goal | Reached | 95% interval | Extra calls (min / median / max) | Cost | Tokens | Skill loaded | Flags |",
     "|---|---|---|---|---|---|---|---|---|---|---|",
   ];
@@ -239,9 +374,14 @@ export function buildReport(input: ReportInput): string {
     const skill = r.skilled ? `${r.loaded.length}/${r.skillRuns} loaded${r.loaded.length > 0 ? `, median ${num(median(r.loaded))}` : ""}` : "-";
     const [ti, to, tc, tw] = r.tokens;
     lines.push(
-      `| ${r.stage} | ${r.model} | ${r.fit} | ${goalCell(r)} | ${r.reached}/${r.trials} | [${pct2(lo)}, ${pct2(hi)}] | ${extras} | $${r.cost.toFixed(2)} | ${ti} in / ${to} out / ${tc} cache read / ${tw} cache write | ${skill} | ${flags} |`,
+      `| ${r.stage} | ${r.model} | ${r.fit} | ${goalCell(r)} | ${r.reached}/${r.trials} | [${pct2(lo)}, ${pct2(hi)}] | ${extras} | ${r.priced === 0 ? "-" : `$${r.cost.toFixed(2)}`} (${r.unpriced} unpriced)${r.priced > 0 && r.sources.size > 0 ? ` [${[...r.sources].sort().map((x) => SOURCE_LABEL[x] ?? x).join(", ")}]` : ""} | ${ti} in / ${to} out / ${tc} cache read / ${tw} cache write | ${skill} | ${flags} |`,
     );
   }
+
+  // Costs from more than one source are not one comparable figure, and a quote is not a record of what any host charged.
+  const sources = [...new Set(sorted.flatMap((r) => [...r.sources]))].sort();
+  if (sources.length > 1) lines.push("", `Costs in this report come from more than one source (${sources.map((x) => SOURCE_LABEL[x] ?? x).join(", ")}) and are not one comparable figure.`);
+  if (sources.includes("market-quote")) lines.push("", "A market quote is a marketplace price read from OpenRouter's public model list: an estimate of a model's market rate, and not a record of any host's rate.");
 
   const verdict = (a: Row, b: Row): string => {
     const [alo, ahi] = wilson(a.reached, a.trials);

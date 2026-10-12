@@ -211,3 +211,14 @@ mirror could be added later without changing the viewer.
 - **2026-10-07**: [ADR-005](ADR-005-per-world-item-art.md) gives the bundle manifest one more optional field, `art`: the sprites of the
   items that appear in the run, for a viewer that has no world file (built; spec 006). It holds finished drawings and generated glyphs, never
   names from the sprite library. Readers that do not know it ignore it, and the manifest's format number does not change.
+- **2026-10-09, the trace source is the AI SDK (proposed in [ADR-006](ADR-006-ai-sdk-runtime.md)).** Section 2.2's
+  source, the Claude Agent SDK's `query()` stream and its tool hooks, is replaced by a driver on the AI SDK that
+  reports the same events to the recorder. The trace keeps the shape in 2.4 except that `ttftMs` is `null` (calls are
+  not streamed), and `costUsd` is computed from token counts and a price table where one exists, since the player reports no cost (ADR-006 §2.4 and its 2026-10-12 amendment: a price entry is optional and a cost may be unavailable). The
+  allowlist in 2.3 and the join in 2.5 are unchanged. The consequence about a pre-1.0 package that bundles the Claude
+  Code binary no longer applies. `--record` (loading user settings so that the NAMS hooks record) is removed.
+- **2026-10-12**: §2.3's allowlist describes `trace.jsonl` and is unchanged: the trace still never holds the agent's text or
+  thinking. A recorded run's NAMS recording needs the model's messages and reasoning (ADR-003 §2.4, amended), so the driver
+  writes them to a separate file in the run folder, `conversation.jsonl`, that no trace, score, summary, bundle or reason
+  includes and that only the recording step reads. `score.json`'s `text` field, the final message, is the same kind of
+  exception and is kept.

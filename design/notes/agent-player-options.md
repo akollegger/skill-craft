@@ -1,5 +1,7 @@
 # Design note: who plays the game?
 
+> **History note (2026-10-10):** where this document describes the player as Claude Code run through the Claude Agent SDK, or the `--record` flag, that was the design at the time. The harness now runs every model through the AI SDK and has no `--record` ([ADR-006](../adr/ADR-006-ai-sdk-runtime.md), spec 007). Read the affected passages as the record of the earlier design.
+
 Status: exploratory, taken forward by [ADR-003](../adr/ADR-003-experiment-protocol.md) (proposed), which decides
 the player, models, arms and isolation. The options below are kept as the record of what was considered.
 Date: 2026-09-29

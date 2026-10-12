@@ -1,4 +1,5 @@
-import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -12,7 +13,7 @@ const GOAL = { item: "c", qty: 1 };
 
 async function made(mode: "solve" | "refuse", label: string, world = WORLD, goal = GOAL): Promise<string> {
   const out = mkdtempSync(join(tmpdir(), "skill-craft-transcript-"));
-  const { dir } = await runExperiment({ world, goal, runs: 1, maxTurns: 12, out, label, record: false, driver: fakePlayer({ mode, goal }) });
+  const { dir } = await runExperiment({ world, goal, runs: 1, maxTurns: 12, out, label, driver: fakePlayer({ mode, goal }) });
   return join(dir, "001");
 }
 
@@ -31,6 +32,64 @@ describe("replayRun", () => {
     expect(rec.calls.every((c) => c.output.length > 0)).toBe(true);
     expect(rec.calls.at(-1)?.crafted).toBeDefined();
     expect(typeof rec.finalAnswer).toBe("string");
+  });
+
+  it("carries the hashes of the run's log and score and the settings it ran under, for the loop's record", async () => {
+    const run = await made("solve", "h");
+    const rec = await replayRun(run, "001");
+    const sha = (f: string) => createHash("sha256").update(readFileSync(join(run, f))).digest("hex");
+    expect(rec.runLogSha256).toBe(sha("run.jsonl"));
+    expect(rec.scoreSha256).toBe(sha("score.json"));
+    expect(rec.settings).toEqual({ temperature: null, effort: null, thinking: null }); // the scripted player pinned none
+  });
+
+  it("reads a run made before settings were recorded as having none recorded", async () => {
+    const run = await made("solve", "old");
+    const score = JSON.parse(readFileSync(join(run, "score.json"), "utf8"));
+    delete score.settings;
+    writeFileSync(join(run, "score.json"), JSON.stringify(score));
+    expect((await replayRun(run, "001")).settings).toBeNull();
+  });
+
+  it("carries the conversation, and each call's tool use id so a turn's calls can be found", async () => {
+    const rec = await replayRun(await made("solve", "conv"), "001");
+    expect(rec.conversation).not.toBeNull();
+    const ids = rec.calls.map((c) => c.toolUseId);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(rec.conversation!.flatMap((t) => t.calls.map((c) => c.id))).toEqual(ids);
+    expect(rec.conversation!.at(-1)).toMatchObject({ text: "I hold it.", calls: [] });
+  });
+
+  it("refuses a conversation that names the same tool use id twice, which would pair one call with two", async () => {
+    const run = await made("solve", "dupconv");
+    const lines = readFileSync(join(run, "conversation.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const first = lines.find((l) => l.calls.length > 0);
+    lines.find((l) => l !== first && l.calls.length > 0).calls.push(first.calls[0]);
+    writeFileSync(join(run, "conversation.jsonl"), `${lines.map((l) => JSON.stringify(l)).join("\n")}\n`);
+    await expect(replayRun(run, "001")).rejects.toBeInstanceOf(ReplayFailed);
+  });
+
+  it("refuses a trace that holds the same tool use id twice", async () => {
+    const run = await made("solve", "duptrace");
+    const rows = readFileSync(join(run, "trace.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const tools = rows.filter((r) => r.kind === "tool");
+    tools[1].toolUseId = tools[0].toolUseId;
+    writeFileSync(join(run, "trace.jsonl"), `${rows.map((r) => JSON.stringify(r)).join("\n")}\n`);
+    await expect(replayRun(run, "001")).rejects.toBeInstanceOf(ReplayFailed);
+  });
+
+  it("reads a run with no conversation file as having none", async () => {
+    const run = await made("solve", "noconv");
+    rmSync(join(run, "conversation.jsonl"));
+    expect((await replayRun(run, "001")).conversation).toBeNull();
+  });
+
+  it("refuses a run whose trace holds a call that no turn of the conversation made", async () => {
+    const run = await made("solve", "mismatch");
+    const lines = readFileSync(join(run, "conversation.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    lines[1].calls = [];
+    writeFileSync(join(run, "conversation.jsonl"), `${lines.map((l) => JSON.stringify(l)).join("\n")}\n`);
+    await expect(replayRun(run, "001")).rejects.toBeInstanceOf(ReplayFailed);
   });
 
   it("marks a refusal as refused, with the engine's own error code", async () => {

@@ -38,6 +38,7 @@ const report = (over: Partial<RunReport> & { reached: boolean; callsToGoal: numb
   text: "",
   measured: { trace: "absent" },
   model: { requested: null, resolved: ["m"] },
+  settings: { temperature: null, effort: null, thinking: null },
   priorFit: "undeclared",
   score: {
     goal: { item: "x", qty: 1 },
@@ -102,12 +103,85 @@ const options = (player: FakePlayerOptions = {}, over: Record<string, unknown> =
   maxTurns: 12,
   out: mkdtempSync(join(tmpdir(), "skill-craft-runs-")),
   label: "t",
-  record: false,
   driver: fakePlayer({ goal: GOAL, ...player }),
   ...over,
 });
 
 const scoreOf = (dir: string) => JSON.parse(readFileSync(join(dir, "score.json"), "utf8")) as Record<string, any>;
+
+describe("cost, and runs with no price", () => {
+  it("counts priced and unpriced runs, and totals the priced ones only", () => {
+    const a = aggregate([
+      report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: 0.01 }),
+      report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: 0.02 }),
+      report({ reached: false, callsToGoal: 5, extraCalls: null, costUsd: null }),
+    ]);
+    expect(a).toMatchObject({ pricedRuns: 2, unpricedRuns: 1 });
+    expect(a.totalCostUsd).toBeCloseTo(0.03, 9);
+  });
+
+  it("has no total at all when no run was priced, never zero", () => {
+    const a = aggregate([report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: null }), report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: null })]);
+    expect(a).toMatchObject({ pricedRuns: 0, unpricedRuns: 2, totalCostUsd: null });
+    expect(aggregate([])).toMatchObject({ pricedRuns: 0, unpricedRuns: 0, totalCostUsd: null });
+  });
+
+  it("writes the counts to summary.json and leaves an unpriced run's cost null in score.json", async () => {
+    const out = await runExperiment(options({ mode: "solve", unpriced: true }));
+    const summary = JSON.parse(readFileSync(join(out.dir, "summary.json"), "utf8")) as { aggregate: Record<string, unknown> };
+    expect(summary.aggregate).toMatchObject({ pricedRuns: 0, unpricedRuns: 2, totalCostUsd: null });
+    expect(scoreOf(out.reports[0]?.dir as string)["costUsd"]).toBeNull();
+  });
+
+  it("flags an experiment whose runs reached different backends as mixed, and records the backend in score.json", async () => {
+    let n = 0;
+    const driver: AgentDriver = (o, sink) => fakePlayer({ goal: GOAL, mode: "solve", backend: n++ === 0 ? "b1" : "b2" })(o, sink);
+    const out = await runExperiment(options({}, { driver }));
+    expect(out.aggregate.mixedModels).toBe(true);
+    expect(scoreOf(out.reports[0]?.dir as string)["model"]).toMatchObject({ backend: "b1" });
+  });
+
+  it("is not mixed when every run reached the same backend, or when none reports one", async () => {
+    const same = await runExperiment(options({ mode: "solve", backend: "b1" }));
+    expect(same.aggregate.mixedModels).toBe(false);
+    const none = await runExperiment(options({ mode: "solve" }));
+    expect(none.aggregate.mixedModels).toBe(false);
+    expect(scoreOf(none.reports[0]?.dir as string)["model"]).not.toHaveProperty("backend");
+  });
+
+  it("writes the cost source and the quote the player reported to score.json, and nothing for a player that reported none", async () => {
+    const quote = { source: "market-quote" as const, openRouterId: "anthropic/claude-haiku-4.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5 } };
+    const with_ = await runExperiment(options({ mode: "solve", costSource: "market-quote", priceQuote: quote }, { runs: 1 }));
+    expect(scoreOf(with_.reports[0]?.dir as string)).toMatchObject({ costSource: "market-quote", priceQuote: quote });
+    const without = await runExperiment(options({ mode: "solve" }, { runs: 1 }));
+    const s = scoreOf(without.reports[0]?.dir as string);
+    expect(s).not.toHaveProperty("costSource");
+    expect(s).not.toHaveProperty("priceQuote");
+  });
+
+  it("names the sources a label's costs came from, and says when they are more than one", () => {
+    const run = (costSource: RunReport["costSource"], costUsd: number | null) => report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd, ...(costSource === undefined ? {} : { costSource }) });
+    expect(aggregate([run("pin", 0.01), run("pin", 0.02)])).toMatchObject({ costSources: ["pin"], mixedCostSources: false });
+    expect(aggregate([run("pin", 0.01), run("market-quote", 0.02), run("provider", 0.03)])).toMatchObject({ costSources: ["market-quote", "pin", "provider"], mixedCostSources: true });
+    // An unpriced run has no source, and a run from before sources were recorded names none.
+    expect(aggregate([run("pin", 0.01), run(null, null), run(undefined, 0.02)])).toMatchObject({ costSources: ["pin"], mixedCostSources: false });
+    expect(aggregate([run(null, null)])).toMatchObject({ costSources: [], mixedCostSources: false });
+  });
+
+  it("counts a run with a provider-reported cost as priced", () => {
+    const a = aggregate([report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: 0.004, costSource: "provider" }), report({ reached: true, callsToGoal: 3, extraCalls: 0, costUsd: null, costSource: null })]);
+    expect(a).toMatchObject({ pricedRuns: 1, unpricedRuns: 1 });
+  });
+
+  it("keeps a provider-reported cost beside the computed one, and only when the provider reports one", async () => {
+    const withReported = await runExperiment(options({ mode: "solve", reportedCostUsd: 0.5 }, { runs: 1 }));
+    const s = scoreOf(withReported.reports[0]?.dir as string);
+    expect(s["reportedCostUsd"]).toBe(0.5);
+    expect(s["costUsd"]).toBeGreaterThan(0); // the computed figure is still the figure of record
+    const without = await runExperiment(options({ mode: "solve" }, { runs: 1 }));
+    expect(scoreOf(without.reports[0]?.dir as string)).not.toHaveProperty("reportedCostUsd");
+  });
+});
 
 describe("runExperiment with a scripted player", () => {
   it("runs, scores, measures and aggregates runs that reach the goal", async () => {
@@ -267,6 +341,11 @@ describe("the model a run used", () => {
     expect(out.reports[0]?.model).toEqual({ requested: "alias-a", resolved: ["fake-a"] });
   });
 
+  it("records a bare Claude id in canonical form, both as asked for and as it ran", async () => {
+    const out = await runExperiment(options({ mode: "solve", models: ["claude-haiku-4-5-20251001"] }, { runs: 1, model: "claude-haiku-4-5-20251001" }));
+    expect(out.reports[0]?.model).toEqual({ requested: "anthropic/claude-haiku-4-5-20251001", resolved: ["anthropic/claude-haiku-4-5-20251001"] });
+  });
+
   it("lists both models for a run that used two", async () => {
     const out = await runExperiment(options({ mode: "solve", models: ["fake-a", "fake-b"] }, { runs: 1 }));
     expect(out.reports[0]?.model.resolved).toEqual(["fake-a", "fake-b"]);
@@ -288,14 +367,49 @@ describe("the model a run used", () => {
   });
 });
 
+describe("pinned settings in a run", () => {
+  it("are recorded in each score, with null for each setting not given", async () => {
+    const some = await runExperiment(options({ mode: "solve" }, { runs: 1, model: "claude-haiku-4-5-20251001", settings: { temperature: 0, thinking: "off" } }));
+    expect(scoreOf(some.reports[0]?.dir as string)["settings"]).toEqual({ temperature: 0, effort: null, thinking: "off" });
+    const none = await runExperiment(options({ mode: "solve" }, { runs: 1 }));
+    expect(scoreOf(none.reports[0]?.dir as string)["settings"]).toEqual({ temperature: null, effort: null, thinking: null });
+  });
+
+  it("record a thinking budget as the number it is", async () => {
+    const out = await runExperiment(options({ mode: "solve" }, { runs: 1, model: "claude-haiku-4-5-20251001", settings: { thinking: 31999 } }));
+    expect(scoreOf(out.reports[0]?.dir as string)["settings"]).toEqual({ temperature: null, effort: null, thinking: 31999 });
+  });
+
+  it("are handed to the player", async () => {
+    let seen: unknown;
+    const driver: AgentDriver = (o, sink) => {
+      seen = o.settings;
+      return fakePlayer({ goal: GOAL, mode: "solve" })(o, sink);
+    };
+    await runExperiment(options({}, { runs: 1, driver, settings: { effort: "high" } }));
+    expect(seen).toEqual({ effort: "high" });
+  });
+
+  it("are refused before anything is created when the model's provider does not take them", async () => {
+    const o = options({ mode: "solve" }, { runs: 1, model: "claude-sonnet-5-5", settings: { temperature: 0 } });
+    await expect(runExperiment(o)).rejects.toThrow("model 'anthropic/claude-sonnet-5-5' does not take setting 'temperature'");
+    expect(existsSync(join(o.out as string, o.label as string))).toBe(false);
+  });
+
+  it("show in the dry-run plan for each run", () => {
+    const plan = planExperiment(options({}, { runs: 2, model: "claude-sonnet-5-5", settings: { thinking: "adaptive", effort: "high" } }));
+    expect(plan[0]?.options.settings).toEqual({ temperature: null, effort: "high", thinking: "adaptive" });
+    expect(() => planExperiment(options({}, { model: "claude-sonnet-5-5", settings: { temperature: 0.5 } }))).toThrow("does not take setting 'temperature'");
+  });
+});
+
 describe("planExperiment (dry run)", () => {
   it("lists the exact options for each run and creates nothing", () => {
     const o = options({}, { runs: 2 });
     const plan = planExperiment(o);
     expect(plan).toHaveLength(2);
     expect(plan[0]?.options.tools).toEqual([]);
-    expect(plan[0]?.options.allowedTools).toEqual(["mcp__craft"]);
-    expect(plan[0]?.options.strictMcpConfig).toBe(true);
+    expect(plan[0]?.options.model).toBe("anthropic/claude-sonnet-5-5"); // the default, as it will be called
     expect(plan[0]?.options).not.toHaveProperty("hooks");
     expect(JSON.stringify(plan)).not.toContain(process.env["PATH"] as string); // the operator's PATH is never printed
     const craft = plan[0]?.options.mcpServers?.["craft"] as { env: Record<string, string> };

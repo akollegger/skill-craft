@@ -18,7 +18,7 @@ describe("WorkspaceGuard and guarded()", () => {
     for (const call of [
       () => g.addConversation("dev-ws", {}),
       () => g.addMessage("dev-ws", "c", "user", "x"),
-      () => g.addStep("dev-ws", "c", "t"),
+      () => g.addStep("dev-ws", "c", { action: "t", reasoning: "r" }),
       () => g.addToolCall("dev-ws", { tool: "t", input: "{}", output: "{}", status: "success", durationMs: 1 } as never, "s"),
       () => g.generateSkill("dev-ws", { conversationIds: [], procedureFormat: "prose" }),
       () => g.downloadSkill("dev-ws", "s"),
@@ -93,7 +93,7 @@ describe("the real client's requests", () => {
     });
     await nams.addConversation("ws-1", { source: "critic-loop" });
     await nams.addMessage("ws-1", "c1", "user", "hello");
-    await nams.addStep("ws-1", "c1", "mcp__craft__place");
+    await nams.addStep("ws-1", "c1", { action: "place", reasoning: "REASONING-OF-THE-MODEL" });
     await nams.addToolCall("ws-1", { tool: "mcp__craft__place", input: "{}", output: "{}", status: "failure", durationMs: 12 } as never, "s1");
     await nams.generateSkill("ws-1", { conversationIds: ["c1"], procedureFormat: "prose", nameHint: "craft-x" });
     await nams.getRun("ws-1", "r1");
@@ -106,7 +106,7 @@ describe("the real client's requests", () => {
     const byRoute = Object.fromEntries(seen.map((r) => [`${r.method} ${new URL(r.url).pathname}`, r.body]));
     expect(byRoute["POST /v1/conversations"]).toEqual({ metadata: { source: "critic-loop" } });
     expect(byRoute["POST /v1/conversations/c1/messages"]).toEqual({ role: "user", content: "hello" });
-    expect(byRoute["POST /v1/reasoning/steps"]).toMatchObject({ conversationId: "c1", actionTaken: "mcp__craft__place" });
+    expect(byRoute["POST /v1/reasoning/steps"]).toEqual({ conversationId: "c1", actionTaken: "place", reasoning: "REASONING-OF-THE-MODEL" }); // the model's own reasoning, with no text added by the harness
     expect(byRoute["POST /v1/reasoning/tool-calls"]).toEqual({ toolName: "mcp__craft__place", input: "{}", output: "{}", status: "failure", durationMs: 12, stepId: "s1" });
     expect(byRoute["POST /v1/skills/generate"]).toEqual({ scope: { type: "conversations", conversationIds: ["c1"] }, procedureFormat: "prose", nameHint: "craft-x" });
   });
@@ -229,7 +229,7 @@ describe("aborting reaches every request", () => {
     const nams = createNamsClient({ key: KEY, baseUrl: "https://nams.test", fetch: wrapped, tools, signal: ctl.signal });
     await nams.addConversation("ws-1", {});
     await nams.addMessage("ws-1", "c1", "user", "x");
-    await nams.addStep("ws-1", "c1", "t");
+    await nams.addStep("ws-1", "c1", { action: "t", reasoning: "r" });
     await nams.addToolCall("ws-1", { tool: "t", input: "{}", output: "{}", status: "success", durationMs: 1 } as never, "s");
     await nams.generateSkill("ws-1", { conversationIds: ["c1"], procedureFormat: "prose" });
     await nams.getRun("ws-1", "r");
@@ -253,5 +253,32 @@ describe("aborting reaches every request", () => {
     await nams.listWorkspaceIds();
     await nams.deleteWorkspace("ws-1");
     expect(got).toEqual([{ op: "create", aborted: true }, { op: "list", aborted: false }, { op: "delete", aborted: false }]);
+  });
+});
+
+describe("the service's version (spec 007 FR-042)", () => {
+  const make = (answers: Record<string, unknown>, status = 200) => {
+    const s = stub(answers, status);
+    return { ...s, nams: createNamsClient({ key: KEY, baseUrl: "https://nams.test", fetch: s.fetch, tools, pollMs: 1, maxWaitMs: 200 }) };
+  };
+
+  it("reads GET /v1/version without the key or a workspace, and returns the fields that identify the deployment", async () => {
+    const { nams, seen } = make({ "GET /v1/version": { version: "1.3.0", released: "2026-10-12", commit: "27263eb", environment: "production", extra: "ignored" } });
+    expect(await nams.version()).toEqual({ version: "1.3.0", released: "2026-10-12", commit: "27263eb", environment: "production" });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.url).toBe("https://nams.test/v1/version");
+    expect(seen[0]?.headers["Authorization"]).toBeUndefined();
+    expect(seen[0]?.headers["X-Workspace-Id"]).toBeUndefined();
+  });
+
+  it("fails with a fixed message when the answer is not a version, or the call fails", async () => {
+    await expect(make({ "GET /v1/version": { nothing: true } }).nams.version()).rejects.toBeInstanceOf(CandidateFailed);
+    await expect(make({ "GET /v1/version": {} }, 500).nams.version()).rejects.toBeInstanceOf(CandidateFailed);
+  });
+
+  it("is not a call that touches a workspace, so the guard lets it through", async () => {
+    const fake = new FakeNams();
+    const g = guarded(fake, new WorkspaceGuard({ forbidden: ["dev-ws"] }));
+    await expect(g.version()).resolves.toMatchObject({ version: expect.any(String) });
   });
 });

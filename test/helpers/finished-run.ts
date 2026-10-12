@@ -35,7 +35,7 @@ export async function finishedRun(o: FinishedRunOptions = {}) {
   const world = o.world ?? worldFile(dir);
   const out = join(dir, "runs");
   const res = await runExperiment({
-    world, goal: o.goal ?? GOAL, runs: o.runs ?? 1, maxTurns: 12, out, label: o.label ?? "lab", record: false,
+    world, goal: o.goal ?? GOAL, runs: o.runs ?? 1, maxTurns: 12, out, label: o.label ?? "lab",
     driver: fakePlayer({ mode: "solve", goal: o.goal ?? GOAL, models: ["fake-a"], ...o.player }),
   });
   const runDir = res.reports[0]?.dir as string;

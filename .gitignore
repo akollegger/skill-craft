@@ -8,3 +8,4 @@ dist/
 runs/
 dist-viz/
 loops/
+.cache/

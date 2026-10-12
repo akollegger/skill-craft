@@ -22,15 +22,27 @@ export interface RunStatus {
   failure?: string | undefined;
 }
 
+/** What the service says of itself, which identifies the deployment that did the work (the commit is the field that does). */
+export interface ServiceVersion {
+  version: string;
+  released: string;
+  commit: string;
+  environment: string;
+}
+
 export interface NamsApi {
+  /** The service's own version. Unauthenticated and not tied to a workspace. */
+  version(): Promise<ServiceVersion>;
   capabilities(ws: string): Promise<unknown>;
   createWorkspace(name: string): Promise<{ id: string }>;
   waitActive(id: string, signal: AbortSignal): Promise<void>;
   listWorkspaceIds(): Promise<string[]>;
   deleteWorkspace(id: string): Promise<void>;
-  addConversation(ws: string, metadata: object): Promise<{ id: string }>;
+  /** The service takes metadata as an object of strings only; the type says so. */
+  addConversation(ws: string, metadata: Record<string, string>): Promise<{ id: string }>;
   addMessage(ws: string, conv: string, role: "user" | "assistant", content: string): Promise<void>;
-  addStep(ws: string, conv: string, tool: string): Promise<{ id: string }>;
+  /** One reasoning step: the action taken and the reasoning behind it, as the model gave it. */
+  addStep(ws: string, conv: string, step: { action: string; reasoning: string }): Promise<{ id: string }>;
   addToolCall(ws: string, call: RecordedCall, stepId: string): Promise<void>;
   waitExtracted(ws: string, convs: string[], signal: AbortSignal): Promise<void>;
   generateSkill(ws: string, req: { conversationIds: string[]; procedureFormat: "graph" | "prose"; nameHint?: string }): Promise<{ runId: string }>;
@@ -64,6 +76,7 @@ export function guarded(inner: NamsApi, guard: WorkspaceGuard): NamsApi {
     return f.call(inner, ws, ...rest);
   };
   return {
+    version: () => inner.version(),
     capabilities: own(inner.capabilities),
     async createWorkspace(name) {
       const created = await inner.createWorkspace(name);
@@ -176,6 +189,21 @@ export function createNamsClient(o: NamsClientOptions): NamsApi {
   }
 
   return {
+    // Sent with neither the key nor a workspace: the service answers it to anyone, and it names no data of ours.
+    async version() {
+      let res: Response;
+      try {
+        res = await doFetch(`${base}/v1/version`, { ...(o.signal ? { signal: o.signal } : {}) });
+      } catch (e) {
+        if (o.signal?.aborted) throw new LoopCancelled();
+        throw new CandidateFailed("the service could not be reached for its version", e);
+      }
+      if (!res.ok) throw new CandidateFailed(`the service answered HTTP ${res.status} to GET /v1/version`);
+      const b = obj(await res.json().catch(() => ({})));
+      const [version, released, commit, environment] = [str(b["version"]), str(b["released"]), str(b["commit"]), str(b["environment"])];
+      if (!version || !released || !commit || !environment) throw new CandidateFailed("the service gave no version");
+      return { version, released, commit, environment };
+    },
     capabilities: (ws) => json("GET", "/v1/skills/capabilities", ws),
     async createWorkspace(name) {
       return o.tools.create(name, o.signal);
@@ -199,8 +227,8 @@ export function createNamsClient(o: NamsClientOptions): NamsApi {
     async addMessage(ws, conv, role, content) {
       await request("POST", `/v1/conversations/${conv}/messages`, ws, { role, content });
     },
-    async addStep(ws, conv, tool) {
-      const id = str((await json("POST", "/v1/reasoning/steps", ws, { conversationId: conv, actionTaken: tool, reasoning: `Claude Code ran ${tool} with the provided tool input` }))["id"]);
+    async addStep(ws, conv, step) {
+      const id = str((await json("POST", "/v1/reasoning/steps", ws, { conversationId: conv, actionTaken: step.action, reasoning: step.reasoning }))["id"]);
       if (!id) throw new CandidateFailed("the service gave no step id");
       return { id };
     },

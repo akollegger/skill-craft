@@ -173,6 +173,7 @@ its hash. A rejected loop leaves nothing to install and says so.
   each run's recording to one workspace the harness created for that purpose, regenerating each call's output
   by replaying the run's call sequence on a fresh game. It MUST refuse, before creating a workspace, runs of
   different goals or worlds, and any run whose log does not replay or whose trace does not match its log.
+- _Amended 2026-10-12: FR-002's recording content is superseded by spec 007 FR-028 to FR-032 (ADR-003 §2.4, amended): a conversation of the model's messages, one step per model turn with its reasoning, and tool calls under their steps. The text below is the original._
 - **FR-002**: The recording MUST contain the run's prompt, the calls with input, output, status and
   duration, and the final answer, and no other agent text.
 - **FR-003**: The harness MUST create, wait for and delete the workspace itself, record every id it creates,

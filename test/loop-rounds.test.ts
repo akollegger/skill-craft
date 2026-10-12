@@ -24,6 +24,51 @@ function input(script: ScriptedAnswer[], over: Partial<LoopInput> = {}) {
   return { base, role };
 }
 
+describe("the check each role is given", () => {
+  it("lets the role driver test an answer against the verdict schema and describe a miss without quoting the answer", async () => {
+    const { base, role } = input([verdict("accept", "A")]);
+    await runLoop(base);
+    const check = role.calls[0]?.check;
+    expect(typeof check).toBe("function");
+    expect(check?.(verdict("accept", "A"))).toBeUndefined();
+    const miss = check?.({ overall: "maybe" });
+    expect(miss).toContain("overall");
+    const long = check?.({ ...(verdict("accept", "A") as object), reasons: "SECRET-TEXT".repeat(200) });
+    expect(long).toContain("reasons");
+    expect(long).toContain("too_big");
+    expect(long).not.toContain("SECRET-TEXT");
+  });
+
+  it("is given to the reviser too, against the revision schema", async () => {
+    const { base, role } = input([verdict("revise", "V1"), revision("TEXT-1"), verdict("accept", "V2")]);
+    await runLoop(base);
+    const check = role.calls[1]?.check;
+    expect(typeof check).toBe("function");
+    expect(check?.(revision("TEXT-1"))).toBeUndefined();
+    expect(check?.({})).toBeDefined();
+  });
+});
+
+describe("settings for the roles", () => {
+  it("are looked up by each role's model, in either name form, and handed to the role driver", async () => {
+    const { base, role } = input([verdict("revise", "V1"), revision("TEXT-1"), verdict("accept", "V2")], {
+      criticModel: "claude-haiku-4-5-20251001",
+      reviserModel: "anthropic/claude-sonnet-5-5",
+      settings: { "anthropic/claude-haiku-4-5-20251001": { thinking: 31999 }, "claude-sonnet-5-5": { thinking: "adaptive", effort: "medium" } },
+    });
+    await runLoop(base);
+    expect(role.calls[0]?.settings).toEqual({ thinking: 31999 });
+    expect(role.calls[1]?.settings).toEqual({ thinking: "adaptive", effort: "medium" });
+    expect(role.calls[2]?.settings).toEqual({ thinking: 31999 });
+  });
+
+  it("are left out for a model with no entry, so the provider's own defaults apply", async () => {
+    const { base, role } = input([verdict("accept", "A")], { settings: { "fireworks/other": { temperature: 0 } } });
+    await runLoop(base);
+    expect(role.calls[0]?.settings).toBeUndefined();
+  });
+});
+
 describe("round control", () => {
   it("accepts in round 1 and leaves the skill unchanged", async () => {
     const { base, role } = input([verdict("accept", "A")]);
@@ -169,5 +214,27 @@ describe("what an accepted skill must meet", () => {
     const r = await runLoop(base);
     expect(r.final?.["references/provenance.md"]).toContain("## Change record");
     expect(r.final?.["references/provenance.md"]).toContain("run 001 call 2");
+  });
+});
+
+describe("prices for the roles (spec 007 FR-046)", () => {
+  const quote = (id: string) => ({ source: "market-quote" as const, openRouterId: id, fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5 } });
+
+  it("are looked up by each role's model, in either name form, and handed to the role driver", async () => {
+    const { base, role } = input([verdict("revise", "V1"), revision("TEXT-1"), verdict("accept", "V2")], {
+      criticModel: "claude-haiku-4-5-20251001",
+      reviserModel: "anthropic/claude-sonnet-5-5",
+      prices: { "anthropic/claude-haiku-4-5-20251001": quote("anthropic/claude-haiku-4.5"), "claude-sonnet-5-5": quote("anthropic/claude-sonnet-5.5") },
+    });
+    await runLoop(base);
+    expect(role.calls[0]?.price).toEqual(quote("anthropic/claude-haiku-4.5"));
+    expect(role.calls[1]?.price).toEqual(quote("anthropic/claude-sonnet-5.5"));
+    expect(role.calls[2]?.price).toEqual(quote("anthropic/claude-haiku-4.5"));
+  });
+
+  it("are not handed over for a model with none", async () => {
+    const { base, role } = input([verdict("accept", "A")], { prices: { "fireworks/other": quote("x/y") } });
+    await runLoop(base);
+    expect(role.calls[0]?.price).toBeUndefined();
   });
 });

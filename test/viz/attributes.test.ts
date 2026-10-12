@@ -65,7 +65,7 @@ describe("attributesOf", () => {
   it("reports the requested model when there was one", async () => {
     const { runDir } = await finishedRun();
     stampScore(runDir, { model: { requested: "claude-haiku-4-5-20251001", resolved: ["claude-haiku-4-5-20251001", "other"] } });
-    expect(attributesOf(buildBundle(runDir))).toMatchObject({ modelRequested: "claude-haiku-4-5-20251001", modelRan: "claude-haiku-4-5-20251001, other" });
+    expect(attributesOf(buildBundle(runDir))).toMatchObject({ modelRequested: "anthropic/claude-haiku-4-5-20251001", modelRan: "anthropic/claude-haiku-4-5-20251001, other" }) // a bare Claude id in an older score is read as anthropic/<id> (ADR-006);
   });
 
   it("takes cost and tokens from a matched trace only", async () => {

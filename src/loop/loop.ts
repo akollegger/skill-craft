@@ -1,4 +1,6 @@
 import { LoopCancelled, reasonOf, RevisionInvalid, RoleFailed } from "../harness/errors.js";
+import { canonicalSpec, type ModelSettings } from "../harness/models.js";
+import type { PriceQuote } from "../harness/pricing.js";
 import { skillName } from "../harness/skill.js";
 import type { RoleDriver, RoleResult, RoleTokens } from "../harness/role-driver.js";
 import { unifiedDiff } from "./diff.js";
@@ -6,7 +8,7 @@ import { checkSizes, criticPrompt, reviserPrompt, type RolePrompt } from "./inpu
 import { hasCitation, packageFromFiles, skillSha256, type SkillPackage } from "./package.js";
 import type { Rubric } from "./rubric.js";
 import type { Recording } from "./transcript.js";
-import { parseRevision, parseVerdict, revisionSchema, toJsonSchema, verdictSchema, withChangeRecord, withUncitedSection, type Change, type Verdict } from "./verdict.js";
+import { describeIssues, parseRevision, parseVerdict, revisionSchema, toJsonSchema, verdictSchema, withChangeRecord, withUncitedSection, type Change, type Verdict } from "./verdict.js";
 
 export interface LoopInput {
   candidate: SkillPackage;
@@ -22,6 +24,10 @@ export interface LoopInput {
   signal: AbortSignal;
   /** The harness clock, injectable so tests are exact. Default `Date.now`. */
   now?: () => number;
+  /** Settings pinned per model, keyed by model spec in either name form; a role whose model has no entry runs on the provider's defaults. */
+  settings?: Record<string, ModelSettings> | undefined;
+  /** The price each role's model is costed with, resolved before the loop and keyed by model spec in either name form; a role whose model has none has no cost figure. */
+  prices?: Record<string, PriceQuote> | undefined;
 }
 
 export interface Stage {
@@ -99,10 +105,15 @@ export async function runLoop(input: LoopInput): Promise<LoopResult> {
     rubric: { version: rubric.version, sha256: rubric.sha256 },
   });
 
+  const settingsByModel = Object.fromEntries(Object.entries(input.settings ?? {}).map(([k, v]) => [canonicalSpec(k), v]));
+  const pricesByModel = Object.fromEntries(Object.entries(input.prices ?? {}).map(([k, v]) => [canonicalSpec(k), v]));
+
   /** One role call, timed and recorded. A failure is a typed error; an abort is a cancellation. */
-  async function call(stage: string, model: string, prompt: RolePrompt, schema: Record<string, unknown>): Promise<RoleResult> {
+  async function call(stage: string, model: string, prompt: RolePrompt, schema: Record<string, unknown>, check: (answer: unknown) => string | undefined): Promise<RoleResult> {
     const startedAt = now();
-    const r = await input.role({ prompt: prompt.prompt, system: prompt.system, model, schema, maxUsd: input.maxUsd, signal });
+    const pinned = settingsByModel[canonicalSpec(model)];
+    const price = pricesByModel[canonicalSpec(model)];
+    const r = await input.role({ prompt: prompt.prompt, system: prompt.system, model, schema, maxUsd: input.maxUsd, signal, check, ...(pinned === undefined ? {} : { settings: pinned }), ...(price === undefined ? {} : { price }) });
     const endedAt = now();
     stages.push({ stage, startedAt, endedAt, durationMs: Math.max(0, endedAt - startedAt), model: { requested: r.requestedModel, resolved: r.resolvedModel }, tokens: r.tokens, costUsd: r.costUsd });
     if (!r.ok) {
@@ -116,14 +127,19 @@ export async function runLoop(input: LoopInput): Promise<LoopResult> {
     let pkg = input.candidate;
     const goals = [...new Map(input.recordings.map((r) => [`${r.goal.item}:${r.goal.qty}`, r.goal])).values()];
     const ctx = { candidateName: skillName(pkg[MAIN] ?? ""), runs: input.recordings.map((r) => ({ label: r.label, callCount: r.callCount })) };
-    const criticSchema = toJsonSchema(verdictSchema(rubric));
-    const reviserSchema = toJsonSchema(revisionSchema(ctx));
+    const criticZod = verdictSchema(rubric);
+    const reviserZod = revisionSchema(ctx);
+    const criticSchema = toJsonSchema(criticZod);
+    const reviserSchema = toJsonSchema(reviserZod);
+    // What the provider's structured-output mode does not enforce (string lengths) is checked by the schema itself, so a role is asked again.
+    const criticCheck = (a: unknown) => { const p = criticZod.safeParse(a); return p.success ? undefined : describeIssues(p.error); };
+    const reviserCheck = (a: unknown) => { const p = reviserZod.safeParse(a); return p.success ? undefined : describeIssues(p.error); };
     checkSizes(input.recordings, pkg);
 
     for (let n = 1; n <= input.maxRounds; n++) {
       if (signal.aborted) throw new LoopCancelled();
       const parts = { rubric, goals, recordings: input.recordings, pkg };
-      const verdict = parseVerdict(rubric, (await call(`critic-${n}`, input.criticModel, criticPrompt(parts), criticSchema)).answer);
+      const verdict = parseVerdict(rubric, (await call(`critic-${n}`, input.criticModel, criticPrompt(parts), criticSchema, criticCheck)).answer);
       const round: RoundResult = { n, pkg, skillSha256: skillSha256(pkg), verdict };
       rounds.push(round);
 
@@ -137,7 +153,7 @@ export async function runLoop(input: LoopInput): Promise<LoopResult> {
       if (n === input.maxRounds) return result("reject", "round limit reached");
       if (signal.aborted) throw new LoopCancelled();
 
-      const revision = parseRevision((await call(`reviser-${n}`, input.reviserModel, reviserPrompt({ ...parts, verdict }), reviserSchema)).answer, ctx);
+      const revision = parseRevision((await call(`reviser-${n}`, input.reviserModel, reviserPrompt({ ...parts, verdict }), reviserSchema, reviserCheck)).answer, ctx);
       let next: SkillPackage;
       try {
         next = packageFromFiles({ [MAIN]: revision.skillMd, [PROVENANCE]: withUncitedSection(withChangeRecord(revision.provenanceMd, revision.changes), revision.changes) });

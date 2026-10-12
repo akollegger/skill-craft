@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -8,9 +9,14 @@ import { fromRepoPath } from "../harness/paths.js";
 import { createCraftServer } from "../mcp/server.js";
 import { loadWorld } from "../sim/loader.js";
 import { canonical } from "../trace/measure.js";
+import { canonicalSpec } from "../harness/models.js";
+import type { RecordedSettings } from "../harness/run.js";
+import { CONVERSATION_FILE, readConversation, type ConversationTurn } from "../harness/conversation.js";
 
 export interface RecordedCall {
   seq: number;
+  /** The id the model's turn names this call by, from the run's trace. */
+  toolUseId: string;
   tool: string;
   args: Record<string, unknown>;
   ok: boolean;
@@ -33,10 +39,18 @@ export interface Recording {
   /** The models that ran, from the run's score. */
   models: string[];
   prompt: string;
+  /** Hashes of the run's log and score as they were read, and the settings the run recorded (null for a run that recorded none), for the loop's record. */
+  runLogSha256: string;
+  scoreSha256: string;
+  settings: RecordedSettings | null;
+  /** The model's turns, from the run's conversation file; null for a run that kept none (made before it existed). */
+  conversation: ConversationTurn[] | null;
   calls: RecordedCall[];
   callCount: number;
   finalAnswer: string;
 }
+
+const sha256 = (path: string): string => createHash("sha256").update(readFileSync(path)).digest("hex");
 
 const readJson = <T>(path: string): T => JSON.parse(readFileSync(path, "utf8")) as T;
 
@@ -63,6 +77,7 @@ async function replay(runDir: string, label: string): Promise<Recording> {
     measured?: { trace?: string };
     score?: { goal?: { item: string; qty: number } };
     model?: { requested?: string | null; resolved?: string[] };
+    settings?: RecordedSettings;
   }>(join(runDir, "score.json"));
   if (score.measured?.trace !== "matched") throw new ReplayFailed("the run's trace does not match its log");
   const goal = score.score?.goal;
@@ -72,7 +87,7 @@ async function replay(runDir: string, label: string): Promise<Recording> {
   const toolLines = readFileSync(join(runDir, "trace.jsonl"), "utf8")
     .split("\n")
     .filter(Boolean)
-    .map((l) => JSON.parse(l) as { kind: string; tool: string; args?: unknown; startMs: number; endMs: number })
+    .map((l) => JSON.parse(l) as { kind: string; toolUseId: string; tool: string; args?: unknown; startMs: number; endMs: number })
     .filter((l) => l.kind === "tool");
   if (toolLines.length !== entries.length) throw new ReplayFailed("the trace does not pair with the log");
 
@@ -99,10 +114,20 @@ async function replay(runDir: string, label: string): Promise<Recording> {
       if (ok !== entry.ok) throw new ReplayFailed(`entry ${entry.seq} (${entry.tool}): logged ok=${entry.ok}, replay gave ok=${ok}`);
       if (entry.error !== error) throw new ReplayFailed(`entry ${entry.seq} (${entry.tool}): the refusal differs from the log`);
       if (JSON.stringify(entry.crafted) !== JSON.stringify(crafted)) throw new ReplayFailed(`entry ${entry.seq} (${entry.tool}): what was crafted differs from the log`);
-      calls.push({ seq: entry.seq, tool: entry.tool, args: entry.args, ok, output, error, crafted, durationMs: duration });
+      calls.push({ seq: entry.seq, toolUseId: line.toolUseId, tool: entry.tool, args: entry.args, ok, output, error, crafted, durationMs: duration });
     }
   } finally {
     await client.close().catch(() => {});
+  }
+
+  const conversation = readConversation(join(runDir, CONVERSATION_FILE));
+  // Every call in the trace must be one a turn made, or the conversation belongs to another run.
+  if (conversation !== null) {
+    const ids = conversation.flatMap((t) => t.calls.map((c) => c.id));
+    const named = new Set(ids);
+    // An id used twice, in the conversation or the trace, would pair one call with two and write a duplicated or wrong call.
+    if (named.size !== ids.length || new Set(calls.map((c) => c.toolUseId)).size !== calls.length) throw new ReplayFailed("a tool use id is used more than once");
+    if (!calls.every((c) => named.has(c.toolUseId))) throw new ReplayFailed("the conversation does not match the trace");
   }
 
   return {
@@ -110,8 +135,13 @@ async function replay(runDir: string, label: string): Promise<Recording> {
     runDir,
     goal,
     world,
-    models: score.model?.resolved?.length ? score.model.resolved : score.model?.requested ? [score.model.requested] : [],
+    // A bare Claude id in an earlier run is read as anthropic/<id>; the file is not rewritten.
+    models: (score.model?.resolved?.length ? score.model.resolved : score.model?.requested ? [score.model.requested] : []).map(canonicalSpec),
     prompt: readFileSync(join(runDir, "prompt.txt"), "utf8"),
+    runLogSha256: sha256(join(runDir, "run.jsonl")),
+    scoreSha256: sha256(join(runDir, "score.json")),
+    settings: score.settings ?? null,
+    conversation,
     calls,
     callCount: calls.length,
     finalAnswer: score.text ?? "",

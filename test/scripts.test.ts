@@ -178,14 +178,55 @@ describe("scripts/score.ts", () => {
 });
 
 describe("scripts/run-agent.ts", () => {
-  it("prints the SDK options for a dry run and creates nothing", () => {
+  it("prints the run options for a dry run and creates nothing", () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-runs-"));
     const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--runs", "2", "--out", out, "--label", "dry", "--dry-run"]);
     expect(res.status, res.stderr).toBe(0);
     const plan = JSON.parse(res.stdout) as { options: Record<string, unknown>; dir: string }[];
     expect(plan).toHaveLength(2);
-    expect(plan[0]?.options).toMatchObject({ tools: [], allowedTools: ["mcp__craft"], strictMcpConfig: true, persistSession: false, settingSources: [] });
+    expect(plan[0]?.options).toMatchObject({ tools: [], model: "anthropic/claude-sonnet-5-5", maxTurns: 40 });
     expect(existsSync(join(out, "dry"))).toBe(false);
+  });
+
+  it("takes --settings: a dry run shows the settings it would use, and refuses one the model's provider does not take", () => {
+    const dir = mkdtempSync(join(tmpdir(), "skill-craft-settings-"));
+    const ok = join(dir, "ok.json");
+    const bad = join(dir, "bad.json");
+    writeFileSync(ok, JSON.stringify({ "claude-sonnet-5-5": { thinking: "adaptive", effort: "high" } }));
+    writeFileSync(bad, JSON.stringify({ "claude-sonnet-5-5": { temperature: 0 } }));
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-runs-"));
+    const good = run("scripts/run-agent.ts", ["--goal", GOAL, "--model", "claude-sonnet-5-5", "--settings", ok, "--out", out, "--label", "s", "--dry-run"]);
+    expect(good.status, good.stderr).toBe(0);
+    expect((JSON.parse(good.stdout) as { options: Record<string, unknown> }[])[0]?.options["settings"]).toEqual({ temperature: null, effort: "high", thinking: "adaptive" });
+    const refused = run("scripts/run-agent.ts", ["--goal", GOAL, "--model", "claude-sonnet-5-5", "--settings", bad, "--out", out, "--label", "s2", "--dry-run"]);
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain("model 'anthropic/claude-sonnet-5-5' does not take setting 'temperature'");
+    expect(existsSync(join(out, "s2"))).toBe(false);
+  });
+
+  it("refuses a settings file that is not valid, naming the problem and not quoting the file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "skill-craft-settings-"));
+    const file = join(dir, "x.json");
+    writeFileSync(file, JSON.stringify({ m: { topK: 3 } }));
+    const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--settings", file, "--dry-run"]);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("settings file: setting 'topK' is not one of temperature, effort, thinking");
+  });
+
+  it("refuses an unknown provider in a dry run, before anything is created, naming the providers and no key", () => {
+    const out = mkdtempSync(join(tmpdir(), "skill-craft-runs-"));
+    const secret = "sk-test-secret-should-not-print";
+    const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--model", "mistral/large", "--out", out, "--label", "x", "--dry-run"], { ANTHROPIC_API_KEY: secret, FIREWORKS_API_KEY: secret });
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("provider 'mistral' is not available; the providers are anthropic, fireworks");
+    expect(res.stdout + res.stderr).not.toContain(secret);
+    expect(existsSync(join(out, "x"))).toBe(false);
+  });
+
+  it("refuses a bare name that is not a Claude id the same way, with the accepted forms", () => {
+    const res = run("scripts/run-agent.ts", ["--goal", GOAL, "--model", "gpt-4o", "--dry-run"]);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("model 'gpt-4o' is not supported; use <provider>/<model> or a Claude id");
   });
 
   it("exits 1 for an unknown goal item or world, and for a bad number of runs", () => {
@@ -203,7 +244,7 @@ describe("scripts/export-run.ts", () => {
   async function finished() {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-exp-"));
     const r = await runExperiment({
-      world: "test/fixtures/valid/mirror-pair.json", goal: { item: "c", qty: 1 }, runs: 1, maxTurns: 12, out, label: "x", record: false,
+      world: "test/fixtures/valid/mirror-pair.json", goal: { item: "c", qty: 1 }, runs: 1, maxTurns: 12, out, label: "x",
       driver: fakePlayer({ mode: "solve", goal: { item: "c", qty: 1 } }),
     });
     return { runDir: r.reports[0]?.dir as string, dest: join(out, "bundle") };

@@ -1,9 +1,9 @@
 /**
- * Runs one real role call through the Claude Agent SDK. It spends real Claude usage, so it only runs with LIVE_SDK=1:
+ * Runs one real role call through the AI SDK. It spends real model usage, so it only runs with LIVE_SDK=1:
  *   LIVE_SDK=1 pnpm vitest run test/live-role.test.ts
  */
 import { describe, expect, it } from "vitest";
-import { sdkRoleDriver } from "../src/harness/sdk-driver.js";
+import { aiRoleDriver } from "../src/harness/ai-driver.js";
 import { loadRubric } from "../src/loop/rubric.js";
 import { parseRevision, parseVerdict, revisionSchema, toJsonSchema, verdictSchema } from "../src/loop/verdict.js";
 import { criticPrompt, reviserPrompt } from "../src/loop/inputs.js";
@@ -14,7 +14,7 @@ const MODEL = process.env["LIVE_ROLE_MODEL"] ?? "claude-haiku-4-5-20251001";
 
 describe.skipIf(!live)("a real role call", () => {
   it("returns a schema-valid answer, with tokens and cost reported", async () => {
-    const r = await sdkRoleDriver({
+    const r = await aiRoleDriver({
       prompt: "Reply with the number 7 and the word seven.",
       model: MODEL,
       schema: { type: "object", properties: { n: { type: "number" }, word: { type: "string" } }, required: ["n", "word"], additionalProperties: false },
@@ -30,7 +30,7 @@ describe.skipIf(!live)("a real role call", () => {
   it("a critic call over a small recording returns a verdict that parses against the rubric", async () => {
     const rubric = loadRubric();
     const p = criticPrompt({ rubric, goals: [{ item: "thing", qty: 1 }], recordings: [recording("001")], pkg: candidate() });
-    const r = await sdkRoleDriver({ ...p, model: MODEL, schema: toJsonSchema(verdictSchema(rubric)), maxUsd: 0.5, signal: new AbortController().signal });
+    const r = await aiRoleDriver({ ...p, model: MODEL, schema: toJsonSchema(verdictSchema(rubric)), maxUsd: 0.5, signal: new AbortController().signal });
     expect(r.ok).toBe(true);
     expect(() => parseVerdict(rubric, r.answer)).not.toThrow();
   }, 180_000);
@@ -47,7 +47,7 @@ describe.skipIf(!live)("a real role call", () => {
     });
     const ctx = { candidateName: "craft-thing", runs: [{ label: "001", callCount: 4 }] };
     const p = reviserPrompt({ rubric, goals: [{ item: "thing", qty: 1 }], recordings: recs, pkg, verdict });
-    const r = await sdkRoleDriver({ ...p, model: MODEL, schema: toJsonSchema(revisionSchema(ctx)), maxUsd: 0.5, signal: new AbortController().signal });
+    const r = await aiRoleDriver({ ...p, model: MODEL, schema: toJsonSchema(revisionSchema(ctx)), maxUsd: 0.5, signal: new AbortController().signal });
     expect(r.ok).toBe(true);
     expect(() => parseRevision(r.answer, ctx)).not.toThrow();
   }, 180_000);
