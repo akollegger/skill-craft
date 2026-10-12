@@ -68,7 +68,7 @@ describe("a provider that fails", () => {
     sequence(() => Promise.reject(apiError({ statusCode: 429, isRetryable: true, responseHeaders: { "retry-after": "90" } })));
     const { opts, recorder } = setup();
     const r = await aiDriver(opts, recorder);
-    expect(r).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported rate_limited", retries: { max: 2, failedAttempts: 1 } });
+    expect(r).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported rate_limited", retries: { max: 2, failedAttempts: 1 }, costUsd: null, turns: null, usage: null }); // no response came back, so there is no cost figure, not a cost of zero
     expect(calls()).toHaveLength(1);
     noText(r);
   }, 30_000);
@@ -142,6 +142,12 @@ describe("a call that stalls", () => {
     expect(r).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported step_timeout", turns: 1, usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 100, cacheCreationTokens: 0 } });
     expect(calls()).toHaveLength(2);
     expect(await noServersSoon()).toEqual([]);
+  }, 30_000);
+
+  it("records no cost, and not a cost of zero, for a first step that stalls, on a model that has a price", async () => {
+    sequence(stalls());
+    const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001", limits: { stepTimeoutMs: 300 } });
+    expect(await aiDriver(opts, recorder)).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported step_timeout", turns: null, usage: null, costUsd: null });
   }, 30_000);
 
   it("ends the run when a craft tool does not answer in time", async () => {

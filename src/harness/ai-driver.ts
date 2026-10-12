@@ -97,7 +97,8 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
   let seenSteps: readonly { toolCalls: readonly { invalid?: boolean | undefined }[] }[] = [];
   const spent = () => ({
     turns: completed === 0 ? null : completed,
-    costUsd: costOf(total, price),
+    // No response came back: there is no cost figure to give, and a cost of zero would count the run as priced and free.
+    costUsd: completed === 0 ? null : costOf(total, price),
     durationMs: Math.round(performance.now() - started),
     usage: completed === 0 ? null : { inputTokens: total.input, outputTokens: total.output, cacheReadTokens: total.cacheRead, cacheCreationTokens: total.cacheWrite },
     requestedModel: opts.model ?? null,
