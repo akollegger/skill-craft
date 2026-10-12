@@ -1,3 +1,4 @@
+import type { PriceQuote } from "./pricing.js";
 import type { ModelSettings } from "./providers.js";
 
 /**
@@ -16,6 +17,8 @@ export interface RoleOptions {
   schema: Record<string, unknown>;
   /** The settings pinned for this role's model (thinking, effort, temperature); an unset one is left to the provider's default. */
   settings?: ModelSettings | undefined;
+  /** The price the role is costed with, resolved before the call (a pin or a market quote). Absent: no cost figure, and the spend cap is a token ceiling only. */
+  price?: PriceQuote | undefined;
   /** Spend cap for this one call, over all the attempts it makes. */
   maxUsd: number;
   /**

@@ -75,7 +75,10 @@ describe("limits", () => {
   it("accept a token cap for a model with no price, and a dollar cap for one with a price", async () => {
     const solve = fakePlayer({ mode: "solve", goal: GOAL });
     await expect(runExperiment(options(solve, { model: "fireworks/gpt-oss-120b", limits: { maxTotalTokens: 1000 } }))).resolves.toBeDefined();
-    await expect(runExperiment(options(solve, { model: "claude-haiku-4-5-20251001", limits: { maxUsd: 1 } }))).resolves.toBeDefined();
+    const price = { source: "market-quote" as const, openRouterId: "anthropic/claude-haiku-4.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5 } };
+    await expect(runExperiment(options(solve, { model: "claude-haiku-4-5-20251001", limits: { maxUsd: 1 }, price }))).resolves.toBeDefined();
+    // With no price given and no pin, even a Claude model has none to apply a dollar cap to.
+    await expect(runExperiment(options(solve, { model: "claude-haiku-4-5-20251001", limits: { maxUsd: 1 } }))).rejects.toBeInstanceOf(LimitRefused);
   });
 
   it("record the invalid tool calls a player counted, and nothing for one that did not count", async () => {

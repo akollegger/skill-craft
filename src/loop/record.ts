@@ -11,6 +11,7 @@ import { toRepoPath } from "../harness/paths.js";
 import type { DistillerService, NamsStage } from "./candidate.js";
 import type { LoopResult, Stage } from "./loop.js";
 import { skillSha256, writePackage } from "./package.js";
+import type { PriceQuote } from "../harness/pricing.js";
 import type { RecordedSettings } from "../harness/run.js";
 import { addRoleTokens } from "../harness/ai-options.js";
 import type { ProcessInfo } from "./process.js";
@@ -36,6 +37,8 @@ export interface RecordOptions {
   recordingFormat?: string | null | undefined;
   /** The memory service that made the candidate, named by its version call (FR-042); null when a candidate was given. */
   distiller?: { service: DistillerService } | null | undefined;
+  /** The price each role was costed with (a pin or a market quote), null when it had none (FR-048). */
+  rolePrices?: { critic?: PriceQuote | undefined; reviser?: PriceQuote | undefined } | undefined;
   /** The settings pinned for each role's model, null when none were (FR-035). */
   roleSettings?: { critic?: RecordedSettings | null | undefined; reviser?: RecordedSettings | null | undefined } | undefined;
 }
@@ -112,8 +115,8 @@ export function writeLoopRecord(result: LoopResult, o: RecordOptions): void {
       distiller: o.distiller ?? null,
       rubric: result.rubric,
       roles: {
-        critic: { requested: o.models.critic, resolved: resolved("critic"), settings: o.roleSettings?.critic ?? null },
-        reviser: { requested: o.models.reviser, resolved: resolved("reviser"), settings: o.roleSettings?.reviser ?? null },
+        critic: { requested: o.models.critic, resolved: resolved("critic"), settings: o.roleSettings?.critic ?? null, priceQuote: o.rolePrices?.critic ?? null },
+        reviser: { requested: o.models.reviser, resolved: resolved("reviser"), settings: o.roleSettings?.reviser ?? null, priceQuote: o.rolePrices?.reviser ?? null },
       },
       spend: spendOf(result),
       finalSkillSha256: result.outcome === "accept" && result.final ? skillSha256(result.final) : null,

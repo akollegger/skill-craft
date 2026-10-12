@@ -216,3 +216,25 @@ describe("what an accepted skill must meet", () => {
     expect(r.final?.["references/provenance.md"]).toContain("run 001 call 2");
   });
 });
+
+describe("prices for the roles (spec 007 FR-046)", () => {
+  const quote = (id: string) => ({ source: "market-quote" as const, openRouterId: id, fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5 } });
+
+  it("are looked up by each role's model, in either name form, and handed to the role driver", async () => {
+    const { base, role } = input([verdict("revise", "V1"), revision("TEXT-1"), verdict("accept", "V2")], {
+      criticModel: "claude-haiku-4-5-20251001",
+      reviserModel: "anthropic/claude-sonnet-5-5",
+      prices: { "anthropic/claude-haiku-4-5-20251001": quote("anthropic/claude-haiku-4.5"), "claude-sonnet-5-5": quote("anthropic/claude-sonnet-5.5") },
+    });
+    await runLoop(base);
+    expect(role.calls[0]?.price).toEqual(quote("anthropic/claude-haiku-4.5"));
+    expect(role.calls[1]?.price).toEqual(quote("anthropic/claude-sonnet-5.5"));
+    expect(role.calls[2]?.price).toEqual(quote("anthropic/claude-haiku-4.5"));
+  });
+
+  it("are not handed over for a model with none", async () => {
+    const { base, role } = input([verdict("accept", "A")], { prices: { "fireworks/other": quote("x/y") } });
+    await runLoop(base);
+    expect(role.calls[0]?.price).toBeUndefined();
+  });
+});

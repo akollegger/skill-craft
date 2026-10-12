@@ -3,8 +3,7 @@ import { Experimental_StdioMCPTransport as StdioMCPTransport } from "@ai-sdk/mcp
 import { generateText, isStepCount, jsonSchema, Output, tool, wrapLanguageModel, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
 import { craftServer } from "./craft-server.js";
 import { DriverAborted, type AgentDriver, type PlayerResult } from "./driver.js";
-import { DEFAULT_MODEL, costOf, parseModelSpec, priceFor, type ModelRef, type Tokens } from "./models.js";
-import { pinQuote, type PriceQuote } from "./pricing.js";
+import { DEFAULT_MODEL, costOf, parseModelSpec, type ModelRef, type Tokens } from "./models.js";
 import { findProvider, normaliseReported } from "./providers.js";
 import type { RoleDriver, RoleTokens } from "./role-driver.js";
 import { addRoleTokens, addTokens, classifyEnd, countInvalid, CRAFT_TOOL_PREFIX, droppedSetting, invalidStreak, longRetryAfter, MAX_INVALID_STEPS, MAX_RETRIES, MAX_ROLE_ATTEMPTS, failureCode, NO_TOKENS, overCap, readInstalledSkill, requestStart, requestStop, requestUsage, resolveLimits, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf, toolStop } from "./ai-options.js";
@@ -71,9 +70,8 @@ function failureReason(who: "player" | "role", e: unknown, keyEnv: string | unde
 
 export const aiDriver: AgentDriver = async (opts, sink) => {
   const ref = parseModelSpec(opts.model ?? DEFAULT_MODEL);
-  // The price resolved before the run (a pin or a market quote), else the pin for the model, else none.
-  const pin = priceFor(ref.spec);
-  const quote: PriceQuote | undefined = opts.price ?? (pin === undefined ? undefined : pinQuote(pin));
+  // The price the harness resolved before the run (a pin or a market quote), or none: the driver looks no price up for itself.
+  const quote = opts.price;
   const price = quote?.perMillion;
   const row = findProvider(ref.provider);
   const keyEnv = row?.keyEnv;
@@ -233,7 +231,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
  */
 export const aiRoleDriver: RoleDriver = async (opts) => {
   const ref = parseModelSpec(opts.model);
-  const price = priceFor(ref.spec);
+  const price = opts.price?.perMillion; // resolved by the caller before the call; none means no cost figure and no dollar ceiling
   const keyEnv = findProvider(ref.provider)?.keyEnv;
   const probe = newProbe();
   const started = performance.now();

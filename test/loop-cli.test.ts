@@ -401,3 +401,32 @@ describe("the service's version, through the command (spec 007 FR-042)", () => {
     expect(JSON.parse(readFileSync(join(r.loops, "unk", "loop.json"), "utf8")).distiller).toEqual({ service: { name: "nams", unknown: "version_unavailable" } });
   });
 });
+
+describe("the roles' prices, through the command (spec 007 FR-046, FR-048)", () => {
+  const info = { version: "2", commit: null, dirty: null, changesSha256: null };
+  const quote = (id: string) => ({ source: "market-quote" as const, openRouterId: id, fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5 } });
+
+  it("resolves a price for the critic's model and the reviser's before any call, hands it to the roles and records it", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "rp1");
+    const asked: string[] = [];
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--critic-model", "claude-haiku-4-5-20251001", "--reviser-model", "fireworks/gpt-oss-120b", "--label", "prices"], [verdict("revise", "V1"), revision("TEXT-1"), verdict("accept", "V2")], {
+      processInfo: () => info,
+      pricing: async (spec) => { asked.push(spec); return spec.startsWith("anthropic/") ? quote("anthropic/claude-haiku-4.5") : undefined; },
+    });
+    expect(r.code).toBe(0);
+    expect(asked.sort()).toEqual(["anthropic/claude-haiku-4-5-20251001", "fireworks/gpt-oss-120b"]);
+    expect(r.role.calls[0]?.price).toEqual(quote("anthropic/claude-haiku-4.5"));
+    expect(r.role.calls[1]?.price).toBeUndefined();
+    const rec = JSON.parse(readFileSync(join(r.loops, "prices", "loop.json"), "utf8"));
+    expect(rec.roles.critic.priceQuote).toEqual(quote("anthropic/claude-haiku-4.5"));
+    expect(rec.roles.reviser.priceQuote).toBeNull();
+  });
+
+  it("asks once for a model that fills both roles", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "rp2");
+    const asked: string[] = [];
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--critic-model", "claude-haiku-4-5-20251001", "--reviser-model", "claude-haiku-4-5-20251001", "--label", "one"], [verdict("accept", "V1")], { processInfo: () => info, pricing: async (spec) => { asked.push(spec); return undefined; } });
+    expect(r.code).toBe(0);
+    expect(asked).toEqual(["anthropic/claude-haiku-4-5-20251001"]);
+  });
+});

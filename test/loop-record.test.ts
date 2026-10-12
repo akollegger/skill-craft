@@ -282,3 +282,24 @@ describe("the distiller in loop.json (spec 007 FR-042)", () => {
     expect(read(b)["distiller"]).toBeNull();
   });
 });
+
+describe("the roles' prices in loop.json (spec 007 FR-048)", () => {
+  const read = (dir: string) => JSON.parse(readFileSync(join(dir, "loop.json"), "utf8")) as Record<string, any>;
+  const quote = { source: "market-quote" as const, openRouterId: "anthropic/claude-sonnet-5.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 2, output: 10, cacheRead: 0.1 } };
+
+  it("names the price each role was costed with, or null when it had none", async () => {
+    const r = await loop([verdict("accept", "V1")]);
+    const dir = createLoopFolder(tmp(), "demo", []);
+    writeLoopRecord(r, opts(dir, { rolePrices: { critic: quote } }));
+    const roles = read(dir)["roles"];
+    expect(roles["critic"]["priceQuote"]).toEqual(quote);
+    expect(roles["reviser"]["priceQuote"]).toBeNull();
+  });
+
+  it("is null for both when none were given", async () => {
+    const r = await loop([verdict("accept", "V1")]);
+    const dir = createLoopFolder(tmp(), "demo", []);
+    writeLoopRecord(r, opts(dir));
+    expect(read(dir)["roles"]["critic"]["priceQuote"]).toBeNull();
+  });
+});

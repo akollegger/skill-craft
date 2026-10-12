@@ -41,14 +41,18 @@ beforeEach(() => {
   control.model = undefined;
 });
 
+/** Rates given to the driver as a price (what the harness resolves before a run), not looked up in any file. */
+const HAIKU = { source: "market-quote" as const, openRouterId: "anthropic/claude-haiku-4.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5, cacheRead: 0.1, cacheWrite: 1.25 } };
+const OPUS = { source: "market-quote" as const, openRouterId: "anthropic/claude-opus-5.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 } };
+
 describe("aiDriver", () => {
   it("plays through the craft server and records requests and tool calls whose tokens add up to the result", async () => {
     scripted(call("c1", "look"), call("c2", "inventory"), say("done"));
-    const { opts, recorder, trace } = setup({ model: "claude-haiku-4-5-20251001" });
+    const { opts, recorder, trace } = setup({ model: "claude-haiku-4-5-20251001", price: HAIKU });
     const r = await aiDriver(opts, recorder);
 
     expect(r).toMatchObject({ ended: "stopped", turns: 3, requestedModel: "claude-haiku-4-5-20251001", initModel: "anthropic/claude-haiku-4-5-20251001", modelsUsed: ["anthropic/claude-haiku-4-5-20251001"], text: "done" });
-    expect(r.costUsd).toBeCloseTo(0.000128, 9); // from prices.json: 32 in, 13 out, 310 cached at the haiku rates
+    expect(r.costUsd).toBeCloseTo(0.000128, 9); // 32 in, 13 out, 310 cached at the haiku rates given to the driver
     expect(r.usage).toEqual({ inputTokens: 32, outputTokens: 13, cacheReadTokens: 310, cacheCreationTokens: 0 });
     const lines = readTrace(trace);
     const requests = lines.filter((l): l is RequestLine => l.kind === "request");
@@ -495,7 +499,7 @@ describe("aiRoleDriver", () => {
 
   it("returns the schema-checked answer with tokens, and sends no tools", async () => {
     scripted(say('{"n":7}'));
-    const r = await aiRoleDriver(role());
+    const r = await aiRoleDriver(role({ price: OPUS }));
     expect(r).toMatchObject({ ok: true, answer: { n: 7 }, requestedModel: "claude-opus-5-5", resolvedModel: "anthropic/claude-opus-5-5" });
     expect(r.costUsd).toBeCloseTo(0.00013, 9);
     expect(r.tokens).toEqual({ input: 12, output: 3, cacheRead: 110, cacheCreation: null });
@@ -562,7 +566,7 @@ describe("aiRoleDriver", () => {
     it("stops retrying when the attempts together have spent the cap", async () => {
       // Opus 5.5 is priced, so 12 input and 3 output tokens cost far under a cent: use a cap smaller than one attempt.
       scripted(say('{"n":1}'), say('{"n":7}'));
-      const r = await aiRoleDriver(role({ check: checkNeedsSeven, maxUsd: 0.000001 }));
+      const r = await aiRoleDriver(role({ check: checkNeedsSeven, maxUsd: 0.000001, price: OPUS }));
       expect(r).toMatchObject({ ok: false, reason: "DriverFailed: the role reached its spend cap" });
       expect(model().doGenerateCalls).toHaveLength(1);
     });
@@ -622,12 +626,21 @@ describe("where a run's cost comes from (spec 007 FR-046, FR-048, FR-050)", () =
     expect(r).toMatchObject({ costSource: "market-quote", priceQuote: QUOTE });
   }, 30_000);
 
-  it("falls back to the pin in prices.json when no price was given, and says it is a pin", async () => {
+  it("is computed from a pin given as the price, and says it is a pin", async () => {
+    scripted(say("done"));
+    const pin = { source: "pin" as const, openRouterId: null, fetchedAt: null, perMillion: { input: 1, output: 5, cacheRead: 0.1 } };
+    const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001", price: pin });
+    const r = await aiDriver(opts, recorder);
+    expect(r.costUsd).toBeCloseTo(0.000038, 9);
+    expect(r).toMatchObject({ costSource: "pin", priceQuote: pin });
+  }, 30_000);
+
+  it("looks no price up for itself: with none given the cost is none, even for a model that has a pin file entry elsewhere", async () => {
     scripted(say("done"));
     const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001" });
     const r = await aiDriver(opts, recorder);
-    expect(r.costUsd).toBeCloseTo(0.000038, 9);
-    expect(r).toMatchObject({ costSource: "pin", priceQuote: { source: "pin", openRouterId: null, fetchedAt: null, perMillion: { input: 1, output: 5 } } });
+    expect(r).toMatchObject({ costUsd: null, costSource: null });
+    expect(r).not.toHaveProperty("priceQuote");
   }, 30_000);
 
   it("is none for a model with no price, with no source and no quote", async () => {
@@ -678,3 +691,23 @@ const stalling = () => (options: { abortSignal?: AbortSignal }) =>
     else options.abortSignal?.addEventListener("abort", stop);
   });
 const sequence_ = (step: ReturnType<typeof stalling>) => (control.model = new MockLanguageModelV4({ modelId: "m", doGenerate: step as never }));
+
+describe("a role's cost (spec 007 FR-046)", () => {
+  const schema = { type: "object", properties: { n: { type: "number" } }, required: ["n"], additionalProperties: false };
+  const role = (over: object = {}) => ({ prompt: "p", model: "claude-opus-5-5", schema, maxUsd: 1, signal: new AbortController().signal, ...over });
+
+  it("is none when no price was given, and the cost cap then cannot trip, only the token ceiling bounds the call", async () => {
+    scripted(say('{"n":7}'));
+    const r = await aiRoleDriver(role());
+    expect(r).toMatchObject({ ok: true, costUsd: null });
+    const model = control.model as InstanceType<typeof MockLanguageModelV4>;
+    expect(model.doGenerateCalls[0]?.maxOutputTokens).toBe(16_000);
+  }, 30_000);
+
+  it("takes the ceiling on its output from the price it was given and the spend cap", async () => {
+    scripted(say('{"n":7}'));
+    await aiRoleDriver(role({ price: OPUS, maxUsd: 0.01 })); // 0.01 dollars at 20 dollars per million output tokens
+    const model = control.model as InstanceType<typeof MockLanguageModelV4>;
+    expect(model.doGenerateCalls[0]?.maxOutputTokens).toBe(500);
+  }, 30_000);
+});

@@ -34,11 +34,10 @@ describe("parseModelSpec still refuses a non-Claude bare name with UnknownModel"
 
 describe("the price table keys", () => {
   it("are canonical, and a bare Claude id finds the canonical entry", () => {
-    const t = loadPrices();
-    expect(Object.keys(t).every((k) => k.includes("/"))).toBe(true);
-    expect(priceFor("claude-sonnet-5-5")).toEqual(priceFor("anthropic/claude-sonnet-5-5"));
-    expect(priceFor("anthropic/claude-sonnet-5-5")).toBeDefined();
-    expect(priceFor("fireworks/gpt-oss-120b")).toBeUndefined();
+    const table = { "anthropic/claude-sonnet-5-5": { input: 2, output: 10 } };
+    expect(priceFor("claude-sonnet-5-5", table)).toEqual(priceFor("anthropic/claude-sonnet-5-5", table));
+    expect(priceFor("anthropic/claude-sonnet-5-5", table)).toBeDefined();
+    expect(priceFor("fireworks/gpt-oss-120b", table)).toBeUndefined();
   });
 
   it("reads a bare key in a price file as anthropic/<id>", async () => {
@@ -111,12 +110,8 @@ describe("skillDescription", () => {
 });
 
 describe("the price table", () => {
-  it("ships rates for the Claude models the harness defaults to, and none for a model it cannot price", async () => {
-    const { DEFAULT_MODEL } = await import("../src/harness/models.js");
-    const t = loadPrices();
-    expect(t[DEFAULT_MODEL]).toMatchObject({ input: expect.any(Number), output: expect.any(Number) });
-    expect(t["fireworks/gpt-oss-120b"]).toBeUndefined();
-    expect(Object.keys(t).some((k) => k.startsWith("_"))).toBe(false); // notes are not models
+  it("ships no pins: a rate entered by hand goes stale, so a cost comes from the provider or a market quote unless an operator pins one", () => {
+    expect(loadPrices()).toEqual({});
   });
 });
 

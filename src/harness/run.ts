@@ -16,9 +16,9 @@ import { toRepoPath } from "./paths.js";
 import { readLog, replayFailure } from "./read-log.js";
 import { installSkill, SKILL_PLUGIN, skillName } from "./skill.js";
 import { craftServer } from "./craft-server.js";
-import { canonicalSpec, checkSettings, DEFAULT_MODEL, parseModelSpec, priceFor, type ModelSettings } from "./models.js";
+import { canonicalSpec, checkSettings, DEFAULT_MODEL, parseModelSpec, type ModelSettings } from "./models.js";
 import { resolveLimits, type ResolvedLimits } from "./ai-options.js";
-import { pinQuote, type PriceQuote } from "./pricing.js";
+import type { PriceQuote } from "./pricing.js";
 
 export const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -42,7 +42,7 @@ export interface AgentRunOptions {
   timeoutMs?: number | undefined;
   /** Limits on a step, a tool call and spend. A dollar cap is refused for a model with no price. */
   limits?: RunLimits | undefined;
-  /** The price the runs are costed with, resolved before the first run (a pin or a market quote). Absent: the model's pin, if it has one. */
+  /** The price the runs are costed with, resolved before the first run (a pin or a market quote). Absent: no cost figure and no dollar limit. */
   price?: PriceQuote | undefined;
   /** Aborting it ends the current run and starts no further one. */
   signal?: AbortSignal | undefined;
@@ -114,7 +114,7 @@ export interface RecordedSettings {
 function checkLimits(model: string | undefined, limits: RunLimits | undefined, price: PriceQuote | undefined): void {
   if (limits?.maxUsd === undefined) return;
   const spec = parseModelSpec(model ?? DEFAULT_MODEL).spec;
-  if (price === undefined && priceFor(spec) === undefined) throw new LimitRefused(spec, "maxUsd");
+  if (price === undefined) throw new LimitRefused(spec, "maxUsd");
 }
 
 export const recordedSettings = (s: ModelSettings | undefined): RecordedSettings => ({ temperature: s?.temperature ?? null, effort: s?.effort ?? null, thinking: s?.thinking ?? null });
@@ -214,8 +214,8 @@ export function planExperiment(o: AgentRunOptions) {
       model: parseModelSpec(o.model ?? DEFAULT_MODEL).spec,
       settings: recordedSettings(o.settings),
       limits: resolveLimits(o.limits),
-      // The price a real run would be costed with: the one resolved before it, else the model's pin, else none.
-      price: o.price ?? ((p) => (p === undefined ? null : pinQuote(p)))(priceFor(parseModelSpec(o.model ?? DEFAULT_MODEL).spec)),
+      // The price a real run would be costed with: the one resolved before it, or none.
+      price: o.price ?? null,
       maxTurns: o.maxTurns,
       tools: skill ? ["Skill"] : [],
       ...(skill ? { skills: [skill.qualifiedName] } : {}),

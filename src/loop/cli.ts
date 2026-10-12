@@ -10,6 +10,7 @@ import { packageFromFiles, readPackage, type SkillPackage } from "./package.js";
 import { createLoopFolder, runPath, writeLoopRecord, type RecordOptions } from "./record.js";
 import { currentProcessInfo, recordingFormatOf, type ProcessInfo } from "./process.js";
 import { recordedSettings } from "../harness/run.js";
+import { priceSource, type PriceQuote, type PriceResolver } from "../harness/pricing.js";
 import { loadRubric } from "./rubric.js";
 import { assertSameTask, recordingsChars, replayRun, type Recording } from "./transcript.js";
 import { existsSync } from "node:fs";
@@ -27,6 +28,8 @@ export interface LoopCliDeps {
   signal?: AbortSignal | undefined;
   env?: Record<string, string | undefined> | undefined;
   now?: (() => number) | undefined;
+  /** Resolves the price a role's model is costed with. Default: a pin, else a market quote for a model with an alias. */
+  pricing?: PriceResolver | undefined;
   /** Which procedure and code ran. Default: read from git. Tests pass a fixed answer. */
   processInfo?: (() => ProcessInfo) | undefined;
   out: (line: string) => void;
@@ -129,17 +132,24 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
       if (pinned !== undefined) checkSettings(model, pinned);
     }
 
+    // The roles' prices are resolved before any call, once for a model that fills both roles. A model with none has no cost figure.
+    const resolvePrice = deps.pricing ?? priceSource().resolve;
+    const quotes = new Map<string, PriceQuote | undefined>();
+    for (const model of new Set([criticModel, reviserModel])) quotes.set(model, await resolvePrice(canonicalSpec(model)));
+    const rolePrices: { critic?: PriceQuote | undefined; reviser?: PriceQuote | undefined } = { critic: quotes.get(criticModel), reviser: quotes.get(reviserModel) };
+
     // What the record says about how this skill is made (spec 007 FR-033 to FR-035): hashes, settings and identifiers only.
     const roleSettings = (model: string) => {
       const pinned = settings?.[canonicalSpec(model)];
       return pinned === undefined ? null : recordedSettings(pinned);
     };
-    const provenance: Pick<RecordOptions, "process" | "recorded" | "recordingFormat" | "roleSettings"> = {
+    const provenance: Pick<RecordOptions, "process" | "recorded" | "recordingFormat" | "roleSettings" | "rolePrices"> = {
       process: (deps.processInfo ?? currentProcessInfo)(),
       recorded: recordings.map((r) => ({ label: r.label, run: runPath(r.runDir), runLogSha256: r.runLogSha256, scoreSha256: r.scoreSha256, models: r.models, settings: r.settings })),
       // A given candidate means this loop recorded nothing; otherwise the candidate step writes the runs in the current format.
       recordingFormat: candidateFolder === undefined ? recordingFormatOf(recordings) : null,
       roleSettings: { critic: roleSettings(criticModel), reviser: roleSettings(reviserModel) },
+      rolePrices,
     };
 
     const rubric = loadRubric();
@@ -210,6 +220,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
         maxRounds,
         maxUsd,
         ...(settings === undefined ? {} : { settings }),
+        prices: Object.fromEntries([...quotes].flatMap(([model, q]) => (q === undefined ? [] : [[model, q] as const]))),
         signal: stop.signal,
         ...(deps.now ? { now: deps.now } : {}),
       });

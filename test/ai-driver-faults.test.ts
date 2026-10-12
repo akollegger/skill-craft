@@ -183,9 +183,10 @@ describe("a run with a spend cap", () => {
     expect(calls()).toHaveLength(2);
   }, 30_000);
 
-  it("stops at a dollar cap for a model with a price", async () => {
+  it("stops at a dollar cap when a price was given", async () => {
     sequence(call("c1", "look"), call("c2", "look"), say("done"));
-    const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001", limits: { maxUsd: 0.00001 } });
+    const price = { source: "market-quote" as const, openRouterId: "anthropic/claude-haiku-4.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5, cacheRead: 0.1, cacheWrite: 1.25 } };
+    const { opts, recorder } = setup({ model: "claude-haiku-4-5-20251001", price, limits: { maxUsd: 0.00001 } });
     const r = await aiDriver(opts, recorder);
     expect(r).toMatchObject({ ended: "budget", reason: "SpendCap: the player reached its spend cap", turns: 1 });
   }, 30_000);
