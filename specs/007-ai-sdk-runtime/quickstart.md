@@ -97,4 +97,4 @@ SHA=$(node -p "require('./runs/<label>/001/score.json').skill.sha256")
 grep -l "\"finalSkillSha256\": \"$SHA\"" loops/*/loop.json
 ```
 
-Expected: one `loop.json`. Its `process` names the version and commit, `recordedRuns` the teacher runs with their hashes and settings, `roles` the models and settings that reviewed it, and `process.version` is explained in `design/notes/skill-process.md`. If `dirty` is true the code was not exactly the commit.
+Expected: one `loop.json`. Its `distiller.service` names the memory service's version and build commit when the skill was distilled from the runs. Its `process` names the version and commit, `recordedRuns` the teacher runs with their hashes and settings, `roles` the models and settings that reviewed it, and `process.version` is explained in `design/notes/skill-process.md`. If `dirty` is true the code was not exactly the commit.

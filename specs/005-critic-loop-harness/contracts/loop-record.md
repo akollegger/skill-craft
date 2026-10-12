@@ -28,7 +28,8 @@ _Amended 2026-10-12 (spec 007 FR-033 to FR-037): `loop.json` also holds the fiel
   "recordedRuns": [
     { "label": "001", "run": "runs/faithful-1-t0-stone/001", "runLogSha256": "...", "scoreSha256": "...", "models": ["anthropic/claude-sonnet-5-5"], "settings": { "temperature": null, "effort": "medium", "thinking": "adaptive" } }
   ],
-  "recordingFormat": "placeholder | null",
+  "recordingFormat": "conversation | placeholder | mixed | null",
+  "distiller": { "service": { "name": "nams", "version": "1.3.0", "released": "2026-10-12", "commit": "<build commit>", "environment": "production" } },
   "roles": {
     "critic": { "requested": "...", "resolved": ["..."], "settings": { "temperature": null, "effort": null, "thinking": null } },
     "reviser": { "requested": "...", "resolved": ["..."], "settings": null }
@@ -41,7 +42,10 @@ _Amended 2026-10-12 (spec 007 FR-033 to FR-037): `loop.json` also holds the fiel
 
 `process.version` is `PROCESS_VERSION` in `src/loop/process.ts`, explained in `design/notes/skill-process.md`. `dirty` is true when the tree
 had changes, and `changesSha256` hashes the diff against the commit and the list of changed files (an untracked file's contents are not
-in it). `recordingFormat` is null when a candidate was given. `candidate` is present only when the candidate was distilled from the runs.
+in it). `recordingFormat` is `conversation` when every recorded run kept the model's conversation, `placeholder` when none did, `mixed` otherwise, and null when a candidate was given. `candidate` is present only when the candidate was distilled from the runs.
+`distiller.service` is the memory service's own account of itself, from its unauthenticated `GET /v1/version`, read while generation runs
+(spec 007 FR-042): `commit` identifies the deployment, since the version moves only with user-facing news. When the call failed it is
+`{ "name": "nams", "unknown": "version_unavailable" }`, and `distiller` is `null` when a candidate was given and no service made it.
 
 The list below is the original.
 

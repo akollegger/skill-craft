@@ -29,4 +29,6 @@ Recording per model turn (ADR-003 §2.4, amended 2026-10-12; spec 007 FR-028 to 
 
 What changes in the record: `recordingFormat` is `conversation`, `placeholder` or `mixed`, taken from the runs.
 
+The record also names the memory service that distilled the skill (`distiller.service`: version, release date, build commit, environment, or a code when its version call failed). That records what ran and changes none of the procedure, so it did not bump the version.
+
 Still true: whether the distiller uses a step's reasoning is not established. Distilling twice from the same runs (T085) is how to find out.

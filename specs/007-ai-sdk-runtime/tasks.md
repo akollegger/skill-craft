@@ -313,7 +313,8 @@ Work the live checks and probes showed was needed, done test-first and recorded 
 - [X] T093 [US10] `src/harness/report.ts`, `specs/003-faithful-minecraft-world/contracts/experiment-summary.md`: the `cast` schema and the shim for `models`; role proposals, arm models and the shared-model note read through it.
 - [X] T094 [US10] `src/loop/nams.ts`, `test/helpers/fake-nams.ts`, `src/loop/candidate.ts`, `src/loop/record.ts`: a `version()` call on the seam (unauthenticated `GET /v1/version`), taken in the generate stage, recorded in `loop.json` under `distiller.service`; a failure is unknown with a fixed code.
 - [X] T095 [US10] `src/harness/report.ts`: read the loop record that `review.json` names, check its final hash, print the cast of each skill arm, refuse a contradiction.
-- [ ] T096 [US10] Docs: `AGENTS.md`, `specs/005-critic-loop-harness/contracts/loop-record.md` (the `distiller` block), `design/notes/skill-process.md` if what is recorded changes (bump `PROCESS_VERSION` only if the loop's behaviour does), and `design/notes/nams-meeting-brief.md` (does generation use a model, and can it be chosen; the version endpoint).
+- [X] T096 [US10] Docs: `AGENTS.md`, `specs/005-critic-loop-harness/contracts/loop-record.md` (the `distiller` block), `design/notes/skill-process.md` if what is recorded changes (bump `PROCESS_VERSION` only if the loop's behaviour does), and `design/notes/nams-meeting-brief.md` (does generation use a model, and can it be chosen; the version endpoint).
+  - Done 2026-10-12: `AGENTS.md` (the cast and the service version), `contracts/loop-record.md` (the `distiller` block and the `recordingFormat` values), `design/notes/skill-process.md` (the record names the service; no version bump, since no procedure changed), the quickstart, and the NAMS brief's question about a model and the version call (added with the draft). `PROCESS_VERSION` stays 2.
 
 ---
 

@@ -178,10 +178,15 @@ zebra-space project with the RFC requirement removed.
   the environment only. Run the live steps in a subshell that unsets `NAMS_WORKSPACE_ID` (see the spec's quickstart).
 - Each loop's `loop.json` records how its skill was made: the process version (`PROCESS_VERSION` in `src/loop/process.ts`, explained in
   `design/notes/skill-process.md`, with a test that fails when the changelog has no entry for it), the commit and whether the tree had
-  changes, the recorded runs with hashes and settings, the roles' models and settings, the spend and the final skill's hash. It holds no
+  changes, the recorded runs with hashes and settings, the roles' models and settings, the memory service's version and build commit (read from its unauthenticated `/v1/version` while generation runs), the spend and the final skill's hash. It holds no
   recorded text and never goes inside `skill/`. A student run's `skill.sha256` finds it (`grep` for `finalSkillSha256` in `loops/*/loop.json`).
   Bump `PROCESS_VERSION` and add a changelog entry when what is recorded, what the distiller is asked, the rubric, the roles' instructions,
   the round limit or the roles' default settings change.
+- An experiment declares a cast, not a fixed pair (ADR-003 §2.1, amended 2026-10-12; spec 007 FR-040): `cast` in `summary.json` gives the
+  teacher, student and distiller (the memory service, with the critic and reviser as its review stage), each with a model and settings,
+  one model may fill several roles, and the older `models` form is still read. The report prints the cast and which roles share a model,
+  and when `review.json` has a `loop` path it checks that loop record against the reviewed skill and the cast and says who made the skill.
+  Harness-based distillation is a later ADR; it must take only what the model and the world produced, never solver output or scores.
 - `critic-loop.ts` costs real Claude usage (and `--allow-workspace` writes to the NAMS account). Use `--dry-run` first,
   and keep `--max-role-usd` and `--max-rounds` small.
 
