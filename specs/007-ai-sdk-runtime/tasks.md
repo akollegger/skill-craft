@@ -291,7 +291,7 @@ Work the live checks and probes showed was needed, done test-first and recorded 
 - [X] T088 [US9] `src/loop/record.ts`, `src/loop/cli.ts`: write the new fields into `loop.json`; the commit and the changes' hash come through an injected function so tests do not run git.
 - [X] T089 [US9] `src/loop/candidate.ts`, `src/loop/transcript.ts`: carry each run's hashes, teacher model and settings (from `score.json`) and the recording format to the record, and the roles' settings from the loop's options.
   - Done 2026-10-12: `Recording` carries `runLogSha256`, `scoreSha256` and `settings`; the candidate step records its request (`scope`, `conversations`, `procedureFormat`) in `generation.request`. The loop tests pass a fixed `processInfo`, so none runs git.
-- [ ] T090 [US9] Update `specs/005-critic-loop-harness/contracts/loop-record.md` for the new fields, and document in `AGENTS.md` and the quickstart how a student run's skill hash finds its record (`grep` the `skillSha256` and `finalSha256` fields of `loops/*/loop.json`).
+- [X] T090 [US9] Update `specs/005-critic-loop-harness/contracts/loop-record.md` for the new fields, and document in `AGENTS.md` and the quickstart how a student run's skill hash finds its record (`grep` the `skillSha256` and `finalSha256` fields of `loops/*/loop.json`).
 
 ---
 

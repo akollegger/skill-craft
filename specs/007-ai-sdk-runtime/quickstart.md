@@ -87,3 +87,14 @@ pnpm dev spikes/fireworks/reconcile.ts compare snap.json runs/<label>
 ```
 
 Expected: harness and billed tokens equal for every model.
+
+## E. Find how a skill was made (free)
+
+A student run that installed a skill records the skill's hash in `score.json` (`skill.sha256`), and an accepted loop records the same hash as `finalSkillSha256` in its `loops/<label>/loop.json`. To find the record from a run:
+
+```bash
+SHA=$(node -p "require('./runs/<label>/001/score.json').skill.sha256")
+grep -l "\"finalSkillSha256\": \"$SHA\"" loops/*/loop.json
+```
+
+Expected: one `loop.json`. Its `process` names the version and commit, `recordedRuns` the teacher runs with their hashes and settings, `roles` the models and settings that reviewed it, and `process.version` is explained in `design/notes/skill-process.md`. If `dirty` is true the code was not exactly the commit.
