@@ -60,6 +60,24 @@ describe("replayRun", () => {
     expect(rec.conversation!.at(-1)).toMatchObject({ text: "I hold it.", calls: [] });
   });
 
+  it("refuses a conversation that names the same tool use id twice, which would pair one call with two", async () => {
+    const run = await made("solve", "dupconv");
+    const lines = readFileSync(join(run, "conversation.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const first = lines.find((l) => l.calls.length > 0);
+    lines.find((l) => l !== first && l.calls.length > 0).calls.push(first.calls[0]);
+    writeFileSync(join(run, "conversation.jsonl"), `${lines.map((l) => JSON.stringify(l)).join("\n")}\n`);
+    await expect(replayRun(run, "001")).rejects.toBeInstanceOf(ReplayFailed);
+  });
+
+  it("refuses a trace that holds the same tool use id twice", async () => {
+    const run = await made("solve", "duptrace");
+    const rows = readFileSync(join(run, "trace.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const tools = rows.filter((r) => r.kind === "tool");
+    tools[1].toolUseId = tools[0].toolUseId;
+    writeFileSync(join(run, "trace.jsonl"), `${rows.map((r) => JSON.stringify(r)).join("\n")}\n`);
+    await expect(replayRun(run, "001")).rejects.toBeInstanceOf(ReplayFailed);
+  });
+
   it("reads a run with no conversation file as having none", async () => {
     const run = await made("solve", "noconv");
     rmSync(join(run, "conversation.jsonl"));

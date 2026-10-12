@@ -207,6 +207,6 @@ export function readInstalledSkill(skill: { pluginDir: string; qualifiedName: st
 }
 
 /** A role's result for a failure: fixed text only. */
-export function roleFailure(reason: string, requestedModel: string, resolvedModel: string | null, durationMs: number | null): RoleResult {
-  return { ok: false, reason, requestedModel, resolvedModel, tokens: { input: null, output: null, cacheRead: null, cacheCreation: null }, costUsd: null, durationMs };
+export function roleFailure(reason: string, requestedModel: string, resolvedModel: string | null, durationMs: number | null, spent?: { tokens: RoleTokens; costUsd: number | null }): RoleResult {
+  return { ok: false, reason, requestedModel, resolvedModel, tokens: spent?.tokens ?? { input: null, output: null, cacheRead: null, cacheCreation: null }, costUsd: spent?.costUsd ?? null, durationMs };
 }

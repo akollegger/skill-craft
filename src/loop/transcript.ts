@@ -123,7 +123,10 @@ async function replay(runDir: string, label: string): Promise<Recording> {
   const conversation = readConversation(join(runDir, CONVERSATION_FILE));
   // Every call in the trace must be one a turn made, or the conversation belongs to another run.
   if (conversation !== null) {
-    const named = new Set(conversation.flatMap((t) => t.calls.map((c) => c.id)));
+    const ids = conversation.flatMap((t) => t.calls.map((c) => c.id));
+    const named = new Set(ids);
+    // An id used twice, in the conversation or the trace, would pair one call with two and write a duplicated or wrong call.
+    if (named.size !== ids.length || new Set(calls.map((c) => c.toolUseId)).size !== calls.length) throw new ReplayFailed("a tool use id is used more than once");
     if (!calls.every((c) => named.has(c.toolUseId))) throw new ReplayFailed("the conversation does not match the trace");
   }
 

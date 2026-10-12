@@ -553,6 +553,37 @@ describe("aiRoleDriver", () => {
       expect(model().doGenerateCalls).toHaveLength(3);
     });
 
+    it("keeps the spend of the attempts that came back when a later attempt throws, instead of resetting the role to no cost", async () => {
+      const { APICallError } = await import("ai");
+      let n = 0;
+      control.model = new MockLanguageModelV4({
+        modelId: "m",
+        doGenerate: (async () => {
+          if (n++ === 0) return say('{"n":99}'); // comes back, fails the check, and is paid for
+          throw new APICallError({ message: "x", url: "u", requestBodyValues: {}, statusCode: 401, isRetryable: false });
+        }) as never,
+      });
+      const r = await aiRoleDriver(role({ check: checkNeedsSeven, price: OPUS }));
+      expect(r).toMatchObject({ ok: false, reason: "DriverFailed: the role reported authentication_failed" });
+      expect(r.tokens).toEqual({ input: 12, output: 3, cacheRead: 110, cacheCreation: null }); // the first attempt was paid for
+      expect(r.costUsd).toBeCloseTo(0.00013, 9);
+    });
+
+    it("keeps the spend of a response whose setting was ignored, since it came back and was paid for", async () => {
+      scripted({ content: [{ type: "text", text: '{"n":7}' }], finishReason: { unified: "stop", raw: undefined }, usage: usage(12, 3, 110), warnings: [{ type: "unsupported", feature: "temperature", details: "ignored" }] } as Result);
+      const r = await aiRoleDriver(role({ model: "claude-haiku-4-5-20251001", settings: { temperature: 0 }, price: HAIKU }));
+      expect(r).toMatchObject({ ok: false, reason: "DriverFailed: the role reported setting_ignored (temperature)" });
+      expect(r.tokens).toEqual({ input: 12, output: 3, cacheRead: 110, cacheCreation: null });
+      expect(r.costUsd).toBeCloseTo((12 * 1 + 3 * 5 + 110 * 0.1) / 1e6, 12);
+    });
+
+    it("has no tokens and no cost when no attempt came back, as before", async () => {
+      const { APICallError } = await import("ai");
+      control.model = new MockLanguageModelV4({ modelId: "m", doGenerate: async () => { throw new APICallError({ message: "x", url: "u", requestBodyValues: {}, statusCode: 401, isRetryable: false }); } });
+      const r = await aiRoleDriver(role({ price: OPUS }));
+      expect(r).toMatchObject({ ok: false, costUsd: null, tokens: { input: null, output: null, cacheRead: null, cacheCreation: null } });
+    });
+
     it("is not retried when the first answer passes, or when no check is given", async () => {
       scripted(say('{"n":7}'));
       await aiRoleDriver(role({ check: checkNeedsSeven }));

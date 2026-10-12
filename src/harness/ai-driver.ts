@@ -241,6 +241,7 @@ export const aiRoleDriver: RoleDriver = async (opts) => {
   const messages: ModelMessage[] = [{ role: "user", content: opts.prompt }];
   let spent: Tokens = NO_TOKENS;
   let tokens: RoleTokens = { input: null, output: null, cacheRead: null, cacheCreation: null };
+  let responses = 0; // attempts that came back, so a later failure keeps what they cost
   try {
     const model = observed(await languageModel(ref), probe);
     for (let attempt = 1; ; attempt++) {
@@ -254,10 +255,12 @@ export const aiRoleDriver: RoleDriver = async (opts) => {
         // The row's call options for the role's settings, as for a player (a thinking budget, effort, temperature, the cache option).
         ...(findProvider(ref.provider)?.callOptions(opts.settings ?? {}, ref.id) ?? {}),
       });
-      const ignored = droppedSetting(result.warnings, opts.settings);
-      if (ignored !== undefined) throw Object.assign(new Error("setting ignored"), { settingIgnored: ignored });
+      // A response that came back was paid for whatever happens to it next, so it is counted before anything can throw.
       spent = addTokens(spent, tokensOf(result.usage));
       tokens = addRoleTokens(tokens, roleTokens(result.usage));
+      responses++;
+      const ignored = droppedSetting(result.warnings, opts.settings);
+      if (ignored !== undefined) throw Object.assign(new Error("setting ignored"), { settingIgnored: ignored });
       const costUsd = costOf(spent, price);
       // The SDK fills a result's model id with the one asked for when the provider reports none, so the wrapper's record is read instead.
       const reported = probe.last;
@@ -280,6 +283,6 @@ export const aiRoleDriver: RoleDriver = async (opts) => {
     const cutOff = (e as { finishReason?: unknown } | null)?.finishReason === "length";
     const ignoredName = (e as { settingIgnored?: string } | null)?.settingIgnored;
     const reason = ignoredName !== undefined ? `DriverFailed: the role reported setting_ignored (${ignoredName})` : cutOff ? "DriverFailed: the role reached its output limit" : /NoOutputGenerated|NoObjectGenerated|JSONParse|TypeValidation/.test(name) ? "DriverFailed: the role could not give the requested format" : failureReason("role", e, keyEnv);
-    return roleFailure(reason, opts.model, ref.spec, elapsed());
+    return roleFailure(reason, opts.model, ref.spec, elapsed(), responses === 0 ? undefined : { tokens, costUsd: costOf(spent, price) });
   }
 };

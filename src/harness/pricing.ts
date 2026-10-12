@@ -65,7 +65,8 @@ interface List {
   models: Record<string, ListEntry>;
 }
 
-const text = (v: unknown): string | undefined => (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)) ? v : undefined);
+/** A rate as OpenRouter gives it: a string that is a finite number of at least zero. A negative rate is a malformed listing, and would give a negative cost. */
+const text = (v: unknown): string | undefined => (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)) && Number(v) >= 0 ? v : undefined);
 
 /** The list as the service answers it, or undefined when the answer is not the list. */
 function parseList(body: unknown, fetchedAt: string): List | undefined {
@@ -79,6 +80,8 @@ function parseList(body: unknown, fetchedAt: string): List | undefined {
     if (prompt === undefined || completion === undefined) continue;
     const read = text(e.pricing["input_cache_read"]);
     const write = text(e.pricing["input_cache_write"]);
+    // A cache rate that is present and not a valid rate makes the entry malformed, not unpriced for that rate.
+    if ((e.pricing["input_cache_read"] != null && read === undefined) || (e.pricing["input_cache_write"] != null && write === undefined)) continue;
     models[e.id] = { prompt, completion, ...(read === undefined ? {} : { input_cache_read: read }), ...(write === undefined ? {} : { input_cache_write: write }), ...(Array.isArray(e.pricing["overrides"]) && e.pricing["overrides"].length > 0 ? { tiered: true } : {}) };
   }
   return Object.keys(models).length === 0 ? undefined : { fetchedAt, models };

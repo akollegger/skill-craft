@@ -76,6 +76,15 @@ describe("a market quote", () => {
     expect(q?.perMillion).not.toHaveProperty("cacheWrite");
   });
 
+  it("is never made from a malformed listing with a negative rate, which would give a negative cost and keep a dollar cap from tripping", async () => {
+    for (const bad of [{ prompt: "-0.000001", completion: "0.000005" }, { prompt: "0.000001", completion: "-0.000005" }, { prompt: "0.000001", completion: "0.000005", input_cache_read: "-0.0000001" }, { prompt: "0.000001", completion: "0.000005", input_cache_write: "-0.00000125" }]) {
+      const f = fetcher({ data: [entry("anthropic/claude-haiku-4.5", bad), entry("openai/gpt-oss-120b", { prompt: "0.000000037", completion: "0.00000017" })] });
+      const s = source({ fetch: f.fetch });
+      expect(await s.resolve("anthropic/claude-haiku-4-5-20251001"), JSON.stringify(bad)).toBeUndefined();
+      expect(await s.resolve("fireworks/gpt-oss-120b")).toBeDefined(); // the rest of the list is still good
+    }
+  });
+
   it("is never made for a model with no alias, however close a name in the list is, and does not even fetch", async () => {
     const f = fetcher();
     expect(await source({ fetch: f.fetch }).resolve("anthropic/claude-sonnet-5-5")).toBeUndefined(); // the list has claude-sonnet-5.5, and a near-match is not a match

@@ -629,6 +629,29 @@ describe("the cast (spec 007 FR-040 to FR-043)", () => {
       }
     });
 
+    it("refuses runs that the teacher shared with another model, since a substituted model also served them", () => {
+      const f = skillArm(loopRecord({ recordedRuns: [{ ...loopRecord().recordedRuns[0], models: [`anthropic/${SONNET}`, "fireworks/gpt-oss-120b"] }] }));
+      expect(() => buildReport({ experiment: f.exp, labels: f.labels })).toThrow(ReportRefused);
+      const g = skillArm(loopRecord({ recordedRuns: [{ ...loopRecord().recordedRuns[0], models: [] }] }));
+      expect(() => buildReport({ experiment: g.exp, labels: g.labels })).toThrow(ReportRefused); // a run that names no model cannot be checked
+    });
+
+    it("refuses a critic or reviser that a provider served with another model than the one asked for, or that names none", () => {
+      for (const role of ["critic", "reviser"] as const) {
+        for (const resolved of [["fireworks/gpt-oss-120b"], [`anthropic/${SONNET}`, "fireworks/gpt-oss-120b"], []]) {
+          const roles = { ...loopRecord().roles, [role]: { ...loopRecord().roles[role], resolved } };
+          const f = skillArm(loopRecord({ roles }));
+          expect(() => buildReport({ experiment: f.exp, labels: f.labels }), `${role} ${JSON.stringify(resolved)}`).toThrow(ReportRefused);
+        }
+      }
+    });
+
+    it("accepts a resolved model in the bare Claude form when it is the cast's", () => {
+      const roles = { ...loopRecord().roles, critic: { ...loopRecord().roles.critic, resolved: [SONNET] } };
+      const f = skillArm(loopRecord({ roles }));
+      expect(() => buildReport({ experiment: f.exp, labels: f.labels })).not.toThrow();
+    });
+
     it("compares a bare Claude id in the loop record with the canonical one in the cast", () => {
       const f = skillArm(loopRecord({ recordedRuns: [{ ...loopRecord().recordedRuns[0], models: [SONNET] }] }));
       expect(() => buildReport({ experiment: f.exp, labels: f.labels })).not.toThrow();

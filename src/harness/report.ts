@@ -104,8 +104,8 @@ const loopSchema = z.object({
   recordedRuns: z.array(z.object({ models: z.array(z.string()), settings: settingsSchema.partial().extend({ temperature: z.number().nullable().optional(), effort: z.string().nullable().optional(), thinking: z.union([z.string(), z.number()]).nullable().optional() }).nullable() }).passthrough()),
   recordingFormat: z.string().nullable().optional(),
   roles: z.object({
-    critic: z.object({ requested: z.string(), settings: z.any().nullable() }).passthrough(),
-    reviser: z.object({ requested: z.string(), settings: z.any().nullable() }).passthrough(),
+    critic: z.object({ requested: z.string(), resolved: z.array(z.string()), settings: z.any().nullable() }).passthrough(),
+    reviser: z.object({ requested: z.string(), resolved: z.array(z.string()), settings: z.any().nullable() }).passthrough(),
   }),
   distiller: z
     .object({ service: z.union([z.object({ name: z.string(), version: z.string(), released: z.string(), commit: z.string(), environment: z.string() }), z.object({ name: z.string(), unknown: z.string() })]) })
@@ -125,12 +125,16 @@ function skillMadeBy(path: string, reviewSha: string, cast: Cast): string[] {
   if (loop.finalSkillSha256 !== reviewSha) throw new ReportRefused("the loop record's final skill is not the reviewed skill");
   const teacher = canonicalSpec(cast.teacher.model);
   for (const r of loop.recordedRuns) {
-    if (!r.models.map(canonicalSpec).includes(teacher)) throw new ReportRefused(`the loop record's runs were not made by the cast's teacher (${teacher})`);
+    // Exactly the cast's teacher: a run a substituted model also served is not the teacher's, and one that names no model cannot be checked.
+    const ran = r.models.map(canonicalSpec);
+    if (ran.length === 0 || !ran.every((m) => m === teacher)) throw new ReportRefused(`the loop record's runs were not made by the cast's teacher (${teacher}) alone`);
     if (!sameSettings(r.settings, cast.teacher.settings)) throw new ReportRefused("the loop record's runs used settings other than the cast's teacher's");
   }
   if (cast.distiller !== undefined) {
     for (const [name, want, got] of [["critic", cast.distiller.critic, loop.roles.critic], ["reviser", cast.distiller.reviser, loop.roles.reviser]] as const) {
       if (canonicalSpec(got.requested) !== canonicalSpec(want.model)) throw new ReportRefused(`the loop record's ${name} is not the cast's`);
+      // What the provider reported as having answered must be the cast's model too, or a substitution would pass for the cast.
+      if (got.resolved.length === 0 || !got.resolved.every((m) => canonicalSpec(m) === canonicalSpec(want.model))) throw new ReportRefused(`the loop record's ${name} was served by a model other than the cast's`);
       if (!sameSettings(got.settings, want.settings)) throw new ReportRefused(`the loop record's ${name} used settings other than the cast's`);
     }
   }
