@@ -42,6 +42,8 @@ without it. JSON.
 }
 ```
 
+_Amended 2026-10-12 (ADR-003 §2.1, spec 007 FR-040): a summary may declare `cast` instead of `models`: `{ "teacher": { "model": "...", "settings": {} }, "student": { ... }, "distiller": { "service": "nams", "critic": { "model": "...", "settings": {} }, "reviser": { ... } } }`. Settings belong to the role, and one model may fill several roles. The `models` form above is still read as the same cast. Not yet implemented._
+
 Rules:
 - `counterpartGoals` maps each goal of the invented counterpart to the faithful goal it stands for (the renamer
   keeps goal order). The report shows and compares counterpart rows under the faithful goal.

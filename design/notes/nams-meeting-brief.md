@@ -23,7 +23,8 @@ For each teacher run: one conversation (metadata: source, run label); two messag
 5. **Contrast.** Does generation use several runs of one goal to find what they share and what differs, and is there a recommended number and mix of successes and failures?
 6. **Gates.** Grounding and coverage passed on skills we judged empty. What do they measure, and is a measure of usefulness planned?
 7. **Tool names.** A skill names the tools as recorded. If the agent that later loads it sees different names (here `place` against `mcp__craft__place`), is that expected to work?
-8. **Cleanup and versions.** Does deleting a workspace remove its contents, and can orphaned step and tool-call nodes be removed after deleting a conversation? What changes between versions, and is there a changelog we can record with each run?
+8. **Model and version.** Does skill generation call a language model, and can the deployment or the request choose which? We record the service's `GET /v1/version` (version, release date, build commit, environment) with each skill; is the commit enough to identify what generated it, including any model and prompt?
+9. **Cleanup and versions.** Does deleting a workspace remove its contents, and can orphaned step and tool-call nodes be removed after deleting a conversation? What changes between versions, and is there a changelog we can record with each run?
 
 ## What we are changing
 

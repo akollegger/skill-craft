@@ -302,6 +302,20 @@ Work the live checks and probes showed was needed, done test-first and recorded 
 
 ---
 
+## Phase 15: User Story 10 - Declare the cast of an experiment and read it back (added 2026-10-12, not built)
+
+**Goal**: a summary declares teacher, student and distiller with settings per role, roles may share a model, and the report and the loop record say who made and used each skill and which service version distilled it, FR-040 to FR-045. Decided in ADR-003 §2.1 and §2.6 (amended). Harness-based distillation is a later ADR and is not part of this phase.
+
+**Independent Test**: summaries of three forms read by the report, and a loop record with the service's version (SC-016).
+
+- [ ] T092 [P] [US10] Tests first: `test/report.test.ts` (the cast form, the older form read as the same cast and not rewritten, one model in every role with different settings kept apart, a shared-model note, an arm whose runs used another student model refused, role proposals from the cast's student, the cast printed per skill arm, `review.json` naming a loop record whose hash must match), `test/loop-nams.test.ts` (the version call is unauthenticated, and a failure gives unknown with a fixed code), `test/loop-record.test.ts` and `test/loop-cli.test.ts` (the service block in `loop.json`), `test/loop-inputs.test.ts` (one model in every role gets only the named parts).
+- [ ] T093 [US10] `src/harness/report.ts`, `specs/003-faithful-minecraft-world/contracts/experiment-summary.md`: the `cast` schema and the shim for `models`; role proposals, arm models and the shared-model note read through it.
+- [ ] T094 [US10] `src/loop/nams.ts`, `test/helpers/fake-nams.ts`, `src/loop/candidate.ts`, `src/loop/record.ts`: a `version()` call on the seam (unauthenticated `GET /v1/version`), taken in the generate stage, recorded in `loop.json` under `distiller.service`; a failure is unknown with a fixed code.
+- [ ] T095 [US10] `src/harness/report.ts`: read the loop record that `review.json` names, check its final hash, print the cast of each skill arm, refuse a contradiction.
+- [ ] T096 [US10] Docs: `AGENTS.md`, `specs/005-critic-loop-harness/contracts/loop-record.md` (the `distiller` block), `design/notes/skill-process.md` if what is recorded changes (bump `PROCESS_VERSION` only if the loop's behaviour does), and `design/notes/nams-meeting-brief.md` (does generation use a model, and can it be chosen; the version endpoint).
+
+---
+
 ## Dependencies and order
 
 - **Phase 1** first. **Phase 2** blocks everything: the table and canonical names.

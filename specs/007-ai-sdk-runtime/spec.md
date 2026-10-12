@@ -251,6 +251,35 @@ named below is present and none holds recorded text; change the process version 
 
 ---
 
+### User Story 10 - Declare the cast of an experiment and read it back (Priority: P2)
+
+*(Added 2026-10-12; ADR-003 §2.1, amended.)* The experiment runner declares who plays the teacher, the student and the distiller,
+each with a model and settings, and may give one model all three roles. The report states the cast of every skill arm,
+including which service version distilled the skill, so a result is read against who made the skill and who used it.
+
+**Why this priority**: The protocol fixed Sonnet and Haiku, and settings were keyed by model, so a different pair, or one model in
+every role, could not be declared. P2 because an experiment can run with the first cast without it.
+
+**Independent Test**: Write summaries with a cast of two models, of one model in every role, and in the older form with
+`models`; the report reads all three, and states for each skill arm the teacher, critic, reviser, service version and student.
+
+**Acceptance Scenarios**:
+
+1. **Given** a summary with a `cast`, **When** the report runs, **Then** it uses the cast's student for role proposals and
+   resolves each arm's model through the cast.
+2. **Given** a summary in the older form (`models.teacher`, `models.student`), **When** the report runs, **Then** it reads it as the
+   same cast and the file is not rewritten.
+3. **Given** one model in the teacher, student and distiller roles with different settings, **When** the report runs, **Then** it
+   keeps the settings apart and says the roles share a model.
+4. **Given** a skill arm whose runs used a model other than the cast's student, **When** the report runs, **Then** it refuses.
+5. **Given** a loop that generated a skill, **When** its record is read, **Then** it names the memory service's version, release
+   date, commit and environment as they were when generation ran.
+6. **Given** the same model as teacher, critic and reviser, **When** the loop builds the roles' prompts, **Then** they hold only
+   the named parts (rubric, goals, recordings, the skill, the verdict), with no teacher conversation and nothing from the
+   solver or the score.
+
+---
+
 ### Edge Cases
 
 - A provider substitutes another model for the one requested, mid-experiment.
@@ -385,6 +414,23 @@ named below is present and none holds recorded text; change the process version 
 - **FR-039**: A thinking budget pinned for an Anthropic model MUST be sent with the interleaved-thinking beta, so the model reasons
   between tool results as the earlier runtime did, and no beta is sent for adaptive thinking, thinking off or no thinking setting.
   *(Added 2026-10-12: without it Haiku 4.5 reasoned on the first turn only.)*
+- **FR-040**: An experiment's summary MUST be able to declare a `cast` of teacher, student and distiller, each with a model and
+  its pinned settings, with settings belonging to the role and not the model. The distiller entry names the memory service and the
+  critic's and reviser's models and settings. The older `models` form MUST still be read as the same cast, and is not rewritten.
+- **FR-041**: Roles MAY share a model. The report MUST use the cast's student for role proposals, resolve each arm's model through
+  the cast, keep same-model roles' settings apart, say which roles share a model, and refuse an arm whose runs used another model
+  than the cast's student.
+- **FR-042**: A loop's record MUST name the memory service's version, release date, build commit and environment, from its
+  unauthenticated version call made while generation runs, beside the capabilities it already holds. A failed call is recorded as
+  unknown with a fixed code and never stops the loop.
+- **FR-043**: The experiment's `review.json` MAY name the loop record that made the skill. When it does, the report MUST check that
+  the record's final skill hash equals the review's, print the teacher, critic, reviser and service version from it for each skill
+  arm, and refuse when they contradict the cast.
+- **FR-044**: The critic's and reviser's prompts MUST be built from the named parts only whatever models fill the roles, and a test
+  MUST show it with one model in every role.
+- **FR-045**: *(A constraint on a later decision, not built here.)* A harness-based distiller, when one is decided, MUST take only
+  what the model and the world produced (the locally stored conversations and tool calls) and MUST NOT take solver output, scores
+  or any label of which calls were needed.
 - **FR-018**: No key MUST appear in any file, log, trace, score, summary, reason or command line, and agent
   text and reasoning MUST NOT be written to any of them (constitution Principle VI; ADR-002 §2.3).
 
@@ -429,6 +475,7 @@ named below is present and none holds recorded text; change the process version 
   removed recording flag finds only mentions marked as history.
 - **SC-014**: A scripted run recorded through the scripted memory service produces a conversation with its messages, a step per tool-calling turn and every call, with no harness-derived content; the privacy test passes with the conversation file in place.
 - **SC-015**: A loop run with scripted roles and a scripted service writes a record with every field FR-033 to FR-035 names, the privacy test finds no recorded text in it, and the changelog guard fails for a version with no entry.
+- **SC-016**: The report reads a summary with a cast, one with one model in every role, and one in the older form, states the cast of each skill arm with the service version and commit, and refuses an arm whose runs used another student model.
 - **SC-012**: The live checks together cost under US$10, and no key appears in any file the feature writes.
 - **SC-013**: The faithful world's calibration is rerun and its results recorded with the runtime named, for under
   US$5, and each goal's role (gap, solved or ambiguous) is stated under the unchanged rule.
