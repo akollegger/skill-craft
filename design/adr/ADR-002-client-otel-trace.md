@@ -215,3 +215,8 @@ mirror could be added later without changing the viewer.
   not streamed), and `costUsd` is computed from token counts and a price table, since the player reports no cost. The
   allowlist in 2.3 and the join in 2.5 are unchanged. The consequence about a pre-1.0 package that bundles the Claude
   Code binary no longer applies. `--record` (loading user settings so that the NAMS hooks record) is removed.
+- **2026-10-12**: §2.3's allowlist describes `trace.jsonl` and is unchanged: the trace still never holds the agent's text or
+  thinking. A recorded run's NAMS recording needs the model's messages and reasoning (ADR-003 §2.4, amended), so the driver
+  writes them to a separate file in the run folder, `conversation.jsonl`, that no trace, score, summary, bundle or reason
+  includes and that only the recording step reads. `score.json`'s `text` field, the final message, is the same kind of
+  exception and is kept.
