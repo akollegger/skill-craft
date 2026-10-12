@@ -94,3 +94,18 @@ the runs' canonical one. It is fixed, with a test.
 
 The Haiku cells above were run with a thinking budget of 31,999 but without the `interleaved-thinking-2025-05-14` beta that the earlier runtime sent. Without it Haiku reasoned once, before its first tool call, and then only wrote text between tool results (two runs); with it, it reasoned on every turn (three runs). The Haiku stone (0/5 to 4/5) and iron (5/5 to 3/5) differences were therefore measured between a model that reasoned every turn and one that did not, which is a candidate cause that was not known when the differences were recorded. It has not been tested: the Haiku cells have not been rerun with the flag, and at 5 trials per cell a rerun would still show gross differences only. Sonnet's cells used adaptive thinking, for which no flag is sent; whether Sonnet reasons on every turn here is unchecked. The driver now sends the flag with a pinned budget (ADR-005 amendment of 2026-10-12).
 
+## Rerun 2026-10-12: Haiku stone and iron with interleaved thinking, 10 trials each
+
+Haiku, faithful world, the original prompt (byte-identical to the Claude Code era stone cell's `prompt.txt`), the calibration settings (thinking budget 31,999), `--max-turns 80`, and now the interleaved-thinking beta. Labels `rt-cal-il-faithful-haiku-stone` and `-iron`. 20 runs, US$3.01 (stone $1.20, iron $1.81), none unpriced. Intervals are 95% Wilson; p-values are two-sided exact (Fisher).
+
+| Haiku cell | Claude Code era | AI SDK, no flag | AI SDK, with flag |
+|---|---|---|---|
+| stone_pickaxe | 0/5 [0, 43] | 4/5 [38, 96] | **8/10 [49, 94]** |
+| iron_pickaxe | 5/5 [57, 100] | 3/5 [23, 88] | **7/10 [40, 89]** |
+
+- **The flag did not explain the stone difference.** Stone is about the same with it (8/10) as without (4/5, p = 1.0), and still far from the Claude Code cell (0/5 against 8/10, p = 0.007). Pooled, the AI SDK runtime solved stone 12 of 15.
+- **Iron shows no detectable difference** from either: 5/5 against 7/10 (p = 0.5), and 3/5 against 7/10 (p = 1.0).
+- **So the Claude Code stone cell is the outlier.** Something in the Claude Code runtime depressed Haiku on stone with this prompt, or that 0/5 was an unlucky draw (p about 0.05 against the first AI SDK cell and 0.007 against this one makes luck unlikely). Candidates, untested: the extra context Claude Code added for Haiku (a model-identity line, a statement of 15,000,000 tokens left, an environment block with a scratchpad directory it had no tools to use), and the `mcp__craft__` tool names (`design/notes/turn-one-diff.md`).
+- **What it means for the experiment.** The faithful world's only gap, Haiku on stone, was measured under Claude Code. On this runtime Haiku solves stone about 80% of the time and iron about 70%, so under ADR-003's rule (a gap goal is at most 1 of 5) the faithful world has no gap goal for Haiku here. The reworded-prompt result (stone 0/5 to 4/5, `critic-loop-findings.md`) may have been the same effect: sensitivity to the Claude Code environment, not to the prompt's wording.
+- **Runs that did not stop on their own.** 2 of 10 stone and 3 of 10 iron runs used all 80 turns; one iron run reached its goal on call 186 and ended on the turn budget. Calls to goal when reached: stone 13 to 39 (median 22.5), iron 13 to 186.
+
