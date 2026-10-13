@@ -3,7 +3,7 @@ id: ADR-007
 title: The base prompt is a versioned experiment parameter, and its budget counts tool calls
 status: proposed
 created: 2026-10-13
-specs: []
+specs: [specs/008-versioned-base-prompt]
 ---
 
 # ADR-007: The base prompt is a versioned experiment parameter, and its budget counts tool calls
@@ -31,15 +31,15 @@ The driver enforces the number the prompt states:
 - A call past the budget is not sent to the craft server. It is answered with one fixed refusal line that reveals nothing about the world, it is absent from `run.jsonl`, and it is counted in a new `budgetRefused` field of `score.json`, not in `totalCalls`.
 - The run ends after that response. It ends `budget` if the goal is not held and `stopped` if it is, including when the last call within the budget reached the goal.
 - Every response makes at least one call, so a call budget of N ends a run in at most N responses; the separate step limit goes away, and a response with no call ends the run as it does today.
-- The score records `calls` (`totalCalls`), `actionCalls`, `steps` and `budgetRefused`.
+- The score keeps `turns` (the responses), `totalCalls` and `actionCalls`, and adds `budgetRefused`.
 
 The budget's size is an experiment parameter, declared in the experiment summary as `callBudget`; the summary's older `turnBudget`, which counted steps, is read as a version-1 step budget and is not accepted for a version-2 prompt. The surveys suggest starting at 100 calls: the best runs need 3 (`glirol`) and 19 (woodworking) calls, and most successful unaided runs finished within 100 (a few took 123 to 133). The first calibration confirms the value; it is raised if more than 1 in 10 unaided runs of a tier that otherwise reaches the goal end at the budget.
 
 ### 2.2 The prompt is a versioned, hashed file
 
-A base prompt is a file in `prompts/` (`base-v1.txt`, `base-v2.txt`, ...) with the placeholders `{what}`, `{item}` and, for a call budget, `{budget}`, and a changelog beside it saying what each version changed and why. `--prompt-file` already fills `{what}`, `{item}` and `{turns}`; `{turns}` stays valid and means steps, so existing prompt files still work. Version 1 is today's text, which `buildPrompt` currently builds in code, written out as `prompts/base-v1.txt` with `{turns}` and producing the same bytes; its runs are labelled as step-budget runs so the four surveys stay reproducible. A new version is a new file, never an edit.
+A base prompt is a file in `prompts/base/` (`v1.txt`, `v2.txt`, ...) with the placeholders `{what}`, `{item}` and, for a call budget, `{budget}`, and a changelog beside it saying what each version changed and why. `--prompt-file` already fills `{what}`, `{item}` and `{turns}`; `{turns}` stays valid and means steps, so existing prompt files still work. Version 1 is today's text, which `buildPrompt` currently builds in code, written out as `prompts/base/v1.txt` with `{turns}` and producing the same bytes; its runs are labelled as step-budget runs so the four surveys stay reproducible. A new version is a new file, never an edit.
 
-An experiment names one prompt version in its summary. Every run records the version and the SHA-256 of the filled prompt in `score.json`, and the replay bundle carries them. The harness refuses to start an arm whose prompt version differs from the summary's, and the report refuses to put arms with different prompt hashes in one table without a notice. The only permitted difference between arms is the fixed sentence of ADR-003 §2.2, which is part of the hashed text.
+An experiment names one prompt version in its summary. Every run records the version and the SHA-256 of the filled prompt in `score.json`, and the replay bundle carries them. The harness refuses to start an arm whose prompt version differs from the summary's, and the report refuses to put arms with different base hashes in one table without a notice. The only permitted difference between arms is the fixed sentence of ADR-003 §2.2, which is part of the hashed text.
 
 ### 2.3 Version 2: the reworded prompt with a call budget
 
@@ -82,3 +82,25 @@ The prompt carries no instruction to learn, no mention of memory or skills, and 
 - Related ADRs: ADR-003 (§2.2 requires one base prompt for all arms; version 1 of that prompt is defined here, and the meaning of "turn budget" in §2.2, §2.5 and the glossary is amended), ADR-006 (the runtime that enforces the budget), ADR-001 (the discovery rule the prompt must respect), ADR-002 (the score and trace that record calls).
 - Evidence: `runs/reports/2026-10-13-s3-nine-models.md`, `design/notes/critic-loop-findings.md`, `design/notes/runtime-recalibration.md`, `design/notes/turn-one-diff.md`.
 - Specs: _(populated automatically by the speckit ADR-link hook once `/speckit-specify` references this ADR)_
+
+## 6. Amendments
+
+- **2026-10-13, the scheme covers every prompt in play, and an experiment pins a prompt set.** Section 2.2 made the player's base
+  prompt a versioned file. Four prompts shape a result, and only one was versioned: the player's base prompt, the fixed sentence an
+  arm adds, the description of the skill tool (which decides how often a skill is loaded), and the review rubric (which decides
+  what a review loop produces). The decision now covers all four.
+  - **Layout.** `prompts/<kind>/v<N>.<ext>` with kinds `base`, `arm-sentence`, `skill-tool` and `review-rubric`, and one
+    `CHANGELOG.md` per kind with a `## v<N>` section per version. A version is never edited.
+  - **The rubric is one kind, unchanged.** It moves to `prompts/review-rubric/v1.json` with identical bytes, so its hash and every
+    earlier loop record stay valid. The way a role's prompt is assembled from named parts stays in code.
+  - **Two fingerprints.** A run records `baseSha256` (the filled base prompt) and `sha256` (the full text sent, including the arm
+    sentence). The report warns when arms' `baseSha256` differ and lists, without a warning, a difference in the sentence alone;
+    with one hash every skill arm would differ from its baseline.
+  - **Prompt set.** An experiment's summary may pin one version per kind it uses. `run-agent`, `critic-loop` and the report refuse
+    or flag a run or loop that disagrees, before any spend where the tool can.
+  - **Budget flags.** `--call-budget <n>` states a call budget and `--max-turns <n>` a step budget; a prompt's placeholder
+    (`{budget}` or `{turns}`) says which it takes, and the other, or both, is refused.
+  - **Score fields.** The score keeps `turns` (responses), `score.totalCalls` and `score.actionCalls`, and adds `prompt`, `budget`
+    and `budgetRefused`; section 2.1's counts mean those existing fields.
+  - **Process version.** A change to any prompt's wording is a new version of its kind and, where it feeds a skill's making (the
+    rubric), bumps the process version under the existing rule. Version 2 of the base prompt does not.
