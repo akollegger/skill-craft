@@ -1,9 +1,17 @@
 {
-  "_note": "Aliases from a canonical model spec to an OpenRouter model id, for market quotes (ADR-006 section 2.4, spec 007 FR-051). Ids only: a value that is not an id is refused, and no rate belongs here. An alias is added only where the OpenRouter entry is the same model, checked against its name, description and canonical slug on 2026-10-12; a model with no alias is never matched by name and is simply unpriced. Not aliased, with the reason: fireworks/glm-5p3 (OpenRouter's z-ai/glm-5.3 matches by name, but its description gives no size and its listed input rate is far below its output rate, so it was left until checked).",
+  "_note": "Aliases from a canonical model spec to an OpenRouter model id, for market quotes (ADR-006 section 2.4, spec 007 FR-051). Ids only: a value that is not an id is refused, and no rate belongs here. An alias is added only where the OpenRouter entry is the same model, checked against its name, description and canonical slug on 2026-10-12 (the survey models on 2026-10-13); a model with no alias is never matched by name and is simply unpriced. Not aliased, with the reason: fireworks/glm-5p3 (OpenRouter's z-ai/glm-5.3 matches by name, but its description gives no size and its listed input rate is far below its output rate, so it was left until checked).",
   "anthropic/claude-haiku-4-5": "anthropic/claude-haiku-4.5",
   "anthropic/claude-haiku-4-5-20251001": "anthropic/claude-haiku-4.5",
   "anthropic/claude-sonnet-5-5": "anthropic/claude-sonnet-5.5",
   "anthropic/claude-opus-5-5": "anthropic/claude-opus-5.5",
   "fireworks/gpt-oss-120b": "openai/gpt-oss-120b",
-  "fireworks/nemotron-lightning-3p5-30b-a3b": "nvidia/nemotron-3.5-lightning"
+  "fireworks/nemotron-lightning-3p5-30b-a3b": "nvidia/nemotron-3.5-lightning",
+  "anthropic/claude-fable-5-1": "anthropic/claude-fable-5.1",
+  "anthropic/claude-haiku-5-5": "anthropic/claude-haiku-5.5",
+  "fireworks/nemotron-3-ultra-nvfp4": "nvidia/nemotron-3-ultra-550b-a55b",
+  "fireworks/glm-5p3-flash": "z-ai/glm-5.3-flash",
+  "fireworks/deepseek-v4p1-flash": "deepseek/deepseek-v4.1-flash",
+  "fireworks/minimax-m3": "minimax/minimax-m3",
+  "fireworks/ember-1": "fireworks/ember-1",
+  "fireworks/kimi-k3": "moonshotai/kimi-k3"
 }

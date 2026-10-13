@@ -5,7 +5,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 .DS_Store
-runs/
+runs/*
+!runs/README.md
+!runs/reports/
 dist-viz/
 loops/
 .cache/
