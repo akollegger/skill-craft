@@ -67,7 +67,8 @@ looking one up. The last column names where the term is decided.
 | **prior fit** | How far a model's existing knowledge predicts a world's recipes: *invented* (none), *faithful* (a well-known source's vocabulary and recipes, a control), or *perturbed* (faithful with stated deviations) | constitution III, ADR-003 |
 | **systematic / idiosyncratic deviation** | In a perturbed world, a rule applied across recipes (a skill can abstract it) versus a change to one recipe (memory can recall it) | ADR-001, ADR-003 |
 | **critic** | A separate model that reviews a distilled skill against a rubric before any student sees it | ADR-003 |
-| **turn budget** | The cap on the agent's turns in a run | ADR-003 |
+| **call budget** | The number of craft-tool calls a run may make, stated in the base prompt and enforced by the driver. A *step budget* (the number of model responses) is the older meaning of turns, kept for version 1 of the base prompt | ADR-003, ADR-007 |
+| **prompt kind / prompt set** | One of the prompts in play (base prompt, arm sentence, skill tool description, review rubric), each a series of versioned files under `prompts/`; the versions an experiment pins, one per kind | ADR-007 |
 | **NAMS** | Neo4j Agent Memory Service: stores conversations, tool calls and extracted entities, and distills skills from them | ADR-003 |
 | **notes file** | `<world>.notes.json`: a world's declared prior fit, a note per recipe for a faithful world, and what it leaves out. Read by tests, the generator and the harness, never by the engine or the agent | constitution III, spec 003 |
 | **experiment summary** | `runs/<experiment>/summary.json`, fixed before the first teacher or arm trial: route, primary measure, goal roles, arms, trial counts, turn budget, spend limit and the list of steps done by hand | spec 003 |
@@ -86,4 +87,4 @@ looking one up. The last column names where the term is decided.
 | [ADR-004](ADR-004-skillcraft-visualizer.md) | The skillcraft visualizer: a read-only view of a folder of runs | accepted | specs/004-skillcraft-visualizer |
 | [ADR-005](ADR-005-per-world-item-art.md) | Per-world item art: drawn icons where a world has them, allocated glyphs where it does not | accepted | specs/006-sprite-library |
 | [ADR-006](ADR-006-ai-sdk-runtime.md) | The AI SDK as the runtime for players and review roles | accepted | specs/007-ai-sdk-runtime |
-| [ADR-007](ADR-007-base-prompt-and-budget.md) | The base prompt is a versioned experiment parameter, and its budget counts tool calls | proposed | specs/008-versioned-base-prompt |
+| [ADR-007](ADR-007-base-prompt-and-budget.md) | The base prompt is a versioned experiment parameter, and its budget counts tool calls | accepted | specs/008-versioned-base-prompt |

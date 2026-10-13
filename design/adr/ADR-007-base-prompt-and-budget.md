@@ -1,7 +1,7 @@
 ---
 id: ADR-007
 title: The base prompt is a versioned experiment parameter, and its budget counts tool calls
-status: proposed
+status: accepted
 created: 2026-10-13
 specs: [specs/008-versioned-base-prompt]
 ---
