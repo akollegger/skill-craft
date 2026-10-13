@@ -129,9 +129,9 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
     await runExperiment({ world: WORLD, goal: GOAL, runs: 2, maxTurns: 12, out, label: "p", driver: fakePlayer({ mode: "crash", personal: PERSONAL }) });
     const score = JSON.parse(readFileSync(join(out, "p", "001", "score.json"), "utf8")) as Record<string, unknown>;
-    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "limits", "measured", "model", "priorFit", "reason", "score", "settings", "text", "turns"].sort());
+    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "limits", "measured", "model", "priorFit", "prompt", "budget", "reason", "score", "settings", "text", "turns"].sort());
     const summary = JSON.parse(readFileSync(join(out, "p", "summary.json"), "utf8")) as { runs: Record<string, unknown>[] } & Record<string, unknown>;
-    expect(Object.keys(summary).sort()).toEqual(["aggregate", "cancelled", "goal", "maxTurns", "mixedModels", "models", "priorFit", "runs", "timeoutMs", "world"].sort());
+    expect(Object.keys(summary).sort()).toEqual(["aggregate", "cancelled", "goal", "maxTurns", "mixedModels", "models", "priorFit", "prompt", "budget", "runs", "timeoutMs", "world"].sort());
     for (const run of summary.runs) expect(run).not.toHaveProperty("text"); // the agent's final message stays in score.json only
   });
 
@@ -139,7 +139,7 @@ describe("nothing personal and nothing the agent said reaches a file", () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
     await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "q", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, reportedCostUsd: 0.5 }) });
     const score = JSON.parse(readFileSync(join(out, "q", "001", "score.json"), "utf8")) as Record<string, unknown>;
-    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "limits", "measured", "model", "priorFit", "reportedCostUsd", "score", "settings", "text", "turns"].sort());
+    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "limits", "measured", "model", "priorFit", "prompt", "budget", "reportedCostUsd", "score", "settings", "text", "turns"].sort());
     const summary = JSON.parse(readFileSync(join(out, "q", "summary.json"), "utf8")) as { aggregate: Record<string, unknown> };
     expect(Object.keys(summary.aggregate).sort()).toEqual(["costSources", "errors", "gaveUp", "meanExtraCalls", "medianCallsToGoal", "mixedCostSources", "mixedModels", "models", "outOfBudget", "pricedRuns", "reached", "runs", "successRate", "totalCostUsd", "unpricedRuns"].sort());
   });
@@ -150,7 +150,7 @@ describe("retries in a score (spec 007)", () => {
     const out = mkdtempSync(join(tmpdir(), "skill-craft-privacy-"));
     await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "r", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, retries: { max: 2, failedAttempts: 1 } }) });
     const score = JSON.parse(readFileSync(join(out, "r", "001", "score.json"), "utf8")) as Record<string, unknown>;
-    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "limits", "measured", "model", "priorFit", "retries", "score", "settings", "text", "turns"].sort());
+    expect(Object.keys(score).sort()).toEqual(["costUsd", "ended", "limits", "measured", "model", "priorFit", "prompt", "budget", "retries", "score", "settings", "text", "turns"].sort());
     expect(score["retries"]).toEqual({ max: 2, failedAttempts: 1 });
   });
 });
@@ -170,7 +170,7 @@ describe("a bundle's manifest fields for the visualizer", () => {
       skill: { name: "demo-skill", sha256: FINGERPRINT, invoked: true, loadedAfterCalls: 3 },
     });
     const bundle = buildBundle(runDir);
-    expect(Object.keys(bundle.manifest).sort()).toEqual(["art", "best", "format", "frames", "goal", "label", "model", "priorFit", "promptNote", "skill", "trace", "world"].sort());
+    expect(Object.keys(bundle.manifest).sort()).toEqual(["art", "best", "format", "frames", "goal", "label", "model", "priorFit", "prompt", "promptNote", "skill", "trace", "world"].sort());
     expect(Object.keys(bundle.manifest.skill ?? {}).sort()).toEqual(["loaded", "loadedAfter", "name"]);
     const text = JSON.stringify(bundle);
     for (const secret of [...SECRETS, SKILL_TEXT, FINGERPRINT]) expect(text, secret).not.toContain(secret);
@@ -266,7 +266,7 @@ describe("the cost source and the quote in a score (spec 007 FR-048)", () => {
     const priceQuote = { source: "market-quote" as const, openRouterId: "anthropic/claude-haiku-4.5", fetchedAt: "2026-10-12T12:00:00.000Z", perMillion: { input: 1, output: 5, cacheRead: 0.1, cacheWrite: 1.25 }, note: "tiers ignored" };
     await runExperiment({ world: WORLD, goal: GOAL, runs: 1, maxTurns: 12, out, label: "s", driver: fakePlayer({ mode: "solve", goal: GOAL, personal: PERSONAL, costSource: "market-quote", priceQuote }) });
     const score = JSON.parse(readFileSync(join(out, "s", "001", "score.json"), "utf8")) as Record<string, unknown>;
-    expect(Object.keys(score).sort()).toEqual(["costSource", "costUsd", "ended", "limits", "measured", "model", "priceQuote", "priorFit", "score", "settings", "text", "turns"].sort());
+    expect(Object.keys(score).sort()).toEqual(["costSource", "costUsd", "ended", "limits", "measured", "model", "priceQuote", "priorFit", "prompt", "budget", "score", "settings", "text", "turns"].sort());
     expect(Object.keys(score["priceQuote"] as object).sort()).toEqual(["fetchedAt", "note", "openRouterId", "perMillion", "source"]);
     for (const secret of SECRETS) expect(JSON.stringify(score["priceQuote"])).not.toContain(secret);
   });

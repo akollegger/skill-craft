@@ -26,6 +26,27 @@ function worldFile(dir: string): string {
   return path;
 }
 
+describe("the prompt a bundle carries (spec 008, FR-007)", () => {
+  it("holds the run's prompt version and fingerprints in the manifest", async () => {
+    const r = await finishedRun();
+    const saved = JSON.parse(readFileSync(join(r.runDir, "score.json"), "utf8"));
+    exportBundle(r.runDir, r.dest);
+    const manifest = JSON.parse(readFileSync(join(r.dest, "bundle.json"), "utf8"));
+    expect(manifest.prompt).toEqual(saved.prompt);
+    expect(manifest.prompt.version).toBe("1");
+  });
+
+  it("leaves it out for a run made before prompts were recorded", async () => {
+    const r = await finishedRun();
+    const path = join(r.runDir, "score.json");
+    const saved = JSON.parse(readFileSync(path, "utf8"));
+    delete saved.prompt;
+    writeFileSync(path, JSON.stringify(saved));
+    exportBundle(r.runDir, r.dest);
+    expect(JSON.parse(readFileSync(join(r.dest, "bundle.json"), "utf8"))).not.toHaveProperty("prompt");
+  });
+});
+
 async function finishedRun(player: FakePlayerOptions = {}) {
   const dir = mkdtempSync(join(tmpdir(), "skill-craft-export-"));
   const world = worldFile(dir);

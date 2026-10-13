@@ -18,6 +18,7 @@ type SavedScore = BundleResult & {
   model: BundleManifest["model"];
   priorFit?: string;
   promptNote?: string;
+  prompt?: BundleManifest["prompt"];
   skill?: { name: string; invoked: boolean; loadedAfterCalls: number | null };
 };
 
@@ -64,6 +65,7 @@ export function buildBundle(runDir: string): Bundle {
     model: { ...saved.model, requested: saved.model.requested === null ? null : canonicalSpec(saved.model.requested), resolved: saved.model.resolved.map(canonicalSpec) },
     ...(saved.priorFit === undefined ? {} : { priorFit: saved.priorFit }),
     ...(saved.promptNote === undefined ? {} : { promptNote: saved.promptNote }),
+    ...(saved.prompt === undefined ? {} : { prompt: saved.prompt }),
     ...(saved.skill === undefined ? {} : { skill: { name: saved.skill.name, loaded: saved.skill.invoked, loadedAfter: saved.skill.loadedAfterCalls } }),
     // How the items the run shows are drawn, so the bundle opens with its look and without the world, the art file or the library.
     art: worldArtFor(world, worldPath, usedItems(frames, saved.score.goal.item)),

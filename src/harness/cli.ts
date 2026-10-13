@@ -6,7 +6,8 @@ import type { AgentDriver, RunLimits } from "./driver.js";
 import { HarnessError, isUserError, UnknownGoalItem } from "./errors.js";
 import { DEFAULT_MODEL, loadSettings, parseModelSpec } from "./models.js";
 import { priceSource, type PriceResolver } from "./pricing.js";
-import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, planExperiment, runExperiment, type AgentRunOptions, type RunReport } from "./run.js";
+import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, planExperiment, runExperiment, usedPrompts, type AgentRunOptions, type RunReport } from "./run.js";
+import { assertSet } from "../prompts/set.js";
 
 export interface CliDeps {
   /** The player. Default: the Claude Agent SDK. */
@@ -21,7 +22,7 @@ export interface CliDeps {
 
 const USAGE =
   "usage: run-agent.ts --goal <item>[:<qty>] [--world <world.json>] [--runs n] [--max-turns n] [--timeout-minutes n]\n" +
-  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-note <text>] [--prompt-file <file>] [--settings <file>]\n" +
+  "       [--label name] [--out runs] [--model m] [--skill <folder>] [--prompt-version n] [--call-budget n] [--arm-sentence n] [--skill-tool-version n] [--experiment <folder>] [--prompt-note <text>] [--prompt-file <file>] [--settings <file>]\n" +
   "       [--step-timeout-seconds n] [--tool-timeout-seconds n] [--max-output-tokens n] [--max-total-tokens n] [--max-usd n] [--dry-run]";
 
 class UsageError extends Error {}
@@ -63,7 +64,7 @@ function line(r: RunReport): string {
   const skill = r.skill ? `  skill ${r.skill.name} (${r.skill.invoked ? `loaded after ${r.skill.loadedAfterCalls ?? "?"} calls` : "NOT loaded"})` : "";
   return (
     `run ${String(r.index).padStart(3, "0")}  ${s.reached ? "reached " : "NOT reached"}  calls ${calls}  crafts ${s.craftsMade}  failed crafts ${s.failedCrafts}  refusals ${refusals}  ` +
-    `turns ${r.turns ?? "-"}  ${cost}  model ${model}${fit}${skill}  time ${time}  tokens ${tokens}  ended ${r.ended}${r.reason ? ` (${r.reason})` : ""}`
+    `turns ${r.turns ?? "-"}  ${r.prompt === undefined ? "" : `prompt v${r.prompt.version}  `}${r.budget?.kind === "calls" ? `budget calls ${r.budget.limit}  ` : ""}${cost}  model ${model}${fit}${skill}  time ${time}  tokens ${tokens}  ended ${r.ended}${r.reason ? ` (${r.reason})` : ""}`
   );
 }
 
@@ -79,7 +80,12 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
         world: { type: "string", default: "worlds/generated/forge-7.json" },
         goal: { type: "string" },
         runs: { type: "string", default: "1" },
-        "max-turns": { type: "string", default: "40" },
+        "max-turns": { type: "string" },
+        "call-budget": { type: "string" },
+        "prompt-version": { type: "string" },
+        "arm-sentence": { type: "string" },
+        "skill-tool-version": { type: "string" },
+        experiment: { type: "string" },
         "timeout-minutes": { type: "string", default: String(DEFAULT_TIMEOUT_MS / 60_000) },
         out: { type: "string", default: "runs" },
         label: { type: "string" },
@@ -102,6 +108,9 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
     if (!world.items.some((i) => i.id === item)) throw new UnknownGoalItem(item);
     const note = values["prompt-note"];
     if (note !== undefined && note.trim() === "") throw new UsageError("--prompt-note must not be empty");
+    if (values["arm-sentence"] !== undefined && note !== undefined) throw new UsageError("give --arm-sentence or --prompt-note, not both");
+    if (values["prompt-version"] !== undefined && values["prompt-file"] !== undefined) throw new UsageError("give --prompt-version or --prompt-file, not both");
+    if (values["call-budget"] !== undefined && values["max-turns"] !== undefined) throw new UsageError("give --call-budget (a budget of tool calls) or --max-turns (a budget of steps), not both");
     const promptFile = values["prompt-file"];
     const template = promptFile === undefined ? undefined : readTemplate(promptFile);
     // The settings pinned for the run's model: a settings file maps model specs to settings, and a model with no entry runs unset.
@@ -126,7 +135,12 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
       world: values.world as string,
       goal: { item, qty: positive("goal quantity", qty) },
       runs: positive("runs", values.runs),
-      maxTurns: positive("max-turns", values["max-turns"]),
+      // A call budget also sets the step limit to the same number: every response makes at least one call (ADR-007).
+      maxTurns: positive(values["call-budget"] === undefined ? "max-turns" : "call-budget", values["call-budget"] ?? values["max-turns"] ?? "40"),
+      ...(values["call-budget"] === undefined ? {} : { callBudget: positive("call-budget", values["call-budget"]) }),
+      ...(values["prompt-version"] === undefined ? {} : { promptVersion: values["prompt-version"] }),
+      ...(values["arm-sentence"] === undefined ? {} : { armSentenceVersion: values["arm-sentence"] }),
+      ...(values["skill-tool-version"] === undefined ? {} : { skillToolVersion: values["skill-tool-version"] }),
       timeoutMs: minutes * 60_000,
       out: values.out as string,
       label: values.label ?? `${basename(values.world as string, ".json")}-${item}-${new Date().toISOString().replace(/[:.]/g, "-")}`,
@@ -140,6 +154,9 @@ export async function runAgentCli(argv: string[], deps: CliDeps): Promise<number
       driver: deps.driver,
       signal: deps.signal,
     };
+
+    // An experiment that pins a prompt set refuses an arm that would use another, before anything is planned or spent.
+    if (values.experiment !== undefined) assertSet(values.experiment, usedPrompts(options));
 
     if (values["dry-run"]) {
       deps.out(JSON.stringify(planExperiment(options), null, 2));

@@ -68,6 +68,10 @@ export interface DriverOptions {
   /** The run folder; the player's working directory. */
   runDir: string;
   maxTurns: number;
+  /** A budget of craft-tool calls (ADR-007). When set, a call past it is not run and the run ends after that response; `maxTurns` is then the same number. */
+  callBudget?: number | undefined;
+  /** The skill tool's description as a template (`{name}`, `{described}`); absent: the driver uses version 1. */
+  skillToolTemplate?: string | undefined;
   model?: string | undefined;
   /** The settings pinned for this model (thinking, effort, temperature); an unset one is left to the provider's default. */
   settings?: ModelSettings | undefined;
@@ -118,6 +122,8 @@ export interface PlayerResult {
   text: string;
   /** How many tool calls the model made that were not valid (malformed arguments, an unknown tool). Absent for a player that does not count them. */
   invalidToolCalls?: number | undefined;
+  /** Calls refused for being over a call budget, which are not in the run log. 0 for a run with no call budget; absent for a player that does not count them. */
+  budgetRefused?: number | undefined;
   /** Whether the agent loaded the installed skill at least once. Absent when no skill was installed. */
   skillInvoked?: boolean | undefined;
   /** How many craft calls the agent had made when it first loaded the skill; null if it never did. */

@@ -236,3 +236,60 @@ describe("tool calls that are not valid", () => {
     expect(await aiDriver(opts, recorder)).toMatchObject({ invalidToolCalls: 0 });
   }, 30_000);
 });
+
+/** One response that asks for several craft calls at once, as a model that batches does. */
+const together = (...tools: string[]): Result =>
+  ({ content: tools.map((toolName, i) => ({ type: "tool-call", toolCallId: `p${i}-${toolName}`, toolName, input: "{}" })), finishReason: { unified: "tool-calls", raw: undefined }, usage: usage(10, 5, 100), warnings: [] }) as Result;
+const logged = (runLog: string): number => readFileSync(runLog, "utf8").split("\n").filter(Boolean).length;
+
+describe("a run with a call budget (spec 008, SC-003)", () => {
+  it("runs the calls that fit, refuses the rest of a response that crosses the budget, and ends after it", async () => {
+    sequence(together("look", "inventory", "look", "inventory", "look"), say("never reached"));
+    const { opts, recorder } = setup({ callBudget: 3, maxTurns: 3 });
+    const r = await aiDriver(opts, recorder);
+    expect(r).toMatchObject({ ended: "budget", turns: 1, budgetRefused: 2 });
+    expect(logged(opts.runLog)).toBe(3);
+    expect(calls()).toHaveLength(1);
+    expect(await noServersSoon()).toEqual([]);
+  }, 30_000);
+
+  it("ends after a response that uses the budget exactly, refusing nothing", async () => {
+    sequence(together("look", "inventory", "look"), say("never reached"));
+    const { opts, recorder } = setup({ callBudget: 3, maxTurns: 3 });
+    expect(await aiDriver(opts, recorder)).toMatchObject({ ended: "budget", turns: 1, budgetRefused: 0 });
+    expect(logged(opts.runLog)).toBe(3);
+  }, 30_000);
+
+  it("counts across responses and crosses the budget in the middle of a later one", async () => {
+    sequence(together("look", "inventory"), together("look", "inventory", "look"), say("never reached"));
+    const { opts, recorder } = setup({ callBudget: 3, maxTurns: 3 });
+    const r = await aiDriver(opts, recorder);
+    expect(r).toMatchObject({ ended: "budget", turns: 2, budgetRefused: 2 });
+    expect(logged(opts.runLog)).toBe(3);
+  }, 30_000);
+
+  it("ends a response with no call as it always did, and refuses nothing", async () => {
+    sequence(say("done"));
+    const { opts, recorder } = setup({ callBudget: 3, maxTurns: 3 });
+    expect(await aiDriver(opts, recorder)).toMatchObject({ ended: "stopped", turns: 1, budgetRefused: 0 });
+  }, 30_000);
+
+  it("reports no refusals for a step budget", async () => {
+    sequence(call("c1", "look"), say("done"));
+    const { opts, recorder } = setup();
+    expect(await aiDriver(opts, recorder)).toMatchObject({ ended: "stopped", budgetRefused: 0 });
+  }, 30_000);
+
+  it("keeps its counts when it is cancelled, with no refusals", async () => {
+    const stop = new AbortController();
+    sequence(together("look", "inventory"), () => {
+      stop.abort();
+      return stalls()({ abortSignal: stop.signal });
+    });
+    const { opts, recorder } = setup({ callBudget: 100, maxTurns: 100, signal: stop.signal });
+    const error = await aiDriver(opts, recorder).then(() => undefined, (e: unknown) => e);
+    expect(error).toBeInstanceOf(DriverAborted);
+    expect((error as DriverAborted).partial).toMatchObject({ turns: 1, budgetRefused: 0 });
+    expect(logged(opts.runLog)).toBe(2);
+  }, 30_000);
+});

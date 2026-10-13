@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
+import { checkSet, parsePromptSet, type PromptSet } from "../prompts/set.js";
 import { z } from "zod";
 import { HarnessError, isUserError, ReportRefused } from "./errors.js";
 import { canonicalSpec } from "./models.js";
@@ -41,6 +42,8 @@ type Cast = z.infer<typeof castSchema>;
 
 const summarySchema = z.object({
   experiment: z.string(),
+  /** The prompt versions the experiment pins (spec 008); checked by `parsePromptSet`, so an invalid one is refused with its own message. */
+  promptSet: z.unknown().optional(),
   priorFit: z.string(),
   route: z.enum(["escalating", "preemptive"]),
   primary: z.enum(["repair", "transfer"]),
@@ -103,6 +106,8 @@ const loopSchema = z.object({
   process: z.object({ version: z.string(), commit: z.string().nullable(), dirty: z.boolean().nullable() }).nullable().optional(),
   recordedRuns: z.array(z.object({ models: z.array(z.string()), settings: settingsSchema.partial().extend({ temperature: z.number().nullable().optional(), effort: z.string().nullable().optional(), thinking: z.union([z.string(), z.number()]).nullable().optional() }).nullable() }).passthrough()),
   recordingFormat: z.string().nullable().optional(),
+  /** The review rubric the loop used; `kindVersion` is its version in the prompt scheme, absent in a record made before it. */
+  rubric: z.object({ kindVersion: z.string().optional() }).passthrough().optional(),
   roles: z.object({
     critic: z.object({ requested: z.string(), resolved: z.array(z.string()), settings: z.any().nullable() }).passthrough(),
     reviser: z.object({ requested: z.string(), resolved: z.array(z.string()), settings: z.any().nullable() }).passthrough(),
@@ -118,11 +123,17 @@ type Loop = z.infer<typeof loopSchema>;
  * Read the loop record that made a skill, check it against the reviewed skill and the cast, and say who made it. A record
  * that contradicts either is refused: the table would otherwise be read against a skill it did not use.
  */
-function skillMadeBy(path: string, reviewSha: string, cast: Cast): string[] {
+function skillMadeBy(path: string, reviewSha: string, cast: Cast, promptSet?: PromptSet): string[] {
   const parsed = loopSchema.safeParse(readJson(fromRepoPath(path), "loop record named by review.json"));
   if (!parsed.success) throw new ReportRefused("the loop record named by review.json is not a loop record");
   const loop: Loop = parsed.data;
   if (loop.finalSkillSha256 !== reviewSha) throw new ReportRefused("the loop record's final skill is not the reviewed skill");
+  if (promptSet?.reviewRubric !== undefined) {
+    const used = loop.rubric?.kindVersion;
+    if (used === undefined) throw new ReportRefused("the loop record names no review rubric version, but the experiment pins one");
+    const wrong = checkSet(promptSet, { reviewRubric: used })[0];
+    if (wrong !== undefined) throw new ReportRefused(`the loop record: ${wrong}`);
+  }
   const teacher = canonicalSpec(cast.teacher.model);
   for (const r of loop.recordedRuns) {
     // Exactly the cast's teacher: a run a substituted model also served is not the teacher's, and one that names no model cannot be checked.
@@ -161,6 +172,9 @@ const scoreSchema = z.object({
   costSource: z.enum(["provider", "pin", "market-quote"]).nullable().optional(),
   priorFit: z.string().optional(),
   promptNote: z.string().optional(),
+  /** The prompt the run saw; absent in a run from before prompts were recorded. */
+  prompt: z.object({ version: z.string(), baseSha256: z.string(), sha256: z.string(), armSentence: z.object({ version: z.string() }).optional(), skillTool: z.object({ version: z.string() }).optional() }).optional(),
+  budget: z.object({ kind: z.enum(["steps", "calls"]), limit: z.number() }).optional(),
   score: z.object({ reached: z.boolean(), extraCalls: z.number().nullable() }),
   measured: z
     .object({ total: z.object({ inputTokens: z.number(), outputTokens: z.number(), cacheReadTokens: z.number(), cacheCreationTokens: z.number() }).optional() })
@@ -212,6 +226,45 @@ const median = (xs: number[]): number => {
 const num = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 const pct2 = (x: number): string => x.toFixed(2);
 
+/**
+ * What the report says of the prompts its runs saw (spec 008). Arms are compared on the base prompt's fingerprint: a difference that is only
+ * the fixed arm sentence is expected of a skill arm and is listed, not warned about. A run with no record is unversioned, never version 1.
+ */
+const KIND_LABEL = { armSentence: "arm sentence", skillTool: "skill tool", reviewRubric: "review rubric" } as const;
+
+/** The experiment's prompt set as a line, and the kinds the runs used that the set leaves unpinned. */
+function promptSetLines(set: PromptSet | undefined, used: ReadonlySet<"armSentence" | "skillTool">): string[] {
+  if (set === undefined) return ["", "Prompt set: not pinned."];
+  const parts = [`base prompt ${set.base}`, ...(set.callBudget === undefined ? [] : [`call budget ${set.callBudget}`]), ...(["armSentence", "skillTool", "reviewRubric"] as const).flatMap((k) => (set[k] === undefined ? [] : [`${KIND_LABEL[k]} ${set[k]}`]))];
+  const unpinned = [...used].filter((k) => set[k] === undefined).map((k) => KIND_LABEL[k]);
+  return ["", `Prompt set: ${parts.join(", ")}.`, ...(unpinned.length === 0 ? [] : [`Used but not pinned by the experiment: ${unpinned.join(", ")}.`])];
+}
+
+function promptLines(prompts: readonly ({ version: string; baseSha256: string; sha256: string } | null)[]): string[] {
+  const out: string[] = [];
+  const unversioned = prompts.filter((p) => p === null).length;
+  const seen = prompts.filter((p): p is { version: string; baseSha256: string; sha256: string } => p !== null);
+  if (unversioned > 0) out.push("", `Prompts: ${unversioned} run${unversioned === 1 ? " is" : "s are"} unversioned (made before prompt versions were recorded).`);
+  if (seen.length === 0) return out;
+  const byBase = new Map<string, { versions: Set<string>; runs: number }>();
+  for (const p of seen) {
+    const e = byBase.get(p.baseSha256) ?? { versions: new Set<string>(), runs: 0 };
+    e.versions.add(p.version);
+    e.runs += 1;
+    byBase.set(p.baseSha256, e);
+  }
+  const label = (sha: string, e: { versions: Set<string>; runs: number }) => `version ${[...e.versions].sort().join(" or ")} (base fingerprint ${sha.slice(0, 12)}, ${e.runs} run${e.runs === 1 ? "" : "s"})`;
+  if (byBase.size > 1) {
+    out.push("", `Warning: the runs in this report saw different base prompts: ${[...byBase].map(([sha, e]) => label(sha, e)).join("; ")}. Their results are not one comparable set.`);
+  } else {
+    const [sha, e] = [...byBase][0] as [string, { versions: Set<string>; runs: number }];
+    out.push("", `Prompts: base prompt version ${[...e.versions].sort().join(" or ")} in ${e.runs} run${e.runs === 1 ? "" : "s"} (base fingerprint ${sha.slice(0, 12)}).`);
+    const full = new Set(seen.map((p) => p.sha256));
+    if (full.size > 1) out.push(`The runs differ only in the fixed arm sentence (${full.size} distinct texts sent).`);
+  }
+  return out;
+}
+
 export interface ReportInput {
   /** The experiment folder, holding `summary.json` (and `review.json` when a skill was used). */
   experiment: string;
@@ -225,6 +278,8 @@ export function buildReport(input: ReportInput): string {
   if (!parsed.success) throw new ReportRefused(`the experiment summary does not match the contract: ${parsed.error.issues[0]?.path.join(".") ?? ""}`);
   const summary: Summary = parsed.data;
   const cast = castOf(summary);
+  // The versions the experiment pins, one per prompt kind it uses; a set that is not one is refused before any run is read.
+  const promptSet = summary.promptSet === undefined ? undefined : parsePromptSet(summary.promptSet);
 
   if (summary.roles !== undefined) {
     for (const goal of summary.goals.set) if (summary.roles[goal] === undefined) throw new ReportRefused(`the summary has no role for goal ${goal}`);
@@ -233,6 +288,8 @@ export function buildReport(input: ReportInput): string {
 
   const dirs = [...input.labels].sort((a, b) => (basename(a) < basename(b) ? -1 : 1));
   const rows = new Map<string, Row>();
+  const usedKinds = new Set<"armSentence" | "skillTool">();
+  const prompts: ({ version: string; baseSha256: string; sha256: string } | null)[] = []; // one per run, null when the run recorded none
   const skillArmUsed = dirs.some((d) => {
     const tag = summary.labels[basename(d)];
     return tag !== undefined && "arm" in tag && summary.arms.find((a) => a.label === tag.arm)?.skill === true;
@@ -307,6 +364,14 @@ export function buildReport(input: ReportInput): string {
       if ((s.promptNote ?? undefined) !== (arm?.promptNote ?? undefined)) {
         throw new ReportRefused(`${name}/${rd} has a different prompt note from its arm's`);
       }
+      prompts.push(s.prompt ?? null);
+      if (promptSet !== undefined) {
+        if (s.prompt === undefined) throw new ReportRefused(`${name}/${rd} recorded no prompt, but the experiment pins a prompt set`);
+        const used = { base: s.prompt.version, ...(s.prompt.armSentence === undefined ? {} : { armSentence: s.prompt.armSentence.version }), ...(s.prompt.skillTool === undefined ? {} : { skillTool: s.prompt.skillTool.version }), ...(s.budget?.kind === "calls" ? { callBudget: s.budget.limit } : {}) };
+        const wrong = checkSet(promptSet, used)[0];
+        if (wrong !== undefined) throw new ReportRefused(`${name}/${rd}: ${wrong}`);
+        for (const k of ["armSentence", "skillTool"] as const) if (used[k] !== undefined) usedKinds.add(k);
+      }
       const model = s.model.resolved.length > 0 ? s.model.resolved.map(canonicalSpec).join("+") : "unknown";
       if (expectedModel !== undefined && model !== expectedModel) throw new ReportRefused(`${name}/${rd} ran model ${model}, but arm ${arm?.label} declares ${expectedModel}`);
       const fit = s.priorFit ?? "undeclared";
@@ -362,7 +427,7 @@ export function buildReport(input: ReportInput): string {
     `Route: ${summary.route}; primary measure: ${summary.primary}.${summary.route === "escalating" ? " Both were declared after calibration, which this route needs: the gaps are found first." : ""}`,
     "",
     ...castLines(cast),
-    ...(loopPath === undefined ? [] : ["", ...skillMadeBy(loopPath, reviewSha as string, cast)]),
+    ...(loopPath === undefined ? [] : ["", ...skillMadeBy(loopPath, reviewSha as string, cast, promptSet)]),
     "",
     "| Arm | Model | Prior fit | Goal | Reached | 95% interval | Extra calls (min / median / max) | Cost | Tokens | Skill loaded | Flags |",
     "|---|---|---|---|---|---|---|---|---|---|---|",
@@ -382,6 +447,8 @@ export function buildReport(input: ReportInput): string {
   const sources = [...new Set(sorted.flatMap((r) => [...r.sources]))].sort();
   if (sources.length > 1) lines.push("", `Costs in this report come from more than one source (${sources.map((x) => SOURCE_LABEL[x] ?? x).join(", ")}) and are not one comparable figure.`);
   if (sources.includes("market-quote")) lines.push("", "A market quote is a marketplace price read from OpenRouter's public model list: an estimate of a model's market rate, and not a record of any host's rate.");
+
+  lines.push(...promptSetLines(promptSet, usedKinds), ...promptLines(prompts));
 
   const verdict = (a: Row, b: Row): string => {
     const [alo, ahi] = wilson(a.reached, a.trials);

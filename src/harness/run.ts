@@ -19,6 +19,9 @@ import { craftServer } from "./craft-server.js";
 import { canonicalSpec, checkSettings, DEFAULT_MODEL, parseModelSpec, type ModelSettings } from "./models.js";
 import { resolveLimits, type ResolvedLimits } from "./ai-options.js";
 import type { PriceQuote } from "./pricing.js";
+import { composePrompt, type Composed } from "../prompts/compose.js";
+import { loadVersion } from "../prompts/index.js";
+import type { UsedPrompts } from "../prompts/set.js";
 
 export const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -30,8 +33,16 @@ export interface AgentRunOptions {
   world: string;
   goal: SolverGoal;
   runs: number;
-  /** Hard budget: the player's turn limit. */
+  /** Hard budget: the player's step limit (the number of model responses). A call budget sets it to the same number. */
   maxTurns: number;
+  /** A budget of craft-tool calls, for a base prompt that states `{budget}` (ADR-007). Absent: `maxTurns` is a step budget. */
+  callBudget?: number | undefined;
+  /** The numbered base prompt (`prompts/base/v<N>.txt`); default 1. Exclusive with `promptTemplate`. */
+  promptVersion?: string | undefined;
+  /** The numbered arm sentence (`prompts/arm-sentence/v<N>.txt`); exclusive with `promptNote`. */
+  armSentenceVersion?: string | undefined;
+  /** The numbered skill tool description (`prompts/skill-tool/v<N>.txt`); default 1. Used only when a skill is installed. */
+  skillToolVersion?: string | undefined;
   /** Directory that holds one folder per experiment label. */
   out: string;
   label: string;
@@ -60,22 +71,39 @@ export interface AgentRunOptions {
   driver?: AgentDriver | undefined;
 }
 
-/** The goal reaches the agent only through this prompt; the world never states goals. */
+/** The goal reaches the agent only through this prompt; the world never states goals. The text comes from a versioned prompt file (src/prompts). */
 export function buildPrompt(goal: SolverGoal, maxTurns: number, note?: string, template?: string): string {
-  const what = goal.qty === 1 ? `one ${goal.item}` : `${goal.qty} of ${goal.item}`;
-  if (template !== undefined) {
-    const text = template.replaceAll("{what}", what).replaceAll("{item}", goal.item).replaceAll("{turns}", String(maxTurns)).trim();
-    return [text, ...(note === undefined ? [] : [note])].join("\n");
-  }
-  return [
-    `You are at a crafting table in an unfamiliar workshop. Your goal: end up holding ${what}.`,
-    "Use only the craft tools, and start with help.",
-    `Nobody can answer questions or give hints, so do not ask for any. Keep trying on your own until you hold ${goal.item}, or until your budget of ${maxTurns} turns is used up.`,
-    "craft is irreversible and uses up whatever is on the table, so explore with place, remove, clear and look before you commit.",
-    "When you hold it, say so in one line and stop.",
-    ...(note === undefined ? [] : [note]),
-  ].join("\n");
+  return composePrompt({ goal, maxTurns, note, template }).text;
 }
+
+/** How a run under a call budget ends: a goal held on the last in-budget call is a stop, not a budget end (ADR-007 section 2.1). Anything else is as the driver said. */
+export const settleEnd = (ended: PlayerResult["ended"], kind: "steps" | "calls", reached: boolean): PlayerResult["ended"] => (kind === "calls" && ended === "budget" && reached ? "stopped" : ended);
+
+/** The prompt a run sends, with its version, fingerprints and budget. */
+export const composeFor = (o: AgentRunOptions): Composed =>
+  composePrompt({ goal: o.goal, maxTurns: o.maxTurns, version: o.promptVersion, template: o.promptTemplate, note: o.promptNote, armSentenceVersion: o.armSentenceVersion, callBudget: o.callBudget });
+
+/** What a run uses, for checking against an experiment's prompt set: its base version, the arm sentence and skill tool when it has them, and a call budget. */
+export function usedPrompts(o: AgentRunOptions): UsedPrompts {
+  const c = composeFor(o);
+  return { base: c.version, ...(c.armSentence === undefined ? {} : { armSentence: c.armSentence.version }), ...(skillToolFor(o) === undefined ? {} : { skillTool: skillToolFor(o)!.version }), ...(c.budget.kind === "calls" ? { callBudget: c.budget.limit } : {}) };
+}
+
+/** What a score records of the prompt a run saw (spec 008, contracts/run-record.md). */
+export interface PromptRecord {
+  version: string;
+  baseSha256: string;
+  sha256: string;
+  armSentence?: { version: string; sha256: string };
+  skillTool?: { version: string; sha256: string };
+}
+
+const promptRecord = (c: Composed, skillTool?: { version: string; sha256: string }): PromptRecord => ({ version: c.version, baseSha256: c.baseSha256, sha256: c.sha256, ...(c.armSentence === undefined ? {} : { armSentence: c.armSentence }), ...(skillTool === undefined ? {} : { skillTool }) });
+
+const skillToolRecord = (o: AgentRunOptions) => { const v = skillToolFor(o); return v === undefined ? undefined : { version: v.version, sha256: v.sha256 }; };
+
+/** The skill tool's description, loaded only for a run that has a skill. A version that does not exist is refused here, before any run. */
+const skillToolFor = (o: AgentRunOptions) => (o.skill === undefined ? undefined : loadVersion("skill-tool", o.skillToolVersion ?? "1"));
 
 /**
  * What `mcp.json` records for a run: how the craft server was started. Export finds the world here. Paths
@@ -131,6 +159,10 @@ export interface RunReport extends PlayerResult {
   promptNote?: string | undefined;
   /** The skill this run had available, when one was installed. */
   skill?: { name: string; sha256: string; invoked: boolean; loadedAfterCalls: number | null } | undefined;
+  /** The prompt this run saw: its version and fingerprints. Absent in a run made before this was recorded. */
+  prompt?: PromptRecord | undefined;
+  /** The budget the prompt stated and the driver enforced. */
+  budget?: { kind: "steps" | "calls"; limit: number } | undefined;
   /** The settings this run used. */
   settings: RecordedSettings;
   /** The limits this run ran under, defaults filled in. */
@@ -198,7 +230,8 @@ const runDir = (o: AgentRunOptions, index: number): string => join(o.out, o.labe
 /** What a run would do, without running or creating anything (a dry run). */
 export function planExperiment(o: AgentRunOptions) {
   const priorFit = priorFitOf(o.world);
-  const prompt = buildPrompt(o.goal, o.maxTurns, o.promptNote, o.promptTemplate);
+  const composed = composeFor(o);
+  const prompt = composed.text;
   if (o.settings !== undefined) checkSettings(o.model ?? DEFAULT_MODEL, o.settings); // a setting the provider does not take is refused here, before any spend
   checkLimits(o.model, o.limits, o.price);
   return Array.from({ length: o.runs }, (_, i) => {
@@ -221,7 +254,7 @@ export function planExperiment(o: AgentRunOptions) {
       ...(skill ? { skills: [skill.qualifiedName] } : {}),
     };
     // Show the plan as it will be recorded: repository-relative paths, and without the PATH the live call adds.
-    return { run: i + 1, dir, priorFit, prompt, runLog: toRepoPath(runLog), ...(o.skill ? { skill: toRepoPath(resolve(o.skill)) } : {}), options: { ...options, cwd: toRepoPath(resolve(dir)), ...mcpConfigFor(resolve(o.world), runLog) } };
+    return { run: i + 1, dir, priorFit, prompt, promptRecord: promptRecord(composed, skillToolRecord(o)), budget: composed.budget, runLog: toRepoPath(runLog), ...(o.skill ? { skill: toRepoPath(resolve(o.skill)) } : {}), options: { ...options, cwd: toRepoPath(resolve(dir)), ...mcpConfigFor(resolve(o.world), runLog) } };
   });
 }
 
@@ -251,7 +284,7 @@ const failedResult = (requested: string | null, reason: string): PlayerResult =>
 const writeScore = (dir: string, r: RunReport): void =>
   writeFileSync(
     join(dir, "score.json"),
-    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, ...(r.retries === undefined ? {} : { retries: r.retries }), ...(r.reportedCostUsd === undefined ? {} : { reportedCostUsd: r.reportedCostUsd }), ...(r.costSource === undefined ? {} : { costSource: r.costSource }), ...(r.priceQuote === undefined ? {} : { priceQuote: r.priceQuote }), ...(r.invalidToolCalls === undefined ? {} : { invalidToolCalls: r.invalidToolCalls }), ...(r.limits === undefined ? {} : { limits: r.limits }), text: r.text, score: r.score, measured: r.measured, model: r.model, settings: r.settings, priorFit: r.priorFit, ...(r.promptNote === undefined ? {} : { promptNote: r.promptNote }), ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
+    `${JSON.stringify({ ended: r.ended, ...(r.reason === undefined ? {} : { reason: r.reason }), turns: r.turns, costUsd: r.costUsd, ...(r.retries === undefined ? {} : { retries: r.retries }), ...(r.reportedCostUsd === undefined ? {} : { reportedCostUsd: r.reportedCostUsd }), ...(r.costSource === undefined ? {} : { costSource: r.costSource }), ...(r.priceQuote === undefined ? {} : { priceQuote: r.priceQuote }), ...(r.invalidToolCalls === undefined ? {} : { invalidToolCalls: r.invalidToolCalls }), ...(r.budgetRefused === undefined ? {} : { budgetRefused: r.budgetRefused }), ...(r.limits === undefined ? {} : { limits: r.limits }), text: r.text, score: r.score, measured: r.measured, model: r.model, settings: r.settings, priorFit: r.priorFit, ...(r.prompt === undefined ? {} : { prompt: r.prompt }), ...(r.budget === undefined ? {} : { budget: r.budget }), ...(r.promptNote === undefined ? {} : { promptNote: r.promptNote }), ...(r.skill === undefined ? {} : { skill: r.skill }) }, null, 2)}\n`,
   );
 
 /** Run the agent once against a fresh server, then score and measure it. A failed player is a recorded error. */
@@ -260,7 +293,8 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
   mkdirSync(dir, { recursive: true });
   const runLog = resolve(dir, "run.jsonl");
   const tracePath = join(dir, "trace.jsonl");
-  const prompt = buildPrompt(o.goal, o.maxTurns, o.promptNote, o.promptTemplate);
+  const composed = composeFor(o);
+  const prompt = composed.text;
   const requested = o.model ?? null;
   writeFileSync(join(dir, "mcp.json"), `${JSON.stringify(mcpConfigFor(resolve(o.world), runLog), null, 2)}\n`);
   writeFileSync(join(dir, "prompt.txt"), `${prompt}\n`);
@@ -292,7 +326,7 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
   let failure: HarnessError | null = null;
   try {
     result = await driver(
-      { prompt, world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, model: o.model, ...(o.settings === undefined ? {} : { settings: o.settings }), ...(o.limits === undefined ? {} : { limits: o.limits }), ...(o.price === undefined ? {} : { price: o.price }), signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
+      { prompt, ...(skillToolFor(o) === undefined ? {} : { skillToolTemplate: (skillToolFor(o) as { text: string }).text }), world: resolve(o.world), runLog, runDir: resolve(dir), maxTurns: o.maxTurns, ...(composed.budget.kind === "calls" ? { callBudget: composed.budget.limit } : {}), model: o.model, ...(o.settings === undefined ? {} : { settings: o.settings }), ...(o.limits === undefined ? {} : { limits: o.limits }), ...(o.price === undefined ? {} : { price: o.price }), signal: control.signal, skill: skill ? { pluginDir: resolve(skill.pluginDir), qualifiedName: skill.qualifiedName } : undefined },
       sink,
     );
   } catch (e) {
@@ -318,7 +352,7 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
   const problem = failure ?? replayFailure;
   const finished = result ?? aborted;
   const base = finished ?? failedResult(requested, problem ? reasonOf(problem) : "");
-  const player: PlayerResult = problem ? { ...base, ended: "error", reason: reasonOf(problem) } : base;
+  const player: PlayerResult = problem ? { ...base, ended: "error", reason: reasonOf(problem) } : { ...base, ended: settleEnd(base.ended, composed.budget.kind, score.reached) };
   const report: RunReport = {
     ...player,
     index,
@@ -329,6 +363,8 @@ async function runOnce(o: AgentRunOptions, index: number, world: World, priorFit
     settings: recordedSettings(o.settings),
     limits: resolveLimits(o.limits),
     priorFit,
+    prompt: promptRecord(composed, skillToolRecord(o)),
+    budget: composed.budget,
     ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }),
     ...(skill ? { skill: { name: skill.name, sha256: skill.sha256, invoked: result?.skillInvoked === true, loadedAfterCalls: result?.skillLoadedAfterCalls ?? null } } : {}),
   };
@@ -365,6 +401,8 @@ export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; 
   // Refuse before spending anything on a label that has already been used.
   for (let i = 1; i <= o.runs; i++) if (existsSync(runDir(o, i))) throw new RunFolderExists(runDir(o, i));
 
+  skillToolFor(o); // an unknown skill tool version is refused here too
+  const composed = composeFor(o); // a prompt that cannot be filled, or a budget meaning that does not match, is refused here, before any run
   const driver = o.driver ?? (await import("./ai-driver.js")).aiDriver;
   const dir = join(o.out, o.label);
   mkdirSync(dir, { recursive: true });
@@ -389,7 +427,7 @@ export async function runExperiment(o: AgentRunOptions): Promise<{ dir: string; 
   const agg = aggregate(reports);
   writeFileSync(
     join(dir, "summary.json"),
-    `${JSON.stringify({ world: o.world, priorFit, ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }), goal: o.goal, maxTurns: o.maxTurns, timeoutMs: o.timeoutMs ?? DEFAULT_TIMEOUT_MS, cancelled, aggregate: agg, models: agg.models, mixedModels: agg.mixedModels, runs: reports.map(({ text: _text, ...r }) => r) }, null, 2)}\n`,
+    `${JSON.stringify({ world: o.world, priorFit, prompt: { version: composed.version, baseSha256: composed.baseSha256 }, budget: composed.budget, ...(o.promptNote === undefined ? {} : { promptNote: o.promptNote }), goal: o.goal, ...(composed.budget.kind === "calls" ? { callBudget: composed.budget.limit } : { maxTurns: o.maxTurns }), timeoutMs: o.timeoutMs ?? DEFAULT_TIMEOUT_MS, cancelled, aggregate: agg, models: agg.models, mixedModels: agg.mixedModels, runs: reports.map(({ text: _text, ...r }) => r) }, null, 2)}\n`,
   );
   return { dir, reports, aggregate: agg, cancelled };
 }

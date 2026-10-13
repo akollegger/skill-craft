@@ -22,6 +22,8 @@ export interface BundleManifest {
   priorFit?: string;
   /** The fixed sentence added to the prompt, when the run had one. */
   promptNote?: string;
+  /** The prompt the run saw: its version and fingerprints. Absent for a run made before prompts were recorded. */
+  prompt?: { version: string; baseSha256: string; sha256: string; armSentence?: { version: string; sha256: string } };
   /** The skill the run had installed: its name, whether the agent loaded it and after how many calls. */
   skill?: { name: string; loaded: boolean; loadedAfter: number | null };
   /** How the items of this run's frames and goal are drawn. Absent in bundles exported before item art. */

@@ -16,6 +16,7 @@ import { assertSameTask, recordingsChars, replayRun, type Recording } from "./tr
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { canonicalSpec, checkSettings, loadSettings } from "../harness/models.js";
+import { assertSet } from "../prompts/set.js";
 
 export interface LoopCliDeps {
   /** The role driver. Default: the Claude Agent SDK, loaded only when a loop actually runs. */
@@ -88,6 +89,7 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
         out: { type: "string", default: "loops" },
         label: { type: "string" },
         settings: { type: "string" },
+        experiment: { type: "string" },
         "dry-run": { type: "boolean", default: false },
       },
     });
@@ -153,6 +155,8 @@ export async function runCriticLoopCli(argv: string[], deps: LoopCliDeps): Promi
     };
 
     const rubric = loadRubric();
+    // An experiment that pins the review rubric's version refuses a loop that would use another, before any call.
+    if (values.experiment !== undefined) assertSet(values.experiment, rubric.kindVersion === null ? {} : { reviewRubric: rubric.kindVersion });
     const candidate = candidateFolder === undefined ? undefined : readPackage(candidateFolder);
     if (recordingsChars(recordings) > 0) checkSizes(recordings, candidate ?? packageFromFiles({ "SKILL.md": "---\nname: placeholder\ndescription: d\n---\nbody\n" }));
 
