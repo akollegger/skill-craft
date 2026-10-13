@@ -146,18 +146,18 @@ description: "Task list for the versioned base prompt with a call budget"
 **Independent Test**: version 2 fills and passes the word check; the comparison table exists with both versions' results.
 
 - [X] T043 [P] [US3] In `test/prompts.test.ts`, version 2 filled for `wooden_stool` states the goal, the call budget and "including several made at once", and contains none of the forbidden words (US3 scenarios 1 and 2)
-- [ ] T044 [US3] Run the comparison from `quickstart.md` step 7: `fireworks/nemotron-3-ultra-nvfp4`, `fireworks/glm-5p3-flash` and `anthropic/claude-fable-5-1` on `wooden_stool` and `glirol`, five trials each, `--prompt-version 2 --call-budget 100 --max-output-tokens 16384 --max-usd 2`, labels `p2-<model>-<goal>`, with a dry run first and a spend check after the first model (30 runs; get the user's go-ahead before the Fable runs)
-- [ ] T045 [US3] Write `runs/reports/<date>-p2-prompt-version-2.md`: success and cost per model, task and version beside the version 1 runs in `runs/s1-*` and `runs/s2-*`, whether version 2 moved any baseline (SC-005), whether Fable's misses used at least 90% of the budget (SC-006), and the budget size's fate under the rule in ADR-007 §2.1
-- [ ] T046 [US3] If version 2 moved a baseline, record it in `design/adr/ADR-007-base-prompt-and-budget.md` §6 Amendments with the numbers and name version 2 in the experiment summary
+- [X] T044 [US3] Run the comparison from `quickstart.md` step 7: `fireworks/nemotron-3-ultra-nvfp4`, `fireworks/glm-5p3-flash` and `anthropic/claude-fable-5-1` on `wooden_stool` and `glirol`, five trials each, `--prompt-version 2 --call-budget 100 --max-output-tokens 16384 --max-usd 2`, labels `p2-<model>-<goal>`, with a dry run first and a spend check after the first model (30 runs; get the user's go-ahead before the Fable runs)
+- [X] T045 [US3] Write `runs/reports/<date>-p2-prompt-version-2.md`: success and cost per model, task and version beside the version 1 runs in `runs/s1-*` and `runs/s2-*`, whether version 2 moved any baseline (SC-005), whether Fable's misses used at least 90% of the budget (SC-006), and the budget size's fate under the rule in ADR-007 §2.1
+- [X] T046 [US3] If version 2 moved a baseline, record it in `design/adr/ADR-007-base-prompt-and-budget.md` §6 Amendments with the numbers and name version 2 in the experiment summary
 
 ---
 
 ## Phase 8: Polish and cross-cutting
 
-- [ ] T047 [P] Update `design/adr/ADR-003-experiment-protocol.md` (the meaning of "turn budget" now a call budget, §2.2 and §2.5, as an Amendments entry) and the glossary entry in `design/adr/README.md` (FR-017, FR-023)
-- [ ] T048 [P] Update `AGENTS.md` (the commands, the layout table with `prompts/` and `src/prompts/`, the run options, the rule that a prompt change is a new version) and `specs/007-ai-sdk-runtime/`'s notes where they name `--max-turns` as the budget
-- [ ] T049 Check the privacy and leak tests still pass with the new records (`test/privacy.test.ts`, `test/tools-orient.test.ts`) and that nothing in `src/sim/`, `src/mcp/` or `run.jsonl` changed: `git diff main -- src/sim src/mcp` is empty
-- [ ] T050 Run `pnpm typecheck && pnpm test`, check the exit code directly, and walk `quickstart.md` steps 1 to 8
+- [X] T047 [P] Update `design/adr/ADR-003-experiment-protocol.md` (the meaning of "turn budget" now a call budget, §2.2 and §2.5, as an Amendments entry) and the glossary entry in `design/adr/README.md` (FR-017, FR-023)
+- [X] T048 [P] Update `AGENTS.md` (the commands, the layout table with `prompts/` and `src/prompts/`, the run options, the rule that a prompt change is a new version) and `specs/007-ai-sdk-runtime/`'s notes where they name `--max-turns` as the budget (left as they are: `--max-turns` still works as a step budget)
+- [X] T049 Check the privacy and leak tests still pass with the new records (`test/privacy.test.ts`, `test/tools-orient.test.ts`) and that nothing in `src/sim/`, `src/mcp/` or `run.jsonl` changed: `git diff main -- src/sim src/mcp` is empty
+- [X] T050 Run `pnpm typecheck && pnpm test`, check the exit code directly, and walk `quickstart.md` steps 1 to 8
 
 ---
 
