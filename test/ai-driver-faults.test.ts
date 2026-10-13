@@ -151,7 +151,9 @@ describe("a call that stalls", () => {
   }, 30_000);
 
   it("ends the run when a craft tool does not answer in time", async () => {
-    sequence(call("c1", "look"), say("never reached"));
+    // One call can beat a 1 ms timer on a fast machine; thirty at once cannot all do so, and any one timing out ends the run.
+    const many: Result = { ...call("c0", "look"), content: Array.from({ length: 30 }, (_, i) => ({ type: "tool-call" as const, toolCallId: `c${i}`, toolName: "look", input: "{}" })) } as Result;
+    sequence(many, say("never reached"));
     const { opts, recorder } = setup({ limits: { toolTimeoutMs: 1 } });
     const r = await aiDriver(opts, recorder);
     expect(r).toMatchObject({ ended: "error", reason: "DriverFailed: the player reported tool_timeout" });
