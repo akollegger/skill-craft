@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { z } from "zod";
 import { LoopRefused } from "../harness/errors.js";
 import { REPO } from "../harness/paths.js";
 
 /** The questions and the roles' instructions are one file, so one version and one hash cover what both roles are told. */
-export const DEFAULT_RUBRIC_PATH = join(REPO, "src/loop/rubric/skill-review.v1.json");
+export const DEFAULT_RUBRIC_PATH = join(REPO, "prompts/review-rubric/v1.json");
 
 const RubricFile = z.strictObject({
   version: z.string().min(1),
@@ -20,6 +20,8 @@ const RubricFile = z.strictObject({
 export interface Rubric extends z.infer<typeof RubricFile> {
   /** SHA-256 of the file's bytes. */
   sha256: string;
+  /** The `N` of `prompts/review-rubric/v<N>.json` the file is, or null for a rubric file outside the prompt scheme (spec 008). */
+  kindVersion: string | null;
 }
 
 export function loadRubric(path: string = DEFAULT_RUBRIC_PATH): Rubric {
@@ -32,5 +34,5 @@ export function loadRubric(path: string = DEFAULT_RUBRIC_PATH): Rubric {
   }
   const ids = parsed.questions.map((q) => q.id);
   if (new Set(ids).size !== ids.length) throw new LoopRefused("the rubric has a duplicate question id");
-  return { ...parsed, sha256: createHash("sha256").update(raw).digest("hex") };
+  return { ...parsed, sha256: createHash("sha256").update(raw).digest("hex"), kindVersion: /^v([1-9]\d*)\.json$/.exec(basename(path))?.[1] ?? null };
 }

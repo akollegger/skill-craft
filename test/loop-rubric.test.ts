@@ -64,3 +64,17 @@ describe("the shipped rubric", () => {
     expect(() => loadRubric(written(o))).toThrow(/rubric/i);
   });
 });
+
+describe("the rubric as a prompt kind (spec 008)", () => {
+  it("is found in the prompts tree and names its kind version from the file name", () => {
+    expect(DEFAULT_RUBRIC_PATH.endsWith("prompts/review-rubric/v1.json")).toBe(true);
+    expect(loadRubric().kindVersion).toBe("1");
+  });
+
+  it("names no kind version for a rubric file that is not in the scheme", () => {
+    const dir = mkdtempSync(join(tmpdir(), "skill-craft-rubric-"));
+    const path = join(dir, "my-rubric.json");
+    writeFileSync(path, readFileSync(DEFAULT_RUBRIC_PATH));
+    expect(loadRubric(path).kindVersion).toBeNull();
+  });
+});
