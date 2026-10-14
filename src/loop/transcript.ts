@@ -38,6 +38,8 @@ export interface Recording {
   world: string;
   /** The models that ran, from the run's score. */
   models: string[];
+  /** The model the run asked for, in canonical form, or null when its score names none. */
+  requestedModel?: string | null | undefined;
   prompt: string;
   /** Hashes of the run's log and score as they were read, and the settings the run recorded (null for a run that recorded none), for the loop's record. */
   runLogSha256: string;
@@ -137,6 +139,7 @@ async function replay(runDir: string, label: string): Promise<Recording> {
     world,
     // A bare Claude id in an earlier run is read as anthropic/<id>; the file is not rewritten.
     models: (score.model?.resolved?.length ? score.model.resolved : score.model?.requested ? [score.model.requested] : []).map(canonicalSpec),
+    requestedModel: score.model?.requested ? canonicalSpec(score.model.requested) : null,
     prompt: readFileSync(join(runDir, "prompt.txt"), "utf8"),
     runLogSha256: sha256(join(runDir, "run.jsonl")),
     scoreSha256: sha256(join(runDir, "score.json")),

@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "finalAnswer": {
+      "type": "string"
+    },
+    "id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "models": {
+      "additionalProperties": false,
+      "properties": {
+        "requested": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resolved": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "requested",
+        "resolved"
+      ],
+      "type": "object"
+    },
+    "prompt": {
+      "type": "string"
+    },
+    "reasoning": {
+      "enum": [
+        "returned",
+        "partial",
+        "none",
+        "not-kept"
+      ],
+      "type": "string"
+    },
+    "settings": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "effort": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "temperature": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "thinking": {
+              "type": [
+                "string",
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "temperature",
+            "effort",
+            "thinking"
+          ],
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "turns": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "calls": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "arguments": {
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "output": {
+                  "type": "string"
+                },
+                "refusal": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "ok",
+                    "failed"
+                  ],
+                  "type": "string"
+                },
+                "tool": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "tool",
+                "arguments",
+                "status",
+                "output"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "reasoning": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "calls"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "prompt",
+    "models",
+    "settings",
+    "reasoning",
+    "turns",
+    "finalAnswer"
+  ],
+  "type": "object"
+}
