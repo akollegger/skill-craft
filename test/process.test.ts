@@ -18,8 +18,8 @@ describe("the process version", () => {
     expect(hasChangelogEntry("99", text)).toBe(false);
   });
 
-  it("is the version that records per-turn reasoning", () => {
-    expect(PROCESS_VERSION).toBe("2");
+  it("is the version that records through the harness interface", () => {
+    expect(PROCESS_VERSION).toBe("3");
   });
 });
 

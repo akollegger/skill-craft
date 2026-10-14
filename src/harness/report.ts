@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
+import { readDistillationRecord } from "../distill/provenance.js";
+import type { DistillationRecord } from "../distill/schemas.js";
 import { checkSet, parsePromptSet, type PromptSet } from "../prompts/set.js";
 import { z } from "zod";
 import { HarnessError, isUserError, ReportRefused } from "./errors.js";
@@ -34,16 +36,26 @@ const castSchema = z
   .object({
     teacher: roleSchema,
     student: roleSchema,
-    /** The memory service distils; the critic and reviser are its review stage. Absent in an experiment that does not say. */
+    /** The distillation harness (ADR-008) and the roles it runs on models. Absent in an experiment that does not say. */
+    harness: z.object({ name: z.string().min(1), roles: z.record(z.string(), roleSchema) }).strict().optional(),
+    /** The form before the harness interface: the memory service with a critic and reviser. Read as `nams-reviewed`. */
     distiller: z.object({ service: z.string(), critic: roleSchema, reviser: roleSchema }).strict().optional(),
   })
   .strict();
-type Cast = z.infer<typeof castSchema>;
+type Role = z.infer<typeof roleSchema>;
+/** The cast as the report reads it: the older `distiller` form is already a `harness`. */
+interface Cast {
+  teacher: Role;
+  student: Role;
+  harness?: { name: string; roles: Record<string, Role> };
+}
 
 const summarySchema = z.object({
   experiment: z.string(),
   /** The prompt versions the experiment pins (spec 008); checked by `parsePromptSet`, so an invalid one is refused with its own message. */
   promptSet: z.unknown().optional(),
+  /** The record of how the skills were made: a `harness.json`, or a loop record made before the harness interface. */
+  distillation: z.object({ record: z.string() }).optional(),
   priorFit: z.string(),
   route: z.enum(["escalating", "preemptive"]),
   primary: z.enum(["repair", "transfer"]),
@@ -73,7 +85,12 @@ type Summary = z.infer<typeof summarySchema>;
 /** The cast of a summary, reading the older `models` form as the same cast (its settings are looked up by canonical model name). */
 function castOf(summary: Summary): Cast {
   if ((summary.cast === undefined) === (summary.models === undefined)) throw new ReportRefused("the experiment summary must give exactly one of `cast` and `models`");
-  if (summary.cast !== undefined) return summary.cast;
+  if (summary.cast !== undefined) {
+    const { teacher, student, harness, distiller } = summary.cast;
+    if (harness !== undefined && distiller !== undefined) throw new ReportRefused("the cast gives both `harness` and the older `distiller`; give `harness` only");
+    if (distiller !== undefined) return { teacher, student, harness: { name: "nams-reviewed", roles: { critic: distiller.critic, reviser: distiller.reviser } } };
+    return harness === undefined ? { teacher, student } : { teacher, student, harness };
+  }
   const m = summary.models!;
   const byModel = new Map(Object.entries(m.settings).map(([k, v]) => [canonicalSpec(k), v]));
   return { teacher: { model: m.teacher, settings: byModel.get(canonicalSpec(m.teacher)) ?? {} }, student: { model: m.student, settings: byModel.get(canonicalSpec(m.student)) ?? {} } };
@@ -91,79 +108,69 @@ const roleText = (r: { model: string; settings?: Parameters<typeof normal>[0] })
 
 /** The lines that state the cast, and which roles share a model. */
 function castLines(cast: Cast): string[] {
-  const roles: [string, { model: string; settings?: Settings }][] = [["teacher", cast.teacher], ["student", cast.student], ...(cast.distiller === undefined ? [] : ([["critic", cast.distiller.critic], ["reviser", cast.distiller.reviser]] as [string, { model: string; settings?: Settings }][]))];
+  const roles: [string, { model: string; settings?: Settings }][] = [["teacher", cast.teacher], ["student", cast.student], ...Object.entries(cast.harness?.roles ?? {})];
   const lines = ["Cast", `- teacher: ${roleText(cast.teacher)}`, `- student: ${roleText(cast.student)}`];
-  if (cast.distiller !== undefined) lines.push(`- distiller: ${cast.distiller.service}; critic ${roleText(cast.distiller.critic)}; reviser ${roleText(cast.distiller.reviser)}`);
+  if (cast.harness !== undefined) lines.push(`- harness: ${[cast.harness.name, ...Object.entries(cast.harness.roles).map(([name, r]) => `${name} ${roleText(r)}`)].join("; ")}`);
   const byModel = new Map<string, string[]>();
   for (const [name, r] of roles) byModel.set(canonicalSpec(r.model), [...(byModel.get(canonicalSpec(r.model)) ?? []), name]);
   for (const [model, names] of byModel) if (names.length > 1) lines.push(`- shared model: ${names.join(", ")}: ${model}`);
   return lines;
 }
 
-/** A loop record, as much of it as the report reads. Parsed, so a file that is not one is refused. */
-const loopSchema = z.object({
-  finalSkillSha256: z.string().nullable(),
-  process: z.object({ version: z.string(), commit: z.string().nullable(), dirty: z.boolean().nullable() }).nullable().optional(),
-  recordedRuns: z.array(z.object({ models: z.array(z.string()), settings: settingsSchema.partial().extend({ temperature: z.number().nullable().optional(), effort: z.string().nullable().optional(), thinking: z.union([z.string(), z.number()]).nullable().optional() }).nullable() }).passthrough()),
-  recordingFormat: z.string().nullable().optional(),
-  /** The review rubric the loop used; `kindVersion` is its version in the prompt scheme, absent in a record made before it. */
-  rubric: z.object({ kindVersion: z.string().optional() }).passthrough().optional(),
-  roles: z.object({
-    critic: z.object({ requested: z.string(), resolved: z.array(z.string()), settings: z.any().nullable() }).passthrough(),
-    reviser: z.object({ requested: z.string(), resolved: z.array(z.string()), settings: z.any().nullable() }).passthrough(),
-  }),
-  distiller: z
-    .object({ service: z.union([z.object({ name: z.string(), version: z.string(), released: z.string(), commit: z.string(), environment: z.string() }), z.object({ name: z.string(), unknown: z.string() })]) })
-    .nullable()
-    .optional(),
-});
-type Loop = z.infer<typeof loopSchema>;
-
 /**
- * Read the loop record that made a skill, check it against the reviewed skill and the cast, and say who made it. A record
- * that contradicts either is refused: the table would otherwise be read against a skill it did not use.
+ * Check a distillation record against the experiment and say who made the skill. A record made before the harness interface (a loop record) is read
+ * as one by `nams-reviewed`. A record that contradicts the cast or the reviewed skill is refused: the table would otherwise be read against a skill it did not use.
  */
-function skillMadeBy(path: string, reviewSha: string, cast: Cast, promptSet?: PromptSet): string[] {
-  const parsed = loopSchema.safeParse(readJson(fromRepoPath(path), "loop record named by review.json"));
-  if (!parsed.success) throw new ReportRefused("the loop record named by review.json is not a loop record");
-  const loop: Loop = parsed.data;
-  if (loop.finalSkillSha256 !== reviewSha) throw new ReportRefused("the loop record's final skill is not the reviewed skill");
+function skillMadeBy(path: string, record: DistillationRecord, reviewSha: string | undefined, cast: Cast, promptSet?: PromptSet): string[] {
+  if (reviewSha !== undefined && !record.skills.some((s) => s.sha256 === reviewSha)) throw new ReportRefused("the distillation record's skills do not include the reviewed skill");
   if (promptSet?.reviewRubric !== undefined) {
-    const used = loop.rubric?.kindVersion;
-    if (used === undefined) throw new ReportRefused("the loop record names no review rubric version, but the experiment pins one");
+    const used = record.prompts["review-rubric"]?.version;
+    if (used === undefined) throw new ReportRefused("the distillation record names no review rubric version, but the experiment pins one");
     const wrong = checkSet(promptSet, { reviewRubric: used })[0];
-    if (wrong !== undefined) throw new ReportRefused(`the loop record: ${wrong}`);
+    if (wrong !== undefined) throw new ReportRefused(`the distillation record: ${wrong}`);
   }
   const teacher = canonicalSpec(cast.teacher.model);
-  for (const r of loop.recordedRuns) {
+  for (const r of record.runs) {
     // Exactly the cast's teacher: a run a substituted model also served is not the teacher's, and one that names no model cannot be checked.
     const ran = r.models.map(canonicalSpec);
-    if (ran.length === 0 || !ran.every((m) => m === teacher)) throw new ReportRefused(`the loop record's runs were not made by the cast's teacher (${teacher}) alone`);
-    if (!sameSettings(r.settings, cast.teacher.settings)) throw new ReportRefused("the loop record's runs used settings other than the cast's teacher's");
+    if (ran.length === 0 || !ran.every((m) => m === teacher)) throw new ReportRefused(`the distillation record's runs were not made by the cast's teacher (${teacher}) alone`);
+    if (!sameSettings(r.settings, cast.teacher.settings)) throw new ReportRefused("the distillation record's runs used settings other than the cast's teacher's");
   }
-  if (cast.distiller !== undefined) {
-    for (const [name, want, got] of [["critic", cast.distiller.critic, loop.roles.critic], ["reviser", cast.distiller.reviser, loop.roles.reviser]] as const) {
-      if (canonicalSpec(got.requested) !== canonicalSpec(want.model)) throw new ReportRefused(`the loop record's ${name} is not the cast's`);
+  if (promptSet?.distiller !== undefined) {
+    const used = record.prompts["distiller"]?.version;
+    if (used === undefined) throw new ReportRefused("the distillation record names no distiller prompt version, but the experiment pins one");
+    const wrong = checkSet(promptSet, { distiller: used })[0];
+    if (wrong !== undefined) throw new ReportRefused(`the distillation record: ${wrong}`);
+  }
+  if (cast.harness !== undefined) {
+    if (record.harness.name !== cast.harness.name) throw new ReportRefused(`the distillation record's harness (${record.harness.name}) is not the cast's (${cast.harness.name})`);
+    for (const [name, want] of Object.entries(cast.harness.roles)) {
+      const got = record.roles[name];
+      if (got === undefined || canonicalSpec(got.requested) !== canonicalSpec(want.model)) throw new ReportRefused(`the distillation record's ${name} is not the cast's`);
       // What the provider reported as having answered must be the cast's model too, or a substitution would pass for the cast.
-      if (got.resolved.length === 0 || !got.resolved.every((m) => canonicalSpec(m) === canonicalSpec(want.model))) throw new ReportRefused(`the loop record's ${name} was served by a model other than the cast's`);
-      if (!sameSettings(got.settings, want.settings)) throw new ReportRefused(`the loop record's ${name} used settings other than the cast's`);
+      if (got.resolved.length === 0 || !got.resolved.every((m) => canonicalSpec(m) === canonicalSpec(want.model))) throw new ReportRefused(`the distillation record's ${name} was served by a model other than the cast's`);
+      if (!sameSettings(got.settings, want.settings)) throw new ReportRefused(`the distillation record's ${name} used settings other than the cast's`);
     }
   }
-  const p = loop.process;
-  const processLine = p == null ? "process: not recorded" : `process version ${p.version}, commit ${p.commit === null ? "unknown" : p.commit.slice(0, 12)}, ${p.dirty === null ? "tree unknown" : p.dirty ? "tree had changes" : "tree clean"}`;
-  const models = [...new Set(loop.recordedRuns.flatMap((r) => r.models.map(canonicalSpec)))].join("+") || "unknown";
-  const n = loop.recordedRuns.length;
-  const svc = loop.distiller?.service;
-  return [
-    "Skill made by (from the loop record named in review.json)",
-    `- ${processLine}`,
-    `- teacher: ${models} (${settingsText(loop.recordedRuns[0]?.settings)}); ${n} run${n === 1 ? "" : "s"}, recording ${loop.recordingFormat ?? "none"}`,
-    `- critic: ${roleText({ model: loop.roles.critic.requested, settings: loop.roles.critic.settings })}; reviser: ${roleText({ model: loop.roles.reviser.requested, settings: loop.roles.reviser.settings })}`,
-    svc === undefined || svc === null ? "- distiller service: none recorded" : "unknown" in svc ? `- distiller service: ${svc.name}, version unknown (${svc.unknown})` : `- distiller service: ${svc.name} ${svc.version}, released ${svc.released}, commit ${svc.commit}, ${svc.environment}`,
+  const c = record.code;
+  const processLine = `process version ${record.harness.processVersion}${c === null ? "" : `, commit ${c.commit === null ? "unknown" : c.commit.slice(0, 12)}, ${c.dirty === null ? "tree unknown" : c.dirty ? "tree had changes" : "tree clean"}`}`;
+  const models = [...new Set(record.runs.flatMap((r) => r.models.map(canonicalSpec)))].join("+") || "unknown";
+  const n = record.runs.length;
+  const svc = record.service;
+  const roles = Object.entries(record.roles).map(([name, r]) => `${name}: ${roleText({ model: r.requested, settings: r.settings })}`).join("; ");
+  const lines = [
+    `Skill made by (from the distillation record ${path})`,
+    `- harness ${record.harness.name}; ${processLine}`,
+    `- teacher: ${models} (${settingsText(record.runs[0]?.settings)}); ${n} run${n === 1 ? "" : "s"}, recording ${record.recordingFormat ?? "none"}`,
+    ...(roles === "" ? [] : [`- ${roles}`]),
+    svc === null ? "- distiller service: none recorded" : "unknown" in svc ? `- distiller service: ${svc.name}, version unknown (${svc.unknown})` : `- distiller service: ${svc.name} ${svc.version}, released ${svc.released}, commit ${svc.commit}, ${svc.environment}`,
   ];
+  if (record.review !== undefined) lines.push(`- review: ${record.review.rounds.map((r) => `round ${r.n} ${r.overall}`).join(", ") || "no rounds"}; outcome ${record.review.outcome}`);
+  return lines;
 }
 
-const reviewSchema = z.object({ verdict: z.enum(["accept", "revise", "reject"]), skillSha256: z.string(), /** The loop record that made the skill: a path, repository-relative or absolute. */ loop: z.string().optional() });
+/** The older record of a review by hand: its skill hash, and optionally the loop record that made the skill. Its verdict is not enforced (ADR-008). */
+const reviewSchema = z.object({ skillSha256: z.string(), /** The loop record that made the skill: a path, repository-relative or absolute. */ loop: z.string().optional() }).passthrough();
 
 /** What a run's score.json must hold. Parsed, not cast: a string "false" would otherwise count as a success. */
 const scoreSchema = z.object({
@@ -266,7 +273,7 @@ function promptLines(prompts: readonly ({ version: string; baseSha256: string; s
 }
 
 export interface ReportInput {
-  /** The experiment folder, holding `summary.json` (and `review.json` when a skill was used). */
+  /** The experiment folder, holding `summary.json` (and, for an older experiment, `review.json`). */
   experiment: string;
   /** The run label folders to report on. */
   labels: string[];
@@ -294,16 +301,23 @@ export function buildReport(input: ReportInput): string {
     const tag = summary.labels[basename(d)];
     return tag !== undefined && "arm" in tag && summary.arms.find((a) => a.label === tag.arm)?.skill === true;
   });
+  // Where a skill came from: the record the summary names, or an older review record that names a loop. Neither is required, and neither gates an arm on a verdict.
   let reviewSha: string | undefined;
-  let loopPath: string | undefined;
+  let recordPath: string | undefined;
+  let record: DistillationRecord | undefined;
   if (skillArmUsed) {
-    const review = reviewSchema.safeParse(readJson(join(input.experiment, "review.json"), "review record (review.json)"));
-    if (!review.success) throw new ReportRefused("review.json needs a verdict (accept, revise or reject) and skillSha256");
-    // Only a skill that cleared review may reach a student arm.
-    if (review.data.verdict !== "accept") throw new ReportRefused(`the skill's review verdict is ${review.data.verdict}; only an accepted skill reaches the student arms, so there are no skill-arm results to report`);
-    reviewSha = review.data.skillSha256;
-    loopPath = review.data.loop;
+    if (summary.distillation !== undefined) recordPath = summary.distillation.record;
+    const reviewFile = join(input.experiment, "review.json");
+    if (existsSync(reviewFile)) {
+      const review = reviewSchema.safeParse(readJson(reviewFile, "review record (review.json)"));
+      if (!review.success) throw new ReportRefused("review.json needs skillSha256");
+      reviewSha = review.data.skillSha256;
+      recordPath ??= review.data.loop;
+    }
+    if (recordPath !== undefined) record = readDistillationRecord(fromRepoPath(recordPath));
   }
+  // The skills a skill arm's runs may have used: the record's, and an older review record's.
+  const knownSkills = new Set([...(record?.skills.map((s) => s.sha256) ?? []), ...(reviewSha === undefined ? [] : [reviewSha])]);
 
   for (const dir of dirs) {
     const name = basename(dir);
@@ -357,7 +371,7 @@ export function buildReport(input: ReportInput): string {
       const wantsSkill = arm?.skill === true;
       if (wantsSkill) {
         if (s.skill === undefined) throw new ReportRefused(`${name}/${rd} has no skill, but arm ${arm?.label} should`);
-        if (s.skill.sha256 !== reviewSha) throw new ReportRefused(`${name}/${rd} used a skill whose SHA-256 fingerprint differs from the reviewed one`);
+        if (knownSkills.size > 0 && !knownSkills.has(s.skill.sha256)) throw new ReportRefused(`${name}/${rd} used a skill whose SHA-256 fingerprint is not one the distillation produced or the review named`);
       } else if (s.skill !== undefined) {
         throw new ReportRefused(`${name}/${rd} had a skill, but it belongs to ${stage === "calibration" ? "calibration" : `arm ${stage}`}`);
       }
@@ -427,7 +441,7 @@ export function buildReport(input: ReportInput): string {
     `Route: ${summary.route}; primary measure: ${summary.primary}.${summary.route === "escalating" ? " Both were declared after calibration, which this route needs: the gaps are found first." : ""}`,
     "",
     ...castLines(cast),
-    ...(loopPath === undefined ? [] : ["", ...skillMadeBy(loopPath, reviewSha as string, cast, promptSet)]),
+    ...(record !== undefined && recordPath !== undefined ? ["", ...skillMadeBy(recordPath, record, reviewSha, cast, promptSet)] : skillArmUsed ? ["", "Skill made by: no distillation record named (set distillation.record in the summary)"] : []),
     "",
     "| Arm | Model | Prior fit | Goal | Reached | 95% interval | Extra calls (min / median / max) | Cost | Tokens | Skill loaded | Flags |",
     "|---|---|---|---|---|---|---|---|---|---|---|",
