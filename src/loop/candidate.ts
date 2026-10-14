@@ -166,11 +166,12 @@ export class NamsSession {
     if (this.conversations.has(run.id)) return;
     await this.timed(`record-run-${run.id}`, async () => {
       const conv = (await this.guard(this.nams.addConversation(this.id, conversationMetadata(run)))).id;
-      this.conversations.set(run.id, conv);
       await this.guard(this.nams.addMessage(this.id, conv, "user", run.prompt));
       const write: Write = { id: this.id, conv, nams: this.nams, guard: (p) => this.guard(p) };
       if (run.reasoning === "not-kept") await recordPlaceholder(write, run);
       else await recordConversation(write, run, durationsMs);
+      // Only now is the conversation whole; a failure above leaves the run unrecorded, so a second record starts again.
+      this.conversations.set(run.id, conv);
     });
     this.a.out(`recorded run ${run.id}`);
   }

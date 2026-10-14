@@ -887,6 +887,11 @@ describe("cast.harness (spec 009, FR-017, FR-019)", () => {
     expect(build(both, rec())).toThrow(ReportRefused);
   });
 
+  it("prints a pinned distiller prompt on the Prompt set line", () => {
+    const c = cast({ name: "bespoke-one-shot", roles: { distiller: GLM } });
+    expect(build(c, rec(), { base: "1", distiller: "1" })()).toContain("distiller prompt 1");
+  });
+
   it("checks a pinned distiller prompt version against the record's", () => {
     const c = cast({ name: "bespoke-one-shot", roles: { distiller: GLM } });
     expect(build(c, rec(), { base: "1", distiller: "1" })).not.toThrow();

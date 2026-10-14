@@ -40,6 +40,19 @@ function config(nams: FakeNams, script: ScriptedAnswer[], over: Partial<NamsRevi
   return { c, role, lines, loopDir };
 }
 
+describe("a run whose recording failed part-way", () => {
+  it("is not counted as recorded, so a second record writes it again from the start", async () => {
+    const nams = new FakeNams({ zip: zip(), failOn: ["addStep"] });
+    const { c } = config(nams, []);
+    const session = await namsReviewedHarness(c).open("exp", live());
+    const run = toRunRecord(await made("partial"));
+    await expect(session.record(run, live())).rejects.toBeDefined();
+    await expect(session.record(run, live())).rejects.toBeDefined();
+    expect(nams.calls.filter((x) => x.method === "addConversation")).toHaveLength(2);
+    await session.close();
+  });
+});
+
 const TWO_ROUNDS: ScriptedAnswer[] = [verdict("revise", "V1"), revision("TEXT-1"), verdict("accept", "V2")];
 
 describe("the same pipeline as before (SC-004)", () => {

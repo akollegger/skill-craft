@@ -237,12 +237,12 @@ const pct2 = (x: number): string => x.toFixed(2);
  * What the report says of the prompts its runs saw (spec 008). Arms are compared on the base prompt's fingerprint: a difference that is only
  * the goal, the budget or the fixed arm sentence is expected and is listed, not warned about. A run with no record is unversioned, never version 1.
  */
-const KIND_LABEL = { armSentence: "arm sentence", skillTool: "skill tool", reviewRubric: "review rubric" } as const;
+const KIND_LABEL = { armSentence: "arm sentence", skillTool: "skill tool", reviewRubric: "review rubric", distiller: "distiller prompt" } as const;
 
 /** The experiment's prompt set as a line, and the kinds the runs used that the set leaves unpinned. */
 function promptSetLines(set: PromptSet | undefined, used: ReadonlySet<"armSentence" | "skillTool">): string[] {
   if (set === undefined) return ["", "Prompt set: not pinned."];
-  const parts = [`base prompt ${set.base}`, ...(set.callBudget === undefined ? [] : [`call budget ${set.callBudget}`]), ...(["armSentence", "skillTool", "reviewRubric"] as const).flatMap((k) => (set[k] === undefined ? [] : [`${KIND_LABEL[k]} ${set[k]}`]))];
+  const parts = [`base prompt ${set.base}`, ...(set.callBudget === undefined ? [] : [`call budget ${set.callBudget}`]), ...(["armSentence", "skillTool", "reviewRubric", "distiller"] as const).flatMap((k) => (set[k] === undefined ? [] : [`${KIND_LABEL[k]} ${set[k]}`]))];
   const unpinned = [...used].filter((k) => set[k] === undefined).map((k) => KIND_LABEL[k]);
   return ["", `Prompt set: ${parts.join(", ")}.`, ...(unpinned.length === 0 ? [] : [`Used but not pinned by the experiment: ${unpinned.join(", ")}.`])];
 }
