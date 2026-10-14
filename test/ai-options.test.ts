@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { LanguageModelUsage } from "ai";
-import { BUDGET_REFUSAL, callBudgetSpent, classifyEnd, countInvalid, failureCode, invalidStreak, longRetryAfter, newCallBudget, overCap, roleTokens, skillDescription, tokensOf, toolStop, withCallBudget } from "../src/harness/ai-options.js";
+import { admitCall, BUDGET_REFUSAL, callBudgetSpent, classifyEnd, countInvalid, failureCode, invalidStreak, longRetryAfter, newCallBudget, overCap, roleTokens, skillDescription, tokensOf, toolStop, withCallBudget } from "../src/harness/ai-options.js";
 import { SettingsInvalid, UnknownModel } from "../src/harness/errors.js";
 import { canonicalSpec, costOf, loadPrices, loadSettings, parseModelSpec, priceFor } from "../src/harness/models.js";
 
@@ -250,9 +250,9 @@ describe("toolStop", () => {
 describe("a call budget (spec 008, ADR-007 section 2.1)", () => {
   const order: string[] = [];
   const tools = () => ({
-    look: { execute: async () => (order.push("look"), { content: [{ type: "text", text: "table" }] }) },
-    place: { execute: async () => (order.push("place"), { content: [{ type: "text", text: "placed" }] }) },
-    Skill: { execute: async () => (order.push("Skill"), "skill text") },
+    look: { execute: async (_input?: unknown, _options?: unknown) => (order.push("look"), { content: [{ type: "text", text: "table" }] }) },
+    place: { execute: async (_input?: unknown, _options?: unknown) => (order.push("place"), { content: [{ type: "text", text: "placed" }] }) },
+    Skill: { execute: async (_input?: unknown, _options?: unknown) => (order.push("Skill"), "skill text") },
   });
   const craft = new Set(["look", "place"]);
 
@@ -265,6 +265,22 @@ describe("a call budget (spec 008, ADR-007 section 2.1)", () => {
     expect(results.slice(3)).toEqual([{ content: [{ type: "text", text: BUDGET_REFUSAL }] }, { content: [{ type: "text", text: BUDGET_REFUSAL }] }]);
     expect(budget).toMatchObject({ used: 3, refused: 2 });
     expect(callBudgetSpent(budget)).toBe(true);
+  });
+
+  it("decides a call once, by its id, so the start callback and the execution agree (a refused call is not traced)", async () => {
+    order.length = 0;
+    const budget = newCallBudget(1);
+    const t = withCallBudget(tools(), craft, budget);
+    expect(admitCall(budget, "a")).toBe(true);
+    expect(admitCall(budget, "b")).toBe(false);
+    expect(admitCall(budget, "a")).toBe(true); // asked again, answered the same, counted once
+    expect(budget).toMatchObject({ used: 1, refused: 1 });
+    await t.look.execute(undefined, { toolCallId: "a" });
+    expect(await t.place.execute(undefined, { toolCallId: "b" })).toEqual({ content: [{ type: "text", text: BUDGET_REFUSAL }] });
+    expect(order).toEqual(["look"]);
+    expect(budget).toMatchObject({ used: 1, refused: 1 });
+    expect(budget.refusedIds.has("b")).toBe(true);
+    expect(budget.refusedIds.has("a")).toBe(false);
   });
 
   it("does not count or refuse a tool that is not a craft tool, such as the skill tool", async () => {

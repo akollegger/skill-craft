@@ -172,9 +172,31 @@ export interface CallBudget {
   used: number;
   /** Calls answered with `BUDGET_REFUSAL` and not sent to the craft server. */
   refused: number;
+  /** Each call's decision, by tool call id, so deciding once serves both the trace and the execution. */
+  decided: Map<string, boolean>;
+  /** The ids of the calls refused: they are not traced and do not count as craft calls. */
+  refusedIds: Set<string>;
 }
 
-export const newCallBudget = (limit: number): CallBudget => ({ limit, used: 0, refused: 0 });
+export const newCallBudget = (limit: number): CallBudget => ({ limit, used: 0, refused: 0, decided: new Map(), refusedIds: new Set() });
+
+/**
+ * Decide whether a call is within the budget, once per call id: the first ask counts it, a later ask for the same id gets the same answer.
+ * The driver asks when a call starts, which is when it is traced, and the wrapped tool asks again when it runs, so a refused call is
+ * neither traced nor run and the two never disagree.
+ */
+export function admitCall(b: CallBudget, id: string): boolean {
+  const known = b.decided.get(id);
+  if (known !== undefined) return known;
+  const ok = b.used < b.limit;
+  if (ok) b.used++;
+  else {
+    b.refused++;
+    b.refusedIds.add(id);
+  }
+  b.decided.set(id, ok);
+  return ok;
+}
 
 /** Whether the run should end after this response: the budget is all used, or a call had to be refused. */
 export const callBudgetSpent = (b: CallBudget): boolean => b.used >= b.limit || b.refused > 0;
@@ -191,11 +213,9 @@ export function withCallBudget<T extends Record<string, { execute?: (...args: ne
     out[name] = {
       ...t,
       execute: (...args: never[]) => {
-        if (budget.used >= budget.limit) {
-          budget.refused++;
-          return Promise.resolve({ content: [{ type: "text", text: BUDGET_REFUSAL }] });
-        }
-        budget.used++;
+        // The call's id comes with the SDK's options; a call without one (a direct call in a test) is its own call.
+        const id = (args[1] as { toolCallId?: string } | undefined)?.toolCallId ?? `anonymous-${budget.decided.size}`;
+        if (!admitCall(budget, id)) return Promise.resolve({ content: [{ type: "text", text: BUDGET_REFUSAL }] });
         return run(...args);
       },
     };

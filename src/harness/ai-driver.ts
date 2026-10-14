@@ -7,7 +7,7 @@ import { DEFAULT_MODEL, costOf, parseModelSpec, type ModelRef, type Tokens } fro
 import { findProvider, normaliseReported } from "./providers.js";
 import type { RoleDriver, RoleTokens } from "./role-driver.js";
 import { fill, loadVersion } from "../prompts/index.js";
-import { addRoleTokens, addTokens, callBudgetSpent, classifyEnd, countInvalid, CRAFT_TOOL_PREFIX, droppedSetting, invalidStreak, longRetryAfter, MAX_INVALID_STEPS, MAX_RETRIES, MAX_ROLE_ATTEMPTS, newCallBudget, failureCode, NO_TOKENS, overCap, readInstalledSkill, withCallBudget, requestStart, requestStop, requestUsage, resolveLimits, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf, toolStop } from "./ai-options.js";
+import { addRoleTokens, addTokens, admitCall, callBudgetSpent, classifyEnd, countInvalid, CRAFT_TOOL_PREFIX, droppedSetting, invalidStreak, longRetryAfter, MAX_INVALID_STEPS, MAX_RETRIES, MAX_ROLE_ATTEMPTS, newCallBudget, failureCode, NO_TOKENS, overCap, readInstalledSkill, withCallBudget, requestStart, requestStop, requestUsage, resolveLimits, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf, toolStop } from "./ai-options.js";
 
 /**
  * Run the player through the AI SDK. This is the only file that imports the SDK (and the provider packages) at run
@@ -190,6 +190,9 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
         },
         onToolExecutionStart: (e) => {
           const isCraft = craftNames.has(e.toolCall.toolName);
+          // A call past a call budget is decided here, as it starts: it is neither traced nor counted as a craft call, so the trace
+          // still holds the calls the run log does, and a skill loaded in the same response is not credited with calls that never ran.
+          if (isCraft && callBudget !== undefined && !admitCall(callBudget, e.toolCall.toolCallId)) return;
           if (isCraft) craftCalls++;
           sink.onToolStart({ toolName: isCraft ? `${CRAFT_TOOL_PREFIX}${e.toolCall.toolName}` : e.toolCall.toolName, toolUseId: e.toolCall.toolCallId, input: e.toolCall.input });
         },

@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DriverOptions, PlayerResult } from "../src/harness/driver.js";
 import { DriverAborted } from "../src/harness/driver.js";
+import { readTrace } from "../src/trace/lines.js";
 import { TraceRecorder } from "../src/trace/recorder.js";
 import { noServersSoon, ownServers } from "./helpers/processes.js";
 
@@ -238,8 +239,9 @@ describe("tool calls that are not valid", () => {
 });
 
 /** One response that asks for several craft calls at once, as a model that batches does. */
+let togetherSeq = 0; // providers give every call its own id, so a scripted response does too
 const together = (...tools: string[]): Result =>
-  ({ content: tools.map((toolName, i) => ({ type: "tool-call", toolCallId: `p${i}-${toolName}`, toolName, input: "{}" })), finishReason: { unified: "tool-calls", raw: undefined }, usage: usage(10, 5, 100), warnings: [] }) as Result;
+  ({ content: tools.map((toolName, i) => ({ type: "tool-call", toolCallId: `p${++togetherSeq}-${i}-${toolName}`, toolName, input: "{}" })), finishReason: { unified: "tool-calls", raw: undefined }, usage: usage(10, 5, 100), warnings: [] }) as Result;
 const logged = (runLog: string): number => readFileSync(runLog, "utf8").split("\n").filter(Boolean).length;
 
 describe("a run with a call budget (spec 008, SC-003)", () => {
@@ -249,6 +251,8 @@ describe("a run with a call budget (spec 008, SC-003)", () => {
     const r = await aiDriver(opts, recorder);
     expect(r).toMatchObject({ ended: "budget", turns: 1, budgetRefused: 2 });
     expect(logged(opts.runLog)).toBe(3);
+    // The refused calls are not traced either, so the trace holds the calls the run log does and the run still measures.
+    expect(readTrace(join(opts.runDir, "trace.jsonl")).filter((l) => l.kind === "tool")).toHaveLength(3);
     expect(calls()).toHaveLength(1);
     expect(await noServersSoon()).toEqual([]);
   }, 30_000);
