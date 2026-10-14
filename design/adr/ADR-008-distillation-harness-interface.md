@@ -1,9 +1,9 @@
 ---
 id: ADR-008
 title: The distillation harness: record finished runs, produce a set of skills on demand
-status: proposed
+status: accepted
 created: 2026-10-14
-specs: []
+specs: [specs/009-distillation-harness-interface]
 ---
 
 # ADR-008: The distillation harness: record finished runs, produce a set of skills on demand
