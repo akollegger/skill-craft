@@ -11,3 +11,4 @@ runs/*
 dist-viz/
 loops/
 .cache/
+distills/
