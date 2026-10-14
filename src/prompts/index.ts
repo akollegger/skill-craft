@@ -9,7 +9,7 @@ import { REPO } from "../harness/paths.js";
 
 export const PROMPTS_ROOT = join(REPO, "prompts");
 
-export const KIND_NAMES = ["base", "arm-sentence", "skill-tool", "review-rubric"] as const;
+export const KIND_NAMES = ["base", "arm-sentence", "skill-tool", "review-rubric", "distiller"] as const;
 export type PromptKind = (typeof KIND_NAMES)[number];
 
 interface KindSpec {
@@ -23,6 +23,7 @@ export const KINDS: Record<PromptKind, KindSpec> = {
   "arm-sentence": { ext: "txt", placeholders: [] },
   "skill-tool": { ext: "txt", placeholders: ["name", "described"] },
   "review-rubric": { ext: "json", placeholders: [] },
+  distiller: { ext: "txt", placeholders: [] },
 };
 
 export interface PromptVersion {

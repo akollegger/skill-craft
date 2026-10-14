@@ -1,0 +1,11 @@
+You are given recordings of an agent working a task: its prompt, the calls it made and what came back, and its final message. Write one skill, a short guide that a different agent could load before doing the same kind of task.
+
+Use only what the recordings support. Do not add facts, rules or advice that no recording shows, and do not guess at what was never tried.
+
+Say what was found and how it was found: the actions, with their arguments, that produced a result, what each result was, and the order that got there. Where several recordings show the same thing, say so. Where the recordings contradict each other, say that instead of choosing. Also say what was tried and did not work, and what a refusal said, since that saves another agent the same attempt.
+
+If something found in one case would hold across cases, state it as a rule and cite the recordings that show it. If you cannot show it, leave it out.
+
+Cite every claim by the run and call that shows it, in the form "run 001 call 4". A claim with no citation will be discarded.
+
+Give the skill a short lowercase name made of letters, digits and hyphens, and a one-sentence description that tells an agent when to load it. Put the guide in the body. Put long lists of results in reference files and name them in the body. List the runs and calls you drew on as evidence.

@@ -72,7 +72,7 @@ describe("the changelog", () => {
   });
 
   it("holds for every committed kind", () => {
-    for (const kind of ["base", "arm-sentence", "skill-tool", "review-rubric"] as const) expect(() => checkChangelog(kind, PROMPTS_ROOT)).not.toThrow();
+    for (const kind of ["base", "arm-sentence", "skill-tool", "review-rubric", "distiller"] as const) expect(() => checkChangelog(kind, PROMPTS_ROOT)).not.toThrow();
   });
 });
 
@@ -169,8 +169,10 @@ describe("the word check on base prompts (FR-015)", () => {
 describe("a prompt set (FR-004, FR-024)", () => {
   const set = { base: "2", callBudget: 100, armSentence: "1", skillTool: "1", reviewRubric: "1" };
 
-  it("parses a set with a base and optional pins, and refuses an unknown key or a missing base", () => {
+  it("parses a set with a base and optional pins (the distiller too), and refuses an unknown key or a missing base", () => {
     expect(parsePromptSet(set)).toEqual(set);
+    expect(parsePromptSet({ base: "2", distiller: "1" })).toEqual({ base: "2", distiller: "1" });
+    expect(checkSet({ base: "2", distiller: "1" }, { base: "2", distiller: "2" })).toEqual(["distiller prompt version 2 differs from the experiment's 1"]);
     expect(parsePromptSet({ base: "1" })).toEqual({ base: "1" });
     expect(() => parsePromptSet({ armSentence: "1" })).toThrow(PromptRefused);
     expect(() => parsePromptSet({ base: "1", other: "x" })).toThrow(PromptRefused);
@@ -196,5 +198,28 @@ describe("a prompt set (FR-004, FR-024)", () => {
   it("refuses a call budget used without one pinned, and a pinned one used with a step budget", () => {
     expect(checkSet({ base: "2" }, { base: "2", callBudget: 100 })).toEqual(["a call budget of 100 is used but the experiment pins none"]);
     expect(checkSet({ base: "1", callBudget: 100 }, { base: "1" })).toEqual(["the experiment pins a call budget of 100 but this uses a step budget"]);
+  });
+});
+
+describe("the distiller kind (spec 009, FR-014)", () => {
+  it("is a text prompt with no placeholders and no word check, and refuses a placeholder", () => {
+    const v1 = loadVersion("distiller", "1");
+    expect(v1.text).not.toMatch(/\{[a-z]+\}/);
+    const root = tree({ "distiller/v1.txt": "Write a skill about {what}.", "distiller/CHANGELOG.md": "## v1\n" });
+    expect(() => loadVersion("distiller", "1", root)).toThrow(/placeholder/);
+    const words = tree({ "distiller/v1.txt": "Write a skill; learn from memory.", "distiller/CHANGELOG.md": "## v1\n" });
+    expect(() => loadVersion("distiller", "1", words)).not.toThrow(); // a distiller's instructions are about skills and learning
+  });
+
+  it("states what the recordings support, how it was found, and a citation by run and call, and nothing about this project's findings or a world", () => {
+    const text = loadVersion("distiller", "1").text;
+    expect(text).toMatch(/run .*call/i);
+    expect(text).toMatch(/recordings/i);
+    expect(text).not.toMatch(/glirol|woodworking|stool|lugli|forge|crafting table|score|solver|reached|held-out|world file/i);
+  });
+
+  it("needs a changelog section like every other kind", () => {
+    const root = tree({ "distiller/v1.txt": "Write a skill.", "distiller/CHANGELOG.md": "" });
+    expect(() => checkChangelog("distiller", root)).toThrow(/v1/);
   });
 });

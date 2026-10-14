@@ -276,18 +276,24 @@ describe("scripts/export-run.ts", () => {
   });
 });
 
-describe("scripts/critic-loop.ts", () => {
-  it("prints its usage and exits 1 without --runs", () => {
-    const res = run("scripts/critic-loop.ts", []);
+describe("scripts/distill.ts", () => {
+  it("prints its usage and exits 1 without --harness and --runs", () => {
+    const res = run("scripts/distill.ts", []);
     expect(res.status).toBe(1);
     expect(res.stderr).toContain("usage:");
   });
 
+  it("refuses an unknown harness, naming the known ones", () => {
+    const res = run("scripts/distill.ts", ["--harness", "nope", "--runs", "runs/x"]);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toMatch(/unknown harness 'nope'; known: /);
+  });
+
   it("prints the plan for a dry run over the faithful stone-pickaxe runs and makes no call", () => {
     if (!existsSync("runs/faithful-1-t0-stone/001/score.json")) return; // the runs are local and gitignored
-    const res = run("scripts/critic-loop.ts", ["--runs", "runs/faithful-1-t0-stone/001", "runs/faithful-1-t0-stone/002", "--candidate", "spikes/faithful-1/skills/graph-single-001/craft-stone-pickaxe", "--dry-run"]);
+    const res = run("scripts/distill.ts", ["--harness", "nams-reviewed", "--allow-workspace", "--runs", "runs/faithful-1-t0-stone/001", "runs/faithful-1-t0-stone/002", "--dry-run"]);
     expect(res.status).toBe(0);
     expect(res.stdout).toContain("stone_pickaxe x1");
-    expect(res.stdout).toMatch(/no NAMS call/);
+    expect(res.stdout).toMatch(/harness nams-reviewed/);
   });
 });
