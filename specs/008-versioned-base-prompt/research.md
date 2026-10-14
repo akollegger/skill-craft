@@ -55,10 +55,11 @@ response, but a defensive ceiling costs nothing).
 
 ## R5. What the fingerprint hashes
 
-**Decision**: the score records two SHA-256 values: `baseSha256` of the filled base text before the fixed arm sentence is
-appended, and `sha256` of the full text sent (the content of `prompt.txt` without its trailing newline). The report's
-notice triggers on a difference in `baseSha256`; a difference in `sha256` alone is shown as "differs only in the fixed
-sentence" and is listed, not warned about.
+**Decision**: the score records two SHA-256 values: `baseSha256` of the base prompt's template as written (no goal, budget or arm sentence
+filled in, so a numbered version's value is its file's hash, the one the listing shows), and `sha256` of the full text sent (the content
+of `prompt.txt` without its trailing newline). The report's notice triggers on a difference in `baseSha256`; a difference in `sha256`
+alone (the goal, the budget or the arm sentence) is listed, not warned about. A first version hashed the filled base text; a review found
+that a table covering two goals then read one prompt version as two prompts, so the goal was taken out of the base fingerprint.
 
 **Rationale**: the ADR says the arms may differ only by the fixed sentence and that the sentence is part of the hashed
 text. With one hash, every skill-pointed arm differs from its baseline and the notice would always fire, so it would carry

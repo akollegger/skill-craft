@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { composePrompt } from "../src/prompts/compose.js";
 import { buildReport, reportCli, ReportRefused, wilson } from "../src/harness/report.js";
 
 const SECRET = "AGENT-TEXT-THAT-MUST-NOT-APPEAR";
@@ -783,7 +784,19 @@ describe("the prompts a report covers (spec 008, FR-006, FR-008)", () => {
       f.addLabel("s0b", { arm: "S0" }, "wooden", STUDENT, "faithful", wins(2, 3, { prompt: v("1", A, C) }));
     });
     expect(md).not.toMatch(/different base prompts/);
-    expect(md).toContain("differ only in the fixed arm sentence");
+    expect(md).toContain("distinct full texts");
+  });
+
+  it("does not call one prompt version on two goals two prompts (the base fingerprint leaves the goal out)", () => {
+    const stool = composePrompt({ goal: { item: "wooden_stool", qty: 1 }, maxTurns: 80, version: "1" });
+    const glirol = composePrompt({ goal: { item: "glirol", qty: 1 }, maxTurns: 80, version: "1" });
+    const rec = (c: typeof stool) => ({ version: c.version, baseSha256: c.baseSha256, sha256: c.sha256 });
+    const md = build((f) => {
+      f.addLabel("s0-wooden", { arm: "S0" }, "wooden", STUDENT, "faithful", wins(2, 3, { prompt: rec(stool) }));
+      f.addLabel("s0-iron", { arm: "S0" }, "iron", STUDENT, "faithful", wins(2, 3, { prompt: rec(glirol) }));
+    });
+    expect(md).not.toMatch(/different base prompts/);
+    expect(md).toContain("distinct full texts"); // the full text differs by goal, which is listed, not warned about
   });
 
   it("treats identical text as one prompt however its file was named", () => {

@@ -18,10 +18,10 @@ describe("a run's prompt record", () => {
     const out = await runExperiment(options());
     const s = score(out.reports[0]!.dir);
     const text = readFileSync(join(out.reports[0]!.dir, "prompt.txt"), "utf8").replace(/\n$/, "");
-    expect(s.prompt).toEqual({ version: "1", baseSha256: fingerprint(text), sha256: fingerprint(text) });
+    expect(s.prompt).toEqual({ version: "1", baseSha256: loadVersion("base", "1").sha256, sha256: fingerprint(text) });
     expect(s.budget).toEqual({ kind: "steps", limit: 12 });
     const summary = JSON.parse(readFileSync(join(out.dir, "summary.json"), "utf8"));
-    expect(summary.prompt).toEqual({ version: "1", baseSha256: fingerprint(text) });
+    expect(summary.prompt).toEqual({ version: "1", baseSha256: loadVersion("base", "1").sha256 });
     expect(summary.budget).toEqual({ kind: "steps", limit: 12 });
   });
 

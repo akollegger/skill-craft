@@ -228,7 +228,7 @@ const pct2 = (x: number): string => x.toFixed(2);
 
 /**
  * What the report says of the prompts its runs saw (spec 008). Arms are compared on the base prompt's fingerprint: a difference that is only
- * the fixed arm sentence is expected of a skill arm and is listed, not warned about. A run with no record is unversioned, never version 1.
+ * the goal, the budget or the fixed arm sentence is expected and is listed, not warned about. A run with no record is unversioned, never version 1.
  */
 const KIND_LABEL = { armSentence: "arm sentence", skillTool: "skill tool", reviewRubric: "review rubric" } as const;
 
@@ -260,7 +260,7 @@ function promptLines(prompts: readonly ({ version: string; baseSha256: string; s
     const [sha, e] = [...byBase][0] as [string, { versions: Set<string>; runs: number }];
     out.push("", `Prompts: base prompt version ${[...e.versions].sort().join(" or ")} in ${e.runs} run${e.runs === 1 ? "" : "s"} (base fingerprint ${sha.slice(0, 12)}).`);
     const full = new Set(seen.map((p) => p.sha256));
-    if (full.size > 1) out.push(`The runs differ only in the fixed arm sentence (${full.size} distinct texts sent).`);
+    if (full.size > 1) out.push(`The runs sent ${full.size} distinct full texts under that one base prompt (the goal, the budget or the fixed arm sentence differ).`);
   }
   return out;
 }

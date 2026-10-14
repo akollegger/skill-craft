@@ -134,7 +134,7 @@ An experimenter names, in the experiment's summary, one version for each prompt 
 - **FR-002**: Version 1 MUST reproduce today's prompt byte-for-byte for any goal, quantity and step budget, with the note sentence appended as before.
 - **FR-003**: The existing prompt-file option MUST keep working with its current placeholders (the older one meaning a step budget), and a prompt file with an unknown placeholder or no goal placeholder MUST be refused before any run.
 - **FR-004**: An experiment's summary MUST be able to name one version for each prompt kind it uses (a prompt set), including exactly one base prompt version, and the harness MUST refuse to start an arm, and the review loop a loop, that uses a different version of a pinned kind, naming the kind and both versions.
-- **FR-005**: Every run MUST record the prompt version and two fingerprints in its score: of the filled base prompt, and of the exact text the agent received, including any fixed sentence an arm adds.
+- **FR-005**: Every run MUST record the prompt version and two fingerprints in its score: of the base prompt's template as written, and of the exact text the agent received, including any fixed sentence an arm adds.
 - **FR-006**: The report MUST print the experiment's prompt set, list any kind the summary does not pin as unpinned, and show a notice whenever one table includes arms whose base-prompt fingerprints differ (a difference only in the fixed arm sentence is listed, not warned about), and MUST treat identical text as one prompt regardless of file name.
 - **FR-007**: A replay bundle MUST carry the run's prompt version and fingerprint.
 - **FR-008**: A run made before this feature MUST be shown as unversioned.
@@ -161,7 +161,7 @@ An experimenter names, in the experiment's summary, one version for each prompt 
 - **Prompt set**: The versions an experiment pins, one per prompt kind it uses, held in the experiment's summary.
 - **Prompt kind**: One of the prompts in play: the player's base prompt, the arm sentence, the review rubric (the critic's and reviser's instructions with the review questions, one file), the skill tool's description. Each kind has its own series of versions.
 - **Prompt version**: A named, immutable text file of one kind with its placeholders (if any) and a changelog entry.
-- **Prompt fingerprints**: Two hashes per run, one of the base prompt as filled and one of the full text sent. Two runs with the same base hash saw the same base wording, and with the same full hash saw the same words.
+- **Prompt fingerprints**: Two hashes per run, one of the base prompt's template as written (the same across goals and budgets) and one of the full text sent. Two runs with the same base hash saw the same base wording, and with the same full hash saw the same words.
 - **Call budget**: The number of craft-tool calls a run may make, stated in the prompt and enforced by the driver.
 - **Over-budget refusal**: The fixed answer to a call past the budget, counted in the score and absent from the run log.
 - **Run score fields**: total calls, table-changing calls, responses, over-budget calls, prompt version and fingerprint.

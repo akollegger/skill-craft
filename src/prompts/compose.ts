@@ -23,7 +23,8 @@ export interface Composed {
   text: string;
   /** `N`, or `custom`. */
   version: string;
-  /** SHA-256 of the filled base text, before the arm sentence. */
+  /** SHA-256 of the base prompt's template as written (a numbered version's file bytes), with no goal, budget or arm sentence filled in, so
+   * one version is one value across goals and budgets. */
   baseSha256: string;
   /** SHA-256 of `text`. */
   sha256: string;
@@ -67,7 +68,7 @@ export function composePrompt(input: ComposeInput): Composed {
   return {
     text,
     version,
-    baseSha256: fingerprint(base),
+    baseSha256: fingerprint(template),
     sha256: fingerprint(text),
     budget: calls ? { kind: "calls", limit: input.callBudget as number } : { kind: "steps", limit: input.maxTurns },
     ...(sentence === undefined ? {} : { armSentence: { version: sentence.version, sha256: sentence.sha256 } }),

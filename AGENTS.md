@@ -208,8 +208,8 @@ zebra-space project with the RFC requirement removed.
   answers one fixed line, is absent from `run.jsonl` and is counted in `budgetRefused`. A goal held on the last in-budget call is `stopped`.
 - A base prompt never mentions skills, memory or learning; from version 2 it does not say "explore" or "unfamiliar". The arm sentence and the skill
   tool's description exist to mention a skill and are not checked.
-- `score.json` records `prompt` (the base version, `baseSha256` of the filled base prompt, `sha256` of the full text sent, the arm sentence's and the
-  skill tool's versions) and `budget`. The report compares arms on `baseSha256`; a difference in only the arm sentence is listed, not warned about.
+- `score.json` records `prompt` (the base version, `baseSha256` of the base prompt's template as written (no goal, budget or arm sentence, so one version is one value), `sha256` of the full text sent, the arm sentence's and the
+  skill tool's versions) and `budget`. The report compares arms on `baseSha256`; a difference in only the goal, the budget or the arm sentence is listed, not warned about.
   A run with no `prompt` block is shown as unversioned, never as version 1.
 - An experiment's summary may pin a `promptSet`; `run-agent`, `critic-loop` and the report refuse what differs from it. The review rubric
   file keeps its bytes and hash, so earlier loop records stay valid.

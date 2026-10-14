@@ -28,10 +28,10 @@ holds (plus a trailing newline) and what the agent receives.
 
 | Value | Definition |
 |---|---|
-| `baseSha256` | SHA-256 of the filled text before the arm sentence is appended |
+| `baseSha256` | SHA-256 of the base prompt's template as written (a numbered version's file bytes), with no goal, budget or arm sentence filled in, so one version is one value across goals and budgets |
 | `sha256` | SHA-256 of the full text sent, without the trailing newline |
 
-`baseSha256 == sha256` when the arm has no sentence.
+`baseSha256` is the value the prompt listing shows for a numbered version. `sha256` varies with the goal, the budget and the arm sentence.
 
 ## Budget
 

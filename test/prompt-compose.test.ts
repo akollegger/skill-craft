@@ -14,9 +14,20 @@ describe("composePrompt", () => {
     expect(c.text).toContain("your budget of 12 turns is used up.");
     expect(c.version).toBe("1");
     expect(c.budget).toEqual({ kind: "steps", limit: 12 });
-    expect(c.baseSha256).toBe(fingerprint(c.text));
-    expect(c.sha256).toBe(c.baseSha256);
+    expect(c.baseSha256).toBe(loadVersion("base", "1").sha256); // the template's fingerprint, the same as the listing shows
+    expect(c.sha256).toBe(fingerprint(c.text));
     expect(c.armSentence).toBeUndefined();
+  });
+
+  it("gives two goals, and two budgets, the same base fingerprint and different full ones (the report compares arms on the base)", () => {
+    const a = composePrompt({ goal: { item: "glirol", qty: 1 }, maxTurns: 40 });
+    const b = composePrompt({ goal: { item: "wooden_stool", qty: 1 }, maxTurns: 80 });
+    expect(a.baseSha256).toBe(b.baseSha256);
+    expect(a.sha256).not.toBe(b.sha256);
+    const v2a = composePrompt({ goal: { item: "glirol", qty: 1 }, maxTurns: 100, callBudget: 100, version: "2" });
+    const v2b = composePrompt({ goal: { item: "wooden_stool", qty: 3 }, maxTurns: 150, callBudget: 150, version: "2" });
+    expect(v2a.baseSha256).toBe(v2b.baseSha256);
+    expect(v2a.baseSha256).not.toBe(a.baseSha256); // another version is another base
   });
 
   it("states a quantity above one", () => {

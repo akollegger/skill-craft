@@ -93,9 +93,10 @@ The prompt carries no instruction to learn, no mention of memory or skills, and 
     `CHANGELOG.md` per kind with a `## v<N>` section per version. A version is never edited.
   - **The rubric is one kind, unchanged.** It moves to `prompts/review-rubric/v1.json` with identical bytes, so its hash and every
     earlier loop record stay valid. The way a role's prompt is assembled from named parts stays in code.
-  - **Two fingerprints.** A run records `baseSha256` (the filled base prompt) and `sha256` (the full text sent, including the arm
-    sentence). The report warns when arms' `baseSha256` differ and lists, without a warning, a difference in the sentence alone;
-    with one hash every skill arm would differ from its baseline.
+  - **Two fingerprints.** A run records `baseSha256` (the base prompt's template as written, before the goal, the budget and the arm
+    sentence are filled in, so one version is one value across goals) and `sha256` (the full text sent). The report warns when arms'
+    `baseSha256` differ and lists, without a warning, a difference in the goal, the budget or the sentence alone; with one hash every
+    skill arm, and every second goal, would differ from its baseline.
   - **Prompt set.** An experiment's summary may pin one version per kind it uses. `run-agent`, `critic-loop` and the report refuse
     or flag a run or loop that disagrees, before any spend where the tool can.
   - **Budget flags.** `--call-budget <n>` states a call budget and `--max-turns <n>` a step budget; a prompt's placeholder
