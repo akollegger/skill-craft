@@ -42,7 +42,7 @@ Any tier can run unaided, distill, or use a skill. `claude-haiku-5-5` is the che
 - **Simulation and tooling** (ADR-001, specs 001, 003): engine, MCP server, solver, world validation, re-skinner, a faithful world.
 - **Measurement** (ADR-002, spec 002): client-side time, tokens and cost per run, replay bundles.
 - **Runtime** (ADR-006, spec 007): the AI SDK drives players and review roles with Anthropic and Fireworks models; operational limits (step and tool timeouts, token and dollar caps, retry policy, fixed failure codes); cost recorded from the provider, a pin or an OpenRouter market quote, else null; recording of the model's per-turn messages and reasoning.
-- **Critic loop** (ADR-003 §2.6, spec 005): up to three rounds of a critic and a reviser over a candidate skill, with a provenance record (`loop.json`, process version, distiller service version).
+- **Distillation harnesses** (ADR-008, spec 009; the critic loop of spec 005 is one of them): `scripts/distill.ts --harness <name>` records finished runs, distills a skill set and writes a provenance record (`harness.json`: process version, roles, service version, spend). `nams-reviewed` is the memory service with up to three rounds of a critic and a reviser; `bespoke-one-shot` is one tool-less model call with no service. Review is internal to a harness and gates nothing.
 - **Visualizer and art** (ADR-004, ADR-005, specs 004, 006): read-only view of a folder of runs.
 - **Surveys** (`runs/reports/`): nine models on two tasks, a search-strategy and a stage classifier, a first skill bake-off.
 
@@ -64,15 +64,15 @@ Any tier can run unaided, distill, or use a skill. `claude-haiku-5-5` is the che
 
 ## 7. A family of distillation harnesses
 
-Today there is one path (NAMS generates, the critic and reviser refine). The study needs several implementations behind one seam, run on the same recordings, so the distiller is a variable and not an assumption.
+The study needs several implementations behind one seam, run on the same recordings, so the distiller is a variable and not an assumption. The seam is built (ADR-008): a harness opens a session, records finished runs, and distills a skill set on request.
 
-**The seam.** A distiller takes recorded procedural memory (the model's messages and reasoning, tool calls and their outputs) read through a *source*, either the NAMS API or the local run folder, and returns zero or more skills with provenance. It never receives solver output, scores or labels of which calls were needed (the oracle judges, never helps).
+**The seam.** A harness takes run records (the model's messages and reasoning, tool calls and their outputs) for the runs it is told to use, and returns a skill set with provenance, or a refusal with a fixed code. It never receives solver output, scores or labels of which calls were needed (the oracle judges, never helps).
 
 | Distiller | What it is | Status |
 |---|---|---|
-| **D1: NAMS one-shot** | Record to a managed workspace, generate once, download | built (the candidate step) |
-| **D2: bespoke one-shot** | One model reads the recordings through the source seam and writes a skill; no service | not built |
-| **D3: distill then review** | D1 or D2 followed by the critic and reviser loop | built over D1 |
+| **D1: NAMS one-shot** | Record to a managed workspace, generate once, download | built (inside `nams-reviewed`) |
+| **D2: bespoke one-shot** | One model reads the recordings and writes a skill; no service | built (`bespoke-one-shot`) |
+| **D3: distill then review** | D1 or D2 followed by the critic and reviser loop | built over D1 (`nams-reviewed`); over D2 not built |
 | **D4: decomposition** | Recordings to lessons (facts, chains, rules, cautions, strategies) with evidence, then packaged into several skills | designed (`multi-skill-distillation.md`), not built |
 
 D1 and D2 on identical recordings isolate whether the service adds anything; D3 against its base isolates what review adds; D4 against D2 isolates decomposition. Each variant carries a process version and records what it used.
@@ -94,7 +94,7 @@ An experiment fixes a world, a cast, a prompt and goals, and varies one factor.
 | Phase | Goal | Exit criterion |
 |---|---|---|
 | **0. Settle the prompt** | Decide and freeze the base prompt (turns defined as model steps or as calls; the earlier reworded-prompt finding) and recalibrate the three tiers | One prompt, a recorded baseline per tier on every world used |
-| **1. Distiller seam** | A source seam over the NAMS API and the local run folder; D2 as a second implementation; D1 and D2 on identical recordings | The same recordings yield a skill from each, with provenance, behind one interface |
+| **1. Distiller seam** | The harness interface (ADR-008); D2 as a second implementation; D1 and D2 on identical recordings (spec 009, story 6) | The same recordings yield a skill from each, with provenance, behind one interface (built; the comparison is optional and not yet run) |
 | **2. Transfer worlds** | Build the one-step goal family and the shared-intermediates world; add a variation of woodworking | At least three tasks per world with a declared prior fit, each proven solvable |
 | **3. Experiment runner** | Run an arm matrix (world, cast, distiller, goals) end to end, with a managed workspace per experiment | A single command produces the arms table with cost to first success and break-even |
 | **4. First comparison** | D1, D2 and D3 on the same recordings, across exact repeat, variation and related goals, with the three tiers | A results table that answers H1 and H2 with stated caveats |

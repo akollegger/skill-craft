@@ -12,10 +12,10 @@ it are compared. The environment's design is [ADR-001](design/adr/ADR-001-crafti
 The simulation implements ADR-001 (feature spec `specs/001-crafting-table-sim`). An interim run
 harness runs Claude Code against it, measures each run and exports replay bundles (ADR-002, feature
 spec `specs/002-client-otel-trace`). The skillcraft visualizer, a read-only page over a folder of runs, implements
-ADR-004 (feature spec `specs/004-skillcraft-visualizer`). The critic loop, which reviews and revises a distilled skill, is
-built (ADR-003 §2.6, feature spec `specs/005-critic-loop-harness`). The rest of the record, distill and compare workflow
-is not built yet; it waits on the player and experiment-protocol decision
-(`design/notes/agent-player-options.md`). Do not add mechanics beyond ADR-001 (gathering, tool tiers,
+ADR-004 (feature spec `specs/004-skillcraft-visualizer`). Distillation is a harness behind one interface (ADR-008, feature spec
+`specs/009-distillation-harness-interface`): `nams-reviewed` is the earlier critic loop (feature spec `specs/005-critic-loop-harness`) as one
+harness and `bespoke-one-shot` is a reference harness with no external service. The experiment runner and the compare workflow
+are not built yet; they wait on the experiment protocol (ADR-003). Do not add mechanics beyond ADR-001 (gathering, tool tiers,
 stations, fuel were deliberately removed).
 
 ## Commands
@@ -35,9 +35,10 @@ Scripts (run with `pnpm dev`): `scripts/solve.ts` (best run for a goal), `script
 `scripts/run-agent.ts` (runs through the AI SDK, with a Claude model or `fireworks/<model>` via `--model`, scored and measured; `--dry-run`
 spends nothing; `--prompt-version <n>` picks `prompts/base/v<n>.txt` (default 1); `--call-budget <n>` states a budget of tool calls for a version 2 prompt, `--max-turns <n>` a budget of steps for a version 1 one, and the other is refused; `--arm-sentence <n>` and `--skill-tool-version <n>` pick those prompts' versions; `--prompt-note` adds one free-text sentence and `--prompt-file` replaces the base prompt with an ad hoc template (both recorded as `custom`); `--experiment <folder>` refuses an arm that differs from the experiment's pinned prompt set: every arm of an experiment must use the same base prompt), `scripts/report.ts` (run folders to the
 experiment results table), `scripts/score.ts` (score run logs against the best run) and `scripts/export-run.ts`
-(export a finished run as a replay bundle), `scripts/prompts.ts` (list every prompt kind, version and fingerprint; exits 1 on a missing changelog entry) and `scripts/critic-loop.ts` (finished runs, or a candidate skill, to
-a reviewed skill: up to three rounds of a critic and a reviser, then a loop record under `loops/`; `--dry-run`
-spends nothing, `--allow-workspace` is needed to distill a candidate through NAMS), `scripts/viz.ts <folder>` (serve a
+(export a finished run as a replay bundle), `scripts/prompts.ts` (list every prompt kind, version and fingerprint; exits 1 on a missing changelog entry) `scripts/distill.ts` (`--harness <name> --runs <run folders>...`: builds a run record from each folder, records them with the
+harness, distills over all of them and writes a skill set (`distills/<label>/skills/`, one folder per skill plus `skill-set.json`) and the
+provenance record `harness.json`; `--dry-run` spends nothing, `--allow-workspace` is needed by `nams-reviewed`, `--distiller-model` by
+`bespoke-one-shot`), `scripts/schemas.ts` (regenerates `schemas/run-record.v1.json` and `schemas/skill-set.v1.json` from the zod definitions; a test fails on drift), `scripts/viz.ts <folder>` (serve a
 folder of runs and the built page on 127.0.0.1), `scripts/viz-export.ts <folder> <dest>` (a static copy of the same) and `scripts/art-sheet.ts <dest.html>` (a contact sheet of the sprite library, written outside the repository).
 The server runs as
 `SIM_WORLD=<world.json> [SIM_RUN_LOG=<fresh file>] pnpm exec tsx src/mcp/server.ts`.
@@ -133,9 +134,12 @@ zebra-space project with the RFC requirement removed.
 | `viz/` | The visualizer's page (Vite, Svelte, PixiJS, Tailwind); built to `dist-viz/` (gitignored); component tests in `viz/test/` |
 | `prompts/` | Every prompt in play, versioned and never edited: `base/`, `arm-sentence/`, `skill-tool/`, `review-rubric/`, each `v<N>.<ext>` with a `CHANGELOG.md` (ADR-007) |
 | `src/prompts/` | Loading, placeholder and word checks, filling, fingerprints, composing a run's prompt, and the prompt set check; no SDK import |
-| `src/loop/` | The critic loop: rubric and roles' instructions (one versioned file), the verdict and revision schemas, role prompts, the round controller, the loop record, the NAMS seam with its workspace guard, the candidate step, a small zip reader and diff; no SDK import |
+| `src/distill/` | The distillation harness interface (ADR-008): the `Harness`/`Session` types and the base session, the registry of harness names, the run record and skill set schemas, provenance, the skill set on disk, the command, and the harnesses (`nams-reviewed`, `bespoke-one-shot`); no SDK import |
+| `schemas/` | The two JSON Schema contracts, `run-record.v1.json` and `skill-set.v1.json`, generated from `src/distill/schemas.ts` (`pnpm dev scripts/schemas.ts`) |
+| `distills/` | One folder per distillation (gitignored): `skills/`, `harness.json` and, for `nams-reviewed`, the review loop's files. The only other place model-authored text may be written, beside `loops/` |
+| `src/loop/` | The critic loop (the `nams-reviewed` harness's review stage): rubric and roles' instructions (one versioned file), the verdict and revision schemas, role prompts, the round controller, the loop record, the NAMS seam with its workspace guard, the candidate step, a small zip reader and diff; no SDK import |
 | `loops/` | One folder per loop (gitignored): rounds, verdicts, diffs, the accepted `skill/`. The only place model-authored review text may be written |
-| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `report.ts`, `score.ts`, `export-run.ts`, `critic-loop.ts`, `viz.ts`, `viz-export.ts`, `dev-viz.ts` |
+| `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `report.ts`, `score.ts`, `export-run.ts`, `distill.ts`, `schemas.ts`, `viz.ts`, `viz-export.ts`, `dev-viz.ts` |
 | `spikes/` | Fixtures and helper scripts from exploratory spikes (the pilot's distilled skill, the REST-ingest script, the experiment workspace helpers, the faithful-world skills); not part of the product |
 | `test/` | vitest suites (`test/viz/` for the visualizer's data side); `fixtures/valid` and `fixtures/invalid` hold the world fixtures |
 | `design/adr/` | ADRs and index |
@@ -211,10 +215,23 @@ zebra-space project with the RFC requirement removed.
 - `score.json` records `prompt` (the base version, `baseSha256` of the base prompt's template as written (no goal, budget or arm sentence, so one version is one value), `sha256` of the full text sent, the arm sentence's and the
   skill tool's versions) and `budget`. The report compares arms on `baseSha256`; a difference in only the goal, the budget or the arm sentence is listed, not warned about.
   A run with no `prompt` block is shown as unversioned, never as version 1.
-- An experiment's summary may pin a `promptSet`; `run-agent`, `critic-loop` and the report refuse what differs from it. The review rubric
+- An experiment's summary may pin a `promptSet`; `run-agent`, `distill` (the distiller prompt) and the report refuse what differs from it. The review rubric
   file keeps its bytes and hash, so earlier loop records stay valid.
 
-## Critic loop rules to keep in mind
+## Distillation harness rules to keep in mind
+
+- A harness takes finished runs as run records and returns a skill set or a refusal with a fixed code (`no_skill`, `spend_limit`, `cancelled`,
+  `failed`). The run record (`schemas/run-record.v1.json`) holds the task prompt, models and settings, the model's turns, calls and the final
+  answer, and **no** score, reached flag, solver path, extra-call count, goal role, which-calls-were-needed label, world or goals file or
+  timing; a test asserts the property list. Never add an oracle field to a run record or a harness input.
+- A harness never chooses runs: `scripts/distill.ts` names them, and a harness distills over what it was given. Review is internal to a
+  harness; no verdict gates a skill arm, and the report prints what the provenance says (ADR-003 §2.6, amended 2026-10-14).
+- A harness that sends run records off the machine (`retainedExternally`) runs only with an explicit operator option. `bespoke-one-shot`
+  keeps them in memory and needs none; `nams-reviewed` needs `--allow-workspace`.
+- Each harness owns a process version and a changelog section in `design/notes/skill-process.md`; a test fails when one has no entry.
+- Contracts change by a new file (`...v2.json`), not an edit; `pnpm dev scripts/schemas.ts` must produce no diff.
+
+## Critic loop rules to keep in mind (the `nams-reviewed` harness)
 
 - The critic and the reviser have no tools: a role's prompt is built in `src/loop/inputs.ts` from named parts
   only (rubric, goals, recordings, the current skill, and for the reviser the current verdict), so they cannot read
@@ -229,18 +246,19 @@ zebra-space project with the RFC requirement removed.
   variant of `SKILL.md` (macOS ignores case), so only an accepted loop's `skill/` folder installs through `--skill`.
 - The loop touches only a NAMS workspace it created, never one named in `NAMS_WORKSPACE_ID`, and the key comes from
   the environment only. Run the live steps in a subshell that unsets `NAMS_WORKSPACE_ID` (see the spec's quickstart).
-- Each loop's `loop.json` records how its skill was made: the process version (`PROCESS_VERSION` in `src/loop/process.ts`, explained in
+- Each distillation's `harness.json` (a loop's older `loop.json` is read as `nams-reviewed`) records how its skill was made: the process version (`PROCESS_VERSION` in `src/loop/process.ts`, explained in
   `design/notes/skill-process.md`, with a test that fails when the changelog has no entry for it), the commit and whether the tree had
   changes, the recorded runs with hashes and settings, the roles' models and settings, the memory service's version and build commit (read from its unauthenticated `/v1/version` while generation runs), the spend and the final skill's hash. It holds no
   recorded text and never goes inside `skill/`. A student run's `skill.sha256` finds it (`grep` for `finalSkillSha256` in `loops/*/loop.json`).
   Bump `PROCESS_VERSION` and add a changelog entry when what is recorded, what the distiller is asked, the rubric, the roles' instructions,
   the round limit or the roles' default settings change.
-- An experiment declares a cast, not a fixed pair (ADR-003 §2.1, amended 2026-10-12; spec 007 FR-040): `cast` in `summary.json` gives the
-  teacher, student and distiller (the memory service, with the critic and reviser as its review stage), each with a model and settings,
-  one model may fill several roles, and the older `models` form is still read. The report prints the cast and which roles share a model,
-  and when `review.json` has a `loop` path it checks that loop record against the reviewed skill and the cast and says who made the skill.
-  Harness-based distillation is a later ADR; it must take only what the model and the world produced, never solver output or scores.
-- `critic-loop.ts` costs real Claude usage (and `--allow-workspace` writes to the NAMS account). Use `--dry-run` first,
+- An experiment declares a cast, not a fixed pair (ADR-003 §2.1, amended 2026-10-12 and 2026-10-14; spec 007 FR-040, spec 009 FR-017): `cast` in
+  `summary.json` gives the teacher, student and `harness` (`{ name, roles: { <role>: { model, settings } } }`), each role with a model and
+  settings, one model may fill several roles, an older `cast.distiller` is read as `nams-reviewed` (roles `critic`, `reviser`) and the older `models` form is still read.
+  The report prints the cast and which roles share a model, and when the summary's `distillation.record` names a `harness.json` (or an older `loop.json`) it
+  checks the record against the cast (harness name, each role's requested and answering model and settings) and says who made the skill; it no longer
+  requires `review.json` or a verdict of `accept`. A harness takes only what the model and the world produced, never solver output or scores.
+- `distill.ts` costs real model usage (and `--allow-workspace` writes to the NAMS account). Use `--dry-run` first,
   and keep `--max-role-usd` and `--max-rounds` small.
 
 ## Conventions

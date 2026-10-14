@@ -66,7 +66,11 @@ looking one up. The last column names where the term is decided.
 | **calibration** | Unaided trials of each model on every goal, 5 each, to assign goal roles and check that the student has something left to gain | ADR-003 |
 | **prior fit** | How far a model's existing knowledge predicts a world's recipes: *invented* (none), *faithful* (a well-known source's vocabulary and recipes, a control), or *perturbed* (faithful with stated deviations) | constitution III, ADR-003 |
 | **systematic / idiosyncratic deviation** | In a perturbed world, a rule applied across recipes (a skill can abstract it) versus a change to one recipe (memory can recall it) | ADR-001, ADR-003 |
-| **critic** | A separate model that reviews a distilled skill against a rubric before any student sees it | ADR-003 |
+| **critic** | A separate model that reviews a distilled skill against a rubric; a stage inside the `nams-reviewed` harness, not a gate on a skill | ADR-003, ADR-008 |
+| **distillation harness** | A named process that records finished runs and produces a skill set on demand: `nams-reviewed` (the memory service plus a critic and reviser) and `bespoke-one-shot` (one tool-less model call) | ADR-008 |
+| **session** | One use of a harness for one experiment: `record(run)`, `distill(request)`, `describe()`, `close()`; it releases everything it created on close | ADR-008 |
+| **skill set** | What a harness returns: a non-empty list of skills (one is ordinary), written as a root folder with a folder per skill and a `skill-set.json` sidecar | ADR-008 |
+| **run record** | A finished run as a harness receives it: the prompt, models and settings, the model's turns and calls and the final answer, with no score, solver path, goal role or timing | ADR-008 |
 | **call budget** | The number of craft-tool calls a run may make, stated in the base prompt and enforced by the driver. A *step budget* (the number of model responses) is the older meaning of turns, kept for version 1 of the base prompt | ADR-003, ADR-007 |
 | **prompt kind / prompt set** | One of the prompts in play (base prompt, arm sentence, skill tool description, review rubric), each a series of versioned files under `prompts/`; the versions an experiment pins, one per kind | ADR-007 |
 | **NAMS** | Neo4j Agent Memory Service: stores conversations, tool calls and extracted entities, and distills skills from them | ADR-003 |
@@ -88,4 +92,4 @@ looking one up. The last column names where the term is decided.
 | [ADR-005](ADR-005-per-world-item-art.md) | Per-world item art: drawn icons where a world has them, allocated glyphs where it does not | accepted | specs/006-sprite-library |
 | [ADR-006](ADR-006-ai-sdk-runtime.md) | The AI SDK as the runtime for players and review roles | accepted | specs/007-ai-sdk-runtime |
 | [ADR-007](ADR-007-base-prompt-and-budget.md) | The base prompt is a versioned experiment parameter, and its budget counts tool calls | accepted | specs/008-versioned-base-prompt |
-| [ADR-008](ADR-008-distillation-harness-interface.md) | The distillation harness: record finished runs, produce a set of skills on demand | proposed | |
+| [ADR-008](ADR-008-distillation-harness-interface.md) | The distillation harness: record finished runs, produce a set of skills on demand | accepted | specs/009-distillation-harness-interface |
