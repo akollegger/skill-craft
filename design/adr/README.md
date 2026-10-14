@@ -88,3 +88,4 @@ looking one up. The last column names where the term is decided.
 | [ADR-005](ADR-005-per-world-item-art.md) | Per-world item art: drawn icons where a world has them, allocated glyphs where it does not | accepted | specs/006-sprite-library |
 | [ADR-006](ADR-006-ai-sdk-runtime.md) | The AI SDK as the runtime for players and review roles | accepted | specs/007-ai-sdk-runtime |
 | [ADR-007](ADR-007-base-prompt-and-budget.md) | The base prompt is a versioned experiment parameter, and its budget counts tool calls | accepted | specs/008-versioned-base-prompt |
+| [ADR-008](ADR-008-distillation-harness-interface.md) | The distillation harness: record finished runs, produce a set of skills on demand | proposed | |
