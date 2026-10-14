@@ -60,12 +60,12 @@ export interface LoopResult {
   /** The accepted package: the text the accepting critic reviewed. Absent unless the outcome is accept. */
   final?: SkillPackage | undefined;
   stages: Stage[];
-  rubric: { version: string; sha256: string };
+  rubric: { version: string; sha256: string; kindVersion?: string };
 }
 
 /** A loop that ended before any round, such as one whose candidate could not be obtained. */
 export function endedLoopResult(rubric: Rubric, reason: string, extra: { failed: boolean; cancelled: boolean }): LoopResult {
-  return { outcome: "reject", reason, failed: extra.failed, cancelled: extra.cancelled, rounds: [], stages: [], rubric: { version: rubric.version, sha256: rubric.sha256 } };
+  return { outcome: "reject", reason, failed: extra.failed, cancelled: extra.cancelled, rounds: [], stages: [], rubric: { version: rubric.version, sha256: rubric.sha256, ...(rubric.kindVersion === null ? {} : { kindVersion: rubric.kindVersion }) } };
 }
 
 /** What the main file of an accepted skill must not hold (FR-016): the audit trail belongs in the provenance file. */
@@ -102,7 +102,7 @@ export async function runLoop(input: LoopInput): Promise<LoopResult> {
     rounds,
     ...(extra.final ? { final: extra.final } : {}),
     stages,
-    rubric: { version: rubric.version, sha256: rubric.sha256 },
+    rubric: { version: rubric.version, sha256: rubric.sha256, ...(rubric.kindVersion === null ? {} : { kindVersion: rubric.kindVersion }) },
   });
 
   const settingsByModel = Object.fromEntries(Object.entries(input.settings ?? {}).map(([k, v]) => [canonicalSpec(k), v]));

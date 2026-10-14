@@ -162,12 +162,73 @@ export function sessionInit(model: string): PlayerMessage {
   return { type: "system", subtype: "init", model };
 }
 
+/** The one answer to a craft call past a call budget: it names no tool, item or recipe, so it reveals nothing about the world. */
+export const BUDGET_REFUSAL = "The call budget is used up. This call was not run.";
+
+/** A budget of craft-tool calls and what has been spent of it (ADR-007 section 2.1). */
+export interface CallBudget {
+  limit: number;
+  /** Calls executed. */
+  used: number;
+  /** Calls answered with `BUDGET_REFUSAL` and not sent to the craft server. */
+  refused: number;
+  /** Each call's decision, by tool call id, so deciding once serves both the trace and the execution. */
+  decided: Map<string, boolean>;
+  /** The ids of the calls refused: they are not traced and do not count as craft calls. */
+  refusedIds: Set<string>;
+}
+
+export const newCallBudget = (limit: number): CallBudget => ({ limit, used: 0, refused: 0, decided: new Map(), refusedIds: new Set() });
+
+/**
+ * Decide whether a call is within the budget, once per call id: the first ask counts it, a later ask for the same id gets the same answer.
+ * The driver asks when a call starts, which is when it is traced, and the wrapped tool asks again when it runs, so a refused call is
+ * neither traced nor run and the two never disagree.
+ */
+export function admitCall(b: CallBudget, id: string): boolean {
+  const known = b.decided.get(id);
+  if (known !== undefined) return known;
+  const ok = b.used < b.limit;
+  if (ok) b.used++;
+  else {
+    b.refused++;
+    b.refusedIds.add(id);
+  }
+  b.decided.set(id, ok);
+  return ok;
+}
+
+/** Whether the run should end after this response: the budget is all used, or a call had to be refused. */
+export const callBudgetSpent = (b: CallBudget): boolean => b.used >= b.limit || b.refused > 0;
+
+/**
+ * Wrap the craft tools so each call is counted as it starts, which is the order the model emitted them in a response, and a call
+ * past the budget is not run. Only the tools in `names` are wrapped: the skill tool is not a craft tool and is never counted.
+ */
+export function withCallBudget<T extends Record<string, { execute?: (...args: never[]) => unknown }>>(tools: T, names: ReadonlySet<string>, budget: CallBudget): T {
+  const out: Record<string, unknown> = { ...tools };
+  for (const [name, t] of Object.entries(tools)) {
+    const run = t.execute;
+    if (!names.has(name) || run === undefined) continue;
+    out[name] = {
+      ...t,
+      execute: (...args: never[]) => {
+        // The call's id comes with the SDK's options; a call without one (a direct call in a test) is its own call.
+        const id = (args[1] as { toolCallId?: string } | undefined)?.toolCallId ?? `anonymous-${budget.decided.size}`;
+        if (!admitCall(budget, id)) return Promise.resolve({ content: [{ type: "text", text: BUDGET_REFUSAL }] });
+        return run(...args);
+      },
+    };
+  }
+  return out as T;
+}
+
 /**
  * Stopped, budget or error, from how the last step ended. A run that used its turns and still wanted a tool is a
  * budget stop, whatever else it said; any other finish than a plain stop (a length cut-off, a filter) is an error.
  */
-export function classifyEnd(lastFinish: string | undefined, steps: number, maxTurns: number): PlayerResult["ended"] {
-  if (lastFinish === "tool-calls" && steps >= maxTurns) return "budget";
+export function classifyEnd(lastFinish: string | undefined, steps: number, maxTurns: number, callBudgetSpent = false): PlayerResult["ended"] {
+  if (lastFinish === "tool-calls" && (steps >= maxTurns || callBudgetSpent)) return "budget";
   return lastFinish === "stop" ? "stopped" : "error";
 }
 

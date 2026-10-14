@@ -191,6 +191,8 @@ describe("a loop from a candidate (scripted roles)", () => {
     expect(text).toMatch(/round 2\s+critic fake-model: accept/);
     expect(text).toMatch(/outcome accept\s+skill: .*go\/skill/);
     expect(existsSync(join(r.loops, "go/loop.json"))).toBe(true);
+    // The rubric is one prompt kind (spec 008): its record names the kind's version beside the file's own version and hash.
+    expect(JSON.parse(readFileSync(join(r.loops, "go/loop.json"), "utf8")).rubric).toMatchObject({ version: "1", kindVersion: "1" });
     expect(r.role.calls.every((c) => c.model === "fake-model" && c.maxUsd === 0.4)).toBe(true);
   });
 
@@ -428,5 +430,29 @@ describe("the roles' prices, through the command (spec 007 FR-046, FR-048)", () 
     const r = await run(["--runs", a, "--candidate", candidateFolder(), "--critic-model", "claude-haiku-4-5-20251001", "--reviser-model", "claude-haiku-4-5-20251001", "--label", "one"], [verdict("accept", "V1")], { processInfo: () => info, pricing: async (spec) => { asked.push(spec); return undefined; } });
     expect(r.code).toBe(0);
     expect(asked).toEqual(["anthropic/claude-haiku-4-5-20251001"]);
+  });
+});
+
+describe("critic-loop --experiment (spec 008)", () => {
+  const experiment = (set: Record<string, unknown> | undefined) => {
+    const dir = mkdtempSync(join(tmpdir(), "skill-craft-loop-exp-"));
+    writeFileSync(join(dir, "summary.json"), JSON.stringify(set === undefined ? { experiment: "x" } : { promptSet: set }));
+    return dir;
+  };
+
+  it("refuses a rubric version that differs from the pinned one, before any model call", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", "pin-bad", "--experiment", experiment({ base: "1", reviewRubric: "2" })]);
+    expect(r.code).toBe(1);
+    expect(r.err.join("\n")).toMatch(/review rubric version 1 differs from the experiment's 2/);
+    expect(r.role.calls).toHaveLength(0);
+  });
+
+  it("runs when the rubric matches the pin, or the experiment pins none", async () => {
+    const a = await makeRun(MIRROR, { item: "c", qty: 1 }, "a");
+    for (const set of [{ base: "1", reviewRubric: "1" }, { base: "1" }, undefined]) {
+      const r = await run(["--runs", a, "--candidate", candidateFolder(), "--label", `pin-${JSON.stringify(set)}`.replace(/[^A-Za-z0-9-]/g, ""), "--experiment", experiment(set), "--dry-run"]);
+      expect(r.code, JSON.stringify(set)).toBe(0);
+    }
   });
 });

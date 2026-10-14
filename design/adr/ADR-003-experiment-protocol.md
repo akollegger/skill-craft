@@ -307,3 +307,13 @@ Early on, a human also reads the first skills the critic accepts, as a post-hoc 
   the new runtime, since earlier Claude Code results do not carry over, and thinking, effort and temperature are pinned
   per model in the experiment summary. The base prompt is part of the rerun, and its wording stays an open decision. The memory arm in 2.2 stays deferred and is specified as harness-side recall, which
   does not depend on the runtime.
+- **2026-10-13, the turn budget is a call budget, and every prompt in play is versioned (ADR-007, spec 008).** Sections 2.2 and 2.5 and the
+  glossary spoke of a "turn budget", the cap on agent turns, which the harness enforced as a count of model responses while models
+  read it as tool calls and batch calls differently, so the budget meant different amounts of exploration to different providers. The
+  base prompt now states a budget of tool calls (a *call budget*) that the driver enforces, and "success within the turn budget" in 2.5
+  reads "success within the call budget" for experiments that use a version 2 prompt; an experiment on a version 1 prompt keeps a step
+  budget and is labelled so. Section 2.2's "all arms use one base prompt" now also covers the arm sentence, the skill tool's
+  description and the review rubric: each is a versioned file under `prompts/`, an experiment's summary may pin a version of each
+  (a prompt set), and a run, an arm or a review loop that differs from the pinned set is refused before any spend. The S2 sentence
+  is `prompts/arm-sentence/v1.txt`. The review rubric of 2.6 is unchanged and moved with identical bytes, so earlier loop records
+  stay valid. The first experiment's 80-turn budget is a step budget under version 1.

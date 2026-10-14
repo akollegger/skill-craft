@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { composePrompt } from "../src/prompts/compose.js";
 import { buildReport, reportCli, ReportRefused, wilson } from "../src/harness/report.js";
 
 const SECRET = "AGENT-TEXT-THAT-MUST-NOT-APPEAR";
@@ -19,6 +20,8 @@ interface RunSpec {
   loadedAfter?: number | null; // undefined: no skill installed; null: installed, never loaded
   sha?: string;
   note?: string;
+  prompt?: { version: string; baseSha256: string; sha256: string; armSentence?: { version: string; sha256: string }; skillTool?: { version: string; sha256: string } }; // absent: a run from before prompts were recorded
+  budget?: { kind: "steps" | "calls"; limit: number };
 }
 
 /** A synthetic experiment folder: the summary, an optional review, and label folders with scored runs. */
@@ -68,6 +71,8 @@ function fixture(summaryOver: Record<string, unknown> = {}) {
           text: SECRET,
           priorFit: fit,
           ...(r.note ? { promptNote: r.note } : {}),
+          ...(r.prompt === undefined ? {} : { prompt: r.prompt }),
+          ...(r.budget === undefined ? {} : { budget: r.budget }),
           score: { goal: { item: goal, qty: 1 }, reached: r.reached, callsToGoal: 10, extraCalls: r.reached ? (r.extra ?? 0) : null, refusals: {} },
           measured: { trace: "matched", total: { durationMs: 1000, inputTokens: 10, outputTokens: 20, cacheReadTokens: 30, cacheCreationTokens: 40, costUsd: r.unpriced ? 0 : (r.cost ?? 0.1) } },
           model: { requested: null, resolved: [model] },
@@ -582,6 +587,25 @@ describe("the cast (spec 007 FR-040 to FR-043)", () => {
       return f;
     };
 
+    it("holds the loop's review rubric to the pinned version (spec 008)", () => {
+      const A = "a".repeat(64);
+      const arm = (rubric: unknown, pinned: string | undefined) => {
+        const f = withCast(cast());
+        (f.summary as Record<string, unknown>).promptSet = { base: "1", ...(pinned === undefined ? {} : { reviewRubric: pinned }) };
+        f.addLabel("s1", { arm: "S1" }, "iron", `anthropic/${HAIKU}`, "faithful", wins(2, 3, { loadedAfter: 2, sha, prompt: { version: "1", baseSha256: A, sha256: A } }));
+        f.write();
+        const path = join(f.root, "loop.json");
+        writeFileSync(path, JSON.stringify(loopRecord(rubric === undefined ? {} : { rubric })));
+        f.review({ skillSha256: sha, loop: path });
+        return f;
+      };
+      const read = (f: ReturnType<typeof arm>) => buildReport({ experiment: f.exp, labels: f.labels });
+      expect(read(arm({ version: "1", sha256: A, kindVersion: "1" }, "1"))).toContain("Skill made by");
+      expect(() => read(arm({ version: "1", sha256: A, kindVersion: "2" }, "1"))).toThrow(/review rubric version 2 differs from the experiment's 1/);
+      expect(() => read(arm(undefined, "1"))).toThrow(/names no review rubric version/);
+      expect(read(arm({ version: "1", sha256: A, kindVersion: "2" }, undefined))).toContain("Skill made by"); // not pinned, not checked
+    });
+
     it("prints who made the skill: the process and commit, the teacher, the critic and reviser, and the service's version and commit", () => {
       const f = skillArm(loopRecord());
       const text = buildReport({ experiment: f.exp, labels: f.labels });
@@ -721,5 +745,103 @@ describe("where a cost came from, in the report (spec 007 FR-049)", () => {
     const f = fixture();
     f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 3, { unpriced: true, source: "pin" }));
     expect(rowOf(buildReport({ experiment: f.write(), labels: f.labels }), "calibration")).toContain("- (3 unpriced)");
+  });
+});
+
+describe("the prompts a report covers (spec 008, FR-006, FR-008)", () => {
+  const A = "a".repeat(64);
+  const B = "b".repeat(64);
+  const C = "c".repeat(64);
+  const v = (version: string, base: string, full: string = base) => ({ version, baseSha256: base, sha256: full });
+  const build = (setup: (f: ReturnType<typeof fixture>) => void) => {
+    const f = fixture();
+    setup(f);
+    return buildReport({ experiment: f.write(), labels: f.labels });
+  };
+
+  it("shows a run with no prompt record as unversioned", () => {
+    const md = build((f) => f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(2, 3)));
+    expect(md).toContain("Prompts: 3 runs are unversioned");
+  });
+
+  it("lists the version and says nothing alarming when every arm saw the same base prompt", () => {
+    const md = build((f) => f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(2, 3, { prompt: v("1", A) })));
+    expect(md).toContain("Prompts: base prompt version 1 in 3 runs");
+    expect(md).not.toMatch(/different base prompts/);
+  });
+
+  it("warns when arms saw different base prompts", () => {
+    const md = build((f) => {
+      f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(2, 3, { prompt: v("1", A) }));
+      f.addLabel("s0", { arm: "S0" }, "iron", STUDENT, "faithful", wins(2, 3, { prompt: v("2", B) }));
+    });
+    expect(md).toContain("Warning: the runs in this report saw different base prompts");
+  });
+
+  it("only lists, without a warning, a difference that is just the arm sentence", () => {
+    const md = build((f) => {
+      f.addLabel("s0", { arm: "S0" }, "iron", STUDENT, "faithful", wins(2, 3, { prompt: v("1", A, A) }));
+      f.addLabel("s0b", { arm: "S0" }, "wooden", STUDENT, "faithful", wins(2, 3, { prompt: v("1", A, C) }));
+    });
+    expect(md).not.toMatch(/different base prompts/);
+    expect(md).toContain("distinct full texts");
+  });
+
+  it("does not call one prompt version on two goals two prompts (the base fingerprint leaves the goal out)", () => {
+    const stool = composePrompt({ goal: { item: "wooden_stool", qty: 1 }, maxTurns: 80, version: "1" });
+    const glirol = composePrompt({ goal: { item: "glirol", qty: 1 }, maxTurns: 80, version: "1" });
+    const rec = (c: typeof stool) => ({ version: c.version, baseSha256: c.baseSha256, sha256: c.sha256 });
+    const md = build((f) => {
+      f.addLabel("s0-wooden", { arm: "S0" }, "wooden", STUDENT, "faithful", wins(2, 3, { prompt: rec(stool) }));
+      f.addLabel("s0-iron", { arm: "S0" }, "iron", STUDENT, "faithful", wins(2, 3, { prompt: rec(glirol) }));
+    });
+    expect(md).not.toMatch(/different base prompts/);
+    expect(md).toContain("distinct full texts"); // the full text differs by goal, which is listed, not warned about
+  });
+
+  it("treats identical text as one prompt however its file was named", () => {
+    const md = build((f) => {
+      f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 2, { prompt: v("1", A) }));
+      f.addLabel("s0", { arm: "S0" }, "iron", STUDENT, "faithful", wins(1, 2, { prompt: v("custom", A) }));
+    });
+    expect(md).not.toMatch(/different base prompts/);
+  });
+});
+
+describe("a pinned prompt set (spec 008, US5)", () => {
+  const A = "a".repeat(64);
+  const prompt = (version: string, extra: Record<string, unknown> = {}) => ({ version, baseSha256: A, sha256: A, ...extra });
+  const SET = { base: "1", armSentence: "1", skillTool: "1", reviewRubric: "1" };
+  const build = (summaryOver: Record<string, unknown>, setup: (f: ReturnType<typeof fixture>) => void) => {
+    const f = fixture(summaryOver);
+    setup(f);
+    return buildReport({ experiment: f.write(), labels: f.labels });
+  };
+
+  it("prints the set, lists the kinds the runs used that the set does not pin, and checks nothing against an unpinned experiment", () => {
+    const md = build({ promptSet: { base: "1" } }, (f) => f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 2, { prompt: prompt("1", { armSentence: { version: "1", sha256: A } }) })));
+    expect(md).toContain("Prompt set: base prompt 1.");
+    expect(md).toContain("not pinned by the experiment: arm sentence");
+    const plain = build({}, (f) => f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 2, { prompt: prompt("1") })));
+    expect(plain).toContain("Prompt set: not pinned.");
+  });
+
+  it("refuses a run whose recorded version of a pinned kind differs, naming the kind and both versions", () => {
+    expect(() => build({ promptSet: SET }, (f) => f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 2, { prompt: prompt("2") })))).toThrow(/cal\/001: base prompt version 2 differs from the experiment's 1/);
+    expect(() => build({ promptSet: SET }, (f) => f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 2, { prompt: prompt("1", { skillTool: { version: "2", sha256: A } }) })))).toThrow(/skill tool version 2 differs/);
+  });
+
+  it("refuses a run that recorded no prompt when the experiment pins one", () => {
+    expect(() => build({ promptSet: SET }, (f) => f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 2)))).toThrow(/recorded no prompt/);
+  });
+
+  it("holds a call budget to the pinned one", () => {
+    expect(() => build({ promptSet: { base: "2", callBudget: 100 } }, (f) => f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 2, { prompt: prompt("2"), budget: { kind: "calls", limit: 50 } })))).toThrow(/call budget 50 differs/);
+    const md = build({ promptSet: { base: "2", callBudget: 100 } }, (f) => f.addLabel("cal", { stage: "calibration" }, "iron", STUDENT, "faithful", wins(1, 2, { prompt: prompt("2"), budget: { kind: "calls", limit: 100 } })));
+    expect(md).toContain("Prompt set: base prompt 2, call budget 100.");
+  });
+
+  it("refuses a set that is not one", () => {
+    expect(() => build({ promptSet: { armSentence: "1" } }, () => {})).toThrow(/prompt set/);
   });
 });

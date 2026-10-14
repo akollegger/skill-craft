@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { LanguageModelUsage } from "ai";
-import { classifyEnd, countInvalid, failureCode, invalidStreak, longRetryAfter, overCap, roleTokens, skillDescription, tokensOf, toolStop } from "../src/harness/ai-options.js";
+import { admitCall, BUDGET_REFUSAL, callBudgetSpent, classifyEnd, countInvalid, failureCode, invalidStreak, longRetryAfter, newCallBudget, overCap, roleTokens, skillDescription, tokensOf, toolStop, withCallBudget } from "../src/harness/ai-options.js";
 import { SettingsInvalid, UnknownModel } from "../src/harness/errors.js";
 import { canonicalSpec, costOf, loadPrices, loadSettings, parseModelSpec, priceFor } from "../src/harness/models.js";
 
@@ -244,5 +244,71 @@ describe("toolStop", () => {
     expect(toolStop({ type: "tool-error", error: { name: "MCPClientError", message: "Request was aborted", cause: { name: "AbortError" } } })).toBeUndefined(); // a cancelled run, not a stalled tool
     expect(toolStop({ type: "tool-error", error: { name: "Error", message: "something else" } })).toBeUndefined();
     expect(toolStop({ type: "tool-result", output: { isError: true } })).toBeUndefined();
+  });
+});
+
+describe("a call budget (spec 008, ADR-007 section 2.1)", () => {
+  const order: string[] = [];
+  const tools = () => ({
+    look: { execute: async (_input?: unknown, _options?: unknown) => (order.push("look"), { content: [{ type: "text", text: "table" }] }) },
+    place: { execute: async (_input?: unknown, _options?: unknown) => (order.push("place"), { content: [{ type: "text", text: "placed" }] }) },
+    Skill: { execute: async (_input?: unknown, _options?: unknown) => (order.push("Skill"), "skill text") },
+  });
+  const craft = new Set(["look", "place"]);
+
+  it("runs calls up to the budget in the order they arrive and refuses the rest with one fixed line", async () => {
+    order.length = 0;
+    const budget = newCallBudget(3);
+    const t = withCallBudget(tools(), craft, budget);
+    const results = await Promise.all([t.look.execute(), t.place.execute(), t.look.execute(), t.place.execute(), t.look.execute()]);
+    expect(order).toEqual(["look", "place", "look"]);
+    expect(results.slice(3)).toEqual([{ content: [{ type: "text", text: BUDGET_REFUSAL }] }, { content: [{ type: "text", text: BUDGET_REFUSAL }] }]);
+    expect(budget).toMatchObject({ used: 3, refused: 2 });
+    expect(callBudgetSpent(budget)).toBe(true);
+  });
+
+  it("decides a call once, by its id, so the start callback and the execution agree (a refused call is not traced)", async () => {
+    order.length = 0;
+    const budget = newCallBudget(1);
+    const t = withCallBudget(tools(), craft, budget);
+    expect(admitCall(budget, "a")).toBe(true);
+    expect(admitCall(budget, "b")).toBe(false);
+    expect(admitCall(budget, "a")).toBe(true); // asked again, answered the same, counted once
+    expect(budget).toMatchObject({ used: 1, refused: 1 });
+    await t.look.execute(undefined, { toolCallId: "a" });
+    expect(await t.place.execute(undefined, { toolCallId: "b" })).toEqual({ content: [{ type: "text", text: BUDGET_REFUSAL }] });
+    expect(order).toEqual(["look"]);
+    expect(budget).toMatchObject({ used: 1, refused: 1 });
+    expect(budget.refusedIds.has("b")).toBe(true);
+    expect(budget.refusedIds.has("a")).toBe(false);
+  });
+
+  it("does not count or refuse a tool that is not a craft tool, such as the skill tool", async () => {
+    order.length = 0;
+    const budget = newCallBudget(1);
+    const t = withCallBudget(tools(), craft, budget);
+    await t.look.execute();
+    expect(await t.Skill.execute()).toBe("skill text");
+    expect(budget).toMatchObject({ used: 1, refused: 0 });
+  });
+
+  it("is not spent until the budget is reached or a call was refused", async () => {
+    const budget = newCallBudget(2);
+    const t = withCallBudget(tools(), craft, budget);
+    await t.look.execute();
+    expect(callBudgetSpent(budget)).toBe(false);
+    await t.look.execute();
+    expect(callBudgetSpent(budget)).toBe(true);
+  });
+
+  it("makes the refusal the same text whatever the call, and names no item or recipe", () => {
+    expect(BUDGET_REFUSAL).toBe("The call budget is used up. This call was not run.");
+  });
+
+  it("classifies a stop at the call budget as a budget end, and leaves a step budget as it was", () => {
+    expect(classifyEnd("tool-calls", 3, 100, true)).toBe("budget");
+    expect(classifyEnd("tool-calls", 3, 100, false)).toBe("error");
+    expect(classifyEnd("tool-calls", 100, 100, false)).toBe("budget");
+    expect(classifyEnd("stop", 3, 100, true)).toBe("stopped");
   });
 });

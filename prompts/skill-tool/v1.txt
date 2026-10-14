@@ -1,0 +1,1 @@
+Load the skill '{name}'{described}. Returns its instructions.

@@ -156,6 +156,7 @@ export const manifestSchema = z.object({
   model: z.object({ requested: z.string().nullable(), resolved: z.array(z.string()) }),
   priorFit: z.string().optional(),
   promptNote: z.string().optional(),
+  prompt: z.object({ version: z.string(), baseSha256: z.string(), sha256: z.string(), armSentence: z.object({ version: z.string(), sha256: z.string() }).optional() }).optional(),
   skill: z.object({ name: z.string(), loaded: z.boolean(), loadedAfter: z.number().nullable() }).optional(),
   /** How the items of this run's frames and goal are drawn. Absent in bundles made before item art. */
   art: worldArtSchema.optional(),

@@ -33,9 +33,9 @@ pnpm dev <file>    # run a TypeScript file with tsx
 Scripts (run with `pnpm dev`): `scripts/solve.ts` (best run for a goal), `scripts/make-world.ts`
 (re-skinned world plus goals), `scripts/smoke.ts` (replay a best run over stdio),
 `scripts/run-agent.ts` (runs through the AI SDK, with a Claude model or `fireworks/<model>` via `--model`, scored and measured; `--dry-run`
-spends nothing; `--prompt-note` adds one fixed sentence to the prompt; `--prompt-file` replaces the base prompt, with `{what}`, `{item}` and `{turns}` filled in, to test a reworded one: every arm of an experiment must use the same base prompt), `scripts/report.ts` (run folders to the
+spends nothing; `--prompt-version <n>` picks `prompts/base/v<n>.txt` (default 1); `--call-budget <n>` states a budget of tool calls for a version 2 prompt, `--max-turns <n>` a budget of steps for a version 1 one, and the other is refused; `--arm-sentence <n>` and `--skill-tool-version <n>` pick those prompts' versions; `--prompt-note` adds one free-text sentence and `--prompt-file` replaces the base prompt with an ad hoc template (both recorded as `custom`); `--experiment <folder>` refuses an arm that differs from the experiment's pinned prompt set: every arm of an experiment must use the same base prompt), `scripts/report.ts` (run folders to the
 experiment results table), `scripts/score.ts` (score run logs against the best run) and `scripts/export-run.ts`
-(export a finished run as a replay bundle), `scripts/critic-loop.ts` (finished runs, or a candidate skill, to
+(export a finished run as a replay bundle), `scripts/prompts.ts` (list every prompt kind, version and fingerprint; exits 1 on a missing changelog entry) and `scripts/critic-loop.ts` (finished runs, or a candidate skill, to
 a reviewed skill: up to three rounds of a critic and a reviser, then a loop record under `loops/`; `--dry-run`
 spends nothing, `--allow-workspace` is needed to distill a candidate through NAMS), `scripts/viz.ts <folder>` (serve a
 folder of runs and the built page on 127.0.0.1), `scripts/viz-export.ts <folder> <dest>` (a static copy of the same) and `scripts/art-sheet.ts <dest.html>` (a contact sheet of the sprite library, written outside the repository).
@@ -131,6 +131,8 @@ zebra-space project with the RFC requirement removed.
 | `src/sim/notes.ts` | The world notes file: prior fit, per-recipe notes and omissions; never imported by the engine or server |
 | `src/viz/` | The visualizer's backend: folder scanner, catalog, bundle supply, local server, static export, commands, and item art (`art/`: the sprite library, a world's art file, glyph allocation, world art, the contact sheet); `glyphs.ts` is shared with the page; no SDK and no `src/mcp` |
 | `viz/` | The visualizer's page (Vite, Svelte, PixiJS, Tailwind); built to `dist-viz/` (gitignored); component tests in `viz/test/` |
+| `prompts/` | Every prompt in play, versioned and never edited: `base/`, `arm-sentence/`, `skill-tool/`, `review-rubric/`, each `v<N>.<ext>` with a `CHANGELOG.md` (ADR-007) |
+| `src/prompts/` | Loading, placeholder and word checks, filling, fingerprints, composing a run's prompt, and the prompt set check; no SDK import |
 | `src/loop/` | The critic loop: rubric and roles' instructions (one versioned file), the verdict and revision schemas, role prompts, the round controller, the loop record, the NAMS seam with its workspace guard, the candidate step, a small zip reader and diff; no SDK import |
 | `loops/` | One folder per loop (gitignored): rounds, verdicts, diffs, the accepted `skill/`. The only place model-authored review text may be written |
 | `scripts/` | `solve.ts`, `make-world.ts`, `smoke.ts`, `run-agent.ts`, `report.ts`, `score.ts`, `export-run.ts`, `critic-loop.ts`, `viz.ts`, `viz-export.ts`, `dev-viz.ts` |
@@ -196,6 +198,21 @@ zebra-space project with the RFC requirement removed.
   time. A library name says what is drawn, never an item's meaning, and the visualizer never interprets an item's name. A bundle's manifest and
   the catalog carry finished sprites and generated glyphs for the items a run shows, never library names, paths or other items of the world.
   Every library drawing is the project's own 16 by 16 work, with no black outline (a test measures each against the dark slot and the grid cell); one that started from a licensed reference is listed in `src/viz/art/CREDITS.md`.
+
+## Prompt rules to keep in mind
+
+- A prompt is a file under `prompts/<kind>/v<N>.<ext>` and a version is never edited: a change is a new file, a `## v<N>` section in the kind's
+  `CHANGELOG.md`, and, for the review rubric, a new process version. `pnpm dev scripts/prompts.ts` lists them and fails on a missing entry.
+- Version 1 of the base prompt reproduces the code's original prompt byte for byte (a test holds it); its budget is steps. Version 2 states a
+  budget of tool calls, which the driver counts in the order the model emitted them: a call past it is not sent to the craft server,
+  answers one fixed line, is absent from `run.jsonl` and is counted in `budgetRefused`. A goal held on the last in-budget call is `stopped`.
+- A base prompt never mentions skills, memory or learning; from version 2 it does not say "explore" or "unfamiliar". The arm sentence and the skill
+  tool's description exist to mention a skill and are not checked.
+- `score.json` records `prompt` (the base version, `baseSha256` of the base prompt's template as written (no goal, budget or arm sentence, so one version is one value), `sha256` of the full text sent, the arm sentence's and the
+  skill tool's versions) and `budget`. The report compares arms on `baseSha256`; a difference in only the goal, the budget or the arm sentence is listed, not warned about.
+  A run with no `prompt` block is shown as unversioned, never as version 1.
+- An experiment's summary may pin a `promptSet`; `run-agent`, `critic-loop` and the report refuse what differs from it. The review rubric
+  file keeps its bytes and hash, so earlier loop records stay valid.
 
 ## Critic loop rules to keep in mind
 

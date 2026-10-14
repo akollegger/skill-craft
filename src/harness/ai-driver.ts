@@ -6,7 +6,8 @@ import { DriverAborted, type AgentDriver, type PlayerResult } from "./driver.js"
 import { DEFAULT_MODEL, costOf, parseModelSpec, type ModelRef, type Tokens } from "./models.js";
 import { findProvider, normaliseReported } from "./providers.js";
 import type { RoleDriver, RoleTokens } from "./role-driver.js";
-import { addRoleTokens, addTokens, classifyEnd, countInvalid, CRAFT_TOOL_PREFIX, droppedSetting, invalidStreak, longRetryAfter, MAX_INVALID_STEPS, MAX_RETRIES, MAX_ROLE_ATTEMPTS, failureCode, NO_TOKENS, overCap, readInstalledSkill, requestStart, requestStop, requestUsage, resolveLimits, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf, toolStop } from "./ai-options.js";
+import { fill, loadVersion } from "../prompts/index.js";
+import { addRoleTokens, addTokens, admitCall, callBudgetSpent, classifyEnd, countInvalid, CRAFT_TOOL_PREFIX, droppedSetting, invalidStreak, longRetryAfter, MAX_INVALID_STEPS, MAX_RETRIES, MAX_ROLE_ATTEMPTS, newCallBudget, failureCode, NO_TOKENS, overCap, readInstalledSkill, withCallBudget, requestStart, requestStop, requestUsage, resolveLimits, roleFailure, roleTokens, sessionInit, SKILL_TOOL, skillDescription, tokensOf, toolStop } from "./ai-options.js";
 
 /**
  * Run the player through the AI SDK. This is the only file that imports the SDK (and the provider packages) at run
@@ -96,6 +97,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
   const resolved = resolveLimits(opts.limits);
   let stopCode: string | undefined; // why the run was ended from inside it: the craft server died, a tool timed out, a streak of invalid calls
   let capHit = false;
+  const callBudget = opts.callBudget === undefined ? undefined : newCallBudget(opts.callBudget);
   let seenSteps: readonly { toolCalls: readonly { invalid?: boolean | undefined }[] }[] = [];
   // The cost so far: what the provider reported if it reports one, else the tokens at the price, else none.
   const costNow = (): number | null => reportedCost ?? costOf(total, price);
@@ -117,16 +119,19 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
     ...(backendOf() === undefined ? {} : { backend: backendOf() }),
     retries: { max: MAX_RETRIES, failedAttempts: probe.failedAttempts },
     invalidToolCalls: countInvalid(seenSteps),
+    budgetRefused: callBudget?.refused ?? 0,
     };
   };
   try {
-    const tools: ToolSet = await client.tools();
+    let tools: ToolSet = await client.tools();
     for (const name of Object.keys(tools)) craftNames.add(name);
+    // A call budget counts the craft tools as each call starts, and refuses a call past it; the skill tool added below is not counted.
+    if (callBudget !== undefined) tools = withCallBudget(tools, craftNames, callBudget);
     if (opts.skill) {
       const skill = readInstalledSkill(opts.skill);
       const description = skillDescription(skill.markdown);
       tools[SKILL_TOOL] = tool({
-        description: `Load the skill '${skill.name}'${description === "" ? "" : `: ${description}`}. Returns its instructions.`,
+        description: fill(opts.skillToolTemplate ?? loadVersion("skill-tool", "1").text, { name: skill.name, described: description === "" ? "" : `: ${description}` }),
         inputSchema: jsonSchema({ type: "object", properties: {}, additionalProperties: false }),
         execute: async () => {
           skillLoadedAfterCalls ??= craftCalls;
@@ -148,6 +153,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
           ({ steps }) => {
             seenSteps = steps;
             if (stopCode !== undefined) return true;
+            if (callBudget !== undefined && callBudgetSpent(callBudget)) return true;
             if (invalidStreak(steps) >= MAX_INVALID_STEPS) return (stopCode = "tool_loop"), true;
             if (overCap(total, costNow(), limits)) return (capHit = true);
             return false;
@@ -184,6 +190,9 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
         },
         onToolExecutionStart: (e) => {
           const isCraft = craftNames.has(e.toolCall.toolName);
+          // A call past a call budget is decided here, as it starts: it is neither traced nor counted as a craft call, so the trace
+          // still holds the calls the run log does, and a skill loaded in the same response is not credited with calls that never ran.
+          if (isCraft && callBudget !== undefined && !admitCall(callBudget, e.toolCall.toolCallId)) return;
           if (isCraft) craftCalls++;
           sink.onToolStart({ toolName: isCraft ? `${CRAFT_TOOL_PREFIX}${e.toolCall.toolName}` : e.toolCall.toolName, toolUseId: e.toolCall.toolCallId, input: e.toolCall.input });
         },
@@ -207,7 +216,7 @@ export const aiDriver: AgentDriver = async (opts, sink) => {
     else if (result.finishReason === "length") [ended, reason] = ["error", "DriverFailed: the player reported output_limit"];
     else if (capHit && result.finishReason === "tool-calls") [ended, reason] = ["budget", "SpendCap: the player reached its spend cap"];
     else {
-      ended = classifyEnd(result.finishReason, result.steps.length, opts.maxTurns);
+      ended = classifyEnd(result.finishReason, result.steps.length, opts.maxTurns, callBudget !== undefined && callBudgetSpent(callBudget));
       if (ended === "error") reason = `DriverFailed: player ended with ${finish}`;
     }
     seenSteps = result.steps;

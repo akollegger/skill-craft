@@ -117,3 +117,16 @@ describe("no recipe information leaks (SC-006)", () => {
     expect(outputs.filter((o) => o.refusal).length).toBeGreaterThanOrEqual(6);
   });
 });
+
+describe("the call budget's refusal (spec 008, FR-011, SC-004)", () => {
+  it("is one fixed line that names no item, recipe, tool or grid cell of any world", async () => {
+    const { BUDGET_REFUSAL } = await import("../src/harness/ai-options.js");
+    const { readFileSync, readdirSync } = await import("node:fs");
+    const worlds = ["worlds/forge.json", "worlds/woodworking.json", "worlds/minecraft-inspired.json", ...readdirSync("worlds/generated").filter((f) => f.endsWith(".json") && !/goals|notes|art/.test(f)).map((f) => `worlds/generated/${f}`)];
+    for (const path of worlds) {
+      const world = JSON.parse(readFileSync(path, "utf8")) as { items?: { id: string }[] };
+      for (const item of world.items ?? []) expect(BUDGET_REFUSAL, `${path}: ${item.id}`).not.toContain(item.id);
+    }
+    expect(BUDGET_REFUSAL).not.toMatch(/recipe|shaped|shapeless|row|col|craft|place|inventory/i);
+  });
+});
