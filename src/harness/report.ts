@@ -371,7 +371,8 @@ export function buildReport(input: ReportInput): string {
       const wantsSkill = arm?.skill === true;
       if (wantsSkill) {
         if (s.skill === undefined) throw new ReportRefused(`${name}/${rd} has no skill, but arm ${arm?.label} should`);
-        if (knownSkills.size > 0 && !knownSkills.has(s.skill.sha256)) throw new ReportRefused(`${name}/${rd} used a skill whose SHA-256 fingerprint is not one the distillation produced or the review named`);
+        // A loaded record or review is checked even when it lists no skill: an empty list matches nothing.
+        if ((record !== undefined || reviewSha !== undefined) && !knownSkills.has(s.skill.sha256)) throw new ReportRefused(`${name}/${rd} used a skill whose SHA-256 fingerprint is not one the distillation produced or the review named`);
       } else if (s.skill !== undefined) {
         throw new ReportRefused(`${name}/${rd} had a skill, but it belongs to ${stage === "calibration" ? "calibration" : `arm ${stage}`}`);
       }

@@ -965,6 +965,13 @@ describe("a distillation record, and no review gate (spec 009, FR-021)", () => {
     expect(buildReport({ experiment: f.write(), labels: f.labels })).toContain("harness nams-reviewed; process version 2");
   });
 
+  it("refuses a skill arm against a record that lists no skills (a no_skill or failed distillation)", () => {
+    const f = arm((g) => {
+      (g.summary as Record<string, unknown>).distillation = { record: writeRecord(g, "harness.json", record({ skills: [], outcome: "no_skill" })) };
+    });
+    expect(() => buildReport({ experiment: f.write(), labels: f.labels })).toThrow(/fingerprint/);
+  });
+
   it("refuses a skill-arm run whose skill is not one the record lists, and a record that is missing", () => {
     const f = arm((g) => {
       (g.summary as Record<string, unknown>).distillation = { record: writeRecord(g, "harness.json", record({ skills: [{ name: "x", sha256: "d".repeat(64) }] })) };

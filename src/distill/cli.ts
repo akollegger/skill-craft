@@ -262,7 +262,8 @@ export async function runDistillCli(argv: string[], deps: DistillCliDeps): Promi
       writeDistillationRecord(join(dir, "harness.json"), failure === undefined || reason === undefined ? record : { ...record, reason });
 
       if (loop !== undefined) for (const line of roundLines(loop)) deps.out(line);
-      if (timedOut) {
+      // A skill set already on disk is the outcome; the timer only decides the exit when distillation did not finish with one.
+      if (timedOut && !final.ok) {
         deps.err(reasonOf(new RunTimedOut(timeoutMs)));
         deps.out(`files: ${toRepoPath(dir)}`);
         return 1;
