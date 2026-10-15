@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { REPO } from "../harness/paths.js";
 
-export const PROCESS_VERSION = "2";
+export const PROCESS_VERSION = "3";
 
 /**
  * How the recording step wrote these runs: `conversation` (the model's messages and reasoning, a step per turn),
@@ -52,4 +52,14 @@ export function currentProcessInfo(git: GitRunner = runGit): ProcessInfo {
 /** Whether the changelog has an entry for a version: a heading `## v<version>`, matched whole. */
 export function hasChangelogEntry(version: string, changelog: string): boolean {
   return new RegExp(`^## v${version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "m").test(changelog);
+}
+
+/**
+ * Whether the changelog has an entry for a harness's version. The `nams-reviewed` harness keeps the plain `## v<N>` headings it had
+ * before there were several; any other harness has `## <name> v<N>`.
+ */
+export function hasHarnessChangelogEntry(harness: string, version: string, changelog: string): boolean {
+  if (harness === "nams-reviewed") return hasChangelogEntry(version, changelog);
+  const escape = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^## ${escape(harness)} v${escape(version)}\\s*$`, "m").test(changelog);
 }

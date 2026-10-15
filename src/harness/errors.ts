@@ -84,7 +84,7 @@ export function reasonOf(e: unknown): string {
 
 /** Mistakes the operator can fix, as opposed to a run that failed. Matched by class, never by message text. */
 export function isUserError(e: unknown): boolean {
-  return e instanceof LoopRefused || e instanceof WorkspaceRefused || e instanceof RunFolderExists || e instanceof ExportRefused || e instanceof SkillNotFound || e instanceof ReportRefused || e instanceof UnknownGoalItem || e instanceof UnknownModel || e instanceof UnknownProvider || e instanceof BackendNotPinned || e instanceof SettingRefused || e instanceof LimitRefused || e instanceof PriceAliasesInvalid || e instanceof SettingsInvalid || e instanceof WorldError || e instanceof RunLogInUseError || e instanceof PromptRefused;
+  return e instanceof LoopRefused || e instanceof WorkspaceRefused || e instanceof RunFolderExists || e instanceof ExportRefused || e instanceof SkillNotFound || e instanceof ReportRefused || e instanceof UnknownGoalItem || e instanceof UnknownModel || e instanceof UnknownProvider || e instanceof BackendNotPinned || e instanceof SettingRefused || e instanceof LimitRefused || e instanceof PriceAliasesInvalid || e instanceof SettingsInvalid || e instanceof WorldError || e instanceof RunLogInUseError || e instanceof PromptRefused || e instanceof HarnessRefused;
 }
 
 /** A results report that cannot be trusted or built: a missing summary, a stray folder, a mismatched skill or note. */
@@ -197,5 +197,19 @@ export class PriceAliasesInvalid extends HarnessError {
 export class PromptRefused extends HarnessError {
   constructor(why: string) {
     super("PromptRefused", `prompt refused: ${why}`);
+  }
+}
+
+/** The distiller finished and named no skill: a refusal of its own kind, not a failure of the call. */
+export class NoSkillProduced extends CandidateFailed {
+  constructor() {
+    super("the distiller finished but named no skill");
+  }
+}
+
+/** A distillation harness cannot be used as asked: an unknown name, a request naming a run that was not recorded, a session already closed. Fixed text only. */
+export class HarnessRefused extends HarnessError {
+  constructor(why: string) {
+    super("HarnessRefused", `harness refused: ${why}`);
   }
 }

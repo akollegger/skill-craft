@@ -412,15 +412,6 @@ describe("what the report refuses", () => {
     refused(() => buildReport({ experiment: f.write(), labels: f.labels }), /fingerprint|sha/i);
   });
 
-  it("a skill arm whose review verdict is not accept", () => {
-    for (const verdict of ["reject", "revise"]) {
-      const f = fixture();
-      f.addLabel("s1", { arm: "S1" }, "iron", STUDENT, "faithful", [{ reached: true, loadedAfter: 1 }]);
-      f.review({ verdict });
-      refused(() => buildReport({ experiment: f.write(), labels: f.labels }), /accept/);
-    }
-  });
-
   it("roles that leave out a goal, or a held-out goal that is not in the goal set", () => {
     const f = fixture({ roles: { wooden: "solved" } }); // iron has no role
     f.addLabel("s0", { arm: "S0" }, "iron", STUDENT, "faithful", wins(1, 1));
@@ -444,19 +435,6 @@ describe("what the report refuses", () => {
     const f = fixture();
     f.addLabel("t0", { arm: "T0" }, "wooden", STUDENT, "faithful", wins(1, 1)); // T0 is the teacher
     refused(() => buildReport({ experiment: f.write(), labels: f.labels }), /model/i);
-  });
-
-  it("a skill arm whose skill is not accepted, even when the fingerprint matches", () => {
-    const f = fixture();
-    f.addLabel("s2", { arm: "S2" }, "iron", STUDENT, "faithful", [{ reached: true, loadedAfter: 1, note: NOTE }]);
-    f.review({ verdict: "reject", skillSha256: SHA });
-    refused(() => buildReport({ experiment: f.write(), labels: f.labels }), /accept/);
-  });
-
-  it("a skill arm with no review record", () => {
-    const f = fixture();
-    f.addLabel("s1", { arm: "S1" }, "iron", STUDENT, "faithful", [{ reached: true, loadedAfter: 1 }]);
-    refused(() => buildReport({ experiment: f.write(), labels: f.labels }), /review/);
   });
 
   it("a prompt note that differs from its arm's", () => {
@@ -525,7 +503,7 @@ describe("the cast (spec 007 FR-040 to FR-043)", () => {
     const text = buildReport({ experiment: f.write(), labels: f.labels });
     expect(text).toContain("- teacher: anthropic/claude-sonnet-5-5 (thinking adaptive, effort high)");
     expect(text).toContain("- student: anthropic/claude-haiku-4-5-20251001 (thinking 31999)");
-    expect(text).toContain("- distiller: nams; critic anthropic/claude-sonnet-5-5 (thinking adaptive, effort medium); reviser anthropic/claude-sonnet-5-5 (unset)");
+    expect(text).toContain("- harness: nams-reviewed; critic anthropic/claude-sonnet-5-5 (thinking adaptive, effort medium); reviser anthropic/claude-sonnet-5-5 (unset)");
   });
 
   it("lets one model fill every role with different settings, keeps the settings apart and says the roles share it", () => {
@@ -574,6 +552,13 @@ describe("the cast (spec 007 FR-040 to FR-043)", () => {
       },
       distiller: { service: { name: "nams", version: "1.3.0", released: "2026-10-12", commit: "27263eb242308738644e4fbaa817d3f8fbd31574", environment: "production" } },
       finalSkillSha256: sha,
+      rubric: { version: "1", sha256: "a".repeat(64), kindVersion: "1" },
+      rounds: [{ n: 1, skillSha256: sha, overall: "accept" }],
+      spend: { costUsd: null, pricedStages: 0, unpricedStages: 0, tokens: { input: null, output: null, cacheRead: null, cacheCreation: null } },
+      stages: [],
+      reason: "accepted",
+      failed: false,
+      cancelled: false,
       outcome: "accept",
       ...over,
     });
@@ -602,7 +587,7 @@ describe("the cast (spec 007 FR-040 to FR-043)", () => {
       const read = (f: ReturnType<typeof arm>) => buildReport({ experiment: f.exp, labels: f.labels });
       expect(read(arm({ version: "1", sha256: A, kindVersion: "1" }, "1"))).toContain("Skill made by");
       expect(() => read(arm({ version: "1", sha256: A, kindVersion: "2" }, "1"))).toThrow(/review rubric version 2 differs from the experiment's 1/);
-      expect(() => read(arm(undefined, "1"))).toThrow(/names no review rubric version/);
+      expect(() => read(arm({ version: "1", sha256: A }, "2"))).toThrow(/review rubric version 1 differs from the experiment's 2/); // a record with no kind version is read by the file's own version
       expect(read(arm({ version: "1", sha256: A, kindVersion: "2" }, undefined))).toContain("Skill made by"); // not pinned, not checked
     });
 
@@ -626,10 +611,11 @@ describe("the cast (spec 007 FR-040 to FR-043)", () => {
       expect(buildReport({ experiment: f.exp, labels: f.labels })).toContain("distiller service: none recorded");
     });
 
-    it("prints nothing about the loop when review.json names none", () => {
+    it("says no record was named, and prints no provenance, when review.json names no loop", () => {
       const f = skillArm(undefined);
       const text = buildReport({ experiment: f.exp, labels: f.labels });
-      expect(text).not.toContain("Skill made by");
+      expect(text).toContain("Skill made by: no distillation record named");
+      expect(text).not.toContain("process version");
       expect(text).toContain("- teacher:"); // the cast is still stated
     });
 
@@ -843,5 +829,162 @@ describe("a pinned prompt set (spec 008, US5)", () => {
 
   it("refuses a set that is not one", () => {
     expect(() => build({ promptSet: { armSentence: "1" } }, () => {})).toThrow(/prompt set/);
+  });
+});
+
+describe("cast.harness (spec 009, FR-017, FR-019)", () => {
+  const cast = (harness: Record<string, unknown> | undefined, over: Record<string, unknown> = {}) => ({ teacher: { model: TEACHER, settings: {} }, student: { model: STUDENT, settings: {} }, ...(harness === undefined ? {} : { harness }), ...over });
+  const SHA = "e".repeat(64);
+  const rec = (over: Record<string, unknown> = {}) => ({
+    harness: { name: "bespoke-one-shot", processVersion: "1" },
+    code: null, recordingFormat: "conversation",
+    roles: { distiller: { requested: "fireworks/glm-5p3-flash", resolved: ["fireworks/glm-5p3-flash"], settings: null, price: null } },
+    prompts: { distiller: { version: "1", sha256: "a".repeat(64) } },
+    service: null, retainedExternally: false, stages: [],
+    spend: { costUsd: null, pricedStages: 0, unpricedStages: 0, tokens: { input: null, output: null, cacheRead: null, cacheCreation: null } },
+    runs: [{ id: "001", runLogSha256: "1".repeat(64), scoreSha256: "2".repeat(64), models: [TEACHER], settings: null }],
+    skills: [{ name: "craft-thing", sha256: SHA }], outcome: "skill-set", reason: "a skill set was produced", ...over,
+  });
+  const build = (c: Record<string, unknown>, record: unknown, promptSet?: unknown) => {
+    const f = fixture({ models: undefined, cast: c, ...(promptSet === undefined ? {} : { promptSet }) });
+    const A = "a".repeat(64);
+    f.addLabel("s1", { arm: "S1" }, "iron", STUDENT, "faithful", wins(2, 3, { loadedAfter: 1, sha: SHA, ...(promptSet === undefined ? {} : { prompt: { version: "1", baseSha256: A, sha256: A } }) }));
+    const path = join(f.root, "harness.json");
+    writeFileSync(path, JSON.stringify(record));
+    (f.summary as Record<string, unknown>).distillation = { record: path };
+    return () => buildReport({ experiment: f.write(), labels: f.labels });
+  };
+  const GLM = { model: "fireworks/glm-5p3-flash", settings: {} };
+
+  it("is read, printed with each role's model and settings, and checked against the record", () => {
+    const text = build(cast({ name: "bespoke-one-shot", roles: { distiller: GLM } }), rec())();
+    expect(text).toContain("- harness: bespoke-one-shot; distiller fireworks/glm-5p3-flash (unset)");
+    expect(text).toContain("harness bespoke-one-shot; process version 1");
+  });
+
+  it("reads an older cast with a distiller as nams-reviewed with a critic and a reviser", () => {
+    const old = cast(undefined, { distiller: { service: "nams", critic: GLM, reviser: GLM } });
+    const text = build(old, rec({ harness: { name: "nams-reviewed", processVersion: "3" }, roles: { critic: rec().roles.distiller, reviser: rec().roles.distiller } }))();
+    expect(text).toContain("- harness: nams-reviewed; critic fireworks/glm-5p3-flash (unset); reviser fireworks/glm-5p3-flash (unset)");
+  });
+
+  it("states which roles share a model, including with the teacher or student", () => {
+    const text = build(cast({ name: "bespoke-one-shot", roles: { distiller: { model: STUDENT, settings: {} } } }), rec({ roles: { distiller: { requested: STUDENT, resolved: [STUDENT], settings: null, price: null } } }))();
+    expect(text).toMatch(/shared model: student, distiller: /);
+  });
+
+  it("refuses a record whose harness, or any role's requested model, answering model or settings, differ from the cast", () => {
+    const c = cast({ name: "bespoke-one-shot", roles: { distiller: GLM } });
+    expect(build(c, rec({ harness: { name: "nams-reviewed", processVersion: "1" } })))
+      .toThrow(/harness/);
+    expect(build(c, rec({ roles: { distiller: { requested: "fireworks/other", resolved: ["fireworks/other"], settings: null, price: null } } }))).toThrow(/distiller is not the cast's/);
+    expect(build(c, rec({ roles: { distiller: { requested: GLM.model, resolved: ["fireworks/other"], settings: null, price: null } } }))).toThrow(/served by a model other/);
+    expect(build(c, rec({ roles: { distiller: { requested: GLM.model, resolved: [GLM.model], settings: { temperature: 0.6, effort: null, thinking: null }, price: null } } }))).toThrow(/settings other than the cast's/);
+  });
+
+  it("refuses a summary with both cast.harness and cast.distiller", () => {
+    const both = cast({ name: "bespoke-one-shot", roles: { distiller: GLM } }, { distiller: { service: "nams", critic: GLM, reviser: GLM } });
+    expect(build(both, rec())).toThrow(ReportRefused);
+  });
+
+  it("prints a pinned distiller prompt on the Prompt set line", () => {
+    const c = cast({ name: "bespoke-one-shot", roles: { distiller: GLM } });
+    expect(build(c, rec(), { base: "1", distiller: "1" })()).toContain("distiller prompt 1");
+  });
+
+  it("checks a pinned distiller prompt version against the record's", () => {
+    const c = cast({ name: "bespoke-one-shot", roles: { distiller: GLM } });
+    expect(build(c, rec(), { base: "1", distiller: "1" })).not.toThrow();
+    expect(build(c, rec({ prompts: { distiller: { version: "2", sha256: "b".repeat(64) } } }), { base: "1", distiller: "1" })).toThrow(/distiller/);
+  });
+});
+
+describe("a distillation record, and no review gate (spec 009, FR-021)", () => {
+  const SKILL_SHA = "e".repeat(64);
+  const record = (over: Record<string, unknown> = {}) => ({
+    harness: { name: "nams-reviewed", processVersion: "3" },
+    code: { commit: "0123456789abcdef0123456789abcdef01234567", dirty: false, changesSha256: null },
+    recordingFormat: "conversation",
+    roles: { critic: { requested: "m-critic", resolved: ["m-critic"], settings: null, price: null }, reviser: { requested: "m-reviser", resolved: ["m-reviser"], settings: null, price: null } },
+    prompts: { "review-rubric": { version: "1", sha256: "a".repeat(64) } },
+    service: null,
+    retainedExternally: true,
+    stages: [],
+    spend: { costUsd: null, pricedStages: 0, unpricedStages: 0, tokens: { input: null, output: null, cacheRead: null, cacheCreation: null } },
+    review: { rounds: [{ n: 1, skillSha256: "f".repeat(64), overall: "revise" }, { n: 2, skillSha256: SKILL_SHA, overall: "accept" }], outcome: "accept" },
+    runs: [{ id: "001", runLogSha256: "1".repeat(64), scoreSha256: "2".repeat(64), models: [TEACHER], settings: null }],
+    skills: [{ name: "craft-thing", sha256: SKILL_SHA }],
+    outcome: "skill-set",
+    reason: "a skill set was produced",
+    ...over,
+  });
+  const arm = (build: (f: ReturnType<typeof fixture>) => void) => {
+    const f = fixture();
+    f.addLabel("s1", { arm: "S1" }, "iron", STUDENT, "faithful", wins(2, 3, { loadedAfter: 1, sha: SKILL_SHA }));
+    build(f);
+    return f;
+  };
+  const writeRecord = (f: ReturnType<typeof fixture>, name: string, rec: unknown): string => {
+    const path = join(f.root, name);
+    writeFileSync(path, JSON.stringify(rec));
+    return path;
+  };
+
+  it("builds a skill arm with no distillation record and no review record, and says none was named", () => {
+    const f = arm(() => {});
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(md).toContain("Skill made by: no distillation record named");
+  });
+
+  it("reads the record the summary names, prints the harness and its review rounds and verdicts, and does not gate on them", () => {
+    const f = arm((g) => {
+      (g.summary as Record<string, unknown>).distillation = { record: writeRecord(g, "harness.json", record()) };
+    });
+    const md = buildReport({ experiment: f.write(), labels: f.labels });
+    expect(md).toContain("harness nams-reviewed; process version 3, commit 0123456789ab, tree clean");
+    expect(md).toContain("critic: m-critic (unset); reviser: m-reviser (unset)");
+    expect(md).toContain("review: round 1 revise, round 2 accept; outcome accept");
+  });
+
+  it("builds when the review rejected the skill: the verdict gate is gone", () => {
+    const rejected = record({ review: { rounds: [{ n: 1, skillSha256: SKILL_SHA, overall: "reject" }], outcome: "reject" } });
+    const f = arm((g) => {
+      (g.summary as Record<string, unknown>).distillation = { record: writeRecord(g, "harness.json", rejected) };
+    });
+    expect(buildReport({ experiment: f.write(), labels: f.labels })).toContain("review: round 1 reject; outcome reject");
+    const legacy = arm((g) => g.review({ verdict: "reject", skillSha256: SKILL_SHA }));
+    expect(() => buildReport({ experiment: legacy.write(), labels: legacy.labels })).not.toThrow();
+  });
+
+  it("reads a loop record made before the interface, named by the summary, as a nams-reviewed record", () => {
+    const loop = {
+      label: "old", mode: "runs", runs: [], process: { version: "2", commit: null, dirty: null, changesSha256: null }, recordedRuns: [{ label: "001", run: "r", runLogSha256: "1".repeat(64), scoreSha256: "2".repeat(64), models: [TEACHER], settings: null }],
+      recordingFormat: "conversation", distiller: null, rubric: { version: "1", sha256: "a".repeat(64) },
+      roles: { critic: { requested: "c", resolved: ["c"], settings: null, priceQuote: null }, reviser: { requested: "r", resolved: ["r"], settings: null, priceQuote: null } },
+      spend: { costUsd: null, pricedStages: 0, unpricedStages: 0, tokens: { input: null, output: null, cacheRead: null, cacheCreation: null } }, finalSkillSha256: SKILL_SHA,
+      rounds: [{ n: 1, skillSha256: SKILL_SHA, overall: "accept" }], outcome: "accept", reason: "accepted", failed: false, cancelled: false, stages: [],
+    };
+    const f = arm((g) => {
+      (g.summary as Record<string, unknown>).distillation = { record: writeRecord(g, "loop.json", loop) };
+    });
+    expect(buildReport({ experiment: f.write(), labels: f.labels })).toContain("harness nams-reviewed; process version 2");
+  });
+
+  it("refuses a skill arm against a record that lists no skills (a no_skill or failed distillation)", () => {
+    const f = arm((g) => {
+      (g.summary as Record<string, unknown>).distillation = { record: writeRecord(g, "harness.json", record({ skills: [], outcome: "no_skill" })) };
+    });
+    expect(() => buildReport({ experiment: f.write(), labels: f.labels })).toThrow(/fingerprint/);
+  });
+
+  it("refuses a skill-arm run whose skill is not one the record lists, and a record that is missing", () => {
+    const f = arm((g) => {
+      (g.summary as Record<string, unknown>).distillation = { record: writeRecord(g, "harness.json", record({ skills: [{ name: "x", sha256: "d".repeat(64) }] })) };
+    });
+    expect(() => buildReport({ experiment: f.write(), labels: f.labels })).toThrow(/fingerprint/);
+    const missing = arm((g) => {
+      (g.summary as Record<string, unknown>).distillation = { record: join(g.root, "nope.json") };
+    });
+    expect(() => buildReport({ experiment: missing.write(), labels: missing.labels })).toThrow(/no distillation record/);
   });
 });

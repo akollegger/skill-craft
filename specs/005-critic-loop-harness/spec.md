@@ -1,5 +1,7 @@
 # Feature Specification: Critic Loop in the Harness
 
+> Superseded in part by [spec 009](../009-distillation-harness-interface/spec.md) (ADR-008): the loop is now the review stage of the `nams-reviewed` harness, and its verdict no longer gates a skill.
+
 **Feature Branch**: `005-critic-loop-harness`
 
 **Created**: 2026-10-03

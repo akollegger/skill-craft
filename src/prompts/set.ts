@@ -13,6 +13,8 @@ export const promptSetSchema = z.strictObject({
   armSentence: version.optional(),
   skillTool: version.optional(),
   reviewRubric: version.optional(),
+  /** The bespoke harness's instructions (spec 009). */
+  distiller: version.optional(),
 });
 export type PromptSet = z.infer<typeof promptSetSchema>;
 
@@ -24,6 +26,7 @@ export interface UsedPrompts {
   armSentence?: string;
   skillTool?: string;
   reviewRubric?: string;
+  distiller?: string;
 }
 
 export function parsePromptSet(value: unknown): PromptSet {
@@ -32,7 +35,7 @@ export function parsePromptSet(value: unknown): PromptSet {
   return parsed.data;
 }
 
-const LABEL = { base: "base prompt", armSentence: "arm sentence", skillTool: "skill tool", reviewRubric: "review rubric" } as const;
+const LABEL = { base: "base prompt", armSentence: "arm sentence", skillTool: "skill tool", reviewRubric: "review rubric", distiller: "distiller prompt" } as const;
 
 /**
  * The ways what was used differs from the set, as sentences naming the kind and both versions. A kind the set does not pin is not
@@ -40,7 +43,7 @@ const LABEL = { base: "base prompt", armSentence: "arm sentence", skillTool: "sk
  */
 export function checkSet(set: PromptSet, used: UsedPrompts): string[] {
   const out: string[] = [];
-  for (const kind of ["base", "armSentence", "skillTool", "reviewRubric"] as const) {
+  for (const kind of ["base", "armSentence", "skillTool", "reviewRubric", "distiller"] as const) {
     const pinned = set[kind];
     const got = used[kind];
     if (pinned !== undefined && got !== undefined && got !== pinned) out.push(`${LABEL[kind]} version ${got} differs from the experiment's ${pinned}`);

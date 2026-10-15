@@ -18,7 +18,7 @@ describe("listPrompts", () => {
   it("lists the committed kinds and versions, each with a fingerprint and a changelog entry, and reports no problem", () => {
     const { lines, problems } = listPrompts(PROMPTS_ROOT);
     expect(problems).toEqual([]);
-    for (const kind of ["base", "arm-sentence", "skill-tool", "review-rubric"]) expect(lines.some((l) => l.startsWith(kind))).toBe(true);
+    for (const kind of ["base", "arm-sentence", "skill-tool", "review-rubric", "distiller"]) expect(lines.some((l) => l.startsWith(kind))).toBe(true);
     expect(lines.filter((l) => l.startsWith("base"))).toHaveLength(2);
     for (const l of lines) expect(l).toMatch(/^[a-z-]+\s+v\d+\s+[0-9a-f]{12}\s+changelog: yes$/);
   });

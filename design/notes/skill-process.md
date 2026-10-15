@@ -1,6 +1,6 @@
 # The process that makes a skill: versions
 
-Status: living changelog. The version constant is `PROCESS_VERSION` in `src/loop/process.ts`, and a test fails when it has no entry here.
+Status: living changelog. Each harness (ADR-008) owns a process version and a section here: `nams-reviewed` keeps the plain `## v<N>` headings below (constant `PROCESS_VERSION` in `src/loop/process.ts`), and every other harness has `## <name> v<N>` headings (`bespoke-one-shot`: `BESPOKE_PROCESS_VERSION`). A test fails when a harness's version has no entry here.
 Each skill's `loop.json` records the version, the commit and what actually ran (ADR-003 §2.6, amended 2026-10-12; spec 007 FR-033 to FR-038). When the record and this note disagree, the record is what happened; this note says what a version means.
 
 ## When to bump the version
@@ -14,7 +14,7 @@ The loop as spec 005 built it, on the AI SDK runtime (ADR-006).
 1. **Recording.** Each finished teacher run that reached its goal is replayed on a fresh game through the craft server and written to a workspace the harness creates: one conversation, two messages (the prompt and the final answer), one reasoning step per distinct tool whose text is a fixed placeholder, and one tool call per call with input, output, status and duration. The recording format is `placeholder`. Tool names are written with the `mcp__craft__` prefix.
 2. **Distillation.** One skill is requested from all the conversations together (`scope` conversations), in the format given on the command line (`prose` by default). The service's gates and capabilities are recorded.
 3. **Review.** Up to three rounds of a critic and a reviser, each a fresh model call with no tools, given only the rubric, the goals the recordings cover, the recordings, the current skill and (to the reviser) the current verdict. A role's answer that fails the schema's limits is asked for again, up to three attempts. The critic and the reviser run under the settings pinned for their models, if any.
-4. **Result.** The loop accepts (the version students receive) or rejects. The accepted skill's hash is the key student runs record.
+4. **Result.** The loop accepts (the version students receive) or rejects. The accepted skill's hash is the key student runs record. _(Since v3 a verdict gates nothing; see ADR-003's 2026-10-14 amendment.)_
 
 What it cannot do: tell a necessary call from a wrong turn, since a step carries no reasoning.
 
@@ -32,3 +32,21 @@ What changes in the record: `recordingFormat` is `conversation`, `placeholder` o
 The record also names the memory service that distilled the skill (`distiller.service`: version, release date, build commit, environment, or a code when its version call failed). That records what ran and changes none of the procedure, so it did not bump the version.
 
 Still true: whether the distiller uses a step's reasoning is not established. Distilling twice from the same runs (T085) is how to find out.
+
+## v3
+
+The `nams-reviewed` harness behind the distillation interface (ADR-008; spec 009). The procedure is as in v2; what changes is what is recorded.
+
+1. **Interface.** The pipeline is one harness, `nams-reviewed`, opened by `scripts/distill.ts --harness nams-reviewed`. It is given finished runs as run records (no score, solver path, goal role or timing), records them to a workspace it creates, generates one skill, reviews it for up to three rounds and deletes the workspace on close. It returns a skill set of one.
+2. **Record.** The provenance record is `harness.json` (the harness's name and process version, each role's model and settings, prompt versions and fingerprints, the memory service's version and build commit, stages, spend, the runs and skills by hash, and the outcome). A loop record made before this version is read as `nams-reviewed`.
+3. **No gate.** The review's verdict is recorded and is not a condition for using the skill; the report prints the rounds and verdicts.
+4. **Durations.** The recording written to the memory service carries a duration of 0 for each tool call, since a run record has no timings.
+
+## bespoke-one-shot v1
+
+The reference harness with no external service (ADR-008; spec 009).
+
+1. **Recording.** The harness keeps each run record in memory; nothing leaves the machine (`retainedExternally` is false).
+2. **Distillation.** One call to a model with no tools. The system prompt is the `distiller` prompt (versioned, fingerprinted); the user message is the task prompt and the recordings as text, and nothing else.
+3. **Answer.** One skill: name, description, a body, optional references and evidence, each claim with a run and call citation. The answer is checked against a schema and the existing size limits, asked for again up to the role retry limit, and assembled with `packageFromFiles`.
+4. **Result.** A skill set of one, or a refusal (`failed` when the answer never passes, `spend_limit` at the role's cap, `cancelled`).
